@@ -25,6 +25,17 @@ enum Command {
     Core,
     /// Ask the core how it is. Starts one in the background if none runs.
     Status,
+    /// Run one Classic Monks tool on a site, as an agent: tools that only read
+    /// work; changes are made in the app, where you confirm them.
+    Run {
+        /// The site's address, name or number.
+        site: String,
+        /// The tool, e.g. get-site-snapshot.
+        tool: String,
+        /// The tool's arguments as JSON, e.g. '{"plugin":"akismet/akismet.php"}'.
+        #[arg(default_value = "{}")]
+        arguments: String,
+    },
     /// Check the data folder, database, keychain, core and network.
     Doctor {
         /// A site address to fetch over HTTPS, e.g. https://example.local
@@ -41,7 +52,7 @@ async fn main() -> ExitCode {
     };
     match cli.command {
         Command::Core => run_core(home).await,
-        Command::Status => match call_or_start(&home, "status").await {
+        Command::Status => match call_or_start(&home, "status", Value::Null).await {
             Ok(s) => {
                 println!(
                     "Monks Central {} is running (pid {}). This client is an {}.",
@@ -53,6 +64,23 @@ async fn main() -> ExitCode {
             }
             Err(e) => fail(e.to_string()),
         },
+        Command::Run {
+            site,
+            tool,
+            arguments,
+        } => {
+            let Ok(arguments) = serde_json::from_str::<Value>(&arguments) else {
+                return fail(format!("The arguments aren't JSON: {arguments}"));
+            };
+            let params = serde_json::json!({ "site": site, "tool": tool, "arguments": arguments });
+            match call_or_start(&home, "site.run", params).await {
+                Ok(v) => {
+                    println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
+                    ExitCode::SUCCESS
+                }
+                Err(e) => fail(e.to_string()),
+            }
+        }
         Command::Doctor { url } => {
             println!("Monks Central doctor ({})", monks_core::VERSION);
             let keychain = vault::os_keychain();
@@ -97,8 +125,8 @@ async fn run_core(home: PathBuf) -> ExitCode {
 }
 
 /// Call the core; if none runs, start a headless one in the background first.
-async fn call_or_start(home: &Path, method: &str) -> Result<Value, ClientError> {
-    match ipc::call(home, method, Value::Null).await {
+async fn call_or_start(home: &Path, method: &str, params: Value) -> Result<Value, ClientError> {
+    match ipc::call(home, method, params.clone()).await {
         Err(ClientError::NotRunning) => {}
         other => return other,
     }
@@ -107,7 +135,7 @@ async fn call_or_start(home: &Path, method: &str) -> Result<Value, ClientError> 
     eprintln!("Started a Monks Central core in the background.");
     for _ in 0..100 {
         tokio::time::sleep(Duration::from_millis(100)).await;
-        match ipc::call(home, method, Value::Null).await {
+        match ipc::call(home, method, params.clone()).await {
             Err(ClientError::NotRunning) => continue,
             other => return other,
         }

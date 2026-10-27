@@ -45,3 +45,28 @@ async fn status_starts_a_headless_core_once() {
     }
     panic!("the headless core did not stop");
 }
+
+// Multi-thread: the core answers on the socket while this thread waits for `monks`.
+#[tokio::test(flavor = "multi_thread")]
+async fn run_asks_the_core_and_says_why_it_failed() {
+    let home = tempfile::tempdir().unwrap();
+    let _core = monks_core::Core::start(home.path(), Default::default())
+        .await
+        .unwrap();
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_monks"))
+            .arg("run")
+            .args(args)
+            .env("MONKS_HOME", home.path())
+            .output()
+            .unwrap()
+    };
+    let out = run(&["https://nowhere.local", "update-plugin"]);
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("No site called https://nowhere.local"));
+    let out = run(&["x", "get-posts", "not json"]);
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("aren't JSON"),
+        "{out:?}"
+    );
+}

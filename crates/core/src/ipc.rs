@@ -17,7 +17,7 @@ pub const MAX_LINE: usize = 1024 * 1024;
 
 /// Methods the socket answers. There is no confirm method, and there must never
 /// be one: only a human in the app window confirms a plan.
-pub const SOCKET_METHODS: &[&str] = &["status", "sites.list", "core.shutdown"];
+pub const SOCKET_METHODS: &[&str] = &["status", "sites.list", "site.run", "core.shutdown"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -72,7 +72,7 @@ pub fn status(core: &crate::Core, role: Role) -> Value {
     })
 }
 
-fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, RpcError> {
+async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, RpcError> {
     match req.method.as_str() {
         "status" => Ok(status(core, Role::Agent)),
         // Agents may read (plan 5.6). Sites hold no secrets.
@@ -80,6 +80,26 @@ fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, RpcError>
             .sites()
             .map(|s| json!(s))
             .map_err(|e| RpcError::new("store", e.to_string())),
+        // One tool on one site. Reads only, until agents have their own access (plan 5.6).
+        "site.run" => {
+            let p = &req.params;
+            let (Some(site), Some(tool)) = (p["site"].as_str(), p["tool"].as_str()) else {
+                return Err(RpcError::new(
+                    "invalid_request",
+                    "site.run needs a site and a tool.",
+                ));
+            };
+            let args = p.get("arguments").cloned().unwrap_or_else(|| json!({}));
+            core.agent_call(site, tool, args).await.map_err(|e| {
+                let msg = e.to_string();
+                let code = if msg == crate::fleet::NO_AGENT_ACCESS {
+                    "no_agent_access"
+                } else {
+                    "site"
+                };
+                RpcError::new(code, msg)
+            })
+        }
         // Stopping is not a privilege (the same user can end the process), but
         // only a headless core stops: the app window stays until its user closes it.
         "core.shutdown" if core.headless => {
@@ -125,7 +145,7 @@ async fn serve_conn<S: AsyncRead + AsyncWrite>(
                 return Ok(());
             };
             match serde_json::from_slice::<Request>(&line) {
-                Ok(req) => match dispatch_socket(&core, &req) {
+                Ok(req) => match dispatch_socket(&core, &req).await {
                     Ok(result) => Response {
                         id: req.id,
                         result: Some(result),
@@ -399,6 +419,50 @@ mod tests {
             method: "status".into(),
             params: json!({ "role": "operator" }),
         };
-        assert_eq!(dispatch_socket(&core, &req).unwrap()["role"], "agent");
+        assert_eq!(dispatch_socket(&core, &req).await.unwrap()["role"], "agent");
+        let run = Request {
+            id: json!(2),
+            method: "site.run".into(),
+            params: json!({ "tool": "update-plugin" }),
+        };
+        assert_eq!(
+            dispatch_socket(&core, &run).await.unwrap_err().code,
+            "invalid_request"
+        );
+    }
+
+    #[tokio::test]
+    async fn agents_read_a_site_but_a_change_is_refused_without_agent_access() {
+        let home = tempfile::tempdir().unwrap();
+        let opts = crate::Options {
+            keychain: Ok(keyring_core::mock::Store::new().unwrap()),
+            ..Default::default()
+        };
+        let core = crate::Core::start(home.path(), opts).await.unwrap();
+        let site = crate::testsite::TestSite::start().await;
+        core.add_site_oauth(&site.url, |url| {
+            let url = url.to_string();
+            tokio::spawn(async move { reqwest::get(url).await });
+            Ok(())
+        })
+        .await
+        .unwrap();
+        let run = |tool: &str| Request {
+            id: json!(1),
+            method: "site.run".into(),
+            params: json!({ "site": site.url, "tool": tool, "arguments": {} }),
+        };
+        let read = dispatch_socket(&core, &run("get-site-snapshot"))
+            .await
+            .unwrap();
+        assert!(read["plugins"].is_array());
+        let calls = site.state().calls.len();
+        let err = dispatch_socket(&core, &run("update-plugin"))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, "no_agent_access");
+        assert_eq!(site.state().calls.len(), calls);
+        let err = dispatch_socket(&core, &run("nope")).await.unwrap_err();
+        assert_eq!(err.code, "site");
     }
 }
