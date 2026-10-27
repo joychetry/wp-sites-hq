@@ -20,7 +20,7 @@ use crate::{Core, vault};
 const SIGN_IN_WAIT: Duration = Duration::from_secs(600);
 /// Health checks while the core runs.
 const CHECK_EVERY: Duration = Duration::from_secs(15 * 60);
-/// Slower than this is worth a look.
+/// Slower than this gets a note. Slow is not unhealthy (Phase 1 review).
 const SLOW: Duration = Duration::from_secs(3);
 const TOO_OLD: &str = "Update WordPress to 7.1 or newer first.";
 
@@ -858,11 +858,12 @@ impl Core {
             return (Health::Warning, format!("WordPress {v}. {TOO_OLD}"));
         }
         let secs = format!("{:.1} s", took.as_secs_f64());
-        if took > SLOW {
-            (Health::Warning, format!("Slow: the home page took {secs}."))
+        let said = if took > SLOW {
+            "Slow: the home page took"
         } else {
-            (Health::Ok, format!("Answered in {secs}."))
-        }
+            "Answered in"
+        };
+        (Health::Ok, format!("{said} {secs}."))
     }
 
     /// The connection works, and the versions are fresh.
