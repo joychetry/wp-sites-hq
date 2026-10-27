@@ -18,6 +18,11 @@
 //!   update-plugin <plugin file> <url>...   one job: update the plugin on those sites
 //!   versions <url> <plugin file>           versions the site can roll back to
 //!   rollback <url> <plugin file> <version> a job that rolls the plugin back
+//!   types <url>                            post types and their taxonomies (JSON)
+//!   get <url> <post type> <id>             one entry with its blocks (JSON)
+//!   create <url> <post type> <draft JSON>  add an entry (JSON back)
+//!   edit <url> <post type> <id> <draft JSON>
+//!   import <url> <image link> <alt text>   add an image to the media library
 //!
 //! The browser step is played by this program: a login cookie made with
 //! `studio wp` (no password is handled), then the site's real consent form,
@@ -232,8 +237,43 @@ async fn main() -> Res<()> {
             print_job(&wait(&core, job.id).await?);
             Ok(())
         }
+        "types" => show(&core.post_types(site_id(&core, arg(1)?)?).await?),
+        "get" => show(
+            &core
+                .post(site_id(&core, arg(1)?)?, arg(2)?, arg(3)?.parse()?)
+                .await?,
+        ),
+        "create" => show(
+            &core
+                .create_post(
+                    site_id(&core, arg(1)?)?,
+                    arg(2)?,
+                    serde_json::from_str(arg(3)?)?,
+                )
+                .await?,
+        ),
+        "edit" => show(
+            &core
+                .edit_post(
+                    site_id(&core, arg(1)?)?,
+                    arg(2)?,
+                    arg(3)?.parse()?,
+                    serde_json::from_str(arg(4)?)?,
+                )
+                .await?,
+        ),
+        "import" => show(
+            &core
+                .import_media(site_id(&core, arg(1)?)?, arg(2)?, arg(3)?)
+                .await?,
+        ),
         other => Err(format!("unknown command {other}").into()),
     }
+}
+
+fn show(v: &impl serde::Serialize) -> Res<()> {
+    println!("{}", serde_json::to_string_pretty(v)?);
+    Ok(())
 }
 
 async fn wait(core: &Core, job: i64) -> Res<Job> {
