@@ -1,0 +1,20 @@
+[package]
+name = "monks-central"
+description = "Monks Central desktop app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+monks-core = { path = "../core" }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+
+[lints]
+workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

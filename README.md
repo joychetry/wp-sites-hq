@@ -16,7 +16,10 @@ Status: Phase 0 (foundation). Not ready for use.
 cargo test --workspace
 cd ui && npm ci && npm test
 cargo run -p monks-cli -- doctor https://example.com
+ui/node_modules/.bin/tauri dev   # the app, from the repo root
 ```
+
+Linux needs the WebKitGTK 4.1 development packages for the app.
 
 Plans live in `docs/plans/`. Linux notes: `docs/dev-linux.md`.
 
