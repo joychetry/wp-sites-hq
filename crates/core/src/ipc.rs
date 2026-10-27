@@ -6,6 +6,7 @@
 
 use std::io;
 use std::path::Path;
+use std::sync::Weak;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -16,7 +17,7 @@ pub const MAX_LINE: usize = 1024 * 1024;
 
 /// Methods the socket answers. There is no confirm method, and there must never
 /// be one: only a human in the app window confirms a plan.
-pub const SOCKET_METHODS: &[&str] = &["status"];
+pub const SOCKET_METHODS: &[&str] = &["status", "core.shutdown"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -62,13 +63,28 @@ impl RpcError {
 }
 
 /// What `status` answers, for either role.
-pub fn status(role: Role) -> Value {
-    json!({ "version": crate::VERSION, "pid": std::process::id(), "role": role })
+pub fn status(core: &crate::Core, role: Role) -> Value {
+    json!({
+        "version": crate::VERSION,
+        "pid": std::process::id(),
+        "role": role,
+        "headless": core.headless,
+    })
 }
 
-fn dispatch_socket(req: &Request) -> Result<Value, RpcError> {
+fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, RpcError> {
     match req.method.as_str() {
-        "status" => Ok(status(Role::Agent)),
+        "status" => Ok(status(core, Role::Agent)),
+        // Stopping is not a privilege (the same user can end the process), but
+        // only a headless core stops: the app window stays until its user closes it.
+        "core.shutdown" if core.headless => {
+            core.request_shutdown();
+            Ok(json!({ "stopping": true }))
+        }
+        "core.shutdown" => Err(RpcError::new(
+            "app_open",
+            "The Monks Central app is already open. Use it, or close it first.",
+        )),
         m => Err(RpcError::new(
             "method_not_found",
             format!("Unknown method `{m}`."),
@@ -76,7 +92,10 @@ fn dispatch_socket(req: &Request) -> Result<Value, RpcError> {
     }
 }
 
-async fn serve_conn<S: AsyncRead + AsyncWrite>(stream: S) -> io::Result<()> {
+async fn serve_conn<S: AsyncRead + AsyncWrite>(
+    stream: S,
+    core: Weak<crate::Core>,
+) -> io::Result<()> {
     let (r, mut w) = tokio::io::split(stream);
     let mut r = BufReader::new(r);
     let mut line = Vec::new();
@@ -97,8 +116,11 @@ async fn serve_conn<S: AsyncRead + AsyncWrite>(stream: S) -> io::Result<()> {
                 error: Some(RpcError::new("too_large", "Request is too large.")),
             }
         } else {
+            let Some(core) = core.upgrade() else {
+                return Ok(());
+            };
             match serde_json::from_slice::<Request>(&line) {
-                Ok(req) => match dispatch_socket(&req) {
+                Ok(req) => match dispatch_socket(&core, &req) {
                     Ok(result) => Response {
                         id: req.id,
                         result: Some(result),
@@ -159,8 +181,8 @@ pub async fn call(home: &Path, method: &str, params: Value) -> Result<Value, Cli
 
 /// Bind the socket and answer clients until the task is dropped.
 /// Call only while holding the core lock.
-pub async fn bind(home: &Path) -> io::Result<tokio::task::JoinHandle<()>> {
-    sys::bind(home).await
+pub async fn bind(home: &Path, core: Weak<crate::Core>) -> io::Result<tokio::task::JoinHandle<()>> {
+    sys::bind(home, core).await
 }
 
 #[cfg(windows)]
@@ -183,7 +205,10 @@ mod sys {
         home.join("run").join("core.sock")
     }
 
-    pub async fn bind(home: &Path) -> io::Result<tokio::task::JoinHandle<()>> {
+    pub async fn bind(
+        home: &Path,
+        core: Weak<crate::Core>,
+    ) -> io::Result<tokio::task::JoinHandle<()>> {
         let path = socket_path(home);
         crate::paths::ensure_private_dir(path.parent().expect("socket has a parent"))?;
         // The caller holds the core lock, so a socket file here is stale.
@@ -194,7 +219,7 @@ mod sys {
         let listener = UnixListener::bind(&path)?;
         Ok(tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
-                tokio::spawn(serve_conn(stream));
+                tokio::spawn(serve_conn(stream, core.clone()));
             }
         }))
     }
@@ -310,7 +335,10 @@ mod sys {
         }
     }
 
-    pub async fn bind(home: &Path) -> io::Result<tokio::task::JoinHandle<()>> {
+    pub async fn bind(
+        home: &Path,
+        core: Weak<crate::Core>,
+    ) -> io::Result<tokio::task::JoinHandle<()>> {
         let name = pipe_name(home);
         let sa = owner_only()?;
         // first_pipe_instance: fail if anyone else already owns this name.
@@ -325,7 +353,7 @@ mod sys {
                 };
                 let done = std::mem::replace(&mut server, next);
                 if connected {
-                    tokio::spawn(serve_conn(done));
+                    tokio::spawn(serve_conn(done, core.clone()));
                 }
             }
         }))
@@ -355,13 +383,17 @@ mod tests {
         assert!(!SOCKET_METHODS.iter().any(|m| m.contains("confirm")));
     }
 
-    #[test]
-    fn socket_dispatch_is_always_agent() {
+    #[tokio::test]
+    async fn socket_dispatch_is_always_agent() {
+        let home = tempfile::tempdir().unwrap();
+        let core = crate::Core::start(home.path(), Default::default())
+            .await
+            .unwrap();
         let req = Request {
             id: json!(1),
             method: "status".into(),
             params: json!({ "role": "operator" }),
         };
-        assert_eq!(dispatch_socket(&req).unwrap()["role"], "agent");
+        assert_eq!(dispatch_socket(&core, &req).unwrap()["role"], "agent");
     }
 }

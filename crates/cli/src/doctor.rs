@@ -200,7 +200,9 @@ mod tests {
     #[tokio::test]
     async fn running_core_reports_agent_role() {
         let home = tempfile::tempdir().unwrap();
-        let _core = monks_core::Core::start(home.path()).await.unwrap();
+        let _core = monks_core::Core::start(home.path(), Default::default())
+            .await
+            .unwrap();
         let kc = keyring_core::mock::Store::new().unwrap();
         let checks = run(home.path(), Ok(&*kc), None).await;
         let core = checks.iter().find(|c| c.name == "Core").unwrap();

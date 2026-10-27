@@ -2,11 +2,14 @@
 
 mod doctor;
 
-use std::path::PathBuf;
-use std::process::ExitCode;
+use std::path::{Path, PathBuf};
+use std::process::{ExitCode, Stdio};
+use std::time::Duration;
 
 use clap::{Parser, Subcommand};
-use monks_core::{Core, ipc, paths, vault};
+use monks_core::ipc::ClientError;
+use monks_core::{Core, Options, ipc, paths, vault};
+use serde_json::Value;
 
 #[derive(Parser)]
 #[command(name = "monks", version = monks_core::VERSION, about = "Monks Central from the command line")]
@@ -17,9 +20,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Run the Monks Central core without a window, until Ctrl-C.
+    /// Run the Monks Central core without a window, until Ctrl-C or until
+    /// the app takes over.
     Core,
-    /// Ask the running core how it is.
+    /// Ask the core how it is. Starts one in the background if none runs.
     Status,
     /// Check the data folder, database, keychain, core and network.
     Doctor {
@@ -37,7 +41,7 @@ async fn main() -> ExitCode {
     };
     match cli.command {
         Command::Core => run_core(home).await,
-        Command::Status => match ipc::call(&home, "status", serde_json::Value::Null).await {
+        Command::Status => match call_or_start(&home, "status").await {
             Ok(s) => {
                 println!(
                     "Monks Central {} is running (pid {}). This client is an {}.",
@@ -69,7 +73,7 @@ async fn main() -> ExitCode {
 }
 
 async fn run_core(home: PathBuf) -> ExitCode {
-    let core = match Core::start(&home).await {
+    let core = match Core::start(&home, Options { headless: true }).await {
         Ok(c) => c,
         Err(e) => return fail(e.to_string()),
     };
@@ -78,10 +82,55 @@ async fn run_core(home: PathBuf) -> ExitCode {
         monks_core::VERSION,
         core.home.display()
     );
-    if let Err(e) = tokio::signal::ctrl_c().await {
-        return fail(e.to_string());
+    tokio::select! {
+        r = tokio::signal::ctrl_c() => if let Err(e) = r { return fail(e.to_string()) },
+        () = core.shutdown_requested() => println!("Asked to stop (the app is taking over)."),
     }
+    core.finish().await;
     ExitCode::SUCCESS
+}
+
+/// Call the core; if none runs, start a headless one in the background first.
+async fn call_or_start(home: &Path, method: &str) -> Result<Value, ClientError> {
+    match ipc::call(home, method, Value::Null).await {
+        Err(ClientError::NotRunning) => {}
+        other => return other,
+    }
+    let exe = std::env::current_exe()?;
+    spawn_headless(&exe, home)?;
+    eprintln!("Started a Monks Central core in the background.");
+    for _ in 0..100 {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        match ipc::call(home, method, Value::Null).await {
+            Err(ClientError::NotRunning) => continue,
+            other => return other,
+        }
+    }
+    Err(ClientError::NotRunning)
+}
+
+/// `monks core` for this data folder, detached so it outlives this command.
+fn spawn_headless(exe: &Path, home: &Path) -> std::io::Result<()> {
+    let mut cmd = std::process::Command::new(exe);
+    cmd.arg("core")
+        .env("MONKS_HOME", home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // Its own process group: Ctrl-C in this terminal doesn't stop it.
+        cmd.process_group(0);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
+    }
+    cmd.spawn().map(drop)
 }
 
 fn fail(msg: String) -> ExitCode {
