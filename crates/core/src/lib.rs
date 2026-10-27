@@ -3,6 +3,7 @@
 pub mod blocks;
 pub mod connect;
 pub mod content;
+pub mod control;
 pub mod fleet;
 pub mod ipc;
 pub mod lock;
