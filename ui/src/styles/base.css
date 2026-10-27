@@ -212,8 +212,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .settings { max-width: 640px; padding: var(--sp-6) var(--pad); display: grid; gap: var(--sp-6); }
 .settings h2 { margin: 0 0 var(--sp-1); font-size: var(--fs-lg); font-weight: 600; }
 .settings p { margin: 0 0 var(--sp-3); color: var(--text-2); }
-.settings .segmented { margin: 0; max-width: 480px; }
-.settings .segmented button { height: var(--control); }
+.settings .segmented { margin: 0; max-width: 520px; }
+.settings .segmented button { height: var(--control); white-space: nowrap; padding: 0 var(--sp-3); }
 
 /* Motion off when the OS asks for less */
 @media (prefers-reduced-motion: reduce) {
