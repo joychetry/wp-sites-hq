@@ -354,7 +354,7 @@ pub fn found(v: &Value) -> Vec<Found> {
 }
 
 /// WordPress.org sends names HTML-escaped ("Yoast SEO &#8211; Advanced").
-fn decode_entities(s: &str) -> String {
+pub(crate) fn decode_entities(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut rest = s;
     while let Some(i) = rest.find('&') {

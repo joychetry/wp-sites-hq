@@ -38,6 +38,22 @@ pub(crate) fn plain(msg: impl Into<String>) -> SiteError {
     SiteError::Plain(msg.into())
 }
 
+/// A site's own error message as words: WordPress puts HTML in some
+/// ("<strong>Error:</strong> … <a href=…>Get support</a>").
+pub(crate) fn site_said(msg: &str) -> String {
+    let mut text = String::new();
+    let mut in_tag = false;
+    for c in msg.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' if in_tag => in_tag = false,
+            _ if !in_tag => text.push(c),
+            _ => {}
+        }
+    }
+    crate::fleet::decode_entities(&text.split_whitespace().collect::<Vec<_>>().join(" "))
+}
+
 impl From<rusqlite::Error> for SiteError {
     fn from(e: rusqlite::Error) -> Self {
         plain(format!("Monks Central's database had a problem: {e}"))
@@ -1102,7 +1118,7 @@ fn tool_output(result: Value) -> Result<Value, SiteError> {
             .as_str()
             .or_else(|| result["content"][0]["text"].as_str())
             .unwrap_or("The tool failed.");
-        return Err(plain(msg.to_string()));
+        return Err(plain(site_said(msg)));
     }
     if let Some(s) = result.get("structuredContent") {
         return Ok(s.clone());
@@ -1125,6 +1141,22 @@ mod tests {
         };
         let core = Core::start(home.path(), opts).await.unwrap();
         (home, core)
+    }
+
+    #[test]
+    fn site_errors_lose_their_html() {
+        assert_eq!(
+            site_said(
+                "<strong>Error:</strong> The email could not be sent. <a href=\"https://wordpress.org/x/\">Get support</a>.\n"
+            ),
+            "Error: The email could not be sent. Get support."
+        );
+        assert_eq!(
+            site_said("Tom &amp; Ana&#8217;s post"),
+            "Tom & Ana\u{2019}s post"
+        );
+        let e = tool_output(json!({ "isError": true, "content": [{ "text": "<b>No</b> way" }] }));
+        assert_eq!(e.unwrap_err().to_string(), "No way");
     }
 
     /// The browser: follows the site's consent redirect back to the loopback.

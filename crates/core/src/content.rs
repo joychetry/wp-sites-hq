@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 
 use crate::Core;
 use crate::blocks::{self, Block};
-use crate::connect::{AppPassword, SiteError, plain, rest_url};
+use crate::connect::{AppPassword, SiteError, plain, rest_url, site_said};
 use crate::fleet::has_tool;
 use crate::net::{self, Retry};
 use crate::sites::{self, Mode, Site};
@@ -532,7 +532,7 @@ impl Core {
             s => {
                 let said = reply
                     .json::<Value>()
-                    .and_then(|v| v["message"].as_str().map(String::from));
+                    .and_then(|v| v["message"].as_str().map(site_said));
                 Err(plain(said.unwrap_or_else(|| {
                     net::explain_status(&reply)
                         .map_or_else(|| format!("The site answered {s}."), String::from)
