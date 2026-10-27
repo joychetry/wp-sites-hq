@@ -86,7 +86,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
       const k = e.key;
       if (k === "j" || k === "ArrowDown") move(1);
       else if (k === "k" || k === "ArrowUp") move(-1);
-      else if ((k === "x" || k === " ") && focus) toggle(focus.id);
+      // Space belongs to the focused button or checkbox unless the grid itself has focus.
+      else if ((k === "x" || (k === " " && e.target === table.current)) && focus) toggle(focus.id);
       else if (k === "/") filter.current?.focus();
       else if (k === "a") onAdd();
       else if (k === "r") check(picked.length ? picked.map((s) => s.id) : focus ? [focus.id] : []);
@@ -253,7 +254,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       id={`site-${s.id}`}
                       data-id={s.id}
                       className={[on && "sel", s.id === focus?.id && "focus"].filter(Boolean).join(" ")}
-                      aria-selected={s.id === focus?.id}
+                      aria-selected={on}
                       onClick={() => setFocusId(s.id)}
                     >
                       <td>

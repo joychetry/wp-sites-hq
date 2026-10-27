@@ -95,3 +95,15 @@ test("the legend explains the status shapes and the columns", () => {
   render(<Harness />);
   expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Healthy.*Down.*Not checked yet.*Last checked is when/);
 });
+
+test("Space on a row's checkbox is left to that checkbox; rows say selected only when they are", () => {
+  render(<Harness />);
+  const beta = screen.getByRole("checkbox", { name: "Select Beta" });
+  fireEvent.keyDown(beta, { key: " " });
+  expect(screen.queryByRole("region", { name: "Selection" })).not.toBeInTheDocument();
+  expect(screen.queryAllByRole("row", { selected: true })).toHaveLength(0);
+  fireEvent.click(beta);
+  expect(screen.getByRole("row", { selected: true })).toHaveTextContent("Beta");
+  fireEvent.keyDown(screen.getByRole("grid", { name: "Sites" }), { key: " " });
+  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("2 selected");
+});
