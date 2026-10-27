@@ -1,5 +1,6 @@
 //! Monks Central core.
 
+pub mod connect;
 pub mod ipc;
 pub mod lock;
 pub mod net;
@@ -13,11 +14,13 @@ pub mod vault;
 
 pub use keyring_core::CredentialStore;
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use tokio::sync::{Notify, RwLock};
+use tokio::sync::{Notify, RwLock, broadcast, oneshot};
 
 /// Version of the core, shared by the app and the CLI.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -34,11 +37,23 @@ pub enum CoreError {
     TakeOver(String),
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Clone)]
 pub struct Options {
     /// Started by `monks core` (or by the CLI for itself), not by the app.
     /// Only a headless core stops when asked over the socket.
     pub headless: bool,
+    /// Where the master key lives, or why there is none. Read on first use,
+    /// so a core that never touches a secret never touches the keychain.
+    pub keychain: Result<Arc<CredentialStore>, String>,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            headless: false,
+            keychain: Err("no system keychain was given to the core".into()),
+        }
+    }
 }
 
 /// The one core for a data folder: owns the lock, the database and the socket.
@@ -46,6 +61,15 @@ pub struct Core {
     pub home: PathBuf,
     pub store: Mutex<store::Store>,
     pub headless: bool,
+    /// Token refreshes sent to sites since start.
+    pub refreshes: AtomicU64,
+    keychain: Result<Arc<CredentialStore>, String>,
+    vault: Mutex<Option<Arc<vault::Vault>>>,
+    http: reqwest::Client,
+    limits: net::Limits,
+    refresh_locks: Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>,
+    sign_in: Mutex<Option<oneshot::Sender<()>>>,
+    changed: broadcast::Sender<()>,
     shutdown: Notify,
     /// Site work holds a read guard; `finish` takes the write guard.
     work: RwLock<()>,
@@ -62,10 +86,19 @@ impl Core {
         let home = home.canonicalize()?;
         let lock = lock::CoreLock::acquire(&home)?;
         let store = store::Store::open(&paths::database(&home))?;
+        let http = net::client().map_err(std::io::Error::other)?;
         let core = Arc::new(Self {
             home,
             store: Mutex::new(store),
             headless: opts.headless,
+            refreshes: AtomicU64::new(0),
+            keychain: opts.keychain.clone(),
+            vault: Mutex::new(None),
+            http,
+            limits: net::Limits::default(),
+            refresh_locks: Mutex::new(HashMap::new()),
+            sign_in: Mutex::new(None),
+            changed: broadcast::channel(16).0,
             shutdown: Notify::new(),
             work: RwLock::new(()),
             socket: Mutex::new(None),
@@ -79,7 +112,7 @@ impl Core {
     /// Start, or ask a running headless core to finish its work and exit,
     /// then start. A running app is never stopped: its error is returned.
     pub async fn start_or_take_over(home: &Path, opts: Options) -> Result<Arc<Self>, CoreError> {
-        match Self::start(home, opts).await {
+        match Self::start(home, opts.clone()).await {
             Err(CoreError::Lock(lock::LockError::AlreadyRunning { .. })) => {}
             other => return other,
         }
@@ -89,7 +122,7 @@ impl Core {
         // The headless core finishes in-flight site work before it lets go.
         for _ in 0..300 {
             tokio::time::sleep(Duration::from_millis(100)).await;
-            match Self::start(home, opts).await {
+            match Self::start(home, opts.clone()).await {
                 Err(CoreError::Lock(lock::LockError::AlreadyRunning { .. })) => continue,
                 other => return other,
             }
@@ -108,6 +141,16 @@ impl Core {
     /// Wait for in-flight site work to finish and refuse new work.
     pub async fn finish(&self) {
         std::mem::forget(self.work.write().await);
+    }
+
+    /// Hold while doing site work, so `finish` waits for it.
+    pub(crate) async fn working(&self) -> tokio::sync::RwLockReadGuard<'_, ()> {
+        self.work.read().await
+    }
+
+    /// Fires after sites change (added, removed, checked, edited).
+    pub fn subscribe(&self) -> broadcast::Receiver<()> {
+        self.changed.subscribe()
     }
 
     pub(crate) fn request_shutdown(&self) {

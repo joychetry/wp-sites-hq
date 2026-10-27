@@ -103,9 +103,15 @@ async fn raw_connect(home: &std::path::Path) -> tokio::net::windows::named_pipe:
 #[tokio::test]
 async fn app_takes_over_from_a_headless_core() {
     let home = tempfile::tempdir().unwrap();
-    let headless = Core::start(home.path(), Options { headless: true })
-        .await
-        .unwrap();
+    let headless = Core::start(
+        home.path(),
+        Options {
+            headless: true,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
     let status = ipc::call(home.path(), "status", json!(null)).await.unwrap();
     assert_eq!(status["headless"], true);
     // What `monks core` does when asked: finish, then let go of the lock.
@@ -137,4 +143,14 @@ async fn an_open_app_is_never_stopped_over_the_socket() {
         .unwrap();
     assert!(err.to_string().contains("already open"), "{err}");
     ipc::call(home.path(), "status", json!(null)).await.unwrap();
+}
+
+#[tokio::test]
+async fn agents_may_list_sites() {
+    let home = tempfile::tempdir().unwrap();
+    let _core = Core::start(home.path(), Default::default()).await.unwrap();
+    let sites = ipc::call(home.path(), "sites.list", json!(null))
+        .await
+        .unwrap();
+    assert_eq!(sites, json!([]));
 }

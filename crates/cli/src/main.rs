@@ -73,10 +73,16 @@ async fn main() -> ExitCode {
 }
 
 async fn run_core(home: PathBuf) -> ExitCode {
-    let core = match Core::start(&home, Options { headless: true }).await {
+    let opts = Options {
+        headless: true,
+        keychain: vault::os_keychain().map_err(|e| e.to_string()),
+    };
+    let core = match Core::start(&home, opts).await {
         Ok(c) => c,
         Err(e) => return fail(e.to_string()),
     };
+    // Renew every grant, then check sites every 15 minutes.
+    core.start_background();
     println!(
         "Monks Central core {} is running for {}. Press Ctrl-C to stop.",
         monks_core::VERSION,

@@ -17,7 +17,7 @@ pub const MAX_LINE: usize = 1024 * 1024;
 
 /// Methods the socket answers. There is no confirm method, and there must never
 /// be one: only a human in the app window confirms a plan.
-pub const SOCKET_METHODS: &[&str] = &["status", "core.shutdown"];
+pub const SOCKET_METHODS: &[&str] = &["status", "sites.list", "core.shutdown"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -75,6 +75,11 @@ pub fn status(core: &crate::Core, role: Role) -> Value {
 fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, RpcError> {
     match req.method.as_str() {
         "status" => Ok(status(core, Role::Agent)),
+        // Agents may read (plan 5.6). Sites hold no secrets.
+        "sites.list" => core
+            .sites()
+            .map(|s| json!(s))
+            .map_err(|e| RpcError::new("store", e.to_string())),
         // Stopping is not a privilege (the same user can end the process), but
         // only a headless core stops: the app window stays until its user closes it.
         "core.shutdown" if core.headless => {

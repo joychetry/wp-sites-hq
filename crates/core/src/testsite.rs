@@ -1,5 +1,6 @@
-//! A fake Classic Monks site for tests: the OAuth server as the plugin runs it
-//! (rotating refresh tokens, reuse revokes the grant).
+//! A fake WordPress site for tests: Classic Monks' OAuth server as the plugin
+//! runs it (rotating refresh tokens, reuse revokes the grant), its MCP endpoint,
+//! the home page and feed, and the core REST routes Basic mode uses.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -22,16 +23,53 @@ pub enum Refresh {
     Hang,
 }
 
-#[derive(Default)]
 pub struct State {
     pub base: String,
     pub refreshes: usize,
     pub revoked: usize,
     pub refresh: Refresh,
     pub mcp_off: bool,
+    /// What `get-hq-status` and core REST report.
+    pub wp_version: String,
+    /// What the feed's generator says; `None` hides it, as many sites do.
+    pub feed_version: Option<String>,
+    /// Released Classic Monks: no `get-hq-status`.
+    pub no_hq: bool,
+    pub operator: bool,
+    /// The host drops the Authorization header.
+    pub strip_authorization: bool,
+    pub home_status: u16,
+    pub app_password: String,
+    pub mcp_calls: usize,
+    /// Bearer tokens the MCP endpoint saw in Authorization and X-CM-Authorization.
+    pub seen_x_cm: usize,
     codes: HashMap<String, String>,
     refresh_tokens: HashMap<String, bool>,
-    access_tokens: HashSet<String>,
+    pub access_tokens: HashSet<String>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            base: String::new(),
+            refreshes: 0,
+            revoked: 0,
+            refresh: Refresh::Normal,
+            mcp_off: false,
+            wp_version: "7.1.3".into(),
+            feed_version: Some("7.1.3".into()),
+            no_hq: false,
+            operator: true,
+            strip_authorization: false,
+            home_status: 200,
+            app_password: "abcd efgh ijkl mnop qrst uvwx".into(),
+            mcp_calls: 0,
+            seen_x_cm: 0,
+            codes: HashMap::new(),
+            refresh_tokens: HashMap::new(),
+            access_tokens: HashSet::new(),
+        }
+    }
 }
 
 type Shared = Arc<Mutex<State>>;
@@ -63,6 +101,13 @@ impl TestSite {
             .route(&format!("{oauth}/authorize"), get(authorize))
             .route(&format!("{oauth}/token"), post(token))
             .route(&format!("{oauth}/revoke"), post(revoke))
+            .route("/", get(home))
+            .route("/wp-json/classic-monks/v1/mcp", post(mcp))
+            .route("/wp-json/wp/v2/users/me", get(users_me))
+            .route(
+                "/wp-json/wp-abilities/v1/abilities/core/get-environment-info/run",
+                get(environment),
+            )
             .with_state(state.clone());
         tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
         Self { url, state }
@@ -220,4 +265,133 @@ async fn revoke(Ax(s): Ax<Shared>, Form(f): Form<HashMap<String, String>>) -> Re
         s.access_tokens.clear();
     }
     StatusCode::OK.into_response()
+}
+
+async fn home(Ax(s): Ax<Shared>, Query(q): Query<HashMap<String, String>>) -> Response {
+    let s = s.lock().unwrap();
+    if q.contains_key("feed") {
+        let generator = s
+            .feed_version
+            .as_ref()
+            .map(|v| format!("<generator>https://wordpress.org/?v={v}</generator>"))
+            .unwrap_or_default();
+        return format!("<?xml version=\"1.0\"?><rss><channel>{generator}</channel></rss>")
+            .into_response();
+    }
+    let link = format!("<{}/wp-json/>; rel=\"https://api.w.org/\"", s.base);
+    (
+        StatusCode::from_u16(s.home_status).unwrap(),
+        [(header::LINK, link)],
+        "<html>home</html>",
+    )
+        .into_response()
+}
+
+fn bearer(s: &mut State, h: &HeaderMap) -> bool {
+    let mut ok = false;
+    for name in ["authorization", "x-cm-authorization"] {
+        if name == "authorization" && s.strip_authorization {
+            continue;
+        }
+        let Some(token) = h
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.strip_prefix("Bearer "))
+        else {
+            continue;
+        };
+        if name == "x-cm-authorization" {
+            s.seen_x_cm += 1;
+        }
+        ok |= s.access_tokens.contains(token);
+    }
+    ok
+}
+
+async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>) -> Response {
+    let mut s = s.lock().unwrap();
+    if !bearer(&mut s, &h) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "code": "cm_mcp_unauthorized" })),
+        )
+            .into_response();
+    }
+    s.mcp_calls += 1;
+    let result = match req["method"].as_str() {
+        Some("tools/list") => {
+            let mut tools = vec![
+                json!({ "name": "get-posts", "annotations": { "readOnlyHint": true } }),
+                json!({ "name": "update-post", "annotations": { "readOnlyHint": false, "destructiveHint": false } }),
+            ];
+            if !s.no_hq {
+                tools.push(json!({ "name": "get-hq-status", "annotations": { "readOnlyHint": true } }));
+            }
+            json!({ "tools": tools })
+        }
+        Some("tools/call") if req["params"]["name"] == "get-hq-status" && !s.no_hq => {
+            let status = json!({
+                "plugin": { "version": "2.6.0-dev" },
+                "wordpress": { "version": s.wp_version, "environment": "local" },
+                "php": { "version": "8.4.26" },
+                "mcp": { "approvals": true },
+                "modules": { "ai": true, "woocommerce": true, "bricks": false },
+                "connection": { "operator": s.operator, "scope": "full" },
+                "pending_approvals": 0,
+            });
+            json!({ "content": [{ "type": "text", "text": status.to_string() }], "structuredContent": status })
+        }
+        Some("tools/call") if req["params"]["name"] == "get-posts" => {
+            json!({ "content": [{ "type": "text", "text": "[]" }], "structuredContent": { "posts": [] } })
+        }
+        Some("tools/call") => {
+            let err = json!({ "error": "Unknown tool", "code": "x" });
+            json!({ "content": [{ "type": "text", "text": err.to_string() }], "structuredContent": err, "isError": true })
+        }
+        _ => return Json(json!({ "jsonrpc": "2.0", "id": req["id"], "error": { "code": -32601, "message": "Method not found" } })).into_response(),
+    };
+    Json(json!({ "jsonrpc": "2.0", "id": req["id"], "result": result })).into_response()
+}
+
+fn basic_ok(s: &State, h: &HeaderMap) -> bool {
+    let want = format!(
+        "Basic {}",
+        base64::engine::general_purpose::STANDARD.encode(format!("admin:{}", s.app_password))
+    );
+    !s.strip_authorization
+        && h.get("authorization").and_then(|v| v.to_str().ok()) == Some(want.as_str())
+}
+
+fn not_logged_in() -> Response {
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(
+            json!({ "code": "rest_not_logged_in", "message": "You are not currently logged in." }),
+        ),
+    )
+        .into_response()
+}
+
+async fn users_me(Ax(s): Ax<Shared>, h: HeaderMap) -> Response {
+    let s = s.lock().unwrap();
+    if !basic_ok(&s, &h) {
+        return not_logged_in();
+    }
+    Json(json!({
+        "id": 1,
+        "username": "admin",
+        "name": "admin",
+        "roles": ["administrator"],
+        "capabilities": { "manage_options": true, "activate_plugins": true, "install_plugins": true, "edit_posts": true },
+    }))
+    .into_response()
+}
+
+async fn environment(Ax(s): Ax<Shared>, h: HeaderMap) -> Response {
+    let s = s.lock().unwrap();
+    if !basic_ok(&s, &h) {
+        return not_logged_in();
+    }
+    Json(json!({ "environment": "local", "php_version": "8.4.26", "wp_version": s.wp_version }))
+        .into_response()
 }
