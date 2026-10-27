@@ -42,6 +42,14 @@ jobs:
       - name: Test
         run: cargo test --workspace --locked
 
+  scripts:
+    name: Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: shellcheck -x scripts/*.sh
+      - run: bash scripts/test-sites.test.sh
+
   ui:
     name: UI
     runs-on: ubuntu-latest
