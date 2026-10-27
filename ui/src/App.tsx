@@ -8,7 +8,7 @@ import { Overview } from "./screens/Overview";
 import { Sites } from "./screens/Sites";
 import { AddSite } from "./screens/AddSite";
 import { Settings } from "./screens/Settings";
-import { Updates, updatesOf } from "./screens/Updates";
+import { planTitle, Updates, updatesOf } from "./screens/Updates";
 import { Matrix } from "./screens/Matrix";
 import { Install } from "./screens/Install";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
@@ -110,7 +110,7 @@ export default function App() {
       id: "update-all",
       group: "Actions",
       label: waiting.length ? `Update everything waiting (${waiting.length})` : "Update everything waiting (nothing now)",
-      run: () => (waiting.length ? plan(`Update ${waiting.length} things`, waiting) : setSection("Updates")),
+      run: () => (waiting.length ? plan(planTitle(waiting), waiting) : setSection("Updates")),
     },
     { id: "install", group: "Actions", label: "Install a plugin", run: () => setInstalling(true) },
     { id: "read", group: "Actions", label: "Read every site's plugins and themes again", run: () => api.refreshInventory().catch(() => {}) },

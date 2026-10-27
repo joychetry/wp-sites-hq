@@ -35,6 +35,12 @@ export function updatesOf(s: Site, inv: SiteInventory | undefined): Row[] {
   ];
 }
 
+/** The plan's title for these updates, e.g. "Update WooCommerce on MC A". */
+export function planTitle(list: (PlanRow & { name: string })[]): string {
+  const sites = new Set(list.map((r) => r.change.site_id)).size;
+  return `Update ${list.length === 1 ? list[0].name : `${list.length} things`} on ${sites === 1 ? list[0].site : `${sites} sites`}`;
+}
+
 /** Sites whose updates aren't in the list, and why. */
 function unseen(sites: Site[], inventory: Map<number, SiteInventory>): [string, string][] {
   return sites.flatMap((s): [string, string][] => {
@@ -67,8 +73,6 @@ export function Updates({ sites, inventory, onPlan }: Props) {
   const notes = unseen(sites, inventory);
   const oldest = Math.min(...sites.map((s) => inventory.get(s.id)?.fetched_at ?? Infinity));
   const siteCount = (list: Row[]) => new Set(list.map((r) => r.change.site_id)).size;
-  const title = (list: Row[]) =>
-    `Update ${list.length === 1 ? list[0].name : `${list.length} things`} on ${siteCount(list) === 1 ? list[0].site : `${siteCount(list)} sites`}`;
 
   const toggle = (key: string) =>
     setPicked((p) => {
@@ -96,11 +100,11 @@ export function Updates({ sites, inventory, onPlan }: Props) {
           Read every site again
         </Button>
         {chosen.length > 0 && (
-          <Button small onClick={() => onPlan(title(chosen), chosen)}>
+          <Button small onClick={() => onPlan(planTitle(chosen), chosen)}>
             Update {chosen.length} selected
           </Button>
         )}
-        <Button small kind="primary" disabled={rows.length === 0} onClick={() => onPlan(title(rows), rows)}>
+        <Button small kind="primary" disabled={rows.length === 0} onClick={() => onPlan(planTitle(rows), rows)}>
           Update all {rows.length}
         </Button>
       </div>
