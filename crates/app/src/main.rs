@@ -111,6 +111,13 @@ async fn site_check(state: State<'_, AppCore>, id: Option<i64>) -> Res<()> {
     Ok(())
 }
 
+/// Open the site's home page in the default browser.
+#[tauri::command]
+fn site_open(state: State<'_, AppCore>, id: i64) -> Res<()> {
+    let site = core(&state)?.site(id).map_err(|e| e.to_string())?;
+    browser(&site.url).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn site_set_group(state: State<'_, AppCore>, id: i64, group: Option<String>) -> Res<Site> {
     core(&state)?
@@ -175,6 +182,7 @@ fn main() {
             site_sign_in_again,
             site_remove,
             site_check,
+            site_open,
             site_set_group,
             site_set_tags,
             site_add_note,

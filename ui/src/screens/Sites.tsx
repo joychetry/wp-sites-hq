@@ -329,9 +329,9 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
               Sign in again
             </Button>
           )}
-          <a className="btn sm" href={s.url} target="_blank" rel="noreferrer">
+          <Button small onClick={() => api.open(s.id).catch((e) => setError(String(e)))}>
             Open the site
-          </a>
+          </Button>
           <Button small onClick={onCheck} keys="R">
             Check now
           </Button>

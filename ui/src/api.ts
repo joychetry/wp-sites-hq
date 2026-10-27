@@ -49,6 +49,7 @@ export const api = {
     invoke<Site>("site_sign_in_again", { id, username, password }),
   remove: (id: number) => invoke<Removed>("site_remove", { id }),
   check: (id?: number) => invoke<void>("site_check", { id }),
+  open: (id: number) => invoke<void>("site_open", { id }),
   setGroup: (id: number, group: string | null) => invoke<Site>("site_set_group", { id, group }),
   setTags: (id: number, tags: string[]) => invoke<Site>("site_set_tags", { id, tags }),
   addNote: (id: number, body: string) => invoke<Site>("site_add_note", { id, body }),
