@@ -397,11 +397,11 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
         <h3>Versions</h3>
         <dl className="kv">
           <dt>WordPress</dt>
-          <dd className={s.wp_version ? "mono" : undefined}>{s.wp_version ?? "unknown"}</dd>
+          <dd className={s.wp_version ? "mono" : undefined}>{s.wp_version ?? "not known"}</dd>
           <dt>PHP</dt>
-          <dd className={s.php_version ? "mono" : undefined}>{s.php_version ?? "unknown"}</dd>
+          <dd className={s.php_version ? "mono" : undefined}>{s.php_version ?? "not known"}</dd>
           <dt>Classic Monks</dt>
-          <dd className={s.cm_version ? "mono" : undefined}>{s.cm_version ?? (s.mode === "basic" ? "not used" : "unknown")}</dd>
+          <dd className={s.cm_version ? "mono" : undefined}>{s.cm_version ?? (s.mode === "basic" ? "not used" : "not known")}</dd>
           <dt>Connection</dt>
           <dd>{connectionLabel(s)}</dd>
           {s.mode === "basic" && (
