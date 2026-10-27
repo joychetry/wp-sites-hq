@@ -211,6 +211,12 @@ test("the job sheet goes plan, confirm, progress and only sends what stayed tick
   );
 });
 
+test("a finished job of one change says so in words", async () => {
+  mockInvoke.mockResolvedValue(job({ items: [job().items[0]] }));
+  render(<JobSheet state={{ title: "Update WooCommerce on Alpha", jobId: 1 }} onClose={vi.fn()} />);
+  expect(await screen.findByText("Finished. The change is done.")).toBeInTheDocument();
+});
+
 test("a risky single change starts at confirm with a red button, and a refused start says why", async () => {
   mockInvoke.mockRejectedValue("That site isn't in Monks Central any more.");
   render(<JobSheet state={{ title: "Roll back WooCommerce on Alpha", rows: [ROWS[0]], start: "confirm", danger: true }} onClose={vi.fn()} />);

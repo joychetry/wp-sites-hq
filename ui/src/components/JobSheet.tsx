@@ -204,7 +204,9 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
     : over
       ? failed.length
         ? `Finished. ${plural(items.length - failed.length, "change")} done, ${failed.length} failed.`
-        : `Finished. All ${plural(items.length, "change")} done.`
+        : items.length === 1
+          ? "Finished. The change is done."
+          : `Finished. All ${items.length} changes done.`
       : `${finished} of ${items.length} finished${failed.length ? `, ${failed.length} failed` : ""}. You can close this panel; it keeps running.`;
   return (
     <Sheet
