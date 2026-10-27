@@ -1,6 +1,6 @@
 // Overview: one serif sentence about the fleet (from direction A), then the
 // dense Console panels.
-import { siteStatus, type Site } from "../api";
+import { NO_TOOLS, noTools, siteStatus, slow, type Site } from "../api";
 import { Button, Status } from "../components/ui";
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
@@ -30,11 +30,15 @@ export function summary(sites: Site[]): { lead: string; rest: string } {
 function attention(s: Site): string | null {
   if (s.sign_in_again) return "The saved sign-in can't be used. Sign in again.";
   if (s.health === "down" || s.health === "warning") return s.health_detail || "Needs a look.";
-  if (s.capabilities.degraded === true) return "Older Classic Monks. Update it for every feature.";
+  if (noTools(s)) return NO_TOOLS;
+  if (s.capabilities.degraded === true) return "This Classic Monks is older. Update it on the site for every feature.";
   return null;
 }
 
-function Dist({ label, values }: { label: string; values: string[] }) {
+const UNKNOWN = "not known yet";
+
+/** One bar per value, then "5 sites on 7.1.3" for each. */
+function Dist({ label, values, versions }: { label: string; values: string[]; versions?: boolean }) {
   const counts = new Map<string, number>();
   values.forEach((v) => counts.set(v, (counts.get(v) ?? 0) + 1));
   const rows = [...counts].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]));
@@ -49,8 +53,8 @@ function Dist({ label, values }: { label: string; values: string[] }) {
       <p>
         {rows.map(([v, n]) => (
           <span key={v}>
-            <b>{n}</b>
-            {v}
+            <b>{n}</b> {n === 1 ? "site" : "sites"}{" "}
+            {v === UNKNOWN ? `where the version is ${UNKNOWN}` : <>on {versions ? <span className="mono">{v}</span> : v}</>}
           </span>
         ))}
       </p>
@@ -72,6 +76,7 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props
   const cm = sites.filter((s) => s.mode === "classic_monks").length;
   const approvals = sites.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
   const needs = sites.filter((s) => attention(s));
+  const slows = sites.filter(slow);
   return (
     <div className="scroll">
       <h2 className="sentence">
@@ -89,32 +94,42 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props
           <div className="kpis">
             <div className="kpi">
               <div className="v">{sites.length}</div>
-              <div className="l">Sites</div>
+              <div className="l">Sites connected</div>
             </div>
             <div className="kpi">
               <div className={`v ${tone("danger") ? "danger" : ""}`}>{tone("danger")}</div>
-              <div className="l">Down</div>
+              <div className="l">Sites down</div>
             </div>
             <div className="kpi">
               <div className={`v ${tone("warning") ? "warning" : ""}`}>{tone("warning")}</div>
-              <div className="l">Need a look</div>
+              <div className="l">Sites that need a look</div>
             </div>
             <div className="kpi">
               <div className="v">{cm}</div>
-              <div className="l">With Classic Monks</div>
+              <div className="l">Sites with Classic Monks</div>
             </div>
             <div className="kpi">
               <div className="v">{approvals}</div>
-              <div className="l">Approvals waiting on sites</div>
+              <div className="l">Changes waiting for approval on sites</div>
             </div>
           </div>
           <div className="panels">
             <section className="panel" aria-label="Needs attention">
               <h2>Needs attention</h2>
+              <p className="help">Sites with a problem, what is wrong and the one step that fixes it.</p>
               {needs.length === 0 ? (
                 <p className="quiet">Nothing needs you right now.</p>
               ) : (
                 <table className="t">
+                  <caption className="sr-only">Sites that need attention</caption>
+                  <thead className="sr-only">
+                    <tr>
+                      <th>Status</th>
+                      <th>Site</th>
+                      <th>What is wrong</th>
+                      <th>Next step</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {needs.map((s) => {
                       const st = siteStatus(s);
@@ -124,9 +139,9 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props
                             <Status tone={st.tone === "ok" ? "warning" : st.tone}>{st.tone === "ok" ? "Update" : st.label}</Status>
                           </td>
                           <td className="name">{s.name}</td>
-                          <td style={{ whiteSpace: "normal" }}>{attention(s)}</td>
+                          <td>{attention(s)}</td>
                           <td className="r">
-                            {s.sign_in_again ? (
+                            {s.sign_in_again || noTools(s) ? (
                               <Button small onClick={() => onSignInAgain(s.id)}>
                                 Sign in again
                               </Button>
@@ -146,15 +161,23 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props
                   </tbody>
                 </table>
               )}
+              {slows.map((s) => (
+                <p key={s.id} className="quiet">
+                  <Status tone="info">Note</Status> {s.name}. {s.health_detail} It still works.
+                </p>
+              ))}
             </section>
             <section className="panel" aria-label="Versions">
               <h2>Versions</h2>
+              <p className="help">How many of your sites run each version.</p>
               <div className="dist">
-                <Dist label="WordPress" values={sites.map((s) => s.wp_version ?? "unknown")} />
-                <Dist label="PHP" values={sites.map((s) => s.php_version?.split(".").slice(0, 2).join(".") ?? "unknown")} />
+                <Dist label="WordPress" versions values={sites.map((s) => s.wp_version ?? UNKNOWN)} />
+                <Dist label="PHP" versions values={sites.map((s) => s.php_version?.split(".").slice(0, 2).join(".") ?? UNKNOWN)} />
                 <Dist
                   label="Connection"
-                  values={sites.map((s) => (s.mode === "basic" ? "Basic mode" : s.capabilities.degraded ? "Classic Monks (older)" : "Classic Monks"))}
+                  values={sites.map((s) =>
+                    s.mode === "basic" ? "Basic mode" : noTools(s) ? "Classic Monks, no tools" : s.capabilities.degraded ? "Classic Monks, older" : "Classic Monks",
+                  )}
                 />
               </div>
             </section>

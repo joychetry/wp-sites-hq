@@ -27,9 +27,24 @@ test("needs attention offers the right next step", () => {
   render(<Overview sites={sites} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={vi.fn()} />);
   const panel = screen.getByRole("region", { name: "Needs attention" });
   expect(panel).toHaveTextContent("Couldn't reach this site.");
-  expect(panel).toHaveTextContent("Update it for every feature");
+  expect(panel).toHaveTextContent("Update it on the site for every feature");
   expect(panel).not.toHaveTextContent("Fine");
   expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 2, name: "One site is down. One needs a look. The other two are fine." })).toBeInTheDocument();
+});
+
+test("a connection with no tools says so and offers to sign in again; slow is only a note", () => {
+  const onSignInAgain = vi.fn();
+  const sites = [
+    site({ id: 1, name: "Empty grant", capabilities: { abilities: [], hq_status: false, degraded: true } }),
+    site({ id: 2, name: "Slow site", health_detail: "Slow: the home page took 4.2 s." }),
+  ];
+  render(<Overview sites={sites} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={onSignInAgain} onAdd={vi.fn()} />);
+  const panel = screen.getByRole("region", { name: "Needs attention" });
+  expect(panel).toHaveTextContent("Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.");
+  screen.getByRole("button", { name: "Sign in again" }).click();
+  expect(onSignInAgain).toHaveBeenCalledWith(1);
+  expect(panel).toHaveTextContent("Slow site. Slow: the home page took 4.2 s. It still works.");
+  expect(screen.getByRole("heading", { level: 2, name: "One needs a look. The other one is fine." })).toBeInTheDocument();
 });

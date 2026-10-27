@@ -81,16 +81,27 @@ export function useSites() {
 
 export type Tone = "ok" | "warning" | "danger" | "unknown";
 
+/** Connected with Classic Monks, but the sign-in ticked no tool groups, so it can't do anything. */
+export function noTools(s: Site): boolean {
+  const tools = s.capabilities.abilities;
+  return s.mode === "classic_monks" && !s.sign_in_again && Array.isArray(tools) && tools.length === 0;
+}
+
+export const NO_TOOLS = "Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.";
+
+/** Slow is a note on a healthy site, never a warning. */
+export const slow = (s: Site) => s.health === "ok" && s.health_detail.startsWith("Slow");
+
 /** What the status column says about a site. */
 export function siteStatus(s: Site): { tone: Tone; label: string } {
   if (s.sign_in_again) return { tone: "warning", label: "Sign in again" };
+  if (s.health === "down") return { tone: "danger", label: "Down" };
+  if (noTools(s)) return { tone: "warning", label: "No tools yet" };
   switch (s.health) {
     case "ok":
       return { tone: "ok", label: "Healthy" };
     case "warning":
       return { tone: "warning", label: "Needs a look" };
-    case "down":
-      return { tone: "danger", label: "Down" };
     default:
       return { tone: "unknown", label: "Not checked" };
   }
@@ -98,8 +109,9 @@ export function siteStatus(s: Site): { tone: Tone; label: string } {
 
 export function connectionLabel(s: Site): string {
   if (s.mode === "basic") return "Basic mode";
-  if (s.capabilities.degraded === true) return "Classic Monks (update it)";
-  return s.capabilities.operator === true ? "Classic Monks, operator" : "Classic Monks";
+  if (noTools(s)) return "Classic Monks, no tools";
+  if (s.capabilities.degraded === true) return "Classic Monks, older";
+  return s.capabilities.operator === true ? "Classic Monks, full access" : "Classic Monks";
 }
 
 /** "just now", "3 min ago", "2 hr ago", "4 days ago". */

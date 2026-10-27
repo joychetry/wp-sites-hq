@@ -150,8 +150,13 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .panels { display: grid; grid-template-columns: 1.4fr 1fr; }
 .panel { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); min-width: 0; }
 .panel:nth-child(2n) { border-right: 0; }
-.panel h2 { display: flex; align-items: center; justify-content: space-between; margin: 0; padding: var(--sp-3) var(--pad); font: 600 var(--fs) var(--sans); border-bottom: 1px solid var(--line); }
+.panel h2 { display: flex; align-items: center; justify-content: space-between; margin: 0; padding: var(--sp-4) var(--pad) 0; font: 600 var(--fs) var(--sans); }
+.panel .t { margin-top: var(--sp-3); border-top: 1px solid var(--line); }
+.panel .t td { white-space: normal; padding-block: var(--sp-2); }
+.panel .t td.name { white-space: nowrap; }
+.panel .t td:first-child { padding-left: var(--pad); }
 .panel h2 button { font-weight: 400; color: var(--text-3); background: none; border: 0; padding: 0; }
+.help { margin: 0; padding: var(--sp-1) var(--pad) 0; color: var(--text-2); font-size: var(--fs-sm); }
 .panel .quiet { margin: 0; padding: var(--sp-4) var(--pad); color: var(--text-3); }
 .dist { padding: var(--sp-4) var(--pad) var(--sp-2); }
 .dist h3 { font: 500 var(--fs-sm) var(--sans); color: var(--text-3); margin: 0; }
