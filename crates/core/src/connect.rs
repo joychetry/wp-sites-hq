@@ -1240,7 +1240,7 @@ mod tests {
             .call_ability(s.id, "get-posts", json!({}))
             .await
             .unwrap();
-        assert_eq!(out, json!({ "posts": [] }));
+        assert_eq!(out, json!({ "posts": [], "total": 0 }));
         assert_eq!(site.state().refreshes, 1);
     }
 

@@ -890,7 +890,7 @@ impl Core {
     }
 }
 
-fn has_tool(site: &Site, tool: &str) -> bool {
+pub(crate) fn has_tool(site: &Site, tool: &str) -> bool {
     site.capabilities["abilities"]
         .as_array()
         .is_some_and(|a| a.iter().any(|t| t == tool))

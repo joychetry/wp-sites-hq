@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use axum::extract::{Form, Query, State as Ax};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, post};
+use axum::routing::{any, delete, get, post};
 use axum::{Json, Router};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -50,6 +50,17 @@ pub struct State {
     pub fail_tool: Option<String>,
     /// Every tool called, with its arguments.
     pub calls: Vec<(String, serde_json::Value)>,
+    /// Posts, pages and books as WordPress stores them (`content` is the raw body).
+    pub posts: Vec<serde_json::Value>,
+    /// `{ id, taxonomy, name }`.
+    pub terms: Vec<serde_json::Value>,
+    pub media: Vec<serde_json::Value>,
+    next_id: i64,
+    saves: u32,
+    /// Saving rewrites block comments, as a filter on a site might.
+    pub mangle_blocks: bool,
+    /// Classic Monks from before M6: no content tools.
+    pub no_content_tools: bool,
     /// Code -> (PKCE challenge, client).
     codes: HashMap<String, (String, String)>,
     clients: u32,
@@ -85,6 +96,13 @@ impl Default for State {
             needs_credentials: false,
             fail_tool: None,
             calls: Vec::new(),
+            posts: Vec::new(),
+            terms: vec![json!({ "id": 1, "taxonomy": "category", "name": "Uncategorized" })],
+            media: Vec::new(),
+            next_id: 100,
+            saves: 0,
+            mangle_blocks: false,
+            no_content_tools: false,
             codes: HashMap::new(),
             clients: 0,
             families: HashMap::new(),
@@ -140,6 +158,13 @@ impl TestSite {
                 post(rest_set_status).merge(delete(rest_delete)),
             )
             .route("/wp-json/wp/v2/themes", get(rest_themes))
+            .route("/wp-json/wp/v2/{base}", any(rest_content))
+            .route("/wp-json/wp/v2/{base}/{id}", any(rest_content))
+            .route("/img.png", get(image))
+            .route(
+                "/page.html",
+                get(|| async { ([(header::CONTENT_TYPE, "text/html")], "<p>hi") }),
+            )
             .with_state(state.clone());
         tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
         Self { url, state }
@@ -386,7 +411,8 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 json!({ "name": "get-posts", "annotations": { "readOnlyHint": true } }),
                 json!({ "name": "update-post", "annotations": { "readOnlyHint": false, "destructiveHint": false } }),
             ];
-            for (name, read_only) in PLUGIN_TOOLS {
+            let content = CONTENT_TOOLS.iter().filter(|_| !s.no_content_tools);
+            for (name, read_only) in PLUGIN_TOOLS.iter().chain(content) {
                 tools.push(json!({ "name": name, "annotations": { "readOnlyHint": read_only } }));
             }
             if !s.no_hq {
@@ -406,12 +432,11 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
             });
             json!({ "content": [{ "type": "text", "text": status.to_string() }], "structuredContent": status })
         }
-        Some("tools/call") if req["params"]["name"] == "get-posts" => {
-            json!({ "content": [{ "type": "text", "text": "[]" }], "structuredContent": { "posts": [] } })
-        }
         Some("tools/call")
             if PLUGIN_TOOLS
                 .iter()
+                .chain(CONTENT_TOOLS)
+                .chain(&[("get-posts", true), ("update-post", false)])
                 .any(|(n, _)| req["params"]["name"] == *n) =>
         {
             let name = req["params"]["name"].as_str().unwrap_or_default().to_string();
@@ -419,8 +444,10 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
             s.calls.push((name.clone(), args.clone()));
             let out = if s.fail_tool.as_deref() == Some(name.as_str()) {
                 Err("The update could not be installed.".to_string())
-            } else {
+            } else if PLUGIN_TOOLS.iter().any(|(n, _)| *n == name) {
                 plugin_tool(&mut s, &name, &args)
+            } else {
+                content_tool(&mut s, &name, &args)
             };
             match out {
                 Ok(v) => json!({ "content": [{ "type": "text", "text": v.to_string() }], "structuredContent": v }),
@@ -650,5 +677,454 @@ async fn rest_delete(
             StatusCode::OK.into_response()
         }
         None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+/// The content tools of Classic Monks with M6, and whether each only reads.
+const CONTENT_TOOLS: &[(&str, bool)] = &[
+    ("list-post-types", true),
+    ("get-post-by-id", true),
+    ("get-terms", true),
+    ("get-media", true),
+    ("create-post", false),
+    ("delete-post", false),
+    ("import-media-from-url", false),
+];
+
+/// (name, plural, singular, REST base, taxonomies)
+const TYPES: &[(&str, &str, &str, &str, &[&str])] = &[
+    ("post", "Posts", "Post", "posts", &["category"]),
+    ("page", "Pages", "Page", "pages", &[]),
+    ("cm_book", "Books", "Book", "books", &["cm_genre"]),
+];
+/// (name, label, REST base, hierarchical)
+const TAXES: &[(&str, &str, &str, bool)] = &[
+    ("category", "Categories", "categories", true),
+    ("cm_genre", "Genres", "genres", false),
+];
+
+fn type_of_base(base: &str) -> Option<&'static str> {
+    TYPES.iter().find(|t| t.3 == base).map(|t| t.0)
+}
+
+fn tax_of_base(base: &str) -> Option<&'static str> {
+    TAXES.iter().find(|t| t.2 == base).map(|t| t.0)
+}
+
+const DOT_PNG: &[u8] = &[
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52,
+];
+
+async fn image() -> Response {
+    ([(header::CONTENT_TYPE, "image/png")], DOT_PNG).into_response()
+}
+
+impl State {
+    fn new_id(&mut self) -> i64 {
+        self.next_id += 1;
+        self.next_id
+    }
+
+    /// A term id for an id or a name, adding names that are new.
+    fn term(&mut self, taxonomy: &str, r: &serde_json::Value) -> Result<i64, String> {
+        if let Some(id) = r.as_i64() {
+            return self
+                .terms
+                .iter()
+                .any(|t| t["id"] == id && t["taxonomy"] == taxonomy)
+                .then_some(id)
+                .ok_or(format!("There is no term {id}."));
+        }
+        let name = r.as_str().unwrap_or_default();
+        if let Some(t) = self
+            .terms
+            .iter()
+            .find(|t| t["taxonomy"] == taxonomy && t["name"] == name)
+        {
+            return Ok(t["id"].as_i64().unwrap());
+        }
+        let id = self.new_id();
+        self.terms
+            .push(json!({ "id": id, "taxonomy": taxonomy, "name": name }));
+        Ok(id)
+    }
+
+    /// Create (no id) or change an entry from Classic Monks' fields.
+    fn save(&mut self, id: Option<i64>, ty: &str, f: &serde_json::Value) -> Result<i64, String> {
+        let mut terms = serde_json::Map::new();
+        for (tax, refs) in f["terms"].as_object().into_iter().flatten() {
+            let ids = refs
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|r| self.term(tax, r))
+                .collect::<Result<Vec<_>, _>>()?;
+            terms.insert(tax.clone(), json!(ids));
+        }
+        self.saves += 1;
+        let modified = format!("2026-10-28 10:00:{:02}", self.saves);
+        let id = match id {
+            Some(id) => id,
+            None => {
+                let id = self.new_id();
+                self.posts.push(json!({
+                    "id": id, "type": ty, "title": "", "status": "draft", "content": "",
+                    "date": modified, "terms": {}, "featured": 0, "builder": null,
+                }));
+                id
+            }
+        };
+        let mangle = self.mangle_blocks;
+        let p = self
+            .posts
+            .iter_mut()
+            .find(|p| p["id"] == id)
+            .ok_or("Post not found.")?;
+        if !f["content"].is_null() && !p["builder"].is_null() {
+            return Err(
+                "This page is built with Elementor, which keeps the body in its own data.".into(),
+            );
+        }
+        for (k, v) in [
+            ("title", "title"),
+            ("status", "status"),
+            ("content", "content"),
+            ("featured_image", "featured"),
+        ] {
+            if !f[k].is_null() {
+                p[v] = f[k].clone();
+            }
+        }
+        if mangle && let Some(c) = p["content"].as_str() {
+            p["content"] = c.replace("wp:paragraph", "wp:html").into();
+        }
+        for (tax, ids) in terms {
+            p["terms"][tax] = ids;
+        }
+        p["modified"] = modified.into();
+        Ok(id)
+    }
+
+    fn named(&self, ids: &serde_json::Value) -> Vec<serde_json::Value> {
+        ids.as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|id| self.terms.iter().find(|t| t["id"] == *id))
+            .map(|t| json!({ "id": t["id"], "name": t["name"], "slug": "" }))
+            .collect()
+    }
+
+    fn cm_post(&self, p: &serde_json::Value) -> serde_json::Value {
+        let ty = TYPES.iter().find(|t| p["type"] == t.0).unwrap();
+        let terms: serde_json::Map<_, _> =
+            ty.4.iter()
+                .map(|tax| (tax.to_string(), json!(self.named(&p["terms"][*tax]))))
+                .collect();
+        let featured = p["featured"].as_i64().unwrap_or_default();
+        json!({
+            "id": p["id"], "type": p["type"], "title": p["title"], "status": p["status"], "content": p["content"],
+            "date": p["date"], "modified": p["modified"], "permalink": format!("{}/?p={}", self.base, p["id"]),
+            "featured_image_id": featured,
+            "featured_image": (featured > 0).then(|| format!("{}/img.png", self.base)),
+            "terms": terms, "builder": p["builder"],
+        })
+    }
+
+    fn rest_post(&self, p: &serde_json::Value) -> serde_json::Value {
+        let ty = TYPES.iter().find(|t| p["type"] == t.0).unwrap();
+        let date = |v: &serde_json::Value| v.as_str().unwrap_or_default().replacen(' ', "T", 1);
+        let rendered = if p["builder"] == "bricks" {
+            "<div class=\"brxe-section\"></div>"
+        } else {
+            ""
+        };
+        let mut v = json!({
+            "id": p["id"], "type": p["type"], "status": p["status"], "link": format!("{}/?p={}", self.base, p["id"]),
+            "title": { "raw": p["title"], "rendered": p["title"] },
+            "content": { "raw": p["content"], "rendered": rendered },
+            "date": date(&p["date"]), "modified": date(&p["modified"]), "featured_media": p["featured"],
+            "_embedded": { "author": [{ "name": "admin" }] },
+        });
+        for tax in ty.4 {
+            let base = TAXES.iter().find(|t| t.0 == *tax).unwrap().2;
+            v[base] = if p["terms"][*tax].is_array() {
+                p["terms"][*tax].clone()
+            } else {
+                json!([])
+            };
+        }
+        v
+    }
+
+    fn list(&self, ty: &str, status: &str, search: &str) -> Vec<serde_json::Value> {
+        let statuses: Vec<&str> = status.split(',').collect();
+        self.posts
+            .iter()
+            .rev()
+            .filter(|p| p["type"] == ty && statuses.iter().any(|s| p["status"] == *s))
+            .filter(|p| p["title"].as_str().unwrap_or_default().contains(search))
+            .cloned()
+            .collect()
+    }
+
+    fn add_media(&mut self, url: &str, mime: &str, alt: &str) -> serde_json::Value {
+        let id = self.new_id();
+        let m = json!({ "id": id, "title": format!("image-{id}"), "url": url, "mime_type": mime, "alt_text": alt, "date": "2026-10-28 10:00:00" });
+        self.media.insert(0, m.clone());
+        m
+    }
+}
+
+fn content_tool(
+    s: &mut State,
+    name: &str,
+    a: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let post = |s: &State| {
+        s.posts
+            .iter()
+            .find(|p| p["id"] == a["post_id"])
+            .cloned()
+            .ok_or("Post not found.".to_string())
+    };
+    Ok(match name {
+        "list-post-types" => json!({ "post_types": TYPES.iter().map(|t| json!({
+            "name": t.0, "label": t.1, "singular": t.2, "hierarchical": t.0 == "page",
+            "supports": ["title", "editor", "thumbnail"], "can_publish": true, "can_delete": true,
+            "taxonomies": t.4.iter().map(|x| {
+                let tax = TAXES.iter().find(|y| y.0 == *x).unwrap();
+                json!({ "name": tax.0, "label": tax.1, "hierarchical": tax.3, "can_add": true })
+            }).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>() }),
+        "get-posts" => {
+            let all = s.list(
+                a["post_type"].as_str().unwrap_or("post"),
+                a["status"].as_str().unwrap_or("publish,draft"),
+                a["search"].as_str().unwrap_or_default(),
+            );
+            let (off, lim) = (
+                a["offset"].as_u64().unwrap_or(0) as usize,
+                a["limit"].as_u64().unwrap_or(10) as usize,
+            );
+            let posts: Vec<_> = all.iter().skip(off).take(lim).map(|p| json!({
+                "id": p["id"], "title": p["title"], "status": p["status"], "type": p["type"], "date": p["date"],
+                "modified": p["modified"], "author": "Joy", "permalink": format!("{}/?p={}", s.base, p["id"]),
+            })).collect();
+            json!({ "posts": posts, "total": all.len() })
+        }
+        "get-post-by-id" => s.cm_post(&post(s)?),
+        "get-terms" => {
+            let search = a["search"].as_str().unwrap_or_default();
+            let terms: Vec<_> = s
+                .terms
+                .iter()
+                .filter(|t| {
+                    t["taxonomy"] == a["taxonomy"] && t["name"].as_str().unwrap().contains(search)
+                })
+                .cloned()
+                .collect();
+            json!({ "terms": terms })
+        }
+        "create-post" => {
+            json!({ "id": s.save(None, a["post_type"].as_str().unwrap_or("post"), a)? })
+        }
+        "update-post" => {
+            let ty = post(s)?["type"].as_str().unwrap().to_string();
+            json!({ "post_id": s.save(a["post_id"].as_i64(), &ty, a)? })
+        }
+        "delete-post" => {
+            s.save(a["post_id"].as_i64(), "", &json!({ "status": "trash" }))?;
+            json!({ "deleted": true, "message": "Post moved to trash." })
+        }
+        "get-media" => {
+            let images = a["mime_type"] == "image";
+            let list: Vec<_> = s
+                .media
+                .iter()
+                .filter(|m| !images || m["mime_type"].as_str().unwrap().starts_with("image/"))
+                .cloned()
+                .collect();
+            json!({ "media": list, "total": list.len() })
+        }
+        "import-media-from-url" => {
+            let m = s.add_media(
+                a["url"].as_str().unwrap_or_default(),
+                "image/png",
+                a["alt"].as_str().unwrap_or_default(),
+            );
+            json!({ "attachment_id": m["id"], "url": m["url"], "mime_type": "image/png", "filename": "img.png" })
+        }
+        _ => unreachable!("not a content tool: {name}"),
+    })
+}
+
+/// Core REST for content: types, taxonomies, posts by REST base, terms and media.
+async fn rest_content(
+    Ax(shared): Ax<Shared>,
+    axum::extract::Path(path): axum::extract::Path<Vec<String>>,
+    method: axum::http::Method,
+    Query(q): Query<HashMap<String, String>>,
+    h: HeaderMap,
+    body: axum::body::Bytes,
+) -> Response {
+    let mut s = shared.lock().unwrap();
+    if !basic_ok(&s, &h) {
+        return not_logged_in();
+    }
+    let (base, id) = (
+        path[0].as_str(),
+        path.get(1).and_then(|i| i.parse::<i64>().ok()),
+    );
+    let json_body: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
+    let ok = |v: serde_json::Value| Json(v).into_response();
+    let created = |v: serde_json::Value| (StatusCode::CREATED, Json(v)).into_response();
+    let missing = || {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "code": "rest_post_invalid_id", "message": "Invalid post ID." })),
+        )
+            .into_response()
+    };
+    match (base, id, method.as_str()) {
+        ("types", None, "GET") => {
+            let mut out = serde_json::Map::new();
+            out.insert(
+                "attachment".into(),
+                json!({ "name": "Media", "rest_base": "media", "taxonomies": [] }),
+            );
+            for t in TYPES.iter().filter(|t| t.0 != "cm_book") {
+                out.insert(t.0.into(), json!({ "name": t.1, "labels": { "singular_name": t.2 }, "rest_base": t.3, "taxonomies": t.4, "hierarchical": t.0 == "page", "supports": { "title": true, "editor": true } }));
+            }
+            ok(out.into())
+        }
+        ("taxonomies", None, "GET") => ok(TAXES
+            .iter()
+            .map(|t| {
+                (
+                    t.0.to_string(),
+                    json!({ "slug": t.0, "name": t.1, "rest_base": t.2, "hierarchical": t.3 }),
+                )
+            })
+            .collect::<serde_json::Map<_, _>>()
+            .into()),
+        ("media", None, "GET") => {
+            if q.get("page").is_some_and(|p| p != "1") {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "code": "rest_post_invalid_page_number" })),
+                )
+                    .into_response();
+            }
+            let list: Vec<_> = s.media.iter().map(|m| json!({ "id": m["id"], "title": { "rendered": m["title"] }, "source_url": m["url"], "mime_type": m["mime_type"], "alt_text": m["alt_text"], "date": "2026-10-28T10:00:00" })).collect();
+            ok(list.into())
+        }
+        ("media", None, "POST") => {
+            let mime = h
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or_default()
+                .to_string();
+            let named = h
+                .get(header::CONTENT_DISPOSITION)
+                .and_then(|v| v.to_str().ok())
+                .is_some_and(|d| d.contains("filename=\""));
+            if !named || body.as_ref() != DOT_PNG {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "code": "rest_upload_no_data", "message": "No data supplied." })),
+                )
+                    .into_response();
+            }
+            let url = format!("{}/wp-content/uploads/img.png", s.base);
+            let m = s.add_media(&url, &mime, q.get("alt_text").map_or("", String::as_str));
+            created(
+                json!({ "id": m["id"], "title": { "rendered": m["title"] }, "source_url": url, "mime_type": mime, "alt_text": m["alt_text"], "date": "2026-10-28T10:00:00" }),
+            )
+        }
+        ("media", Some(id), "GET") => match s.media.iter().find(|m| m["id"] == id) {
+            Some(m) => ok(json!({ "id": id, "source_url": m["url"] })),
+            None => missing(),
+        },
+        (b, None, "GET") if tax_of_base(b).is_some() => {
+            let tax = tax_of_base(b).unwrap();
+            let search = q.get("search").cloned().unwrap_or_default();
+            let include: Vec<String> = q
+                .get("include")
+                .map(|i| i.split(',').map(String::from).collect())
+                .unwrap_or_default();
+            let list: Vec<_> = s
+                .terms
+                .iter()
+                .filter(|t| {
+                    t["taxonomy"] == tax
+                        && t["name"]
+                            .as_str()
+                            .unwrap()
+                            .to_lowercase()
+                            .contains(&search.to_lowercase())
+                })
+                .filter(|t| include.is_empty() || include.contains(&t["id"].to_string()))
+                .map(|t| json!({ "id": t["id"], "name": t["name"] }))
+                .collect();
+            ok(list.into())
+        }
+        (b, None, "POST") if tax_of_base(b).is_some() => {
+            let tax = tax_of_base(b).unwrap();
+            let id = s.term(tax, &json_body["name"]).unwrap();
+            created(json!({ "id": id, "name": json_body["name"] }))
+        }
+        (b, id, m) if type_of_base(b).is_some() => {
+            let ty = type_of_base(b).unwrap();
+            // Core REST fields to Classic Monks' (the store speaks those).
+            let mut f = json!({ "title": json_body["title"], "status": json_body["status"], "content": json_body["content"], "featured_image": json_body["featured_media"], "terms": {} });
+            for tax in TYPES.iter().find(|t| t.0 == ty).unwrap().4 {
+                let base = TAXES.iter().find(|t| t.0 == *tax).unwrap().2;
+                if json_body[base].is_array() {
+                    f["terms"][*tax] = json_body[base].clone();
+                }
+            }
+            match (id, m) {
+                (None, "GET") => {
+                    let all = s.list(
+                        ty,
+                        q.get("status").map_or("publish", String::as_str),
+                        q.get("search").map_or("", String::as_str),
+                    );
+                    let page: Vec<_> = all.iter().take(20).map(|p| s.rest_post(p)).collect();
+                    let mut r = Json(page).into_response();
+                    r.headers_mut()
+                        .insert("x-wp-total", all.len().to_string().parse().unwrap());
+                    r
+                }
+                (None, "POST") => match s.save(None, ty, &f) {
+                    Ok(id) => {
+                        let p = s.posts.iter().find(|p| p["id"] == id).unwrap().clone();
+                        created(s.rest_post(&p))
+                    }
+                    Err(e) => {
+                        (StatusCode::BAD_REQUEST, Json(json!({ "message": e }))).into_response()
+                    }
+                },
+                (Some(id), method) if s.posts.iter().any(|p| p["id"] == id && p["type"] == ty) => {
+                    let saved = match method {
+                        "POST" => s.save(Some(id), ty, &f),
+                        "DELETE" => s.save(Some(id), ty, &json!({ "status": "trash" })),
+                        _ => Ok(id),
+                    };
+                    if let Err(e) = saved {
+                        return (StatusCode::BAD_REQUEST, Json(json!({ "message": e })))
+                            .into_response();
+                    }
+                    let p = s.posts.iter().find(|p| p["id"] == id).unwrap().clone();
+                    ok(s.rest_post(&p))
+                }
+                _ => missing(),
+            }
+        }
+        _ => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "code": "rest_no_route", "message": "No route was found." })),
+        )
+            .into_response(),
     }
 }
