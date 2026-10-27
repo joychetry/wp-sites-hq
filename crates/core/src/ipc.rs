@@ -17,7 +17,15 @@ pub const MAX_LINE: usize = 1024 * 1024;
 
 /// Methods the socket answers. There is no confirm method, and there must never
 /// be one: only a human in the app window confirms a plan.
-pub const SOCKET_METHODS: &[&str] = &["status", "sites.list", "site.run", "core.shutdown"];
+pub const SOCKET_METHODS: &[&str] = &[
+    "status",
+    "sites.list",
+    "site.describe",
+    "site.run",
+    "plan.create",
+    "plan.get",
+    "core.shutdown",
+];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -80,6 +88,49 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
             .sites()
             .map(|s| json!(s))
             .map_err(|e| RpcError::new("store", e.to_string())),
+        "site.describe" => {
+            let Some(site) = req.params["site"].as_str() else {
+                return Err(RpcError::new(
+                    "invalid_request",
+                    "site.describe needs a site.",
+                ));
+            };
+            core.find_site(site).map(|s| json!(s)).map_err(agent_error)
+        }
+        // Changes an agent wants on many sites. They wait for a person in the app.
+        "plan.create" => {
+            #[derive(Deserialize)]
+            struct Wanted {
+                site: String,
+                action: crate::fleet::Action,
+            }
+            let p = &req.params;
+            let wanted: Vec<Wanted> =
+                serde_json::from_value(p["changes"].clone()).map_err(|e| {
+                    RpcError::new("invalid_request", format!("The changes don't read: {e}"))
+                })?;
+            let mut changes = Vec::with_capacity(wanted.len());
+            for w in wanted {
+                let site = core.find_site(&w.site).map_err(agent_error)?;
+                changes.push(crate::fleet::Change {
+                    site_id: site.id,
+                    action: w.action,
+                });
+            }
+            let title = p["title"].as_str().unwrap_or_default();
+            core.propose_plan(title, changes)
+                .map(|j| json!(j))
+                .map_err(agent_error)
+        }
+        "plan.get" => {
+            let Some(id) = req.params["id"].as_i64() else {
+                return Err(RpcError::new(
+                    "invalid_request",
+                    "plan.get needs the plan's id.",
+                ));
+            };
+            core.job(id).map(|j| json!(j)).map_err(agent_error)
+        }
         // One tool on one site: reads with the app's grant, changes with the
         // agents' own, which the site's approvals guard (plan 5.6).
         "site.run" => {
@@ -468,5 +519,141 @@ mod tests {
         assert_eq!(site.state().calls.len(), calls);
         let err = dispatch_socket(&core, &run("nope")).await.unwrap_err();
         assert_eq!(err.code, "site");
+    }
+
+    #[tokio::test]
+    async fn an_agents_plan_waits_for_a_person_and_the_socket_cannot_confirm_it() {
+        use crate::activity::{Actor, Outcome};
+        let home = tempfile::tempdir().unwrap();
+        let opts = crate::Options {
+            keychain: Ok(keyring_core::mock::Store::new().unwrap()),
+            ..Default::default()
+        };
+        let core = crate::Core::start(home.path(), opts).await.unwrap();
+        let mut sites = Vec::new();
+        for _ in 0..3 {
+            let site = crate::testsite::TestSite::start().await;
+            core.add_site_oauth(&site.url, |url| {
+                let url = url.to_string();
+                tokio::spawn(async move { reqwest::get(url).await });
+                Ok(())
+            })
+            .await
+            .unwrap();
+            sites.push(site);
+        }
+        let call = |method: &str, params: Value| Request {
+            id: json!(1),
+            method: method.into(),
+            params,
+        };
+        let changes: Vec<Value> = sites
+            .iter()
+            .map(|s| json!({ "site": s.url, "action": { "do": "update_plugin", "plugin": "woocommerce" } }))
+            .collect();
+        let plan = dispatch_socket(
+            &core,
+            &call(
+                "plan.create",
+                json!({ "title": "Update WooCommerce", "changes": changes }),
+            ),
+        )
+        .await
+        .unwrap();
+        let id = plan["id"].as_i64().unwrap();
+        assert_eq!(plan["proposed_by"], "agent");
+        assert!(plan["confirmed_at"].is_null());
+        assert_eq!(plan["items"].as_array().unwrap().len(), 3);
+        assert_eq!(plan["items"][0]["label"], "Update WooCommerce");
+        assert_eq!(
+            plan["items"][0]["action"]["plugin"],
+            "woocommerce/woocommerce.php"
+        );
+
+        // Everything an agent could try to make it run.
+        for method in [
+            "plan.confirm",
+            "job.start",
+            "jobs.start",
+            "plan.run",
+            "confirm",
+        ] {
+            let err = dispatch_socket(&core, &call(method, json!({ "id": id })))
+                .await
+                .unwrap_err();
+            assert_eq!(err.code, "method_not_found", "{method}");
+        }
+        let again = dispatch_socket(
+            &core,
+            &call(
+                "plan.create",
+                json!({ "title": "x", "changes": [], "confirmed": true, "id": id }),
+            ),
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(again.code, "site");
+        // A restart keeps it waiting.
+        core.close_unfinished_jobs().unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        let got = dispatch_socket(&core, &call("plan.get", json!({ "id": id })))
+            .await
+            .unwrap();
+        assert!(got["finished_at"].is_null() && got["confirmed_at"].is_null());
+        assert_eq!(got["items"][2]["state"], "waiting");
+        for s in &sites {
+            assert!(!s.state().calls.iter().any(|(t, _)| t == "update-plugin"));
+        }
+        assert_eq!(core.waiting_plans().unwrap().len(), 1);
+
+        // The person in the app confirms it.
+        core.confirm_plan(id).await.unwrap();
+        for _ in 0..200 {
+            if core.job(id).unwrap().finished_at.is_some() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        let job = core.job(id).unwrap();
+        assert!(
+            job.items
+                .iter()
+                .all(|i| i.state == crate::fleet::ItemState::Done)
+        );
+        for s in &sites {
+            let n = s
+                .state()
+                .calls
+                .iter()
+                .filter(|(t, _)| t == "update-plugin")
+                .count();
+            assert_eq!(n, 1);
+        }
+        assert!(core.confirm_plan(id).await.is_err());
+        assert!(core.waiting_plans().unwrap().is_empty());
+
+        let log = core.activity_log(None).unwrap();
+        let by = |a: Actor| log.iter().filter(|e| e.actor == a).count();
+        assert_eq!(by(Actor::AgentConfirmed), 3);
+        let proposed = log.iter().find(|e| e.actor == Actor::Agent).unwrap();
+        assert_eq!(proposed.outcome, Outcome::Waiting);
+        assert!(proposed.detail.starts_with("3 changes on 3 sites."));
+        assert!(
+            log.iter()
+                .any(|e| e.actor == Actor::Human && e.what.starts_with("Confirmed"))
+        );
+        assert!(
+            log.iter()
+                .all(|e| e.site_id.is_none() || !e.site_name.is_empty())
+        );
+
+        let described = dispatch_socket(
+            &core,
+            &call("site.describe", json!({ "site": sites[0].url })),
+        )
+        .await
+        .unwrap();
+        assert_eq!(described["agent_access"], false);
+        assert!(described["capabilities"]["abilities"].is_array());
     }
 }

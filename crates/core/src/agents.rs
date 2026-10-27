@@ -6,6 +6,7 @@
 
 use serde_json::{Value, json};
 
+use crate::activity::Actor;
 use crate::connect::{Grant, SiteError, plain, tool_output};
 use crate::fleet::{NO_AGENT_ACCESS, has_tool};
 use crate::net::Retry;
@@ -131,6 +132,11 @@ impl Core {
         if read_only {
             return self.call_ability(site.id, tool, args).await;
         }
+        let done = self.agent_change(&site, tool, args).await;
+        self.record_result(Actor::Agent, Some(site.id), tool, done)
+    }
+
+    async fn agent_change(&self, site: &Site, tool: &str, args: Value) -> Result<Value, SiteError> {
         if !site.agent_access {
             return Err(plain(NO_AGENT_ACCESS));
         }
@@ -138,7 +144,7 @@ impl Core {
         // A change is never sent twice: the site may have made it.
         let reply = self
             .mcp(
-                &site,
+                site,
                 Grant::Agent,
                 "tools/call",
                 json!({ "name": tool, "arguments": args }),
@@ -227,6 +233,20 @@ mod tests {
                 .unwrap()["plugins"]
                 .is_array()
         );
+
+        let log = core.activity_log(None).unwrap();
+        let outcomes: Vec<_> = log.iter().map(|e| (e.actor, e.outcome)).collect();
+        use crate::activity::Outcome::*;
+        assert_eq!(
+            outcomes,
+            [
+                (Actor::Agent, Waiting),
+                (Actor::Agent, Done),
+                (Actor::Agent, Waiting),
+                (Actor::Agent, Refused)
+            ]
+        );
+        assert_eq!(log[0].what, "activate-plugin");
 
         let s = core.remove_agent_access(s.id).await.unwrap();
         assert!(!s.agent_access);

@@ -2,8 +2,9 @@
 //! (a cached inventory), the changes Monks Central can make, and jobs that make
 //! them on many sites with progress per site.
 //!
-//! Every change runs as a job the human confirmed in the app window. Agents on
-//! the socket may read, but not change, a site without an agent connection.
+//! Every change runs as a job the human confirmed in the app window. An AI
+//! agent may propose a job (a plan); it runs only after a person confirms it
+//! there, and the socket has no way to confirm (plan 5.6).
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -12,6 +13,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use crate::activity::{Actor, Outcome};
 use crate::connect::{AppPassword, SiteError, plain, rest_url};
 use crate::net::{self, Retry};
 use crate::sites::{Mode, Site};
@@ -138,6 +140,37 @@ impl Action {
                 | AutoUpdatePlugin { .. }
                 | ActivateTheme { .. }
         )
+    }
+
+    /// Name the plugin or theme by its file or folder, as the site does, when it
+    /// was given by folder or name. Errs with what the site doesn't have.
+    fn resolve(&mut self, inv: &Inventory) -> Result<(), String> {
+        use Action::*;
+        let find = |items: &[Item], wanted: &str| {
+            items
+                .iter()
+                .find(|i| {
+                    i.id == wanted
+                        || i.id.split('/').next() == Some(wanted)
+                        || i.name.eq_ignore_ascii_case(wanted)
+                })
+                .map(|i| i.id.clone())
+        };
+        match self {
+            UpdatePlugin { plugin }
+            | RollbackPlugin { plugin, .. }
+            | ActivatePlugin { plugin }
+            | DeactivatePlugin { plugin }
+            | DeletePlugin { plugin }
+            | AutoUpdatePlugin { plugin, .. } => {
+                *plugin = find(&inv.plugins, plugin).ok_or(format!("plugin {plugin}"))?;
+            }
+            UpdateTheme { theme } | ActivateTheme { theme } | DeleteTheme { theme } => {
+                *theme = find(&inv.themes, theme).ok_or(format!("theme {theme}"))?;
+            }
+            InstallPlugin { .. } | UpdateCore | UpdateTranslations => {}
+        }
+        Ok(())
     }
 
     /// What the job list says, and the versions it goes between.
@@ -448,8 +481,16 @@ pub struct Job {
     pub title: String,
     pub created_at: i64,
     pub finished_at: Option<i64>,
+    /// `Human`, or `Agent` for a plan an AI agent proposed.
+    pub proposed_by: Actor,
+    /// When a person confirmed it. An agent's plan waits until then.
+    pub confirmed_at: Option<i64>,
+    pub declined_at: Option<i64>,
     pub items: Vec<JobItem>,
 }
+
+/// Most changes one plan may hold.
+pub const PLAN_MAX: usize = 200;
 
 fn job_items(conn: &Connection, job: i64) -> rusqlite::Result<Vec<JobItem>> {
     let mut stmt = conn.prepare_cached(
@@ -476,7 +517,8 @@ fn job_items(conn: &Connection, job: i64) -> rusqlite::Result<Vec<JobItem>> {
 
 fn get_job(conn: &Connection, id: i64) -> rusqlite::Result<Option<Job>> {
     conn.query_row(
-        "SELECT id, title, created_at, finished_at FROM jobs WHERE id = ?1",
+        "SELECT id, title, created_at, finished_at, proposed_by, confirmed_at, declined_at
+         FROM jobs WHERE id = ?1",
         [id],
         |r| {
             Ok(Job {
@@ -484,6 +526,9 @@ fn get_job(conn: &Connection, id: i64) -> rusqlite::Result<Option<Job>> {
                 title: r.get(1)?,
                 created_at: r.get(2)?,
                 finished_at: r.get(3)?,
+                proposed_by: Actor::parse(&r.get::<_, String>(4)?),
+                confirmed_at: r.get(5)?,
+                declined_at: r.get(6)?,
                 items: Vec::new(),
             })
         },
@@ -662,18 +707,153 @@ impl Core {
         title: &str,
         changes: Vec<Change>,
     ) -> Result<Job, SiteError> {
+        let id = self.insert_job(title, &changes, Actor::Human)?;
+        let job = self.job(id)?;
+        self.spawn_job(&job);
+        Ok(job)
+    }
+
+    /// An AI agent's plan: recorded, shown in the app, and left waiting for a
+    /// person to confirm it there. Plugins and themes may be named by folder or name.
+    pub fn propose_plan(&self, title: &str, mut changes: Vec<Change>) -> Result<Job, SiteError> {
+        if changes.len() > PLAN_MAX {
+            return Err(plain(format!(
+                "A plan can hold at most {PLAN_MAX} changes. Split it into smaller plans."
+            )));
+        }
+        for c in &mut changes {
+            let site = self.site(c.site_id)?;
+            if let Some(inv) = self.inventory_of(c.site_id)? {
+                c.action.resolve(&inv).map_err(|what| {
+                    plain(format!(
+                        "{} has no {what}. List its plugins and themes first.",
+                        site.name
+                    ))
+                })?;
+            }
+        }
+        let title = if title.trim().is_empty() {
+            "Plan from an AI agent"
+        } else {
+            title
+        };
+        let id = self.insert_job(title, &changes, Actor::Agent)?;
+        let job = self.job(id)?;
+        let sites = job
+            .items
+            .iter()
+            .filter_map(|i| i.site_id)
+            .collect::<std::collections::BTreeSet<_>>()
+            .len();
+        self.record(
+            Actor::Agent,
+            None,
+            &format!("Proposed a plan: {}", job.title),
+            Outcome::Waiting,
+            &format!(
+                "{} on {}. Waiting for you to confirm it under AI.",
+                count(job.items.len(), "change"),
+                count(sites, "site")
+            ),
+        );
+        let _ = self.changed.send(Changed::Jobs);
+        Ok(job)
+    }
+
+    /// The person in the app confirms an agent's plan: it runs with the app's
+    /// grant. Only the window calls this; the socket can't reach it.
+    pub async fn confirm_plan(self: &Arc<Self>, id: i64) -> Result<Job, SiteError> {
+        let job = self.decide_plan(id, "confirmed_at")?;
+        self.record(
+            Actor::Human,
+            None,
+            &format!("Confirmed the plan: {}", job.title),
+            Outcome::Done,
+            "Proposed by an AI agent.",
+        );
+        self.spawn_job(&job);
+        Ok(job)
+    }
+
+    /// The person in the app turns an agent's plan down. Nothing runs.
+    pub fn decline_plan(&self, id: i64) -> Result<Job, SiteError> {
+        let job = self.decide_plan(id, "declined_at")?;
+        self.record(
+            Actor::Human,
+            None,
+            &format!("Declined the plan: {}", job.title),
+            Outcome::Done,
+            "Proposed by an AI agent. Nothing changed.",
+        );
+        let _ = self.changed.send(Changed::Jobs);
+        Ok(job)
+    }
+
+    /// Mark a waiting plan confirmed or declined, once.
+    fn decide_plan(&self, id: i64, column: &'static str) -> Result<Job, SiteError> {
+        let finished = if column == "declined_at" {
+            ", finished_at = unixepoch()"
+        } else {
+            ""
+        };
+        let n = self.db(|c| {
+            c.execute(
+                &format!(
+                    "UPDATE jobs SET {column} = unixepoch(){finished} WHERE id = ?1
+                     AND proposed_by = 'agent' AND confirmed_at IS NULL AND declined_at IS NULL"
+                ),
+                [id],
+            )
+        })?;
+        if n == 0 {
+            return Err(plain(
+                "This plan isn't waiting any more: it was confirmed or declined already.",
+            ));
+        }
+        self.job(id)
+    }
+
+    /// Agents' plans waiting for a person, oldest first.
+    pub fn waiting_plans(&self) -> Result<Vec<Job>, SiteError> {
+        let ids: Vec<i64> = self.db(|c| {
+            let mut stmt = c.prepare_cached(
+                "SELECT id FROM jobs WHERE proposed_by = 'agent' AND confirmed_at IS NULL
+                 AND declined_at IS NULL ORDER BY id",
+            )?;
+            stmt.query_map([], |r| r.get(0))?.collect()
+        })?;
+        ids.into_iter().map(|id| self.job(id)).collect()
+    }
+
+    fn spawn_job(self: &Arc<Self>, job: &Job) {
+        let core = self.clone();
+        let (id, items) = (job.id, job.items.clone());
+        let actor = match job.proposed_by {
+            Actor::Human => Actor::Human,
+            _ => Actor::AgentConfirmed,
+        };
+        tokio::spawn(async move { core.run_job(id, items, actor).await });
+        let _ = self.changed.send(Changed::Jobs);
+    }
+
+    fn insert_job(&self, title: &str, changes: &[Change], by: Actor) -> Result<i64, SiteError> {
         if changes.is_empty() {
             return Err(plain("Pick at least one change."));
         }
         let mut rows = Vec::with_capacity(changes.len());
-        for c in &changes {
+        for c in changes {
             let site = self.site(c.site_id)?;
             let inv = self.inventory_of(c.site_id)?.unwrap_or_default();
             rows.push((site, c.action.describe(&inv), c));
         }
-        let id = self.db(|conn| {
+        let title: String = title.trim().chars().take(200).collect();
+        self.db(|conn| {
             let tx = conn.unchecked_transaction()?;
-            tx.execute("INSERT INTO jobs (title) VALUES (?1)", [title.trim()])?;
+            tx.execute(
+                "INSERT INTO jobs (title, proposed_by, confirmed_at)
+                 VALUES (?1, ?2, CASE WHEN ?2 = 'human' THEN unixepoch() END)",
+                params![title, by.as_str()],
+            )?;
             let job = tx.last_insert_rowid();
             for (site, (label, from, to), c) in &rows {
                 tx.execute(
@@ -692,13 +872,7 @@ impl Core {
             }
             tx.commit()?;
             Ok(job)
-        })?;
-        let job = self.job(id)?;
-        let core = self.clone();
-        let items = job.items.clone();
-        tokio::spawn(async move { core.run_job(id, items).await });
-        let _ = self.changed.send(Changed::Jobs);
-        Ok(job)
+        })
     }
 
     pub fn job(&self, id: i64) -> Result<Job, SiteError> {
@@ -715,7 +889,7 @@ impl Core {
         ids.into_iter().map(|id| self.job(id)).collect()
     }
 
-    async fn run_job(self: Arc<Self>, job: i64, items: Vec<JobItem>) {
+    async fn run_job(self: Arc<Self>, job: i64, items: Vec<JobItem>, actor: Actor) {
         let _work = self.working().await;
         let mut by_site: BTreeMap<i64, Vec<JobItem>> = BTreeMap::new();
         for item in items {
@@ -735,6 +909,12 @@ impl Core {
                         Err(e) => (ItemState::Failed, e.to_string()),
                     };
                     core.mark(item.id, state, &msg);
+                    let outcome = if state == ItemState::Done {
+                        Outcome::Done
+                    } else {
+                        Outcome::Failed
+                    };
+                    core.record(actor, item.site_id, &item.label, outcome, &msg);
                 }
                 // The versions changed: read them again so the screens are right.
                 let _ = core.refresh_inventory_inner(site).await;
@@ -758,14 +938,17 @@ impl Core {
     /// Jobs a closed app left unfinished: say so instead of "running" forever.
     pub fn close_unfinished_jobs(&self) -> Result<(), SiteError> {
         self.db(|c| {
+            // Plans still waiting for a person stay waiting.
             c.execute(
                 "UPDATE job_items SET state = 'failed',
                  message = 'Monks Central closed before this finished. Check the site, then try again.'
-                 WHERE state IN ('waiting', 'running')",
+                 WHERE state IN ('waiting', 'running')
+                 AND job_id IN (SELECT id FROM jobs WHERE proposed_by = 'human' OR confirmed_at IS NOT NULL)",
                 [],
             )?;
             c.execute(
-                "UPDATE jobs SET finished_at = unixepoch() WHERE finished_at IS NULL",
+                "UPDATE jobs SET finished_at = unixepoch()
+                 WHERE finished_at IS NULL AND (proposed_by = 'human' OR confirmed_at IS NOT NULL)",
                 [],
             )
         })?;
@@ -861,6 +1044,11 @@ impl Core {
             }
         }
     }
+}
+
+/// "1 change", "3 changes".
+fn count(n: usize, one: &str) -> String {
+    format!("{n} {one}{}", if n == 1 { "" } else { "s" })
 }
 
 pub(crate) fn has_tool(site: &Site, tool: &str) -> bool {
@@ -1311,5 +1499,54 @@ mod tests {
         assert_eq!(job.items[0].state, ItemState::Failed);
         assert_eq!(job.items[0].action, Action::UpdateCore);
         assert!(job.items[0].message.contains("closed"));
+    }
+
+    #[tokio::test]
+    async fn a_declined_plan_never_runs_and_plans_name_what_the_site_has() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+        let change = |plugin: &str| Change {
+            site_id: s.id,
+            action: Action::UpdatePlugin {
+                plugin: plugin.into(),
+            },
+        };
+        let err = core.propose_plan("x", vec![change("nope")]).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Test Site has no plugin nope. List its plugins and themes first."
+        );
+        assert!(core.propose_plan("x", vec![]).is_err());
+        assert!(
+            core.propose_plan("x", vec![change("WooCommerce"); PLAN_MAX + 1])
+                .is_err()
+        );
+        let plan = core.propose_plan(" ", vec![change("WooCommerce")]).unwrap();
+        assert_eq!(plan.title, "Plan from an AI agent");
+        let declined = core.decline_plan(plan.id).unwrap();
+        assert!(declined.declined_at.is_some() && declined.finished_at.is_some());
+        assert!(core.confirm_plan(plan.id).await.is_err());
+        assert!(core.decline_plan(plan.id).is_err());
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(!site.state().calls.iter().any(|(t, _)| t == "update-plugin"));
+        // A person's own job is theirs in the log.
+        let job = core
+            .start_job("Update WooCommerce", vec![change(&woo())])
+            .await
+            .unwrap();
+        assert_eq!(job.proposed_by, Actor::Human);
+        assert!(job.confirmed_at.is_some());
+        wait(&core, job.id).await;
+        let log = core.activity_log(None).unwrap();
+        assert_eq!(log[0].actor, Actor::Human);
+        assert_eq!(log[0].what, "Update WooCommerce");
+        assert_eq!(log[0].site_name, "Test Site");
+        assert!(
+            log.iter()
+                .any(|e| e.what == "Declined the plan: Plan from an AI agent")
+        );
+        let older = core.activity_log(Some(log[0].id)).unwrap();
+        assert_eq!(older.len(), log.len() - 1);
     }
 }

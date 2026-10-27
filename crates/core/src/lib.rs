@@ -1,5 +1,6 @@
 //! Monks Central core.
 
+pub mod activity;
 pub mod agents;
 pub mod blocks;
 pub mod connect;
@@ -50,8 +51,10 @@ pub enum Changed {
     Sites,
     /// What a site runs: plugins, themes, updates.
     Inventory,
-    /// A job started, moved on or finished.
+    /// A job started, moved on or finished, or an agent proposed one.
     Jobs,
+    /// A row was added to Monks Central's activity log.
+    Activity,
 }
 
 impl Changed {
@@ -61,6 +64,7 @@ impl Changed {
             Changed::Sites => "sites-changed",
             Changed::Inventory => "inventory-changed",
             Changed::Jobs => "jobs-changed",
+            Changed::Activity => "activity-changed",
         }
     }
 }
