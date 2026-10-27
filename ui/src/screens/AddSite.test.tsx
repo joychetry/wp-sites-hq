@@ -1,0 +1,46 @@
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { invoke } from "@tauri-apps/api/core";
+import { AddSite } from "./AddSite";
+import { site } from "../test-fixtures";
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+const mockInvoke = vi.mocked(invoke);
+afterEach(() => mockInvoke.mockReset());
+
+test("Basic mode sends the address, user and application password", async () => {
+  const onDone = vi.fn();
+  mockInvoke.mockResolvedValue(site({ id: 9 }));
+  render(<AddSite onClose={vi.fn()} onDone={onDone} />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Site address" }), { target: { value: "mc-c.local" } });
+  fireEvent.click(screen.getByRole("button", { name: "Basic mode" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "WordPress user name" }), { target: { value: "admin" } });
+  fireEvent.change(screen.getByLabelText(/^Application password/), { target: { value: "abcd efgh" } });
+  fireEvent.click(screen.getByRole("button", { name: /Add the site/ }));
+  await waitFor(() => expect(onDone).toHaveBeenCalled());
+  expect(mockInvoke).toHaveBeenCalledWith("site_add_basic", { url: "mc-c.local", username: "admin", password: "abcd efgh" });
+});
+
+test("Classic Monks waits for the browser and can be cancelled", async () => {
+  let reject: (e: string) => void = () => {};
+  mockInvoke.mockImplementation((cmd: string) =>
+    cmd === "site_add_oauth" ? new Promise((_, r) => (reject = r)) : Promise.resolve(null),
+  );
+  const onClose = vi.fn();
+  render(<AddSite onClose={onClose} onDone={vi.fn()} />);
+  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("This is my Monks Central app (operator)");
+  fireEvent.change(screen.getByRole("textbox", { name: "Site address" }), { target: { value: "https://mc-a.local" } });
+  fireEvent.click(screen.getByRole("button", { name: /Open the sign-in page/ }));
+  expect(await screen.findByRole("status")).toHaveTextContent("Waiting for you in the browser");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel the sign-in" }));
+  expect(mockInvoke).toHaveBeenCalledWith("sign_in_cancel");
+  expect(onClose).toHaveBeenCalled();
+  reject("Sign-in cancelled.");
+});
+
+test("a refusal is shown in plain words", async () => {
+  mockInvoke.mockRejectedValue("This site runs WordPress 7.0.7. Update WordPress to 7.1 or newer first.");
+  render(<AddSite onClose={vi.fn()} onDone={vi.fn()} />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Site address" }), { target: { value: "mc-b.local" } });
+  fireEvent.click(screen.getByRole("button", { name: /Open the sign-in page/ }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Update WordPress to 7.1 or newer first.");
+});
