@@ -2,7 +2,7 @@
 //! runs it (rotating refresh tokens, reuse revokes the grant), its MCP endpoint,
 //! the home page and feed, and the core REST routes Basic mode uses.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use axum::extract::{Form, Query, State as Ax};
@@ -43,9 +43,15 @@ pub struct State {
     pub mcp_calls: usize,
     /// Bearer tokens the MCP endpoint saw in Authorization and X-CM-Authorization.
     pub seen_x_cm: usize,
-    codes: HashMap<String, String>,
-    refresh_tokens: HashMap<String, bool>,
-    pub access_tokens: HashSet<String>,
+    /// Code -> (PKCE challenge, client).
+    codes: HashMap<String, (String, String)>,
+    clients: u32,
+    /// Grant (token family) -> the client it was given to.
+    families: HashMap<u32, String>,
+    /// Refresh token -> (spent, family).
+    refresh_tokens: HashMap<String, (bool, u32)>,
+    /// Access token -> family.
+    pub access_tokens: HashMap<String, u32>,
 }
 
 impl Default for State {
@@ -66,8 +72,10 @@ impl Default for State {
             mcp_calls: 0,
             seen_x_cm: 0,
             codes: HashMap::new(),
+            clients: 0,
+            families: HashMap::new(),
             refresh_tokens: HashMap::new(),
-            access_tokens: HashSet::new(),
+            access_tokens: HashMap::new(),
         }
     }
 }
@@ -119,6 +127,26 @@ impl TestSite {
     }
 }
 
+impl State {
+    /// Grants that still have a live refresh token.
+    pub fn live_grants(&self) -> usize {
+        let mut live: Vec<u32> = self
+            .refresh_tokens
+            .values()
+            .filter(|(spent, _)| !spent)
+            .map(|(_, f)| *f)
+            .collect();
+        live.sort_unstable();
+        live.dedup();
+        live.len()
+    }
+
+    fn revoke_family(&mut self, family: u32) {
+        self.refresh_tokens.retain(|_, (_, f)| *f != family);
+        self.access_tokens.retain(|_, f| *f != family);
+    }
+}
+
 fn mcp_url(base: &str) -> String {
     format!("{base}/wp-json/classic-monks/v1/mcp")
 }
@@ -163,11 +191,13 @@ async fn server_metadata(Ax(s): Ax<Shared>) -> Response {
     .into_response()
 }
 
-async fn register(Json(body): Json<serde_json::Value>) -> Response {
+async fn register(Ax(s): Ax<Shared>, Json(body): Json<serde_json::Value>) -> Response {
     assert_eq!(body["redirect_uris"][0], crate::oauth::REDIRECT_URI);
+    let mut s = s.lock().unwrap();
+    s.clients += 1;
     (
         StatusCode::CREATED,
-        Json(json!({ "client_id": "cmc_test" })),
+        Json(json!({ "client_id": format!("cmc_test_{}", s.clients) })),
     )
         .into_response()
 }
@@ -177,9 +207,12 @@ async fn authorize(Ax(s): Ax<Shared>, Query(q): Query<HashMap<String, String>>) 
     let mut s = s.lock().unwrap();
     assert_eq!(q["code_challenge_method"], "S256");
     assert_eq!(q["resource"], mcp_url(&s.base));
-    assert_eq!(q["client_id"], "cmc_test");
+    assert!(q["client_id"].starts_with("cmc_test_"));
     let code = crate::oauth::random_token(16);
-    s.codes.insert(code.clone(), q["code_challenge"].clone());
+    s.codes.insert(
+        code.clone(),
+        (q["code_challenge"].clone(), q["client_id"].clone()),
+    );
     let mut back = reqwest::Url::parse(&q["redirect_uri"]).unwrap();
     back.query_pairs_mut()
         .append_pair("code", &code)
@@ -190,13 +223,13 @@ async fn authorize(Ax(s): Ax<Shared>, Query(q): Query<HashMap<String, String>>) 
     (StatusCode::FOUND, h).into_response()
 }
 
-fn issue(s: &mut State) -> Response {
+fn issue(s: &mut State, family: u32) -> Response {
     let (access, refresh) = (
         format!("cmat_{}", crate::oauth::random_token(32)),
         format!("cmrt_{}", crate::oauth::random_token(32)),
     );
-    s.access_tokens.insert(access.clone());
-    s.refresh_tokens.insert(refresh.clone(), false);
+    s.access_tokens.insert(access.clone(), family);
+    s.refresh_tokens.insert(refresh.clone(), (false, family));
     Json(json!({
         "access_token": access,
         "token_type": "Bearer",
@@ -224,24 +257,26 @@ async fn token(Ax(shared): Ax<Shared>, Form(f): Form<HashMap<String, String>>) -
     assert_eq!(f["resource"], mcp_url(&s.base));
     match f["grant_type"].as_str() {
         "authorization_code" => {
-            let Some(challenge) = s.codes.remove(&f["code"]) else {
+            let Some((challenge, client)) = s.codes.remove(&f["code"]) else {
                 return oauth_error(StatusCode::BAD_REQUEST, "invalid_grant", "Code used.");
             };
             let got = URL_SAFE_NO_PAD.encode(Sha256::digest(f["code_verifier"].as_bytes()));
             if got != challenge {
                 return oauth_error(StatusCode::BAD_REQUEST, "invalid_grant", "PKCE failed.");
             }
-            issue(&mut s)
+            let family = s.families.len() as u32 + 1;
+            s.families.insert(family, client);
+            issue(&mut s, family)
         }
         "refresh_token" => match s.refresh_tokens.get(&f["refresh_token"]).copied() {
-            Some(false) => {
-                s.refresh_tokens.insert(f["refresh_token"].clone(), true);
+            Some((false, family)) => {
+                s.refresh_tokens
+                    .insert(f["refresh_token"].clone(), (true, family));
                 s.refreshes += 1;
-                issue(&mut s)
+                issue(&mut s, family)
             }
-            Some(true) => {
-                s.refresh_tokens.clear();
-                s.access_tokens.clear();
+            Some((true, family)) => {
+                s.revoke_family(family);
                 oauth_error(
                     StatusCode::BAD_REQUEST,
                     "invalid_grant",
@@ -260,10 +295,12 @@ async fn token(Ax(shared): Ax<Shared>, Form(f): Form<HashMap<String, String>>) -
 
 async fn revoke(Ax(s): Ax<Shared>, Form(f): Form<HashMap<String, String>>) -> Response {
     let mut s = s.lock().unwrap();
-    if s.refresh_tokens.contains_key(&f["token"]) && f["client_id"] == "cmc_test" {
+    // Only the client the grant was given to may revoke it.
+    if let Some(&(_, family)) = s.refresh_tokens.get(&f["token"])
+        && s.families.get(&family) == Some(&f["client_id"])
+    {
         s.revoked += 1;
-        s.refresh_tokens.clear();
-        s.access_tokens.clear();
+        s.revoke_family(family);
     }
     StatusCode::OK.into_response()
 }
@@ -304,7 +341,7 @@ fn bearer(s: &mut State, h: &HeaderMap) -> bool {
         if name == "x-cm-authorization" {
             s.seen_x_cm += 1;
         }
-        ok |= s.access_tokens.contains(token);
+        ok |= s.access_tokens.contains_key(token);
     }
     ok
 }

@@ -330,8 +330,20 @@ impl Core {
             oauth: Some(&client),
             username: None,
         };
+        // The grant this sign-in replaces. Its secret may be the reason for signing
+        // in again (unreadable): then the site can't be told, and the grant ends by
+        // itself within 30 days.
+        let old = existing.and_then(|id| {
+            let client = self.site(id).ok()?.oauth?;
+            Some((client, self.load_secret::<Tokens>(id).ok()?))
+        });
         match self.save_site(existing, &new, details, &tokens) {
-            Ok(id) => self.after_connect(id).await,
+            Ok(id) => {
+                if let Some((client, tokens)) = old {
+                    self.revoke_fresh(key, &client, &tokens).await;
+                }
+                self.after_connect(id).await
+            }
             Err(e) => {
                 self.revoke_fresh(key, &client, &tokens).await;
                 Err(e)
@@ -339,7 +351,8 @@ impl Core {
         }
     }
 
-    /// Give back a grant just made for a site that won't be added.
+    /// Give back a grant: one just made for a site that won't be added, or the
+    /// one a new sign-in replaced.
     async fn revoke_fresh(&self, key: &str, client: &OAuthClient, tokens: &Tokens) {
         if let Some(endpoint) = &client.revocation_endpoint {
             let _ = oauth::revoke(
@@ -1252,6 +1265,35 @@ mod tests {
         assert!(!again.sign_in_again);
         assert_eq!(again.group.as_deref(), Some("Clients"));
         assert_eq!(again.notes.len(), 1);
+        core.call_ability(s.id, "get-posts", json!({}))
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn signing_in_again_gives_back_the_old_grant() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = added(&core, &site).await;
+        assert_eq!(site.state().live_grants(), 1);
+        core.sign_in_again_oauth(s.id, browser).await.unwrap();
+        assert_eq!(site.state().revoked, 1);
+        assert_eq!(site.state().live_grants(), 1, "only the new grant is left");
+        core.call_ability(s.id, "get-posts", json!({}))
+            .await
+            .unwrap();
+
+        // An unreadable secret can't be given back: the new sign-in still works.
+        core.db(|c| {
+            c.execute(
+                "UPDATE credentials SET blob = x'00ff' WHERE name = ?1",
+                [secret_name(s.id)],
+            )
+        })
+        .unwrap();
+        core.sign_in_again_oauth(s.id, browser).await.unwrap();
+        assert_eq!(site.state().revoked, 1);
+        assert_eq!(site.state().live_grants(), 2);
         core.call_ability(s.id, "get-posts", json!({}))
             .await
             .unwrap();
