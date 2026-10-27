@@ -1,6 +1,6 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
 import { useEffect, useMemo, useState } from "react";
-import { ago, api, siteStatus, useInventory, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { ago, api, hasTool, siteStatus, useInventory, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Kbd, Logo } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
@@ -13,6 +13,9 @@ import { Matrix } from "./screens/Matrix";
 import { Install } from "./screens/Install";
 import { Content } from "./screens/Content";
 import { Media } from "./screens/Media";
+import { Users } from "./screens/Users";
+import { Comments } from "./screens/Comments";
+import { ClassicMonks } from "./screens/ClassicMonks";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -21,13 +24,13 @@ const GROUPS = [
   ["", ["Overview"]],
   ["Fleet", ["Sites", "Updates", "Plugins", "Themes"]],
   ["Content", ["Content", "Media", "Users", "Comments"]],
-  ["Care", ["Security", "Reports"]],
+  ["Care", ["Classic Monks", "Security", "Reports"]],
   ["App", ["AI", "Settings"]],
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -99,6 +102,7 @@ export default function App() {
     await api.check().catch(() => {});
     setChecking(false);
   };
+  const login = (s: Site) => api.login(s.id).catch((e) => setJobError(`Log in to ${s.name}: ${e}`));
   const signInAgain = (id: number) => {
     const site = all.find((s) => s.id === id);
     if (site) setAdding({ again: site });
@@ -135,6 +139,9 @@ export default function App() {
       hint: s.url.replace(/^https?:\/\//, ""),
       run: () => openSite(s.id),
     })),
+    ...all
+      .filter((s) => hasTool(s, "create-login-link") && !s.sign_in_again)
+      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, run: () => login(s) })),
     ...all
       .filter((s) => s.sign_in_again)
       .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, run: () => signInAgain(s.id) })),
@@ -203,6 +210,12 @@ export default function App() {
     body = <Content sites={scoped} />;
   } else if (section === "Media") {
     body = <Media sites={scoped} />;
+  } else if (section === "Users") {
+    body = <Users sites={scoped} />;
+  } else if (section === "Comments") {
+    body = <Comments sites={scoped} />;
+  } else if (section === "Classic Monks") {
+    body = <ClassicMonks sites={scoped} />;
   } else if (section === "Settings") {
     body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   } else {

@@ -107,3 +107,15 @@ test("Space on a row's checkbox is left to that checkbox; rows say selected only
   fireEvent.keyDown(screen.getByRole("grid", { name: "Sites" }), { key: " " });
   expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("2 selected");
 });
+
+test("one-click login shows only where the connection can make a login link", async () => {
+  mockInvoke.mockResolvedValue(null);
+  const login = site({ id: 4, name: "Delta", capabilities: { operator: true, abilities: ["create-login-link"] } });
+  const { rerender } = render(<Sites sites={[...SITES, login]} groups={[]} focusId={4} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Log in to the dashboard" }));
+  await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("site_login", { id: 4 }));
+  for (const id of [1, 2, 3]) {
+    rerender(<Sites sites={[...SITES, login]} groups={[]} focusId={id} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Log in to the dashboard" })).toBeNull();
+  }
+});

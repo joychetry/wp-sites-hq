@@ -290,6 +290,23 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text-2); font-weig
 .media.small { padding: 0; width: 100%; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 .bar.import .grow .input { flex: 1; width: auto; }
 
+/* Phase 4: users, the comment inbox, Classic Monks */
+.scroll > .notes { list-style: none; margin: 0; padding: var(--sp-2) var(--pad); color: var(--text-2); font-size: var(--fs-sm); border-top: 1px solid var(--line); }
+.t td .row { flex-wrap: wrap; gap: var(--sp-1); }
+.inbox { list-style: none; margin: 0; padding: 0; }
+.inbox > li { padding: var(--sp-3) var(--pad); border-bottom: 1px solid var(--line); display: grid; gap: var(--sp-2); }
+.inbox .meta { margin: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); }
+.inbox .meta b { font-weight: 600; }
+.inbox .said { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 72ch; }
+.inbox .reply { max-width: 72ch; }
+.inbox .row { flex-wrap: wrap; }
+.toggles { list-style: none; margin: 0; padding: 0; }
+.toggles > li { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--pad); border-bottom: 1px solid var(--line); min-height: var(--row); }
+.toggles .what { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.toggles .what small { color: var(--text-2); font-size: var(--fs-sm); }
+.toggles h3 { margin: 0; padding: var(--sp-3) var(--pad) var(--sp-1); font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; border-bottom: 1px solid var(--line); }
+.toggles .input { width: 160px; }
+
 /* Motion off when the OS asks for less */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -312,6 +329,7 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text-2); font-weig
   .insp { width: auto; border-left: 0; border-top: 1px solid var(--line); }
   .top { height: auto; min-height: 56px; flex-wrap: wrap; padding-block: var(--sp-2); }
   .bar, .selbar { flex-wrap: wrap; }
+  .toggles > li { flex-wrap: wrap; }
   .sentence { font-size: var(--fs-xl); padding-right: var(--pad); }
   .kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .panels { grid-template-columns: 1fr; }

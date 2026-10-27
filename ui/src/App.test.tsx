@@ -94,3 +94,15 @@ test("rows are comfortable until Settings picks compact, and it is remembered", 
   render(<App />);
   expect(document.documentElement.dataset.density).toBe("compact");
 });
+
+test("the palette logs in to a site's dashboard where the connection can", async () => {
+  serve([site({ capabilities: { operator: true, abilities: ["create-login-link"] } }), site({ id: 2, name: "Plain" })]);
+  render(<App />);
+  await screen.findByRole("heading", { name: "Both sites are healthy." });
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  const input = screen.getByRole("combobox", { name: "Command" });
+  fireEvent.change(input, { target: { value: "dashboard" } });
+  expect(screen.queryByRole("option", { name: /Plain's dashboard/ })).toBeNull();
+  fireEvent.click(screen.getByRole("option", { name: /Log in to MC A's dashboard/ }));
+  expect(mockInvoke).toHaveBeenCalledWith("site_login", { id: 1 });
+});

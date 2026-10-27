@@ -148,6 +148,45 @@ export type Draft = {
 
 export type Media = { id: number; title: string; url: string; mime: string; alt: string; date: string };
 
+export type User = { id: number; username: string; email: string; name: string; role: string; registered: string };
+export type Role = { id: string; name: string };
+export type Users = { users: User[]; total: number; roles: Role[]; can_reset: boolean };
+export type NewUser = { username: string; email: string; role: string; send_reset: boolean };
+
+export type CommentState = "pending" | "approved" | "spam" | "trash";
+export type Comment = {
+  id: number;
+  post_id: number;
+  post_title: string;
+  author: string;
+  email: string;
+  content: string;
+  date: string;
+  status: CommentState;
+  parent: number;
+};
+export type Comments = { comments: Comment[]; total: number };
+export type Moderation = "approve" | "unapprove" | "spam" | "trash";
+
+export type Toggle = { name: string; label: string; description: string; section: string; on: boolean; locked: boolean };
+export type FeatureGroup = { key: string; label: string; toggles: Toggle[] };
+export type Setting = {
+  name: string;
+  label: string;
+  description: string;
+  tab: string;
+  section: string;
+  control: string;
+  options: string[];
+  min: number | null;
+  max: number | null;
+  step: number | null;
+  value: unknown;
+};
+export type ActivityRow = { id: number; time: string; who: string; tool: string; status: string; summary: string; can_undo: boolean };
+export type Activity = { rows: ActivityRow[]; total: number; page: number; pages: number };
+export type Approval = { id: number; tool: string; who: string; time: string; expires_in: number };
+
 export const api = {
   status: () => invoke<CoreStatus>("core_status"),
   sites: () => invoke<Site[]>("sites_list"),
@@ -180,7 +219,47 @@ export const api = {
   trashPost: (id: number, postType: string, postId: number) => invoke<void>("content_trash", { id, postType, postId }),
   media: (id: number, page: number, search: string, images: boolean) => invoke<Media[]>("media_list", { id, page, search, images }),
   importMedia: (id: number, url: string, alt: string) => invoke<Media>("media_import", { id, url, alt }),
+  users: (id: number, search: string, page = 1) => invoke<Users>("users_list", { id, search, page }),
+  createUser: (id: number, user: NewUser) => invoke<User>("user_create", { id, user }),
+  setRole: (id: number, userId: number, role: string) => invoke<void>("user_set_role", { id, userId, role }),
+  deleteUser: (id: number, userId: number, reassign: number) => invoke<void>("user_delete", { id, userId, reassign }),
+  sendReset: (id: number, userId: number) => invoke<string>("user_reset", { id, userId }),
+  comments: (id: number, status: CommentState) => invoke<Comments>("comments_list", { id, status }),
+  moderate: (id: number, commentId: number, action: Moderation) => invoke<void>("comment_moderate", { id, commentId, action }),
+  reply: (id: number, commentId: number, postId: number, text: string) => invoke<void>("comment_reply", { id, commentId, postId, text }),
+  login: (id: number) => invoke<void>("site_login", { id }),
+  features: (id: number) => invoke<FeatureGroup[]>("cm_features", { id }),
+  setFeature: (id: number, name: string, on: boolean) => invoke<number | null>("cm_set_feature", { id, name, on }),
+  settings: (id: number) => invoke<Setting[]>("cm_settings", { id }),
+  setSetting: (id: number, name: string, value: unknown) => invoke<number | null>("cm_set_setting", { id, name, value }),
+  activity: (id: number, page: number) => invoke<Activity>("cm_activity", { id, page }),
+  undo: (id: number, row: number) => invoke<void>("cm_undo", { id, row }),
+  approvals: (id: number) => invoke<Approval[]>("cm_approvals", { id }),
+  openApproval: (id: number, op: number) => invoke<void>("cm_approval_open", { id, op }),
 };
+
+/** Whether this site's connection has this Classic Monks tool (Basic mode has none). */
+export function hasTool(s: Site, tool: string): boolean {
+  const tools = s.capabilities.abilities;
+  return s.mode === "classic_monks" && Array.isArray(tools) && tools.includes(tool);
+}
+
+/** Why this site's users or comments can't be managed here now, or null. Basic mode uses core REST. */
+export function peopleBlocked(s: Site, tool: string): string | null {
+  if (s.sign_in_again) return "Sign in again first.";
+  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
+  if (s.mode === "classic_monks" && !hasTool(s, tool)) return "This connection can't do this. Sign in again and tick the user and comment tool groups.";
+  return null;
+}
+
+/** Why Classic Monks itself can't be managed on this site, or null. */
+export function cmBlocked(s: Site): string | null {
+  if (s.mode === "basic") return "This site doesn't have Classic Monks. It's connected in Basic mode.";
+  if (s.sign_in_again) return "Sign in again first.";
+  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
+  if (!hasTool(s, "get-features")) return "This connection can't change Classic Monks. Sign in again and tick its tool groups.";
+  return null;
+}
 
 /** Why this site's content can't be managed here now, or null. */
 export function contentBlocked(s: Site): string | null {

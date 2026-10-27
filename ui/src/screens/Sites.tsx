@@ -1,7 +1,7 @@
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, connectionLabel, NO_TOOLS, noTools, siteStatus, slow, type Site, type Tone } from "../api";
+import { ago, api, connectionLabel, hasTool, NO_TOOLS, noTools, siteStatus, slow, type Site, type Tone } from "../api";
 import { Button, Kbd, Status } from "../components/ui";
 
 type Props = {
@@ -362,6 +362,11 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
           <Button small onClick={() => api.open(s.id).catch((e) => setError(String(e)))}>
             Open the site
           </Button>
+          {hasTool(s, "create-login-link") && !s.sign_in_again && (
+            <Button small onClick={() => run(() => api.login(s.id))}>
+              Log in to the dashboard
+            </Button>
+          )}
           <Button small onClick={onCheck} keys="R">
             Check now
           </Button>
