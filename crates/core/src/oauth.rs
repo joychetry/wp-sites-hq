@@ -18,6 +18,8 @@ use crate::net::{self, Limits, Reply, Retry};
 /// Registered once per site; the loopback port is ignored by the server (RFC 8252 7.3).
 pub const REDIRECT_URI: &str = "http://127.0.0.1/callback";
 pub const CLIENT_NAME: &str = "Monks Central";
+/// The grant AI agents use: not the operator, so the site's approvals apply.
+pub const AGENT_CLIENT_NAME: &str = "Monks Central (AI agents)";
 
 #[derive(Debug, thiserror::Error)]
 pub enum OAuthError {
@@ -124,13 +126,14 @@ pub async fn register(
     limits: &Limits,
     site: &str,
     d: &Discovery,
+    client_name: &str,
 ) -> Result<String, OAuthError> {
     let endpoint = d
         .registration_endpoint
         .as_deref()
         .ok_or_else(|| site_err("The site doesn't let new apps register. Update Classic Monks."))?;
     let body = serde_json::json!({
-        "client_name": CLIENT_NAME,
+        "client_name": client_name,
         "redirect_uris": [REDIRECT_URI],
         "grant_types": ["authorization_code", "refresh_token"],
         "response_types": ["code"],
@@ -450,7 +453,9 @@ mod tests {
             d.resource,
             format!("{}/wp-json/classic-monks/v1/mcp", site.url)
         );
-        let client_id = register(&http, &limits, &site.url, &d).await.unwrap();
+        let client_id = register(&http, &limits, &site.url, &d, CLIENT_NAME)
+            .await
+            .unwrap();
         let pkce = pkce();
         let state = random_token(16);
         let lb = Loopback::bind().await.unwrap();

@@ -1,5 +1,6 @@
 //! Monks Central core.
 
+pub mod agents;
 pub mod blocks;
 pub mod connect;
 pub mod content;
@@ -83,6 +84,9 @@ impl Default for Options {
     }
 }
 
+/// One site grant's refresh runs at a time.
+type RefreshLock = Arc<tokio::sync::Mutex<()>>;
+
 /// The one core for a data folder: owns the lock, the database and the socket.
 pub struct Core {
     pub home: PathBuf,
@@ -94,7 +98,7 @@ pub struct Core {
     vault: Mutex<Option<Arc<vault::Vault>>>,
     http: reqwest::Client,
     limits: net::Limits,
-    refresh_locks: Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>,
+    refresh_locks: Mutex<HashMap<(i64, connect::Grant), RefreshLock>>,
     sign_in: Mutex<Option<oneshot::Sender<()>>>,
     changed: broadcast::Sender<Changed>,
     shutdown: Notify,

@@ -513,8 +513,8 @@ fn done_message(out: &Value) -> String {
         .to_string()
 }
 
-/// Agents get this for any change on a site they have no connection to (plan 5.6).
-pub const NO_AGENT_ACCESS: &str = "Monks Central has no agent access to this site, so agents can only read it. Make the change in the Monks Central app, where you confirm it, or give agents their own access to this site.";
+/// Agents get this for any change on a site they have no grant on (plan 5.6).
+pub const NO_AGENT_ACCESS: &str = "AI agents can only read this site: it has no AI agent access. Propose the change as a plan, which a person confirms in the Monks Central app, or ask them to turn on AI agent access for this site there (AI), so the site asks them to approve each change.";
 
 impl Core {
     fn inventory_of(&self, id: i64) -> Result<Option<Inventory>, SiteError> {
@@ -860,33 +860,6 @@ impl Core {
                 })))
             }
         }
-    }
-
-    /// A tool call from an agent on the socket. Reads use the app's connection;
-    /// changes need the agent's own connection, which no site has yet, so they
-    /// are refused before anything is sent.
-    pub async fn agent_call(
-        &self,
-        site: &str,
-        tool: &str,
-        args: Value,
-    ) -> Result<Value, SiteError> {
-        let wanted = site.trim().trim_end_matches('/');
-        let site = self
-            .sites()?
-            .into_iter()
-            .find(|s| s.id.to_string() == wanted || s.url == wanted || s.name == wanted)
-            .ok_or_else(|| plain(format!("No site called {wanted} in Monks Central.")))?;
-        if site.mode != Mode::ClassicMonks || !has_tool(&site, tool) {
-            return Err(plain(format!("{} has no {tool} tool.", site.name)));
-        }
-        let read_only = site.capabilities["read_only"]
-            .as_array()
-            .is_some_and(|r| r.iter().any(|t| t == tool));
-        if !read_only {
-            return Err(SiteError::Plain(NO_AGENT_ACCESS.into()));
-        }
-        self.call_ability(site.id, tool, args).await
     }
 }
 

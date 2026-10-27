@@ -88,6 +88,14 @@ pub struct State {
     refresh_tokens: HashMap<String, (bool, u32)>,
     /// Access token -> family.
     pub access_tokens: HashMap<String, u32>,
+    /// Client id -> the name it registered with.
+    client_names: HashMap<String, String>,
+    /// The human ticks "operator" on the consent page for AI agents' grant too.
+    pub agent_operator: bool,
+    /// Changes by AI agents' grant waiting for approval: (op id, tool, arguments).
+    pub pending: Vec<(i64, String, serde_json::Value)>,
+    /// Approved on the site, not run yet.
+    approved: Vec<(String, serde_json::Value)>,
 }
 
 impl Default for State {
@@ -157,6 +165,10 @@ impl Default for State {
             families: HashMap::new(),
             refresh_tokens: HashMap::new(),
             access_tokens: HashMap::new(),
+            client_names: HashMap::new(),
+            agent_operator: false,
+            pending: Vec::new(),
+            approved: Vec::new(),
         }
     }
 }
@@ -238,6 +250,46 @@ impl State {
         live.len()
     }
 
+    /// A person approves every waiting change on the site's approve page.
+    pub fn approve_all(&mut self) {
+        let pending = std::mem::take(&mut self.pending);
+        self.approved
+            .extend(pending.into_iter().map(|(_, tool, args)| (tool, args)));
+    }
+
+    /// Grant families given to AI agents' client that still work.
+    pub fn agent_grants(&self) -> usize {
+        let mut live: Vec<u32> = self
+            .access_tokens
+            .values()
+            .copied()
+            .filter(|f| self.is_agent(*f))
+            .collect();
+        live.sort_unstable();
+        live.dedup();
+        live.len()
+    }
+
+    /// The owner removes AI agents' connection on the site.
+    pub fn end_agent_grants(&mut self) {
+        let agents: Vec<u32> = self
+            .families
+            .keys()
+            .copied()
+            .filter(|f| self.is_agent(*f))
+            .collect();
+        for f in agents {
+            self.revoke_family(f);
+        }
+    }
+
+    fn is_agent(&self, family: u32) -> bool {
+        self.families
+            .get(&family)
+            .and_then(|c| self.client_names.get(c))
+            .is_some_and(|n| n == crate::oauth::AGENT_CLIENT_NAME)
+    }
+
     fn revoke_family(&mut self, family: u32) {
         self.refresh_tokens.retain(|_, (_, f)| *f != family);
         self.access_tokens.retain(|_, f| *f != family);
@@ -293,11 +345,10 @@ async fn register(Ax(s): Ax<Shared>, Json(body): Json<serde_json::Value>) -> Res
     assert_eq!(body["redirect_uris"][0], crate::oauth::REDIRECT_URI);
     let mut s = s.lock().unwrap();
     s.clients += 1;
-    (
-        StatusCode::CREATED,
-        Json(json!({ "client_id": format!("cmc_test_{}", s.clients) })),
-    )
-        .into_response()
+    let id = format!("cmc_test_{}", s.clients);
+    let name = body["client_name"].as_str().unwrap_or_default().to_string();
+    s.client_names.insert(id.clone(), name);
+    (StatusCode::CREATED, Json(json!({ "client_id": id }))).into_response()
 }
 
 /// Stands in for the consent page: approves at once and goes back to the app.
@@ -423,8 +474,9 @@ async fn home(Ax(s): Ax<Shared>, Query(q): Query<HashMap<String, String>>) -> Re
         .into_response()
 }
 
-fn bearer(s: &mut State, h: &HeaderMap) -> bool {
-    let mut ok = false;
+/// The grant family of a token the request carries, if one is live.
+fn bearer(s: &mut State, h: &HeaderMap) -> Option<u32> {
+    let mut ok = None;
     for name in ["authorization", "x-cm-authorization"] {
         if name == "authorization" && s.strip_authorization {
             continue;
@@ -439,21 +491,23 @@ fn bearer(s: &mut State, h: &HeaderMap) -> bool {
         if name == "x-cm-authorization" {
             s.seen_x_cm += 1;
         }
-        ok |= s.access_tokens.contains_key(token);
+        ok = ok.or(s.access_tokens.get(token).copied());
     }
     ok
 }
 
 async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>) -> Response {
     let mut s = s.lock().unwrap();
-    if !bearer(&mut s, &h) {
+    let Some(family) = bearer(&mut s, &h) else {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({ "code": "cm_mcp_unauthorized" })),
         )
             .into_response();
-    }
+    };
     s.mcp_calls += 1;
+    let agent = s.is_agent(family);
+    let operator = if agent { s.agent_operator } else { s.operator };
     let result = match req["method"].as_str() {
         Some("tools/list") => {
             let mut tools = vec![
@@ -479,7 +533,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 "php": { "version": "8.4.26" },
                 "mcp": { "approvals": true },
                 "modules": { "ai": true, "woocommerce": true, "bricks": false },
-                "connection": { "operator": s.operator, "scope": "full" },
+                "connection": { "operator": operator, "scope": "full" },
                 "pending_approvals": 0,
             });
             json!({ "content": [{ "type": "text", "text": status.to_string() }], "structuredContent": status })
@@ -494,6 +548,30 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
         {
             let name = req["params"]["name"].as_str().unwrap_or_default().to_string();
             let args = req["params"]["arguments"].clone();
+            let read_only = PLUGIN_TOOLS
+                .iter()
+                .chain(CONTENT_TOOLS)
+                .chain(PEOPLE_TOOLS)
+                .any(|(n, r)| *n == name && *r)
+                || name == "get-posts";
+            // Classic Monks' approval gate: a change by a grant that isn't the operator waits.
+            if agent && !operator && !read_only {
+                let call = (name.clone(), args.clone());
+                if let Some(i) = s.approved.iter().position(|a| *a == call) {
+                    s.approved.remove(i);
+                } else {
+                    let op = 40 + s.pending.len() as i64;
+                    s.pending.push((op, name, args));
+                    let url = format!("{}/wp-admin/admin.php?page=cm-ai-approve&op={op}", s.base);
+                    let err = json!({
+                        "error": format!("This change needs approval. Ask the user to open {url} and approve it, then call the same tool again with exactly the same arguments."),
+                        "code": "cm_approval_required", "op_id": op, "approve_url": url,
+                    });
+                    return Json(json!({ "jsonrpc": "2.0", "id": req["id"], "result": {
+                        "content": [{ "type": "text", "text": err.to_string() }], "structuredContent": err, "isError": true,
+                    } })).into_response();
+                }
+            }
             s.calls.push((name.clone(), args.clone()));
             let out = if s.fail_tool.as_deref() == Some(name.as_str()) {
                 Err("The update could not be installed.".to_string())

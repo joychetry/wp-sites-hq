@@ -80,7 +80,8 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
             .sites()
             .map(|s| json!(s))
             .map_err(|e| RpcError::new("store", e.to_string())),
-        // One tool on one site. Reads only, until agents have their own access (plan 5.6).
+        // One tool on one site: reads with the app's grant, changes with the
+        // agents' own, which the site's approvals guard (plan 5.6).
         "site.run" => {
             let p = &req.params;
             let (Some(site), Some(tool)) = (p["site"].as_str(), p["tool"].as_str()) else {
@@ -90,15 +91,7 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
                 ));
             };
             let args = p.get("arguments").cloned().unwrap_or_else(|| json!({}));
-            core.agent_call(site, tool, args).await.map_err(|e| {
-                let msg = e.to_string();
-                let code = if msg == crate::fleet::NO_AGENT_ACCESS {
-                    "no_agent_access"
-                } else {
-                    "site"
-                };
-                RpcError::new(code, msg)
-            })
+            core.agent_call(site, tool, args).await.map_err(agent_error)
         }
         // Stopping is not a privilege (the same user can end the process), but
         // only a headless core stops: the app window stays until its user closes it.
@@ -115,6 +108,17 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
             format!("Unknown method `{m}`."),
         )),
     }
+}
+
+/// A site error for an agent, with a code it can act on.
+fn agent_error(e: crate::connect::SiteError) -> RpcError {
+    use crate::connect::SiteError;
+    let code = match &e {
+        SiteError::NeedsApproval { .. } => "approval_required",
+        SiteError::Plain(m) if m == crate::fleet::NO_AGENT_ACCESS => "no_agent_access",
+        _ => "site",
+    };
+    RpcError::new(code, e.to_string())
 }
 
 async fn serve_conn<S: AsyncRead + AsyncWrite>(

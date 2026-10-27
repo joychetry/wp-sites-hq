@@ -90,6 +90,11 @@ pub struct Site {
     pub tags: Vec<String>,
     pub notes: Vec<Note>,
     pub added_at: i64,
+    /// AI agents' own grant (plan 5.6). Its tokens are the `site:<id>:agent` secret.
+    #[serde(skip)]
+    pub agent_oauth: Option<OAuthClient>,
+    /// Agents may change this site, each change approved on the site.
+    pub agent_access: bool,
 }
 
 /// What a connect step learned about a site.
@@ -133,13 +138,16 @@ pub fn url_string(url: &Url) -> String {
 
 const COLUMNS: &str = "s.id, s.url, s.name, s.mode, s.api_url, s.oauth, s.username, s.wp_version,
     s.php_version, s.cm_version, s.capabilities, s.sign_in_again, s.health, s.health_detail,
-    s.checked_at, g.name, s.added_at";
+    s.checked_at, g.name, s.added_at, s.agent_oauth";
 
 fn from_row(r: &Row) -> rusqlite::Result<Site> {
     let mode: String = r.get(3)?;
     let oauth: Option<String> = r.get(5)?;
     let caps: String = r.get(10)?;
     let health: String = r.get(12)?;
+    let agent_oauth: Option<OAuthClient> = r
+        .get::<_, Option<String>>(17)?
+        .and_then(|o| serde_json::from_str(&o).ok());
     Ok(Site {
         id: r.get(0)?,
         url: r.get(1)?,
@@ -164,6 +172,8 @@ fn from_row(r: &Row) -> rusqlite::Result<Site> {
         tags: Vec::new(),
         notes: Vec::new(),
         added_at: r.get(16)?,
+        agent_access: agent_oauth.is_some(),
+        agent_oauth,
     })
 }
 
@@ -249,6 +259,18 @@ pub fn set_connection(conn: &Connection, id: i64, new: &NewSite) -> rusqlite::Re
             new.api_url,
             new.oauth.map(|o| serde_json::to_string(o).expect("plain struct")),
             new.username,
+        ],
+    )?;
+    Ok(())
+}
+
+/// AI agents' grant on the site, or none.
+pub fn set_agent(conn: &Connection, id: i64, client: Option<&OAuthClient>) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE sites SET agent_oauth = ?2 WHERE id = ?1",
+        params![
+            id,
+            client.map(|o| serde_json::to_string(o).expect("plain struct"))
         ],
     )?;
     Ok(())

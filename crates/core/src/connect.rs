@@ -32,6 +32,12 @@ pub enum SiteError {
     SignInAgain,
     #[error("This site runs WordPress {0}. {TOO_OLD}")]
     TooOld(String),
+    /// The site's own approval gate stopped the change until a person approves it there.
+    #[error("{message}")]
+    NeedsApproval {
+        message: String,
+        approve_url: String,
+    },
 }
 
 pub(crate) fn plain(msg: impl Into<String>) -> SiteError {
@@ -87,8 +93,35 @@ pub struct Removed {
 }
 
 fn secret_name(id: i64) -> String {
-    format!("site:{id}")
+    Grant::Operator.secret(id)
 }
+
+/// Which of a site's two Classic Monks grants: the app's own (operator), or the
+/// one AI agents use, where the site's approvals still apply (plan 5.6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum Grant {
+    Operator,
+    Agent,
+}
+
+impl Grant {
+    pub(crate) fn secret(self, id: i64) -> String {
+        match self {
+            Grant::Operator => format!("site:{id}"),
+            Grant::Agent => format!("site:{id}:agent"),
+        }
+    }
+
+    fn client(self, site: &Site) -> Option<&OAuthClient> {
+        match self {
+            Grant::Operator => site.oauth.as_ref(),
+            Grant::Agent => site.agent_oauth.as_ref(),
+        }
+    }
+}
+
+/// An agent grant the site no longer honours.
+pub const AGENT_ACCESS_ENDED: &str = "AI agents' access to this site has ended on the site. Turn it on again in the Monks Central app, under AI.";
 
 /// "7.1.3" and "7.1-beta2" pass; "7.0.7" doesn't. Unreadable versions pass:
 /// they can't be shown to be too old.
@@ -132,10 +165,34 @@ impl Core {
     }
 
     fn save_secret(&self, id: i64, secret: &impl Serialize) -> Result<(), SiteError> {
+        self.save_named(&secret_name(id), secret)
+    }
+
+    pub(crate) fn save_named(&self, name: &str, secret: &impl Serialize) -> Result<(), SiteError> {
         let bytes = zeroize::Zeroizing::new(serde_json::to_vec(secret).expect("plain struct"));
         let vault = self.vault()?;
-        self.db(|c| Ok(vault.put(c, &secret_name(id), &bytes)))?
+        self.db(|c| Ok(vault.put(c, name, &bytes)))?
             .map_err(|e| plain(e.to_string()))
+    }
+
+    /// A secret, or `None` when it is missing or won't open.
+    fn open_named<T: serde::de::DeserializeOwned>(
+        &self,
+        name: &str,
+    ) -> Result<Option<T>, SiteError> {
+        let vault = self.vault()?;
+        let got = self.db(|c| Ok(vault.get(c, name)))?;
+        match got {
+            Ok(Some(bytes)) => Ok(serde_json::from_slice(&bytes).ok()),
+            Ok(None) | Err(VaultError::SignInAgain) => Ok(None),
+            Err(e) => Err(plain(e.to_string())),
+        }
+    }
+
+    /// Delete a secret, even when the keychain is gone.
+    pub(crate) fn delete_named(&self, c: &Connection, name: &str) -> rusqlite::Result<()> {
+        c.execute("DELETE FROM credentials WHERE name = ?1", [name])?;
+        Ok(())
     }
 
     /// The site's secret, or "Sign in again" (and the site marked so) when it
@@ -144,14 +201,7 @@ impl Core {
         &self,
         id: i64,
     ) -> Result<T, SiteError> {
-        let vault = self.vault()?;
-        let got = self.db(|c| Ok(vault.get(c, &secret_name(id))))?;
-        let parsed = match got {
-            Ok(Some(bytes)) => serde_json::from_slice(&bytes).ok(),
-            Ok(None) | Err(VaultError::SignInAgain) => None,
-            Err(e) => return Err(plain(e.to_string())),
-        };
-        match parsed {
+        match self.open_named(&secret_name(id))? {
             Some(t) => Ok(t),
             None => {
                 self.mark_sign_in_again(id)?;
@@ -277,55 +327,7 @@ impl Core {
         let _work = self.working().await;
         let url = self.start_add(input, existing).await?;
         let key = url.as_str();
-        let d = oauth::discover(&self.http, &self.limits, &url).await?.ok_or_else(|| {
-            plain("This site has no Classic Monks connection. Switch on AI > MCP in Classic Monks, or add the site in Basic mode with an application password.")
-        })?;
-        let client_id = oauth::register(&self.http, &self.limits, key, &d).await?;
-        let pkce = oauth::pkce();
-        let state = oauth::random_token(24);
-        let loopback = oauth::Loopback::bind()
-            .await
-            .map_err(|e| plain(format!("Couldn't open a local return address: {e}")))?;
-        let redirect_uri = loopback.redirect_uri.clone();
-        let auth_url =
-            oauth::authorize_url(&d, &client_id, &redirect_uri, &state, &pkce.challenge)?;
-
-        let (tx, rx) = oneshot::channel();
-        {
-            let mut slot = self.sign_in.lock().unwrap();
-            if slot.as_ref().is_some_and(|t| !t.is_closed()) {
-                return Err(plain(
-                    "Another sign-in is open in your browser. Finish or cancel it first.",
-                ));
-            }
-            *slot = Some(tx);
-        }
-        open(&auth_url).map_err(|e| plain(format!("Couldn't open your browser: {e}")))?;
-        let code = tokio::select! {
-            r = loopback.wait(&state, &d.issuer) => r?,
-            _ = rx => return Err(plain("Sign-in cancelled.")),
-            () = tokio::time::sleep(SIGN_IN_WAIT) => return Err(plain("The sign-in took too long. Try again.")),
-        };
-        let tokens = oauth::exchange(
-            &self.http,
-            &self.limits,
-            key,
-            &oauth::Exchange {
-                token_endpoint: &d.token_endpoint,
-                client_id: &client_id,
-                code: &code,
-                redirect_uri: &redirect_uri,
-                verifier: &pkce.verifier,
-                resource: &d.resource,
-            },
-        )
-        .await?;
-        let client = OAuthClient {
-            issuer: d.issuer.clone(),
-            token_endpoint: d.token_endpoint.clone(),
-            revocation_endpoint: d.revocation_endpoint.clone(),
-            client_id,
-        };
+        let (d, client, tokens) = self.oauth_sign_in(&url, oauth::CLIENT_NAME, open).await?;
 
         let mut details = match self
             .describe_cm(key, &d.resource, &tokens.access_token, &url)
@@ -373,9 +375,70 @@ impl Core {
         }
     }
 
+    /// Register `client_name`, send the human to the site's consent page, and
+    /// take the grant they give.
+    pub(crate) async fn oauth_sign_in(
+        &self,
+        url: &Url,
+        client_name: &str,
+        open: impl FnOnce(&str) -> std::io::Result<()>,
+    ) -> Result<(oauth::Discovery, OAuthClient, Tokens), SiteError> {
+        let key = url.as_str();
+        let d = oauth::discover(&self.http, &self.limits, url).await?.ok_or_else(|| {
+            plain("This site has no Classic Monks connection. Switch on AI > MCP in Classic Monks, or add the site in Basic mode with an application password.")
+        })?;
+        let client_id = oauth::register(&self.http, &self.limits, key, &d, client_name).await?;
+        let pkce = oauth::pkce();
+        let state = oauth::random_token(24);
+        let loopback = oauth::Loopback::bind()
+            .await
+            .map_err(|e| plain(format!("Couldn't open a local return address: {e}")))?;
+        let redirect_uri = loopback.redirect_uri.clone();
+        let auth_url =
+            oauth::authorize_url(&d, &client_id, &redirect_uri, &state, &pkce.challenge)?;
+
+        let (tx, rx) = oneshot::channel();
+        {
+            let mut slot = self.sign_in.lock().unwrap();
+            if slot.as_ref().is_some_and(|t| !t.is_closed()) {
+                return Err(plain(
+                    "Another sign-in is open in your browser. Finish or cancel it first.",
+                ));
+            }
+            *slot = Some(tx);
+        }
+        open(&auth_url).map_err(|e| plain(format!("Couldn't open your browser: {e}")))?;
+        let code = tokio::select! {
+            r = loopback.wait(&state, &d.issuer) => r?,
+            _ = rx => return Err(plain("Sign-in cancelled.")),
+            () = tokio::time::sleep(SIGN_IN_WAIT) => return Err(plain("The sign-in took too long. Try again.")),
+        };
+        let tokens = oauth::exchange(
+            &self.http,
+            &self.limits,
+            key,
+            &oauth::Exchange {
+                token_endpoint: &d.token_endpoint,
+                client_id: &client_id,
+                code: &code,
+                redirect_uri: &redirect_uri,
+                verifier: &pkce.verifier,
+                resource: &d.resource,
+            },
+        )
+        .await?;
+        let client = OAuthClient {
+            issuer: d.issuer.clone(),
+            token_endpoint: d.token_endpoint.clone(),
+            revocation_endpoint: d.revocation_endpoint.clone(),
+            client_id,
+        };
+        Ok((d, client, tokens))
+    }
+
     /// Give back a grant: one just made for a site that won't be added, or the
     /// one a new sign-in replaced.
-    async fn revoke_fresh(&self, key: &str, client: &OAuthClient, tokens: &Tokens) {
+    pub(crate) async fn revoke_fresh(&self, key: &str, client: &OAuthClient, tokens: &Tokens) {
         if let Some(endpoint) = &client.revocation_endpoint {
             let _ = oauth::revoke(
                 &self.http,
@@ -430,7 +493,7 @@ impl Core {
 
     /// Versions and capabilities from the ability list and `get-hq-status`,
     /// never from a version header (plan 5.4).
-    async fn describe_cm(
+    pub(crate) async fn describe_cm(
         &self,
         key: &str,
         mcp_url: &str,
@@ -532,20 +595,49 @@ impl Core {
         .await?)
     }
 
-    fn refresh_lock(&self, id: i64) -> Arc<tokio::sync::Mutex<()>> {
+    pub(crate) fn refresh_lock(&self, id: i64, grant: Grant) -> Arc<tokio::sync::Mutex<()>> {
         self.refresh_locks
             .lock()
             .unwrap()
-            .entry(id)
+            .entry((id, grant))
             .or_default()
             .clone()
     }
 
+    /// The grant's saved tokens. A missing agent grant means agents have no access.
+    pub(crate) fn tokens(&self, id: i64, grant: Grant) -> Result<Tokens, SiteError> {
+        match grant {
+            Grant::Operator => self.load_secret(id),
+            Grant::Agent => self
+                .open_named(&grant.secret(id))?
+                .ok_or_else(|| plain(crate::fleet::NO_AGENT_ACCESS)),
+        }
+    }
+
+    /// The site stopped honouring a grant: the app's means "Sign in again";
+    /// the agents' is forgotten, so agents can only read until it is turned on again.
+    fn grant_lost(&self, id: i64, grant: Grant) -> SiteError {
+        match grant {
+            Grant::Operator => match self.mark_sign_in_again(id) {
+                Ok(()) => SiteError::SignInAgain,
+                Err(e) => e,
+            },
+            Grant::Agent => {
+                let _ = self.db(|c| {
+                    self.delete_named(c, &grant.secret(id))?;
+                    sites::set_agent(c, id, None)
+                });
+                self.notify();
+                plain(AGENT_ACCESS_ENDED)
+            }
+        }
+    }
+
     /// A working access token: the saved one, or one refresh away.
-    async fn access_token(&self, site: &Site) -> Result<Tokens, SiteError> {
-        let tokens: Tokens = self.load_secret(site.id)?;
+    async fn access_token(&self, site: &Site, grant: Grant) -> Result<Tokens, SiteError> {
+        let tokens = self.tokens(site.id, grant)?;
         if tokens.expiring() {
-            return self.refresh_after(site, &tokens.access_token).await;
+            return self.refresh_after(site, grant, &tokens.access_token).await;
         }
         Ok(tokens)
     }
@@ -555,20 +647,24 @@ impl Core {
     /// have rotated the token on the site but whose answer was lost puts the
     /// site in "Sign in again" with no retry: the plugin revokes the whole
     /// grant when a spent refresh token comes back.
-    async fn refresh_after(&self, site: &Site, seen: &str) -> Result<Tokens, SiteError> {
-        let lock = self.refresh_lock(site.id);
+    async fn refresh_after(
+        &self,
+        site: &Site,
+        grant: Grant,
+        seen: &str,
+    ) -> Result<Tokens, SiteError> {
+        let lock = self.refresh_lock(site.id, grant);
         let _one = lock.lock().await;
-        let current: Tokens = self.load_secret(site.id)?;
+        let current = self.tokens(site.id, grant)?;
         if current.access_token != seen && !current.expiring() {
             return Ok(current);
         }
         let site = self.site(site.id)?;
-        if site.sign_in_again {
+        if grant == Grant::Operator && site.sign_in_again {
             return Err(SiteError::SignInAgain);
         }
-        let client = site
-            .oauth
-            .as_ref()
+        let client = grant
+            .client(&site)
             .ok_or_else(|| plain("This site has no sign-in to renew."))?;
         self.refreshes.fetch_add(1, Ordering::SeqCst);
         let renewed = oauth::refresh(
@@ -584,16 +680,15 @@ impl Core {
         match renewed {
             Ok(tokens) => {
                 // The old refresh token is spent: if the new one can't be kept, only a new sign-in helps.
-                if let Err(e) = self.save_secret(site.id, &tokens) {
-                    self.mark_sign_in_again(site.id)?;
+                if let Err(e) = self.save_named(&grant.secret(site.id), &tokens) {
+                    self.grant_lost(site.id, grant);
                     return Err(e);
                 }
                 Ok(tokens)
             }
             Err(RefreshError::NotSent(e)) => Err(e.into()),
             Err(RefreshError::Rejected(_) | RefreshError::Lost(_)) => {
-                self.mark_sign_in_again(site.id)?;
-                Err(SiteError::SignInAgain)
+                Err(self.grant_lost(site.id, grant))
             }
         }
     }
@@ -607,7 +702,16 @@ impl Core {
         {
             let _work = self.working().await;
             if let Ok(t) = self.load_secret::<Tokens>(site.id) {
-                let _ = self.refresh_after(&site, &t.access_token).await;
+                let _ = self
+                    .refresh_after(&site, Grant::Operator, &t.access_token)
+                    .await;
+            }
+            if site.agent_access
+                && let Ok(t) = self.tokens(site.id, Grant::Agent)
+            {
+                let _ = self
+                    .refresh_after(&site, Grant::Agent, &t.access_token)
+                    .await;
             }
         }
     }
@@ -642,6 +746,7 @@ impl Core {
         let reply = self
             .mcp(
                 &site,
+                Grant::Operator,
                 "tools/call",
                 json!({ "name": tool, "arguments": args }),
                 retry,
@@ -650,17 +755,18 @@ impl Core {
         tool_output(reply)
     }
 
-    async fn mcp(
+    pub(crate) async fn mcp(
         &self,
         site: &Site,
+        grant: Grant,
         method: &str,
         params: Value,
         retry: Retry,
     ) -> Result<Value, SiteError> {
-        if site.sign_in_again {
+        if grant == Grant::Operator && site.sign_in_again {
             return Err(SiteError::SignInAgain);
         }
-        let tokens = self.access_token(site).await?;
+        let tokens = self.access_token(site, grant).await?;
         let mut reply = self
             .post_mcp(
                 &site.url,
@@ -673,7 +779,9 @@ impl Core {
             .await?;
         if reply.status == 401 {
             // Refused before it ran, so sending it again is safe.
-            let tokens = self.refresh_after(site, &tokens.access_token).await?;
+            let tokens = self
+                .refresh_after(site, grant, &tokens.access_token)
+                .await?;
             reply = self
                 .post_mcp(
                     &site.url,
@@ -685,8 +793,7 @@ impl Core {
                 )
                 .await?;
             if reply.status == 401 {
-                self.mark_sign_in_again(site.id)?;
-                return Err(SiteError::SignInAgain);
+                return Err(self.grant_lost(site.id, grant));
             }
         }
         rpc_result(reply)
@@ -911,7 +1018,13 @@ impl Core {
                 d.capabilities["pending_approvals"] = hq["pending_approvals"].clone();
                 // Tools come and go with Classic Monks updates: keep the list current.
                 let list = self
-                    .mcp(site, "tools/list", json!({}), Retry::ReadOnly)
+                    .mcp(
+                        site,
+                        Grant::Operator,
+                        "tools/list",
+                        json!({}),
+                        Retry::ReadOnly,
+                    )
                     .await?;
                 let (names, read_only) = tool_names(&list);
                 d.capabilities["abilities"] = json!(names);
@@ -919,7 +1032,13 @@ impl Core {
                 self.db(|c| sites::set_details(c, site.id, &d))
             }
             Mode::ClassicMonks => self
-                .mcp(site, "tools/list", json!({}), Retry::ReadOnly)
+                .mcp(
+                    site,
+                    Grant::Operator,
+                    "tools/list",
+                    json!({}),
+                    Retry::ReadOnly,
+                )
                 .await
                 .map(drop),
             Mode::Basic => {
@@ -978,7 +1097,7 @@ impl Core {
         let _work = self.working().await;
         let site = self.site(id)?;
         let (signed_out, message) = match site.mode {
-            Mode::ClassicMonks => match self.revoke_site(&site).await {
+            Mode::ClassicMonks => match self.revoke_grant(&site, Grant::Operator).await {
                 Ok(()) => (true, "Removed. Monks Central signed out of the site.".to_string()),
                 Err(e) => (
                     false,
@@ -990,16 +1109,18 @@ impl Core {
                 "Removed. The application password still exists on the site: delete it under Users > Profile if nothing else uses it.".to_string(),
             ),
         };
-        let vault = self.vault().ok();
+        if site.agent_access {
+            let _ = self.revoke_grant(&site, Grant::Agent).await;
+        }
         self.db(|c| {
-            if let Some(v) = &vault {
-                let _ = v.delete(c, &secret_name(id));
-            } else {
-                c.execute("DELETE FROM credentials WHERE name = ?1", [secret_name(id)])?;
-            }
+            self.delete_named(c, &secret_name(id))?;
+            self.delete_named(c, &Grant::Agent.secret(id))?;
             sites::delete(c, id)
         })?;
-        self.refresh_locks.lock().unwrap().remove(&id);
+        self.refresh_locks
+            .lock()
+            .unwrap()
+            .retain(|(site, _), _| *site != id);
         self.notify();
         Ok(Removed {
             signed_out,
@@ -1007,20 +1128,19 @@ impl Core {
         })
     }
 
-    async fn revoke_site(&self, site: &Site) -> Result<(), SiteError> {
-        let client = site
-            .oauth
-            .as_ref()
+    pub(crate) async fn revoke_grant(&self, site: &Site, grant: Grant) -> Result<(), SiteError> {
+        let client = grant
+            .client(site)
             .ok_or_else(|| plain("no sign-in details"))?;
         let endpoint = client
             .revocation_endpoint
             .as_deref()
             .ok_or_else(|| plain("the site has no sign-out address"))?;
-        let tokens: Tokens = self.load_secret(site.id)?;
+        let tokens = self.tokens(site.id, grant)?;
         // Waits for an in-flight refresh, so the token revoked is the current one.
-        let lock = self.refresh_lock(site.id);
+        let lock = self.refresh_lock(site.id, grant);
         let _one = lock.lock().await;
-        let tokens = self.load_secret::<Tokens>(site.id).unwrap_or(tokens);
+        let tokens = self.tokens(site.id, grant).unwrap_or(tokens);
         oauth::revoke(
             &self.http,
             &self.limits,
@@ -1112,12 +1232,21 @@ fn tool_names(list: &Value) -> (Vec<&str>, Vec<&str>) {
 }
 
 /// A tool call's structured output, or its error text.
-fn tool_output(result: Value) -> Result<Value, SiteError> {
+pub(crate) fn tool_output(result: Value) -> Result<Value, SiteError> {
     if result["isError"] == true {
-        let msg = result["structuredContent"]["error"]
+        let err = &result["structuredContent"];
+        let msg = err["error"]
             .as_str()
             .or_else(|| result["content"][0]["text"].as_str())
             .unwrap_or("The tool failed.");
+        if err["code"] == "cm_approval_required"
+            && let Some(url) = err["approve_url"].as_str()
+        {
+            return Err(SiteError::NeedsApproval {
+                message: site_said(msg),
+                approve_url: url.to_string(),
+            });
+        }
         return Err(plain(site_said(msg)));
     }
     if let Some(s) = result.get("structuredContent") {
