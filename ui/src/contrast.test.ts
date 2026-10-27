@@ -8,6 +8,8 @@ const css = readFileSync(new URL("./styles/tokens.css", import.meta.url), "utf8"
 
 function block(selector: string): Record<string, string> {
   const at = css.indexOf(`${selector} {`);
+  // Without this a missing block would quietly reuse the first one and check nothing new.
+  if (at < 0) throw new Error(`${selector} is not in tokens.css`);
   const body = css.slice(css.indexOf("{", at) + 1, css.indexOf("}", at));
   return Object.fromEntries([...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
