@@ -81,7 +81,7 @@ pub async fn run(
 
     out.push(match (keychain, &store) {
         (Err(e), _) => check(Level::Fail, "Keychain", e),
-        (Ok(kc), store) => keychain_and_vault(kc, store.as_ref()),
+        (Ok(kc), store) => keychain_and_vault(kc, home, store.as_ref()),
     });
 
     out.push(
@@ -138,8 +138,9 @@ pub async fn run(
     out
 }
 
-fn keychain_and_vault(kc: &CredentialStore, store: Option<&Store>) -> Check {
-    let key = match vault::load_or_create_master_key(kc) {
+fn keychain_and_vault(kc: &CredentialStore, home: &Path, store: Option<&Store>) -> Check {
+    let home = home.canonicalize().unwrap_or_else(|_| home.to_path_buf());
+    let key = match vault::load_or_create_master_key(kc, &home) {
         Ok(k) => k,
         Err(e) => return check(Level::Fail, "Keychain", e.to_string()),
     };

@@ -1,16 +1,17 @@
 //! Secret vault: records encrypted with XChaCha20-Poly1305 in SQLite, under one
 //! master key kept in the OS keychain.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use chacha20poly1305::aead::{Aead, Generate, KeyInit, Payload};
 use chacha20poly1305::{Key, XChaCha20Poly1305, XNonce};
 use keyring_core::{CredentialStore, Error as KeyringError};
 use rusqlite::{Connection, OptionalExtension, params};
+use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
 pub const KEYCHAIN_SERVICE: &str = "com.classicmonks.monks-central";
-pub const KEYCHAIN_USER: &str = "master-key";
 const KEY_LEN: usize = 32;
 const NONCE_LEN: usize = 24;
 
@@ -43,14 +44,25 @@ pub fn os_keychain() -> Result<Arc<CredentialStore>, VaultError> {
     Ok(store)
 }
 
+/// Keychain account for a data folder's master key: one item per folder, so a
+/// test folder never reads or replaces the real one. Pass the canonical path.
+pub fn keychain_account(home: &Path) -> String {
+    let hash = Sha256::digest(home.to_string_lossy().as_bytes());
+    let hex: String = hash[..8].iter().map(|b| format!("{b:02x}")).collect();
+    format!("master-key-{hex}")
+}
+
 pub struct MasterKey(Zeroizing<[u8; KEY_LEN]>);
 
-/// Load the master key, or create it if the keychain has none.
+/// Load the data folder's master key, or create it if the keychain has none.
 ///
 /// A key is created only on "no entry". Any other keychain error stops here,
 /// so records sealed with an existing key are never orphaned.
-pub fn load_or_create_master_key(keychain: &CredentialStore) -> Result<MasterKey, VaultError> {
-    let entry = keychain.build(KEYCHAIN_SERVICE, KEYCHAIN_USER, None)?;
+pub fn load_or_create_master_key(
+    keychain: &CredentialStore,
+    home: &Path,
+) -> Result<MasterKey, VaultError> {
+    let entry = keychain.build(KEYCHAIN_SERVICE, &keychain_account(home), None)?;
     match entry.get_secret() {
         Ok(bytes) => master_key(Zeroizing::new(bytes)),
         Err(KeyringError::NoEntry) => {
@@ -162,6 +174,8 @@ mod tests {
     use crate::store::Store;
     use keyring_core::mock;
 
+    const HOME: &str = "/data/monks";
+
     fn mock_keychain() -> Arc<CredentialStore> {
         mock::Store::new().unwrap()
     }
@@ -175,8 +189,8 @@ mod tests {
     #[test]
     fn master_key_is_created_once_and_reused() {
         let kc = mock_keychain();
-        let a = load_or_create_master_key(&*kc).unwrap();
-        let b = load_or_create_master_key(&*kc).unwrap();
+        let a = load_or_create_master_key(&*kc, HOME.as_ref()).unwrap();
+        let b = load_or_create_master_key(&*kc, HOME.as_ref()).unwrap();
         assert_eq!(*a.0, *b.0);
         assert_ne!(*a.0, [0u8; KEY_LEN]);
     }
@@ -184,23 +198,41 @@ mod tests {
     #[test]
     fn keychain_error_never_creates_a_new_key() {
         let kc = mock_keychain();
-        let entry = kc.build(KEYCHAIN_SERVICE, KEYCHAIN_USER, None).unwrap();
+        let entry = kc
+            .build(KEYCHAIN_SERVICE, &keychain_account(HOME.as_ref()), None)
+            .unwrap();
         let cred: &mock::Cred = entry.as_any().downcast_ref().unwrap();
         cred.set_error(KeyringError::PlatformFailure("locked".into()));
         assert!(matches!(
-            load_or_create_master_key(&*kc),
+            load_or_create_master_key(&*kc, HOME.as_ref()),
             Err(VaultError::Keychain(_))
         ));
         assert!(matches!(entry.get_secret(), Err(KeyringError::NoEntry)));
     }
 
     #[test]
+    fn each_data_folder_has_its_own_key() {
+        let kc = mock_keychain();
+        let a = load_or_create_master_key(&*kc, Path::new("/data/a")).unwrap();
+        let b = load_or_create_master_key(&*kc, Path::new("/data/b")).unwrap();
+        assert_ne!(*a.0, *b.0);
+        let again = load_or_create_master_key(&*kc, Path::new("/data/a")).unwrap();
+        assert_eq!(*a.0, *again.0);
+        assert_eq!(
+            keychain_account(Path::new("/data/a")).len(),
+            "master-key-".len() + 16
+        );
+    }
+
+    #[test]
     fn damaged_master_key_is_refused_and_kept() {
         let kc = mock_keychain();
-        let entry = kc.build(KEYCHAIN_SERVICE, KEYCHAIN_USER, None).unwrap();
+        let entry = kc
+            .build(KEYCHAIN_SERVICE, &keychain_account(HOME.as_ref()), None)
+            .unwrap();
         entry.set_secret(&[1, 2, 3]).unwrap();
         assert!(matches!(
-            load_or_create_master_key(&*kc),
+            load_or_create_master_key(&*kc, HOME.as_ref()),
             Err(VaultError::BadMasterKey(3))
         ));
         assert_eq!(entry.get_secret().unwrap(), vec![1, 2, 3]);
@@ -209,7 +241,8 @@ mod tests {
     #[test]
     fn put_get_delete_round_trip() {
         let (_d, store) = store();
-        let vault = Vault::new(&load_or_create_master_key(&*mock_keychain()).unwrap());
+        let vault =
+            Vault::new(&load_or_create_master_key(&*mock_keychain(), HOME.as_ref()).unwrap());
         let c = store.conn();
         assert!(vault.get(c, "site:1").unwrap().is_none());
         vault.put(c, "site:1", b"app-password").unwrap();
@@ -230,10 +263,12 @@ mod tests {
     fn wrong_key_or_moved_blob_says_sign_in_again() {
         let (_d, store) = store();
         let c = store.conn();
-        let vault = Vault::new(&load_or_create_master_key(&*mock_keychain()).unwrap());
+        let vault =
+            Vault::new(&load_or_create_master_key(&*mock_keychain(), HOME.as_ref()).unwrap());
         vault.put(c, "site:1", b"one").unwrap();
 
-        let other = Vault::new(&load_or_create_master_key(&*mock_keychain()).unwrap());
+        let other =
+            Vault::new(&load_or_create_master_key(&*mock_keychain(), HOME.as_ref()).unwrap());
         let err = other.get(c, "site:1").unwrap_err();
         assert!(matches!(err, VaultError::SignInAgain));
         assert_eq!(

@@ -24,7 +24,10 @@ of the script). Notes:
 ## Keychain
 
 The master key lives in the Secret Service (GNOME Keyring, KWallet) under
-service `com.classicmonks.monks-central`, account `master-key`. The Secret
+service `com.classicmonks.monks-central`, one item per data folder: account
+`master-key-<first 16 hex of sha256 of the data folder path>`. A test data
+folder (`MONKS_HOME`) has its own item; delete it with
+`secret-tool clear service com.classicmonks.monks-central username <account>`. The Secret
 Service has no per-app access control: any program running as your user can
 read the key while the keyring is unlocked. That is the same trust boundary as
 every other app on Linux; site secrets are still encrypted at rest in SQLite.
