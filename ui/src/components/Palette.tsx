@@ -35,7 +35,11 @@ export function Palette({ commands, onClose }: { commands: Command[]; onClose: (
       ),
     [commands, term],
   );
-  useEffect(() => input.current?.focus(), []);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    input.current?.focus();
+    return () => opener?.focus?.();
+  }, []);
   useEffect(() => setActive(0), [term]);
 
   const run = (c: Command | undefined) => {

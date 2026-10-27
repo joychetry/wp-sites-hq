@@ -73,6 +73,16 @@ test("Tab stays inside the Add a site sheet", async ({ page }) => {
   }
 });
 
+test("the palette gives focus back when it closes", async ({ page }) => {
+  await show(page, SCREENS[0], "light");
+  const search = page.getByRole("button", { name: /^Search or run/ });
+  await search.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("combobox", { name: "Command" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(search).toBeFocused();
+});
+
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
   for (const name of ["overview", "sites", "settings", "add-site"]) {
