@@ -151,7 +151,7 @@ export type Media = { id: number; title: string; url: string; mime: string; alt:
 export type User = { id: number; username: string; email: string; name: string; role: string; registered: string };
 export type Role = { id: string; name: string };
 export type Users = { users: User[]; total: number; roles: Role[]; can_reset: boolean };
-export type NewUser = { username: string; email: string; role: string; send_reset: boolean };
+export type NewUser = { username: string; email: string; role: string };
 
 export type CommentState = "pending" | "approved" | "spam" | "trash";
 export type Comment = {

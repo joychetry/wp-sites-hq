@@ -63,9 +63,6 @@ pub struct NewUser {
     pub first_name: String,
     #[serde(default)]
     pub last_name: String,
-    /// Email them the link to set a password (Classic Monks M7).
-    #[serde(default)]
-    pub send_reset: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -272,8 +269,9 @@ impl Core {
         }
     }
 
-    /// Add a user. Nobody sees their password; on Classic Monks sites they can
-    /// be emailed the link to set one.
+    /// Add a user. Nobody sees their password: email them the link to set one
+    /// with `send_password_reset`, a separate step so a mail failure never
+    /// reads as the user not being added.
     pub async fn create_user(&self, id: i64, new: NewUser) -> Result<User, SiteError> {
         let _work = self.working().await;
         let site = self.people_site(id, "create-user")?;
@@ -327,14 +325,6 @@ impl Core {
                 user_from(&v, true)
             }
         };
-        if new.send_reset {
-            self.reset_inner(&site, user.id).await.map_err(|e| {
-                plain(format!(
-                    "{} was added, but the password email didn't go out: {e}",
-                    user.username
-                ))
-            })?;
-        }
         Ok(user)
     }
 
@@ -566,12 +556,11 @@ mod tests {
         Ok(())
     }
 
-    fn new_user(name: &str, role: &str, send_reset: bool) -> NewUser {
+    fn new_user(name: &str, role: &str) -> NewUser {
         NewUser {
             username: name.into(),
             email: format!("{name}@example.com"),
             role: role.into(),
-            send_reset,
             ..Default::default()
         }
     }
@@ -591,26 +580,24 @@ mod tests {
         assert!(list.can_reset);
         assert_eq!(core.users(s.id, "sam", 1).await.unwrap().users.len(), 1);
 
-        // Added with the reset email; an administrator is confirmed by the window.
+        // An administrator is confirmed by the window; the reset email follows.
         let u = core
-            .create_user(s.id, new_user("lee", "administrator", true))
+            .create_user(s.id, new_user("lee", "administrator"))
             .await
             .unwrap();
         assert_eq!(
             (u.username.as_str(), u.role.as_str()),
             ("lee", "administrator")
         );
+        assert!(site.state().resets.is_empty());
+        core.send_password_reset(s.id, u.id).await.unwrap();
         assert_eq!(site.state().resets, [u.id]);
         let e = core
-            .create_user(s.id, new_user("lee", "subscriber", false))
+            .create_user(s.id, new_user("lee", "subscriber"))
             .await
             .unwrap_err();
         assert!(e.to_string().contains("already exists"));
-        assert!(
-            core.create_user(s.id, new_user("", "", false))
-                .await
-                .is_err()
-        );
+        assert!(core.create_user(s.id, new_user("", "")).await.is_err());
 
         core.set_role(s.id, u.id, "subscriber").await.unwrap();
         assert_eq!(site.state().users[2]["role"], "subscriber");
@@ -664,12 +651,6 @@ mod tests {
         );
         let e = core.send_password_reset(s.id, 2).await.unwrap_err();
         assert!(e.to_string().contains("older"));
-        // Added, but the reset email can't go: said plainly.
-        let e = core
-            .create_user(s.id, new_user("kim", "subscriber", true))
-            .await
-            .unwrap_err();
-        assert!(e.to_string().starts_with("kim was added, but"));
     }
 
     #[tokio::test]
@@ -687,14 +668,11 @@ mod tests {
         assert!(!list.can_reset);
 
         let u = core
-            .create_user(s.id, new_user("lee", "editor", false))
+            .create_user(s.id, new_user("lee", "editor"))
             .await
             .unwrap();
         assert_eq!(u.role, "editor");
-        let e = core
-            .create_user(s.id, new_user("kim", "", true))
-            .await
-            .unwrap_err();
+        let e = core.send_password_reset(s.id, u.id).await.unwrap_err();
         assert!(e.to_string().contains("Lost your password"));
         core.set_role(s.id, u.id, "author").await.unwrap();
         assert_eq!(site.state().users[2]["role"], "author");

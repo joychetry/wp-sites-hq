@@ -42,9 +42,9 @@ export function Users({ sites }: { sites: Site[] }) {
     );
   }
 
-  const done = (text: string) => {
+  const done = (text: string, ok = true) => {
     setAction(null);
-    setNote({ ok: true, text });
+    setNote({ ok, text });
     load();
   };
   const reset = async (site: Site, user: User) => {
@@ -193,7 +193,7 @@ export function Users({ sites }: { sites: Site[] }) {
   );
 }
 
-type SheetProps = { onClose: () => void; onDone: (text: string) => void };
+type SheetProps = { onClose: () => void; onDone: (text: string, ok?: boolean) => void };
 
 function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
   const [siteId, setSiteId] = useState(sites[0]?.id ?? 0);
@@ -215,12 +215,22 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
   const save = async () => {
     setBusy(true);
     setError(null);
+    let u: User;
     try {
-      const u = await api.createUser(siteId, { username, email, role, send_reset: !!info?.can_reset && sendReset });
-      onDone(`Added ${u.username} to ${site?.name} as ${roleName(roles, u.role)}.${info?.can_reset && sendReset ? " They were emailed a link to set their password." : ""}`);
+      u = await api.createUser(siteId, { username, email, role });
     } catch (e) {
       setError(String(e));
       setBusy(false);
+      return;
+    }
+    const added = `Added ${u.username} to ${site?.name} as ${roleName(roles, u.role)}.`;
+    if (!info?.can_reset || !sendReset) return onDone(added);
+    try {
+      await api.sendReset(siteId, u.id);
+      onDone(`${added} They were emailed a link to set their password.`);
+    } catch (e) {
+      // The user exists either way: close the sheet so they aren't added twice.
+      onDone(`${added} The password email didn't go out: ${e}`, false);
     }
   };
 

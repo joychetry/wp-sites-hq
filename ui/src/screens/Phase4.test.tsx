@@ -124,7 +124,21 @@ describe("Users", () => {
     fireEvent.change(within(sheet).getByRole("combobox", { name: "Role" }), { target: { value: "editor" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
     expect(await screen.findByText("Added lee to Alpha as Editor. They were emailed a link to set their password.")).toBeInTheDocument();
-    expect(calls).toContainEqual(["user_create", { id: 1, user: { username: "lee", email: "lee@x.test", role: "editor", send_reset: true } }]);
+    expect(calls).toContainEqual(["user_create", { id: 1, user: { username: "lee", email: "lee@x.test", role: "editor" } }]);
+    expect(calls).toContainEqual(["user_reset", { id: 1, userId: 7 }]);
+  });
+
+  it("closes the sheet when the user is added but the email fails", async () => {
+    core({ user_reset: () => Promise.reject("Error: The email could not be sent.") });
+    render(<Users sites={[CM]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add a user" }));
+    const sheet = screen.getByRole("dialog", { name: "Add a user" });
+    await within(sheet).findByRole("checkbox", { name: "Email them a link to set their password" });
+    fireEvent.change(within(sheet).getByRole("textbox", { name: /^Username/ }), { target: { value: "lee" } });
+    fireEvent.change(within(sheet).getByRole("textbox", { name: "Email address" }), { target: { value: "lee@x.test" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
+    expect(await screen.findByText("Added lee to Alpha as Editor. The password email didn't go out: Error: The email could not be sent.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Add a user" })).not.toBeInTheDocument();
   });
 
   it("says plainly when a site's users fail to load, and when there are no sites", async () => {
