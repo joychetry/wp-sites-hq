@@ -5,7 +5,10 @@ use std::path::Path;
 use rusqlite::{Connection, TransactionBehavior};
 
 /// Migrations in order. Index + 1 is the schema version. Never edit a shipped one.
-const MIGRATIONS: &[&str] = &[include_str!("../migrations/0001_credentials.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("../migrations/0001_credentials.sql"),
+    include_str!("../migrations/0002_sites.sql"),
+];
 
 /// Schema version this build writes.
 pub const SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
