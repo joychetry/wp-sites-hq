@@ -1,6 +1,7 @@
 //! `monks`: the Monks Central command line. A console program on every OS.
 
 mod doctor;
+mod mcp;
 
 use std::path::{Path, PathBuf};
 use std::process::{ExitCode, Stdio};
@@ -36,6 +37,10 @@ enum Command {
         #[arg(default_value = "{}")]
         arguments: String,
     },
+    /// Serve MCP on stdin and stdout for an AI app (Claude, Cursor, VS Code):
+    /// every site through one server, as an agent. Changes on many sites wait
+    /// for you to confirm them in the app.
+    Mcp,
     /// Check the data folder, database, keychain, core and network.
     Doctor {
         /// A site address to fetch over HTTPS, e.g. https://example.local
@@ -78,6 +83,16 @@ async fn main() -> ExitCode {
                     println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
                     ExitCode::SUCCESS
                 }
+                Err(e) => fail(e.to_string()),
+            }
+        }
+        Command::Mcp => {
+            let call = |method: &'static str, params: Value| {
+                let home = home.clone();
+                async move { call_or_start(&home, method, params).await }
+            };
+            match mcp::serve(call).await {
+                Ok(()) => ExitCode::SUCCESS,
                 Err(e) => fail(e.to_string()),
             }
         }
