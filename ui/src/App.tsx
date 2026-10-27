@@ -1,12 +1,13 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
 import { useEffect, useMemo, useState } from "react";
 import { ago, api, siteStatus, useSites, type CoreStatus, type Site } from "./api";
-import { useTheme, type ThemeChoice } from "./theme";
+import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Kbd, Logo } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Overview } from "./screens/Overview";
 import { Sites } from "./screens/Sites";
 import { AddSite } from "./screens/AddSite";
+import { Settings } from "./screens/Settings";
 
 export type { CoreStatus };
 
@@ -20,7 +21,7 @@ const GROUPS = [
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites"];
+const BUILT: Section[] = ["Overview", "Sites", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -41,6 +42,7 @@ export default function App() {
   const [adding, setAdding] = useState<{ again?: Site } | null>(null);
   const [checking, setChecking] = useState(false);
   const { choice, setChoice } = useTheme();
+  const { density, setDensity } = useDensity();
 
   useEffect(() => {
     api.status().then(setStatus, (e) => setCoreError(String(e)));
@@ -87,6 +89,12 @@ export default function App() {
       group: "Actions",
       label: `Switch theme (now ${choice === "system" ? "following the system" : choice})`,
       run: () => setChoice(THEME_NEXT[choice]),
+    },
+    {
+      id: "density",
+      group: "Actions",
+      label: density === "compact" ? "Use comfortable rows" : "Use compact rows",
+      run: () => setDensity(density === "compact" ? "comfortable" : "compact"),
     },
     ...all.map((s) => ({
       id: `site-${s.id}`,
@@ -137,6 +145,8 @@ export default function App() {
         onSignInAgain={(s) => setAdding({ again: s })}
       />
     );
+  } else if (section === "Settings") {
+    body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   } else {
     body = (
       <div className="empty">

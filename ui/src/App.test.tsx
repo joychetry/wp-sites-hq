@@ -82,3 +82,15 @@ test("the scope switcher narrows to a group", async () => {
   fireEvent.change(screen.getByRole("combobox", { name: "Sites to show" }), { target: { value: "Clients" } });
   expect(screen.getByRole("heading", { name: "Your one site is healthy." })).toBeInTheDocument();
 });
+
+test("rows are comfortable until Settings picks compact, and it is remembered", async () => {
+  serve();
+  const { unmount } = render(<App />);
+  expect(document.documentElement.dataset.density).toBe("comfortable");
+  fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Compact" }));
+  expect(document.documentElement.dataset.density).toBe("compact");
+  unmount();
+  render(<App />);
+  expect(document.documentElement.dataset.density).toBe("compact");
+});

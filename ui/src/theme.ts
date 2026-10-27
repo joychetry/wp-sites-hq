@@ -23,3 +23,18 @@ export function useTheme() {
   }, [choice]);
   return { choice, setChoice };
 }
+
+// Row height: comfortable by default, compact for people who want more rows.
+export type Density = "comfortable" | "compact";
+const DENSITY = "mc-density";
+
+export function useDensity() {
+  const [density, setDensity] = useState<Density>(
+    () => (localStorage.getItem(DENSITY) as Density | null) ?? "comfortable",
+  );
+  useEffect(() => {
+    document.documentElement.dataset.density = density;
+    localStorage.setItem(DENSITY, density);
+  }, [density]);
+  return { density, setDensity };
+}

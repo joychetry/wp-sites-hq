@@ -186,3 +186,10 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .pal mark { background: none; color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .pal-empty { padding: var(--sp-4) var(--sp-3); color: var(--text-3); }
 .pal .foot { display: flex; gap: var(--sp-4); padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--line); color: var(--text-3); font-size: var(--fs-sm); background: var(--panel); }
+
+/* Settings */
+.settings { max-width: 640px; padding: var(--sp-6) var(--pad); display: grid; gap: var(--sp-6); }
+.settings h2 { margin: 0 0 var(--sp-1); font-size: var(--fs-lg); font-weight: 600; }
+.settings p { margin: 0 0 var(--sp-3); color: var(--text-2); }
+.settings .segmented { margin: 0; max-width: 480px; }
+.settings .segmented button { height: var(--control); }
