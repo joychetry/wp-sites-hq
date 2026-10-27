@@ -22,8 +22,40 @@ export function Kbd({ children }: { children: ReactNode }) {
   return <span className="kbd">{children}</span>;
 }
 
-export function Status({ tone, children }: { tone: Tone; children?: ReactNode }) {
-  return <span className={`st ${tone === "ok" ? "" : tone}`}>{children}</span>;
+const SHAPES: Record<Tone | "info", ReactNode> = {
+  ok: <path d="M3 8.5l3.2 3.2L13 4.8" />,
+  warning: (
+    <>
+      <path d="M8 2.2 14.3 13.5H1.7z" />
+      <path d="M8 6.8v2.9M8 11.6v.1" />
+    </>
+  ),
+  danger: <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />,
+  unknown: <circle cx="8" cy="8" r="5" />,
+  info: (
+    <>
+      <circle cx="8" cy="8" r="6.2" />
+      <path d="M8 7.4v4M8 4.9v.1" />
+    </>
+  ),
+};
+
+/** A shape per status (tick, warning sign, cross, empty ring, i), so it never rests on colour alone. */
+export function Icon({ tone }: { tone: Tone | "info" }) {
+  return (
+    <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
+      {SHAPES[tone]}
+    </svg>
+  );
+}
+
+export function Status({ tone, children }: { tone: Tone | "info"; children: ReactNode }) {
+  return (
+    <span className={`st ${tone}`}>
+      <Icon tone={tone} />
+      {children}
+    </span>
+  );
 }
 
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {

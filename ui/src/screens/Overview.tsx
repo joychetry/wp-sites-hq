@@ -120,8 +120,8 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props
                       const st = siteStatus(s);
                       return (
                         <tr key={s.id}>
-                          <td style={{ width: 24 }}>
-                            <Status tone={st.tone === "ok" ? "warning" : st.tone} />
+                          <td>
+                            <Status tone={st.tone === "ok" ? "warning" : st.tone}>{st.tone === "ok" ? "Update" : st.label}</Status>
                           </td>
                           <td className="name">{s.name}</td>
                           <td style={{ whiteSpace: "normal" }}>{attention(s)}</td>

@@ -5,26 +5,41 @@
  * sentence and (Phase 3) the post editor.
  */
 :root {
-  /* Surfaces */
-  --bg: #ffffff;
-  --panel: #f7f7f6;
-  --raise: #efefed;
-  --sel: #f1f1ef;
-  --line: #e8e8e6;
-  --line-2: #d9d9d6;
-  /* Ink */
-  --text: #121212;
-  --text-2: #5a5a58;
-  --text-3: #767673;
-  /* Status (Classic Monks admin tokens) */
-  --ok: #01824c;
-  --warn: #9a5c00;
-  --danger: #ca2020;
-  --ok-bg: #e7f5ea;
-  --warn-bg: #fff5e0;
-  --danger-bg: #fdecec;
+  /* Content: paper. Warm off-white with ink, colour only for status. */
+  --bg: #fbfaf7;
+  --panel: #f5f4f0;
+  --raise: #ebe9e3;
+  --sel: #f2f0eb;
+  --line: #e3e1da;
+  --line-2: #d2cfc6;
+  --line-ui: #858178; /* borders that show where a control is: 3:1 */
+  --text: #191816;
+  --text-2: #4b4943;
+  --text-3: #615e57; /* muted, still 4.5:1 on every content surface */
+  --focus: #191816;
+  /* Status (Classic Monks admin tokens, darkened for 4.5:1 on paper) */
+  --ok: #0b7343;
+  --warn: #8a5200;
+  --danger: #b42318;
+  --ok-bg: #e4f2e7;
+  --warn-bg: #faefd9;
+  --danger-bg: #fbe8e5;
   --shadow: 0 16px 50px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--line-2);
   --scrim: rgba(0, 0, 0, 0.35);
+
+  /* Rail: ink. Dark in both themes; see docs/ux/README.md. */
+  --rail-bg: #1c1b19;
+  --rail-raise: #2e2c29;
+  --rail-field: #252421;
+  --rail-line: #353330;
+  --rail-line-ui: #79756d;
+  --rail-text: #f2f0eb;
+  --rail-text-2: #cbc7be;
+  --rail-text-3: #a9a59c;
+  --rail-focus: #f2f0eb;
+  --rail-ok: #5fcf97;
+  --rail-warn: #efb25a;
+  --rail-danger: #ff8f84;
 
   /* Type: six sizes, in rem so the OS and browser text size scale them.
      Nothing below 12px. 15px body at 1.5. */
@@ -72,20 +87,34 @@
 [data-theme="dark"] {
   --bg: #0d0d0d;
   --panel: #111111;
-  --raise: #1a1a1a;
+  --raise: #1c1c1c;
   --sel: #171717;
   --line: #1f1f1f;
   --line-2: #2b2b2b;
+  --line-ui: #6e6e6e;
   --text: #ededed;
-  --text-2: #a1a1a1;
-  --text-3: #8a8a8a;
+  --text-2: #b0b0b0;
+  --text-3: #959595;
+  --focus: #ededed;
   --ok: #3cc98a;
   --warn: #f2a93b;
-  --danger: #ff5b52;
+  --danger: #ff6b62;
   --ok-bg: #0f2519;
   --warn-bg: #2a1f0b;
   --danger-bg: #2c1110;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line-2);
   --scrim: rgba(0, 0, 0, 0.55);
+  --rail-bg: var(--panel);
+  --rail-raise: var(--raise);
+  --rail-field: var(--bg);
+  --rail-line: var(--line);
+  --rail-line-ui: var(--line-ui);
+  --rail-text: var(--text);
+  --rail-text-2: var(--text-2);
+  --rail-text-3: var(--text-3);
+  --rail-focus: var(--focus);
+  --rail-ok: var(--ok);
+  --rail-warn: var(--warn);
+  --rail-danger: var(--danger);
   color-scheme: dark;
 }
