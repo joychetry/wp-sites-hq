@@ -1,6 +1,8 @@
 //! Monks Central core.
 
+pub mod lock;
 pub mod net;
+pub mod paths;
 pub mod store;
 pub mod vault;
 
