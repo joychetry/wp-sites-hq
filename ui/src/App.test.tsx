@@ -40,7 +40,7 @@ test("switches section from the rail", async () => {
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: /^Sites/ }));
   expect(screen.getByRole("heading", { level: 1, name: /^Sites/ })).toBeInTheDocument();
-  expect(await screen.findByRole("table", { name: "Sites" })).toBeInTheDocument();
+  expect(await screen.findByRole("grid", { name: "Sites" })).toBeInTheDocument();
 });
 
 test("shows the core error in plain words", async () => {

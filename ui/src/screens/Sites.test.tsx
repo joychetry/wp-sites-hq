@@ -83,7 +83,7 @@ test("a connection with no tools says so in the table and offers Sign in again",
   const onSignInAgain = vi.fn();
   const empty = site({ id: 4, name: "Empty", capabilities: { abilities: [], hq_status: false, degraded: true } });
   render(<Sites sites={[empty]} groups={[]} focusId={4} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={onSignInAgain} />);
-  expect(screen.getByRole("table", { name: "Sites" })).toHaveTextContent("No tools yet");
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("No tools yet");
   const insp = screen.getByRole("complementary", { name: "Empty details" });
   expect(insp).toHaveTextContent("Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.");
   expect(insp).not.toHaveTextContent("older");
@@ -93,5 +93,5 @@ test("a connection with no tools says so in the table and offers Sign in again",
 
 test("the legend explains the status shapes and the columns", () => {
   render(<Harness />);
-  expect(screen.getByRole("table", { name: "Sites" })).toHaveAccessibleDescription(/Healthy.*Down.*Not checked yet.*Last checked is when/);
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Healthy.*Down.*Not checked yet.*Last checked is when/);
 });

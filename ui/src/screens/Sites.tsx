@@ -221,6 +221,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             <table
               ref={table}
               className="t"
+              role="grid"
+              aria-readonly="true"
               tabIndex={0}
               aria-label="Sites"
               aria-describedby="sites-legend"
