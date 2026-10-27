@@ -4,12 +4,17 @@
 #   scripts/test-sites.sh create|start|stop|status|delete [mc-a|mc-b|mc-c ...]
 #
 #   mc-a  Classic Monks from a branch of ~/Documents/GitHub/classic-monks
-#         (CM_BRANCH, default feat/hq) + WooCommerce
+#         (CM_BRANCH, default feat/monks-central) + WooCommerce, Elementor
+#         and Bricks (theme installed, not active)
 #   mc-b  Classic Monks as released (CM_RELEASE_REF, default main, 2.5.0),
 #         without the new abilities (degraded mode). Not on wordpress.org yet.
-#   mc-c  No Classic Monks (Basic mode); an application password is saved to
-#         $STATE_DIR/mc-c.app-password (0600), never printed
+#   mc-c  No Classic Monks (Basic mode) + WooCommerce and Elementor; an
+#         application password is saved to $STATE_DIR/mc-c.app-password
+#         (0600), never printed
 #
+# Classic Monks sites get AI + MCP switched on. Bricks is a paid theme: its zip
+# is read from BRICKS_ZIP (default ~/.cache/monks-test-assets/bricks-2.4.3.zip)
+# and never copied into a repo; without it Bricks is skipped with a note.
 # Only ever touches these three sites. Studio picks free ports itself.
 # On Linux with no polkit agent, Studio's own /etc/hosts edit (pkexec) hangs,
 # so this script writes the hosts entry inside Studio's block with sudo first.
@@ -17,7 +22,8 @@ set -Eeuo pipefail
 
 SITES_ROOT="${SITES_ROOT:-$HOME/Studio}"
 CM_REPO="${CM_REPO:-$HOME/Documents/GitHub/classic-monks}"
-CM_BRANCH="${CM_BRANCH:-feat/hq}"
+CM_BRANCH="${CM_BRANCH:-feat/monks-central}"
+BRICKS_ZIP="${BRICKS_ZIP:-$HOME/.cache/monks-test-assets/bricks-2.4.3.zip}"
 CM_RELEASE_REF="${CM_RELEASE_REF:-main}"
 STATE_DIR="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/monks-central/test-sites}"
 HOSTS="${HOSTS:-/etc/hosts}"
@@ -34,7 +40,14 @@ domain() { printf '%s.local' "$1"; }
 
 # Field from `studio site list` for the site at our path; empty if unknown.
 site_field() {
-  studio site list --format json 2>/dev/null | python3 -c '
+  # `studio site list` now and then prints nothing; ask again before trusting that.
+  local json=""
+  for _ in 1 2 3; do
+    json=$(studio site list --format json 2>/dev/null) && [ -n "$json" ] && break
+    sleep 1
+  done
+  [ -n "$json" ] || die "studio site list gave no answer"
+  printf '%s' "$json" | python3 -c '
 import json, sys
 path, field = sys.argv[1], sys.argv[2]
 for s in json.load(sys.stdin):
@@ -44,6 +57,8 @@ for s in json.load(sys.stdin):
 }
 
 wp() { local site=$1; shift; studio wp --path "$(site_path "$site")" "$@"; }
+# One value: plugins such as Elementor print PHP notices after WP-CLI's output.
+wp1() { wp "$@" | head -n 1; }
 
 # Add "127.0.0.1/::1 <domain> # Port N" inside Studio's block, once.
 hosts_add() {
@@ -98,6 +113,24 @@ install_cm() {
   git -C "$CM_REPO" archive "$ref" | tar -x -C "$dir"
   say "  Classic Monks from $ref ($(git -C "$CM_REPO" rev-parse --short "$ref"))"
   wp "$site" plugin activate classic-monks >/dev/null
+  wp "$site" eval 'foreach ( array( "enable_cm_ai", "cm_mcp_enabled" ) as $o ) { cm_update_option( $o, 1 ); }'
+  # A new request: the MCP server loads at boot when the option is on.
+  [ "$(wp1 "$site" eval 'echo class_exists( "CM_MCP_Server" ) ? "on" : "off", "\n";')" = on ] \
+    || die "$site: Classic Monks MCP did not switch on"
+}
+
+# Plugins from wordpress.org, plus the Bricks theme (installed, not active).
+install_stack() {
+  local site=$1; shift
+  wp "$site" plugin install "$@" --activate >/dev/null
+  say "  plugins: $*"
+  [ "$site" = mc-a ] || return 0
+  if [ -f "$BRICKS_ZIP" ]; then
+    wp "$site" theme install "$BRICKS_ZIP" --force >/dev/null
+    say "  Bricks theme installed (not active)"
+  else
+    say "  Bricks skipped: $BRICKS_ZIP not found"
+  fi
 }
 
 create() {
@@ -112,21 +145,22 @@ create() {
   fi
   start "$site"
 
-  local v; v=$(wp "$site" core version)
+  local v; v=$(wp1 "$site" core version)
   version_ge "$v" "$MIN_WP" || die "$site runs WordPress $v; Monks Central needs $MIN_WP or newer"
   # Studio sites default to "local"; Basic mode and M3 rely on it.
-  [ "$(wp "$site" eval 'echo wp_get_environment_type();')" = local ] \
+  [ "$(wp1 "$site" eval 'echo wp_get_environment_type(), "\n";')" = local ] \
     || die "$site is not WP_ENVIRONMENT_TYPE=local"
 
   case $site in
     mc-a)
       install_cm "$site" "$CM_BRANCH"
-      wp "$site" plugin install woocommerce --activate >/dev/null
+      install_stack "$site" woocommerce elementor
       ;;
     mc-b)
       install_cm "$site" "$CM_RELEASE_REF"
       ;;
     mc-c)
+      install_stack "$site" woocommerce elementor
       local user file; user=$(site_field "$site" adminUsername); file="$STATE_DIR/mc-c.app-password"
       if [ ! -s "$file" ]; then
         mkdir -p "$STATE_DIR" && chmod 700 "$STATE_DIR"
@@ -143,8 +177,8 @@ status() {
   if [ -z "$(site_field "$site" port)" ]; then say "$site: not created"; return; fi
   if [ "$(site_field "$site" running)" != "True" ]; then say "$site: stopped"; return; fi
   local plugins
-  plugins=$(wp "$site" plugin list --status=active --field=name 2>/dev/null | paste -sd, -)
-  say "$site: https://$(domain "$site")  WordPress $(wp "$site" core version)  port $(site_field "$site" port)  active: ${plugins:-none}"
+  plugins=$(wp "$site" plugin list --status=active --field=name 2>/dev/null | grep -E '^[a-z0-9_-]+$' | paste -sd, -)
+  say "$site: https://$(domain "$site")  WordPress $(wp1 "$site" core version)  port $(site_field "$site" port)  active: ${plugins:-none}"
 }
 
 stop() {
@@ -165,7 +199,7 @@ delete() {
 
 main() {
   local cmd=${1:-}; shift || true
-  case $cmd in create|start|stop|status|delete) ;; *) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+  case $cmd in create|start|stop|status|delete) ;; *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
   command -v studio >/dev/null || die "the studio CLI is not on PATH"
   local sites=("$@"); [ ${#sites[@]} -gt 0 ] || sites=("${ALL_SITES[@]}")
   for s in "${sites[@]}"; do
