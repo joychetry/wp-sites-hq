@@ -432,16 +432,7 @@ impl Core {
             )
             .await?;
         let list = rpc_result(list)?;
-        let tools: Vec<&Value> = list["tools"]
-            .as_array()
-            .map(|t| t.iter().collect())
-            .unwrap_or_default();
-        let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-        let read_only: Vec<&str> = tools
-            .iter()
-            .filter(|t| t["annotations"]["readOnlyHint"] == true)
-            .filter_map(|t| t["name"].as_str())
-            .collect();
+        let (names, read_only) = tool_names(&list);
         let has_hq = names.contains(&"get-hq-status");
         let mut details = Details::default();
         let mut caps = json!({
@@ -902,6 +893,13 @@ impl Core {
                 };
                 d.capabilities["operator"] = hq["connection"]["operator"].clone();
                 d.capabilities["pending_approvals"] = hq["pending_approvals"].clone();
+                // Tools come and go with Classic Monks updates: keep the list current.
+                let list = self
+                    .mcp(site, "tools/list", json!({}), Retry::ReadOnly)
+                    .await?;
+                let (names, read_only) = tool_names(&list);
+                d.capabilities["abilities"] = json!(names);
+                d.capabilities["read_only"] = json!(read_only);
                 self.db(|c| sites::set_details(c, site.id, &d))
             }
             Mode::ClassicMonks => self
@@ -1080,6 +1078,21 @@ fn rpc_result(reply: Reply) -> Result<Value, SiteError> {
             String::from,
         ))),
     }
+}
+
+/// The tools in a `tools/list` result, and the ones that only read.
+fn tool_names(list: &Value) -> (Vec<&str>, Vec<&str>) {
+    let tools = list["tools"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    let names = tools.iter().filter_map(|t| t["name"].as_str()).collect();
+    let read_only = tools
+        .iter()
+        .filter(|t| t["annotations"]["readOnlyHint"] == true)
+        .filter_map(|t| t["name"].as_str())
+        .collect();
+    (names, read_only)
 }
 
 /// A tool call's structured output, or its error text.

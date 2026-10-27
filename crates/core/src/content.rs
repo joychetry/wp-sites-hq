@@ -1368,6 +1368,10 @@ mod tests {
         let s = core.add_site_oauth(&site.url, browser).await.unwrap();
         let e = core.post_types(s.id).await.unwrap_err();
         assert_eq!(e.to_string(), OLD_CLASSIC_MONKS);
+        // Classic Monks is updated on the site: the next check sees its new tools.
+        site.state().no_content_tools = false;
+        core.check_site(s.id).await;
+        assert_eq!(core.post_types(s.id).await.unwrap().len(), 3);
     }
 
     #[tokio::test]
