@@ -1,7 +1,7 @@
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, connectionLabel, siteStatus, type Site, type Tone } from "../api";
+import { ago, api, connectionLabel, NO_TOOLS, noTools, siteStatus, slow, type Site, type Tone } from "../api";
 import { Button, Kbd, Status } from "../components/ui";
 
 type Props = {
@@ -132,8 +132,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           <input
             ref={filter}
             className="input sm"
-            placeholder="Filter sites   /"
+            placeholder="Filter by name, address, group or tag"
             aria-label="Filter sites"
+            aria-keyshortcuts="/"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -172,11 +173,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             </Button>
           </div>
         )}
-        {notice && (
-          <p className={`alert ${notice.tone}`} role="status" style={{ margin: "8px 16px" }}>
-            {notice.text}
-          </p>
-        )}
+        <div role="status" className="notice">
+          {notice && <p className={`alert ${notice.tone}`}>{notice.text}</p>}
+        </div>
         <datalist id="groups">
           {groups.map((g) => (
             <option key={g} value={g} />
@@ -193,78 +192,103 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 </Button>
               </>
             ) : (
-              <p>No site matches these filters.</p>
+              <>
+                <p>No site matches these filters.</p>
+                <Button
+                  onClick={() => {
+                    setQuery("");
+                    setStatus("any");
+                    setMode("any");
+                  }}
+                >
+                  Clear the filters
+                </Button>
+              </>
             )}
           </div>
         ) : (
-          <table
-            ref={table}
-            className="t"
-            tabIndex={0}
-            aria-label="Sites"
-            aria-activedescendant={focus ? `site-${focus.id}` : undefined}
-          >
-            <thead>
-              <tr>
-                <th style={{ width: 34 }}>
-                  <span className="sr-only">Selected</span>
-                </th>
-                <th>Site</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Group</th>
-                <th>WP</th>
-                <th>PHP</th>
-                <th>Connection</th>
-                <th>Tags</th>
-                <th>Checked</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => {
-                const st = siteStatus(s);
-                const on = selected.has(s.id);
-                return (
-                  <tr
-                    key={s.id}
-                    id={`site-${s.id}`}
-                    data-id={s.id}
-                    className={[on && "sel", s.id === focus?.id && "focus"].filter(Boolean).join(" ")}
-                    aria-selected={s.id === focus?.id}
-                    onClick={() => setFocusId(s.id)}
-                  >
-                    <td>
-                      <button
-                        type="button"
-                        className="box"
-                        role="checkbox"
-                        aria-checked={on}
-                        aria-label={`Select ${s.name}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggle(s.id);
-                        }}
-                      />
-                    </td>
-                    <td className="name">{s.name}</td>
-                    <td className="url">{s.url.replace(/^https?:\/\//, "")}</td>
-                    <td>
-                      <Status tone={st.tone}>{st.label}</Status>
-                    </td>
-                    <td>{s.group ?? <span className="dim" aria-label="No group">—</span>}</td>
-                    <td className="m">{s.wp_version ?? "?"}</td>
-                    <td className="m">{s.php_version?.split(".").slice(0, 2).join(".") ?? "?"}</td>
-                    <td>{connectionLabel(s)}</td>
-                    <td title={s.tags.join(", ")}>
-                      {s.tags.length > 0 && <span className="tag">{s.tags[0]}</span>}
-                      {s.tags.length > 1 && <span className="dim"> +{s.tags.length - 1}</span>}
-                    </td>
-                    <td>{ago(s.checked_at)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <>
+            <p className="legend" id="sites-legend">
+              <Status tone="ok">Healthy</Status>
+              <Status tone="warning">Needs a look, sign in again or no tools yet</Status>
+              <Status tone="danger">Down</Status>
+              <Status tone="unknown">Not checked yet</Status>
+              <span>
+                Point at a name for its address. WordPress and PHP are the versions each site runs. Last checked is when
+                Monks Central last asked the site.
+              </span>
+            </p>
+            <table
+              ref={table}
+              className="t"
+              tabIndex={0}
+              aria-label="Sites"
+              aria-describedby="sites-legend"
+              aria-activedescendant={focus ? `site-${focus.id}` : undefined}
+            >
+              <thead>
+                <tr>
+                  <th style={{ width: 34 }}>
+                    <span className="sr-only">Selected</span>
+                  </th>
+                  <th>Site</th>
+                    <th>Status</th>
+                  <th>Group</th>
+                  <th>WordPress</th>
+                  <th>PHP</th>
+                  <th>Connection</th>
+                  <th>Tags</th>
+                  <th>Last checked</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((s) => {
+                  const st = siteStatus(s);
+                  const on = selected.has(s.id);
+                  return (
+                    <tr
+                      key={s.id}
+                      id={`site-${s.id}`}
+                      data-id={s.id}
+                      className={[on && "sel", s.id === focus?.id && "focus"].filter(Boolean).join(" ")}
+                      aria-selected={s.id === focus?.id}
+                      onClick={() => setFocusId(s.id)}
+                    >
+                      <td>
+                        <button
+                          type="button"
+                          className="box"
+                          role="checkbox"
+                          aria-checked={on}
+                          aria-label={`Select ${s.name}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle(s.id);
+                          }}
+                        />
+                      </td>
+                      <td className="name cut" title={`${s.name}, ${s.url.replace(/^https?:\/\//, "")}`}>
+                        {s.name}
+                      </td>
+                      <td>
+                        <Status tone={st.tone}>{st.label}</Status>
+                        {slow(s) && <span className="dim">, slow</span>}
+                      </td>
+                      <td>{s.group ?? <span className="dim">none</span>}</td>
+                      <td className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "not known"}</td>
+                      <td className={s.php_version ? "m" : "dim"}>{s.php_version?.split(".").slice(0, 2).join(".") ?? "not known"}</td>
+                      <td>{s.mode === "basic" ? "Basic mode" : "Classic Monks"}</td>
+                      <td title={s.tags.join(", ")}>
+                        {s.tags.length > 0 && <span className="tag">{s.tags[0]}</span>}
+                        {s.tags.length > 1 && <span className="dim"> +{s.tags.length - 1} more</span>}
+                      </td>
+                      <td>{ago(s.checked_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
       {focus && (
@@ -321,7 +345,7 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
         <h2>{s.name}</h2>
         <span className="mono dim">{s.url.replace(/^https?:\/\//, "")}</span>
         <div className="acts">
-          {s.sign_in_again && (
+          {(s.sign_in_again || noTools(s)) && (
             <Button small kind="primary" onClick={onSignInAgain}>
               Sign in again
             </Button>
@@ -347,13 +371,21 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
             <Status tone={st.tone}>{st.label}</Status>
           </dd>
           <dt>Detail</dt>
-          <dd>{s.sign_in_again ? "The saved sign-in can't be used. Sign in again." : s.health_detail || "Not checked yet."}</dd>
+          <dd>
+            {s.sign_in_again ? (
+              "The saved sign-in can't be used. Sign in again."
+            ) : slow(s) ? (
+              <Status tone="info">{s.health_detail} It still works.</Status>
+            ) : (
+              s.health_detail || "Not checked yet."
+            )}
+          </dd>
           <dt>Checked</dt>
           <dd>{ago(s.checked_at)}</dd>
         </dl>
       </section>
       <section>
-        <h3>Stack</h3>
+        <h3>Versions</h3>
         <dl className="kv">
           <dt>WordPress</dt>
           <dd className={s.wp_version ? "mono" : undefined}>{s.wp_version ?? "unknown"}</dd>
@@ -378,14 +410,26 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
             Content, users, comments and the plugin list through WordPress itself. Updates, one-click login and Classic
             Monks modules need Classic Monks.
           </p>
+        ) : noTools(s) ? (
+          <p className="alert" style={{ margin: 0 }}>
+            {NO_TOOLS}
+          </p>
         ) : (
           <dl className="kv">
-            <dt>Abilities</dt>
-            <dd>{abilities}</dd>
-            <dt>Operator</dt>
-            <dd>{caps.operator === true ? "Yes, ticked on the site" : caps.operator === false ? "No" : "Unknown"}</dd>
+            <dt>Tools</dt>
+            <dd>
+              {abilities} {abilities === 1 ? "tool" : "tools"} this app may use
+            </dd>
+            <dt>Access</dt>
+            <dd>
+              {caps.operator === true
+                ? "Full, ticked on the site"
+                : caps.operator === false
+                  ? "Limited: changes may wait for approval on the site"
+                  : "Not known"}
+            </dd>
             <dt>Approvals</dt>
-            <dd>{caps.approvals === true ? "Work on this site" : "Not available"}</dd>
+            <dd>{caps.approvals === true ? "The site can ask before a change" : "Not on this site"}</dd>
             {modules && (
               <>
                 <dt>Modules on</dt>
@@ -399,7 +443,7 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
             )}
           </dl>
         )}
-        {caps.degraded === true && (
+        {caps.degraded === true && !noTools(s) && (
           <p className="alert" style={{ margin: "10px 0 0" }}>
             This Classic Monks is older. Update it on the site for every feature.
           </p>
@@ -533,7 +577,7 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
         )}
       </section>
       <p className="note">
-        <Kbd>J</Kbd> <Kbd>K</Kbd> move, <Kbd>X</Kbd> select, <Kbd>/</Kbd> filter
+        <Kbd>J</Kbd> <Kbd>K</Kbd> move between sites, <Kbd>X</Kbd> select, <Kbd>/</Kbd> filter, <Kbd>R</Kbd> check now
       </p>
     </aside>
   );

@@ -22,7 +22,7 @@ test("table, statuses and the inspector for the focused site", () => {
   expect(screen.getAllByRole("row")).toHaveLength(4);
   expect(screen.getByText("Basic mode")).toBeInTheDocument();
   expect(screen.getAllByText("Sign in again").length).toBeGreaterThan(0);
-  expect(screen.getByRole("complementary", { name: "Alpha details" })).toHaveTextContent("Yes, ticked on the site");
+  expect(screen.getByRole("complementary", { name: "Alpha details" })).toHaveTextContent("Full, ticked on the site");
 });
 
 test("keys: j moves, x selects, / filters, a adds", () => {
@@ -77,4 +77,21 @@ test("a site that needs a sign-in offers it", () => {
   render(<Sites sites={SITES} groups={[]} focusId={3} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={onSignInAgain} />);
   fireEvent.click(screen.getByRole("button", { name: "Sign in again" }));
   expect(onSignInAgain).toHaveBeenCalledWith(SITES[2]);
+});
+
+test("a connection with no tools says so in the table and offers Sign in again", () => {
+  const onSignInAgain = vi.fn();
+  const empty = site({ id: 4, name: "Empty", capabilities: { abilities: [], hq_status: false, degraded: true } });
+  render(<Sites sites={[empty]} groups={[]} focusId={4} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={onSignInAgain} />);
+  expect(screen.getByRole("table", { name: "Sites" })).toHaveTextContent("No tools yet");
+  const insp = screen.getByRole("complementary", { name: "Empty details" });
+  expect(insp).toHaveTextContent("Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.");
+  expect(insp).not.toHaveTextContent("older");
+  fireEvent.click(screen.getByRole("button", { name: "Sign in again" }));
+  expect(onSignInAgain).toHaveBeenCalledWith(empty);
+});
+
+test("the legend explains the status shapes and the columns", () => {
+  render(<Harness />);
+  expect(screen.getByRole("table", { name: "Sites" })).toHaveAccessibleDescription(/Healthy.*Down.*Not checked yet.*Last checked is when/);
 });
