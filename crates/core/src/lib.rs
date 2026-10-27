@@ -9,6 +9,7 @@ pub mod lock;
 pub mod net;
 pub mod oauth;
 pub mod paths;
+pub mod people;
 pub mod sites;
 pub mod store;
 #[cfg(test)]

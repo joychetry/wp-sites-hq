@@ -61,6 +61,24 @@ pub struct State {
     pub mangle_blocks: bool,
     /// Classic Monks from before M6: no content tools.
     pub no_content_tools: bool,
+    /// `{ id, username, email, name, role }`.
+    pub users: Vec<serde_json::Value>,
+    /// `{ id, post_id, post_title, author, email, content, date, status, parent }`;
+    /// status as core REST says it: hold, approved, spam, trash.
+    pub comments: Vec<serde_json::Value>,
+    /// Classic Monks' on/off features and the ones Monks Central can't change.
+    pub features: serde_json::Map<String, serde_json::Value>,
+    pub locked: Vec<String>,
+    pub settings: serde_json::Map<String, serde_json::Value>,
+    /// Activity log rows, newest first, each with what undoing it puts back.
+    pub activity: Vec<serde_json::Value>,
+    pub approvals: Vec<serde_json::Value>,
+    /// Users a password reset email went to.
+    pub resets: Vec<i64>,
+    /// Classic Monks as released (2.5.0): user, comment and feature tools only.
+    pub released: bool,
+    /// The login link create-login-link hands out.
+    pub login_link: Option<String>,
     /// Code -> (PKCE challenge, client).
     codes: HashMap<String, (String, String)>,
     clients: u32,
@@ -103,6 +121,37 @@ impl Default for State {
             saves: 0,
             mangle_blocks: false,
             no_content_tools: false,
+            users: vec![
+                json!({ "id": 1, "username": "admin", "email": "admin@example.com", "name": "Admin", "role": "administrator" }),
+                json!({ "id": 2, "username": "sam", "email": "sam@example.com", "name": "Sam Shop", "role": "shop_manager" }),
+            ],
+            comments: vec![
+                json!({ "id": 7, "post_id": 5, "post_title": "Hello world", "author": "Ana", "email": "ana@example.com", "content": "Lovely <b>bread</b>.", "date": "2026-10-28 09:00:00", "status": "hold", "parent": 0 }),
+                json!({ "id": 8, "post_id": 5, "post_title": "Hello world", "author": "Bo", "email": "bo@example.com", "content": "First!", "date": "2026-10-27 09:00:00", "status": "approved", "parent": 0 }),
+            ],
+            features: [
+                ("enable_svg_support", false),
+                ("enable_maintenance_mode", false),
+                ("enable_unplaced_thing", true),
+            ]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), json!(v)))
+            .collect(),
+            locked: vec!["enable_maintenance_mode".into()],
+            settings: [
+                ("auto_resize_quality", json!(82)),
+                ("limit_post_revisions", json!("default")),
+            ]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect(),
+            activity: Vec::new(),
+            approvals: vec![
+                json!({ "op_id": 31, "tool": "delete-post", "client_label": "Claude [agent]", "user": "admin", "created_at": "2026-10-28 09:10:00", "expires_in": 600, "approve_url": "/wp-admin/admin.php?page=cm-ai-approve&op=31" }),
+            ],
+            resets: Vec::new(),
+            released: false,
+            login_link: None,
             codes: HashMap::new(),
             clients: 0,
             families: HashMap::new(),
@@ -412,7 +461,10 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 json!({ "name": "update-post", "annotations": { "readOnlyHint": false, "destructiveHint": false } }),
             ];
             let content = CONTENT_TOOLS.iter().filter(|_| !s.no_content_tools);
-            for (name, read_only) in PLUGIN_TOOLS.iter().chain(content) {
+            let people = PEOPLE_TOOLS
+                .iter()
+                .filter(|(n, _)| !s.released || RELEASED_PEOPLE_TOOLS.contains(n));
+            for (name, read_only) in PLUGIN_TOOLS.iter().chain(content).chain(people) {
                 tools.push(json!({ "name": name, "annotations": { "readOnlyHint": read_only } }));
             }
             if !s.no_hq {
@@ -436,6 +488,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
             if PLUGIN_TOOLS
                 .iter()
                 .chain(CONTENT_TOOLS)
+                .chain(PEOPLE_TOOLS)
                 .chain(&[("get-posts", true), ("update-post", false)])
                 .any(|(n, _)| req["params"]["name"] == *n) =>
         {
@@ -446,6 +499,8 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 Err("The update could not be installed.".to_string())
             } else if PLUGIN_TOOLS.iter().any(|(n, _)| *n == name) {
                 plugin_tool(&mut s, &name, &args)
+            } else if PEOPLE_TOOLS.iter().any(|(n, _)| *n == name) {
+                people_tool(&mut s, &name, &args)
             } else {
                 content_tool(&mut s, &name, &args)
             };
@@ -1073,6 +1128,7 @@ async fn rest_content(
             let id = s.term(tax, &json_body["name"]).unwrap();
             created(json!({ "id": id, "name": json_body["name"] }))
         }
+        ("users" | "comments", id, m) => rest_people(&mut s, base, id, m, &q, &json_body),
         (b, id, m) if type_of_base(b).is_some() => {
             let ty = type_of_base(b).unwrap();
             // Core REST fields to Classic Monks' (the store speaks those).
@@ -1126,5 +1182,352 @@ async fn rest_content(
             Json(json!({ "code": "rest_no_route", "message": "No route was found." })),
         )
             .into_response(),
+    }
+}
+
+/// User, comment and Classic Monks tools, and whether each only reads.
+const PEOPLE_TOOLS: &[(&str, bool)] = &[
+    ("get-users", true),
+    ("create-user", false),
+    ("update-user", false),
+    ("delete-user", false),
+    ("send-password-reset", false),
+    ("get-comments", true),
+    ("moderate-comment", false),
+    ("reply-to-comment", false),
+    ("create-login-link", false),
+    ("get-features", true),
+    ("update-features", false),
+    ("get-settings-schema", true),
+    ("get-settings", true),
+    ("update-settings", false),
+    ("list-ai-activity", true),
+    ("undo-operation", false),
+    ("list-pending-approvals", true),
+];
+/// What Classic Monks 2.5.0 has of those.
+const RELEASED_PEOPLE_TOOLS: &[&str] = &[
+    "get-users",
+    "create-user",
+    "update-user",
+    "delete-user",
+    "get-comments",
+    "moderate-comment",
+    "reply-to-comment",
+    "get-features",
+    "update-features",
+];
+
+impl State {
+    fn log(&mut self, tool: &str, input: serde_json::Value, undo: serde_json::Value) {
+        let id = self.activity.len() as i64 + 1;
+        self.activity.insert(0, json!({
+            "id": id, "created_at": "2026-10-28 10:00:00", "user": "admin", "source": "mcp",
+            "client_label": "Monks Central [operator]", "tool": tool, "status": "ok", "summary": "",
+            "input": input, "can_undo": true, "undo": undo,
+        }));
+    }
+
+    fn user(&self, id: &serde_json::Value) -> Option<usize> {
+        self.users.iter().position(|u| u["id"] == *id)
+    }
+}
+
+fn people_tool(
+    s: &mut State,
+    name: &str,
+    a: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    Ok(match name {
+        "get-users" => {
+            let search = a["search"].as_str().unwrap_or_default();
+            let list: Vec<_> = s
+                .users
+                .iter()
+                .filter(|u| u["username"].as_str().unwrap().contains(search))
+                .map(|u| json!({ "id": u["id"], "username": u["username"], "email": u["email"], "display_name": u["name"], "role": u["role"], "registered_date": "2026-01-02 03:04:05" }))
+                .collect();
+            let mut out = json!({ "users": list, "total": list.len() });
+            if !s.released {
+                out["roles"] = json!([{ "id": "administrator", "name": "Administrator" }, { "id": "shop_manager", "name": "Shop manager" }, { "id": "subscriber", "name": "Subscriber" }]);
+            }
+            out
+        }
+        "create-user" => {
+            if a["role"] == "administrator" && a["confirm_admin_role"] != true {
+                return Err("Ask the user to confirm.".into());
+            }
+            if s.users.iter().any(|u| u["username"] == a["username"]) {
+                return Err("Sorry, that username already exists!".into());
+            }
+            let id = s.new_id();
+            let role = a["role"].as_str().unwrap_or("subscriber");
+            s.users.push(json!({ "id": id, "username": a["username"], "email": a["email"], "name": a["username"], "role": role }));
+            json!({ "id": id, "username": a["username"], "email": a["email"], "role": role })
+        }
+        "update-user" => {
+            let i = s.user(&a["user_id"]).ok_or("User not found.")?;
+            if a["user_id"] == 1 {
+                return Err("You cannot change your own role.".into());
+            }
+            let before = s.users[i]["role"].clone();
+            s.users[i]["role"] = a["role"].clone();
+            s.log("update-user", a.clone(), json!({ "role": before }));
+            json!({ "user_id": a["user_id"], "changed": ["role"] })
+        }
+        "delete-user" => {
+            let i = s.user(&a["user_id"]).ok_or("User not found.")?;
+            if s.user(&a["reassign"]).is_none() || a["reassign"] == a["user_id"] {
+                return Err("Choose a different, existing user to receive the content.".into());
+            }
+            s.users.remove(i);
+            json!({ "user_id": a["user_id"], "reassign": a["reassign"], "deleted": true })
+        }
+        "send-password-reset" => {
+            let i = s.user(&a["user_id"]).ok_or("User not found.")?;
+            s.resets.push(a["user_id"].as_i64().unwrap());
+            json!({ "user_id": a["user_id"], "sent": true, "email": s.users[i]["email"] })
+        }
+        "get-comments" => {
+            let want = match a["status"].as_str().unwrap_or("approve") {
+                "approve" => "approved",
+                other => other,
+            };
+            let list: Vec<_> = s
+                .comments
+                .iter()
+                .filter(|c| c["status"] == want)
+                .map(|c| {
+                    let mut c = c.clone();
+                    c["author_email"] = c["email"].take();
+                    c["status"] = json!(match c["status"].as_str().unwrap() {
+                        "hold" => "unapproved",
+                        other => other,
+                    });
+                    c
+                })
+                .collect();
+            json!({ "comments": list, "total": list.len(), "returned": list.len() })
+        }
+        "moderate-comment" => {
+            let id = &a["comment_ids"][0];
+            let status = match a["action"].as_str().unwrap() {
+                "approve" => "approved",
+                "unapprove" => "hold",
+                other => other,
+            };
+            let found = s.comments.iter_mut().find(|c| c["id"] == *id);
+            let success = found.is_some();
+            if let Some(c) = found {
+                c["status"] = status.into();
+            }
+            json!({ "action": a["action"], "results": [{ "id": id, "success": success }], "updated": success as i32 })
+        }
+        "reply-to-comment" => {
+            let parent = s
+                .comments
+                .iter()
+                .find(|c| c["id"] == a["comment_id"])
+                .cloned()
+                .ok_or("Comment not found.")?;
+            let id = s.new_id();
+            s.comments.push(json!({ "id": id, "post_id": parent["post_id"], "post_title": parent["post_title"], "author": "admin", "email": "admin@example.com", "content": a["content"], "date": "2026-10-28 11:00:00", "status": "approved", "parent": parent["id"] }));
+            json!({ "comment_id": id, "parent_id": parent["id"], "post_id": parent["post_id"], "status": "approved" })
+        }
+        "create-login-link" => {
+            let link = s.login_link.clone().unwrap_or_else(|| {
+                format!("{}/wp-login.php?action=cm_login_link&token=cmll_x", s.base)
+            });
+            json!({ "url": link, "expires_in": 60 })
+        }
+        "get-features" => {
+            json!({ "count": s.features.len(), "features": s.features, "locked": s.locked })
+        }
+        "update-features" => {
+            let mut undo = serde_json::Map::new();
+            for (k, v) in a["features"].as_object().unwrap() {
+                if s.locked.contains(k) {
+                    return Err(format!("{k} can't be changed over MCP."));
+                }
+                undo.insert(
+                    k.clone(),
+                    s.features.get(k).cloned().unwrap_or(json!(false)),
+                );
+                s.features.insert(k.clone(), v.clone());
+            }
+            s.log("update-features", a.clone(), json!({ "features": undo }));
+            json!({ "updated": a["features"] })
+        }
+        "get-settings-schema" => json!({ "summary": {}, "unplaced": [], "tabs": [
+            { "key": "security", "label": "Security", "subtabs": [{ "key": "s", "label": "Protection", "fields": [
+                { "name": "enable_maintenance_mode", "section": "Site", "label": "Maintenance Mode", "control": "checkbox", "write_with": "update-features", "locked": true },
+            ] }] },
+            { "key": "performance", "label": "Performance", "subtabs": [{ "key": "m", "label": "Media", "fields": [
+                { "name": "enable_svg_support", "section": "Media", "label": "SVG Support", "description": "Upload SVG files.", "control": "checkbox", "write_with": "update-features" },
+                { "name": "limit_post_revisions", "section": "Heartbeat", "label": "Limit Post Revisions", "control": "select", "enum": ["default", "disable", "1", 2], "default": "default", "hq_editable": true, "write_with": "update-settings" },
+                { "name": "auto_resize_quality", "section": "Media", "label": "Image Quality (%)", "control": "number", "min": 1, "max": 100, "step": 1, "default": 82, "hq_editable": true, "write_with": "update-settings" },
+                { "name": "cm_api_key", "section": "Media", "label": "Key", "control": "password", "secret": true, "hq_editable": true },
+            ] }] },
+        ] }),
+        "get-settings" => {
+            let mut out = serde_json::Map::new();
+            for n in a["names"].as_array().unwrap() {
+                let n = n.as_str().unwrap();
+                out.insert(n.into(), s.settings.get(n).cloned().unwrap_or_default());
+            }
+            json!({ "settings": out, "secrets": {} })
+        }
+        "update-settings" => {
+            let mut undo = serde_json::Map::new();
+            for (k, v) in a["settings"].as_object().unwrap() {
+                undo.insert(k.clone(), s.settings.get(k).cloned().unwrap_or_default());
+                s.settings.insert(k.clone(), v.clone());
+            }
+            s.log("update-settings", a.clone(), json!({ "settings": undo }));
+            json!({ "updated": a["settings"] })
+        }
+        "list-ai-activity" => {
+            let tool = a["tool"].as_str().unwrap_or_default();
+            let rows: Vec<_> = s
+                .activity
+                .iter()
+                .filter(|r| tool.is_empty() || r["tool"] == tool)
+                .take(a["per_page"].as_u64().unwrap_or(20) as usize)
+                .cloned()
+                .collect();
+            json!({ "total": s.activity.len(), "page": 1, "per_page": 25, "rows": rows })
+        }
+        "undo-operation" => {
+            let i = s
+                .activity
+                .iter()
+                .position(|r| r["id"] == a["id"] && r["can_undo"] == true)
+                .ok_or("Nothing to undo.")?;
+            let row = s.activity[i].clone();
+            for (k, v) in row["undo"]["features"].as_object().into_iter().flatten() {
+                s.features.insert(k.clone(), v.clone());
+            }
+            for (k, v) in row["undo"]["settings"].as_object().into_iter().flatten() {
+                s.settings.insert(k.clone(), v.clone());
+            }
+            s.activity[i]["status"] = "undone".into();
+            s.activity[i]["can_undo"] = false.into();
+            json!({ "undone": a["id"], "tool": row["tool"] })
+        }
+        "list-pending-approvals" => {
+            let base = s.base.clone();
+            let list: Vec<_> = s
+                .approvals
+                .iter()
+                .map(|x| {
+                    let mut x = x.clone();
+                    x["approve_url"] =
+                        format!("{base}{}", x["approve_url"].as_str().unwrap()).into();
+                    x
+                })
+                .collect();
+            json!({ "count": list.len(), "approvals": list })
+        }
+        _ => unreachable!("not a people tool: {name}"),
+    })
+}
+
+/// Core REST `/wp/v2/users` and `/wp/v2/comments`.
+fn rest_people(
+    s: &mut State,
+    base: &str,
+    id: Option<i64>,
+    method: &str,
+    q: &HashMap<String, String>,
+    body: &serde_json::Value,
+) -> Response {
+    let refuse = |code: &str, message: &str| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "code": code, "message": message })),
+        )
+            .into_response()
+    };
+    let rest_user = |u: &serde_json::Value| json!({ "id": u["id"], "username": u["username"], "email": u["email"], "name": u["name"], "roles": [u["role"]], "registered_date": "2026-01-02T03:04:05+00:00" });
+    let rest_comment = |c: &serde_json::Value| {
+        json!({
+            "id": c["id"], "post": c["post_id"], "parent": c["parent"], "author_name": c["author"], "author_email": c["email"],
+            "content": { "raw": c["content"], "rendered": format!("<p>{}</p>", c["content"].as_str().unwrap_or_default()) },
+            "date": c["date"].as_str().unwrap_or_default().replacen(' ', "T", 1), "status": c["status"],
+            "_embedded": { "up": [{ "id": c["post_id"], "title": { "rendered": c["post_title"] } }] },
+        })
+    };
+    let with_total = |list: Vec<serde_json::Value>| {
+        let mut r = Json(&list).into_response();
+        r.headers_mut()
+            .insert("x-wp-total", list.len().to_string().parse().unwrap());
+        r
+    };
+    match (base, id, method) {
+        ("users", None, "GET") => with_total(s.users.iter().map(rest_user).collect()),
+        ("users", None, "POST") => {
+            if body["password"].as_str().is_none_or(|p| p.len() < 20) {
+                return refuse(
+                    "rest_missing_callback_param",
+                    "Missing parameter(s): password",
+                );
+            }
+            let id = s.new_id();
+            let role = body["roles"][0].as_str().unwrap_or("subscriber");
+            let u = json!({ "id": id, "username": body["username"], "email": body["email"], "name": body["username"], "role": role });
+            s.users.push(u.clone());
+            (StatusCode::CREATED, Json(rest_user(&u))).into_response()
+        }
+        ("users", Some(id), m) => {
+            let Some(i) = s.user(&json!(id)) else {
+                return refuse("rest_user_invalid_id", "Invalid user ID.");
+            };
+            if m == "DELETE" {
+                if q.get("force").map(String::as_str) != Some("true")
+                    || q.get("reassign")
+                        .and_then(|r| s.user(&json!(r.parse::<i64>().ok()?)))
+                        .is_none()
+                {
+                    return refuse(
+                        "rest_user_invalid_reassign",
+                        "Invalid user ID for reassignment.",
+                    );
+                }
+                let u = s.users.remove(i);
+                return Json(json!({ "deleted": true, "previous": rest_user(&u) })).into_response();
+            }
+            if let Some(r) = body["roles"][0].as_str() {
+                s.users[i]["role"] = r.into();
+            }
+            Json(rest_user(&s.users[i])).into_response()
+        }
+        ("comments", None, "GET") => {
+            let want = q.get("status").map_or("approved", String::as_str);
+            with_total(
+                s.comments
+                    .iter()
+                    .filter(|c| c["status"] == want)
+                    .map(rest_comment)
+                    .collect(),
+            )
+        }
+        ("comments", None, "POST") => {
+            let id = s.new_id();
+            let c = json!({ "id": id, "post_id": body["post"], "post_title": "Hello world", "author": "admin", "email": "admin@example.com", "content": body["content"], "date": "2026-10-28 11:00:00", "status": "approved", "parent": body["parent"] });
+            s.comments.push(c.clone());
+            (StatusCode::CREATED, Json(rest_comment(&c))).into_response()
+        }
+        ("comments", Some(id), m) => {
+            let Some(c) = s.comments.iter_mut().find(|c| c["id"] == id) else {
+                return refuse("rest_comment_invalid_id", "Invalid comment ID.");
+            };
+            c["status"] = match m {
+                "DELETE" => json!("trash"),
+                _ => body["status"].clone(),
+            };
+            let c = c.clone();
+            Json(rest_comment(&c)).into_response()
+        }
+        _ => refuse("rest_no_route", "No route was found."),
     }
 }

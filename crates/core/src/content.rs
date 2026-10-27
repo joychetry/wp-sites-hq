@@ -167,7 +167,7 @@ pub struct Media {
     pub date: String,
 }
 
-fn text(v: &Value) -> String {
+pub(crate) fn text(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
         // Core REST sends `{ "raw": …, "rendered": … }` in the edit context.
@@ -181,7 +181,7 @@ fn text(v: &Value) -> String {
 }
 
 /// Core REST dates have a `T`; Classic Monks' have a space.
-fn local(v: &Value) -> String {
+pub(crate) fn local(v: &Value) -> String {
     text(v).replacen('T', " ", 1)
 }
 
@@ -443,7 +443,7 @@ fn file_name(url: &reqwest::Url, mime: &str) -> String {
 }
 
 /// A request body for core REST.
-enum Body {
+pub(crate) enum Body {
     None,
     Json(Value),
     File {
@@ -463,7 +463,7 @@ impl Core {
     }
 
     /// One core REST call as the site's application password.
-    async fn rest(
+    pub(crate) async fn rest(
         &self,
         site: &Site,
         method: Method,
@@ -500,7 +500,7 @@ impl Core {
     }
 
     /// The reply's JSON, or what went wrong in the site's own words.
-    async fn rest_json(
+    pub(crate) async fn rest_json(
         &self,
         site: &Site,
         method: Method,
@@ -512,7 +512,11 @@ impl Core {
         self.answer(site, reply)
     }
 
-    fn answer(&self, site: &Site, reply: net::Reply) -> Result<(Value, net::Reply), SiteError> {
+    pub(crate) fn answer(
+        &self,
+        site: &Site,
+        reply: net::Reply,
+    ) -> Result<(Value, net::Reply), SiteError> {
         match reply.status {
             200 | 201 => match reply.json::<Value>() {
                 Some(v) => Ok((v, reply)),
