@@ -1,5 +1,5 @@
 // Typed calls to the core through Tauri commands (the window is the operator).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -38,6 +38,63 @@ export type Site = {
 
 export type Removed = { signed_out: boolean; message: string };
 
+/** One plugin or theme on one site. `id` is the plugin file or the theme folder. */
+export type Item = {
+  id: string;
+  name: string;
+  version: string;
+  active: boolean;
+  auto_update: boolean | null;
+  update: string | null;
+};
+
+export type Inventory = {
+  wordpress: string | null;
+  wordpress_update: string | null;
+  plugins: Item[];
+  themes: Item[];
+  translations: number;
+  updates_known: boolean;
+  needs_credentials: boolean;
+};
+
+export type SiteInventory = { site_id: number; fetched_at: number; inventory: Inventory };
+
+/** A change to one site, as the core runs it. */
+export type Action =
+  | { do: "update_plugin"; plugin: string }
+  | { do: "rollback_plugin"; plugin: string; version: string }
+  | { do: "activate_plugin"; plugin: string }
+  | { do: "deactivate_plugin"; plugin: string }
+  | { do: "delete_plugin"; plugin: string }
+  | { do: "auto_update_plugin"; plugin: string; on: boolean }
+  | { do: "install_plugin"; source: string; activate: boolean }
+  | { do: "update_theme"; theme: string }
+  | { do: "activate_theme"; theme: string }
+  | { do: "delete_theme"; theme: string }
+  | { do: "update_core" }
+  | { do: "update_translations" };
+
+export type Change = { site_id: number; action: Action };
+
+export type JobItem = {
+  id: number;
+  site_id: number | null;
+  site_name: string;
+  action: Action;
+  label: string;
+  from_version: string | null;
+  to_version: string | null;
+  state: "waiting" | "running" | "done" | "failed";
+  message: string;
+};
+
+export type Job = { id: number; title: string; created_at: number; finished_at: number | null; items: JobItem[] };
+
+export type Found = { slug: string; name: string; version: string; active_installs: number; summary: string };
+
+export type PluginVersions = { installed?: string; versions?: { version: string; current?: boolean }[]; notice?: string };
+
 export const api = {
   status: () => invoke<CoreStatus>("core_status"),
   sites: () => invoke<Site[]>("sites_list"),
@@ -54,7 +111,97 @@ export const api = {
   setTags: (id: number, tags: string[]) => invoke<Site>("site_set_tags", { id, tags }),
   addNote: (id: number, body: string) => invoke<Site>("site_add_note", { id, body }),
   deleteNote: (id: number, noteId: number) => invoke<Site>("site_delete_note", { id, noteId }),
+  inventory: () => invoke<SiteInventory[]>("inventory_list"),
+  refreshInventory: (id?: number) => invoke<void>("inventory_refresh", { id }),
+  pluginVersions: (id: number, plugin: string) => invoke<PluginVersions>("plugin_versions", { id, plugin }),
+  searchPlugins: (query: string) => invoke<Found[]>("plugin_search", { query }),
+  startJob: (title: string, changes: Change[]) => invoke<Job>("job_start", { title, changes }),
+  job: (id: number) => invoke<Job>("job_get", { id }),
 };
+
+/** A list from the core, loaded again whenever `event` fires. */
+function useLive<T>(load: () => Promise<T>, event: string) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const reload = useCallback(() => {
+    load().then(
+      (d) => {
+        setData(d);
+        setError(null);
+      },
+      (e) => setError(String(e)),
+    );
+  }, [load]);
+  useEffect(() => {
+    reload();
+    const off = listen(event, reload);
+    return () => {
+      off.then((f) => f()).catch(() => {});
+    };
+  }, [reload, event]);
+  return { data, error, reload };
+}
+
+/** What every site runs, by site id. */
+export function useInventory() {
+  const { data, error, reload } = useLive(api.inventory, "inventory-changed");
+  const byId = useMemo(() => new Map((data ?? []).map((i) => [i.site_id, i])), [data]);
+  return { inventory: data ? byId : null, error, reload };
+}
+
+/** One job, kept fresh while it runs. */
+export function useJob(id: number) {
+  const load = useCallback(() => api.job(id), [id]);
+  const [job, setJob] = useState<Job | null>(null);
+  useEffect(() => {
+    const reload = () => load().then(setJob, () => {});
+    reload();
+    const off = listen("jobs-changed", reload);
+    return () => {
+      off.then((f) => f()).catch(() => {});
+    };
+  }, [load]);
+  return job;
+}
+
+const TOOL: Record<Action["do"], string> = {
+  update_plugin: "update-plugin",
+  rollback_plugin: "rollback-plugin",
+  activate_plugin: "activate-plugin",
+  deactivate_plugin: "deactivate-plugin",
+  delete_plugin: "uninstall-plugin",
+  auto_update_plugin: "set-plugin-auto-update",
+  install_plugin: "install-plugin",
+  update_theme: "update-theme",
+  activate_theme: "activate-theme",
+  delete_theme: "delete-theme",
+  update_core: "update-core",
+  update_translations: "update-translations",
+};
+const BASIC: Action["do"][] = ["activate_plugin", "deactivate_plugin", "delete_plugin", "install_plugin"];
+
+/** Whether this site's connection can make this kind of change (the core checks again). */
+export function can(s: Site, what: Action["do"], tool = TOOL[what]): boolean {
+  if (s.mode === "basic") return BASIC.includes(what);
+  const tools = s.capabilities.abilities;
+  return Array.isArray(tools) && tools.includes(tool);
+}
+
+/** Sites that can't be changed now, and why, in a few words. */
+export function blocked(s: Site, inv: SiteInventory | undefined): string | null {
+  if (s.sign_in_again) return "Sign in again first.";
+  if (s.health === "down") return "Down when last checked. Check the site first.";
+  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
+  if (!inv) return "Not read yet. Check the site.";
+  return null;
+}
+
+/** Fewer than 1000 as is; then "12k", "1.2M". */
+export function count(n: number): string {
+  if (n >= 1_000_000) return `${+(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${Math.round(n / 1000)}k`;
+  return String(n);
+}
 
 /** Every site, kept fresh when the core says something changed. */
 export function useSites() {

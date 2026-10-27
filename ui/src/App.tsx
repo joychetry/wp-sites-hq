@@ -1,6 +1,6 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
 import { useEffect, useMemo, useState } from "react";
-import { ago, api, siteStatus, useSites, type CoreStatus, type Site } from "./api";
+import { ago, api, siteStatus, useInventory, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Kbd, Logo } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
@@ -8,6 +8,10 @@ import { Overview } from "./screens/Overview";
 import { Sites } from "./screens/Sites";
 import { AddSite } from "./screens/AddSite";
 import { Settings } from "./screens/Settings";
+import { Updates, updatesOf } from "./screens/Updates";
+import { Matrix } from "./screens/Matrix";
+import { Install } from "./screens/Install";
+import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
 
@@ -21,7 +25,7 @@ const GROUPS = [
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -36,6 +40,10 @@ export default function App() {
   const [status, setStatus] = useState<CoreStatus | null>(null);
   const [coreError, setCoreError] = useState<string | null>(null);
   const { sites, error, reload } = useSites();
+  const { inventory } = useInventory();
+  const [sheet, setSheet] = useState<SheetState | null>(null);
+  const [installing, setInstalling] = useState(false);
+  const [jobError, setJobError] = useState<string | null>(null);
   const [scope, setScope] = useState("");
   const [focusId, setFocusId] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
@@ -65,6 +73,20 @@ export default function App() {
   const lastCheck = Math.max(0, ...all.map((s) => s.checked_at ?? 0)) || null;
   const nextCheck = lastCheck ? Math.max(1, Math.ceil((lastCheck + CHECK_EVERY - Date.now() / 1000) / 60)) : null;
   const down = all.filter((s) => siteStatus(s).tone === "danger").length;
+  const inv = inventory ?? new Map();
+  const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
+
+  const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
+    setSheet({ title, rows, start, danger });
+  const runNow = async (title: string, changes: Change[]) => {
+    setJobError(null);
+    try {
+      const job = await api.startJob(title, changes);
+      setSheet({ title, jobId: job.id });
+    } catch (e) {
+      setJobError(`${title}: ${e}`);
+    }
+  };
 
   const openSite = (id: number) => {
     setFocusId(id);
@@ -84,6 +106,14 @@ export default function App() {
     ...BUILT.map((s) => ({ id: `go-${s}`, group: "Go to", label: s, run: () => setSection(s) })),
     { id: "add", group: "Actions", label: "Add a site", keys: "A", run: () => setAdding({}) },
     { id: "check", group: "Actions", label: "Check all sites now", run: checkAll },
+    {
+      id: "update-all",
+      group: "Actions",
+      label: waiting.length ? `Update everything waiting (${waiting.length})` : "Update everything waiting (nothing now)",
+      run: () => (waiting.length ? plan(`Update ${waiting.length} things`, waiting) : setSection("Updates")),
+    },
+    { id: "install", group: "Actions", label: "Install a plugin", run: () => setInstalling(true) },
+    { id: "read", group: "Actions", label: "Read every site's plugins and themes again", run: () => api.refreshInventory().catch(() => {}) },
     {
       id: "theme",
       group: "Actions",
@@ -153,6 +183,20 @@ export default function App() {
         onSignInAgain={(s) => setAdding({ again: s })}
       />
     );
+  } else if (section === "Updates") {
+    body = <Updates sites={scoped} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
+  } else if (section === "Plugins" || section === "Themes") {
+    body = (
+      <Matrix
+        key={section}
+        kind={section === "Plugins" ? "plugins" : "themes"}
+        sites={scoped}
+        inventory={inv}
+        onPlan={plan}
+        onRun={runNow}
+        onInstall={section === "Plugins" ? () => setInstalling(true) : undefined}
+      />
+    );
   } else if (section === "Settings") {
     body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   } else {
@@ -207,6 +251,12 @@ export default function App() {
                   >
                     {s}
                     {s === "Sites" && down > 0 && <span className="n alert">{down} down</span>}
+                    {s === "Updates" && waiting.length > 0 && (
+                      <span className="n">
+                        {waiting.length}
+                        <span className="sr-only"> waiting</span>
+                      </span>
+                    )}
                     {!BUILT.includes(s) && <span className="n">Soon</span>}
                   </button>
                 </li>
@@ -229,7 +279,8 @@ export default function App() {
         <header className="top">
           <h1 className="crumb">
             {section}
-            {section === "Sites" && <span>/ {scope || "All"}</span>}
+            {["Sites", "Plugins", "Themes"].includes(section) && <span>/ {scope || "All sites"}</span>}
+            {section === "Updates" && <span>/ {waiting.length} waiting</span>}
           </h1>
           {sites && sites.length > 0 && (
             <div className="fresh">
@@ -240,11 +291,26 @@ export default function App() {
             </div>
           )}
         </header>
+        <div role="status" className="notice">
+          {jobError && <p className="alert danger">{jobError}</p>}
+        </div>
         <main className="body" id="content" tabIndex={-1}>
           {body}
         </main>
       </div>
       {palette && <Palette commands={commands} onClose={() => setPalette(false)} />}
+      {sheet && <JobSheet key={"jobId" in sheet ? sheet.jobId : sheet.title} state={sheet} onClose={() => setSheet(null)} />}
+      {installing && (
+        <Install
+          sites={scoped}
+          inventory={inv}
+          onClose={() => setInstalling(false)}
+          onPlan={(t, r) => {
+            setInstalling(false);
+            plan(t, r, "confirm");
+          }}
+        />
+      )}
       {adding && (
         <AddSite
           again={adding.again}

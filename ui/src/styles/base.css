@@ -193,6 +193,54 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .waiting::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.2; } }
 
+/* Jobs: plan, confirm, progress (components/JobSheet.tsx) */
+.sheet footer .grow { flex: 1; color: var(--text-2); }
+.jobsteps { display: flex; gap: var(--sp-2); list-style: none; margin: 0 0 var(--sp-4); padding: 0; }
+.jobsteps li { flex: 1; padding-top: var(--sp-2); border-top: 2px solid var(--line-2); color: var(--text-3); font-size: var(--fs-sm); }
+.jobsteps li[aria-current] { border-color: var(--text); color: var(--text); font-weight: 600; }
+.plan-site { border-top: 1px solid var(--line); padding: var(--sp-3) 0; }
+.plan-site h3 { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-1); font-size: var(--fs); font-weight: 600; }
+.plan-list { list-style: none; margin: 0; padding: 0; }
+.plan-list li { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-1) 0; }
+.plan-site .plan-list li { padding-left: var(--sp-5); }
+.plan-list .grow { flex: 1; min-width: 0; }
+.plan-list .box { margin-top: -2px; }
+.plan-list.confirm li, .plan-list.progress li { border-bottom: 1px solid var(--line); padding: var(--sp-2) 0; }
+.vers { white-space: nowrap; color: var(--text-2); }
+.box[aria-checked="mixed"]::before { background: linear-gradient(var(--text), var(--text)) center / 8px 2px no-repeat var(--bg); border-color: var(--text); }
+.box:disabled::before { border-style: dashed; }
+.tag.state { min-width: 72px; justify-content: center; }
+.why { display: block; color: var(--text-2); font-size: var(--fs-sm); }
+.why.danger { color: var(--danger); }
+.bar-progress { height: 4px; background: var(--raise); border-radius: 2px; margin: 0 0 var(--sp-3); overflow: hidden; }
+.bar-progress span { display: block; height: 100%; background: var(--text); }
+
+/* Plugins and Themes matrix (screens/Matrix.tsx) */
+.mxbox { overflow: auto; }
+.t.mx { width: auto; min-width: 100%; }
+.t.mx th[scope="col"] { white-space: normal; vertical-align: bottom; min-width: 96px; max-width: 136px; height: auto; padding-block: var(--sp-2); line-height: var(--lh-tight); }
+.t.mx th[scope="col"]:first-child, .t.mx th[scope="row"] { position: sticky; left: 0; z-index: 3; background: var(--bg); text-align: left; min-width: 160px; max-width: 220px; }
+.t.mx th[scope="row"] { z-index: 1; font: 500 var(--fs) var(--sans); color: var(--text); border-bottom: 1px solid var(--line); padding: 0 var(--sp-2); }
+.colname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.t.mx td { padding: 0 2px; }
+.cell { width: 100%; height: calc(var(--row) - 6px); display: flex; align-items: center; gap: var(--sp-1); padding: 0 var(--sp-2); border: 0; border-radius: var(--radius-sm); background: none; text-align: left; white-space: nowrap; }
+.cell:hover { background: var(--raise); }
+.cell[aria-pressed="true"] { background: var(--raise); box-shadow: inset 0 0 0 1px var(--text); }
+.cell .tag { padding: 0 var(--sp-1); font-size: var(--fs-xs); }
+.off { text-decoration: line-through; }
+.unseen { padding: var(--sp-4) var(--pad); border-top: 1px solid var(--line); }
+.unseen h3 { margin: 0 0 var(--sp-2); font: 500 var(--fs-sm) var(--sans); color: var(--text-3); }
+.unseen li { justify-content: flex-start; gap: var(--sp-3); }
+.versions li { align-items: center; }
+
+/* Install (screens/Install.tsx) */
+.found-count:not(:empty) { margin: var(--sp-2) 0; }
+.found { list-style: none; margin: 0; padding: 0; }
+.found li { display: flex; gap: var(--sp-3); align-items: flex-start; padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+.found .grow { flex: 1; min-width: 0; }
+.found p { margin: 2px 0; color: var(--text-2); }
+.row .input { flex: 1; }
+
 /* Command palette */
 .palette { position: fixed; inset: 0; background: var(--scrim); z-index: 30; }
 .pal { width: 640px; max-width: calc(100vw - 32px); margin: 13vh auto 0; background: var(--bg); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
