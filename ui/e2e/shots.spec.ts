@@ -21,7 +21,7 @@ for (const s of SCREENS) {
 // 200% zoom on a 1440 x 900 window is a 720 x 450 viewport at twice the pixels.
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "updates", "plugins"]) {
+  for (const name of ["overview", "sites", "updates", "plugins", "content", "content-editor"]) {
     for (const theme of ["dark", "light"]) {
       test(`${name}-${theme}-zoom200.png`, async ({ page }) => {
         test.skip(dir.endsWith("before"));

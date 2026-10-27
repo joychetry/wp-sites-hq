@@ -42,7 +42,52 @@ export const SCREENS: Screen[] = [
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
   { name: "settings", open: nav("Settings") },
-  { name: "later", open: nav("Content") },
+  { name: "later", open: nav("Users") },
+  { name: "content", open: nav("Content") },
+  {
+    name: "content-editor",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Pages", exact: true }).click();
+      await page.getByRole("button", { name: "Our menu" }).click();
+      await page.getByRole("list", { name: "Blocks" }).waitFor();
+    },
+  },
+  {
+    name: "content-builder",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Pages", exact: true }).click();
+      await page.getByRole("button", { name: "Home" }).click();
+      await page.getByText(/built with Elementor/).waitFor();
+    },
+  },
+  {
+    name: "content-new",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Books", exact: true }).click();
+      await page.getByRole("button", { name: "New book" }).click();
+      await page.getByRole("button", { name: "Choose an image" }).click();
+      await page.getByRole("button", { name: "Use shop-front" }).waitFor();
+    },
+  },
+  {
+    name: "content-trash",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Autumn opening hours" }).click();
+      await page.getByRole("button", { name: "Move to the trash" }).click();
+    },
+  },
+  {
+    name: "content-unavailable",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("combobox", { name: "Site", exact: true }).selectOption({ label: "Monks Central Test (not available)" });
+    },
+  },
+  { name: "media", open: nav("Media") },
   { name: "updates", open: nav("Updates") },
   {
     name: "updates-plan",

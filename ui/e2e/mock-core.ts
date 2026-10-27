@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, Change, Item, Job, Site, SiteInventory } from "../src/api";
+import type { Action, Change, Item, Job, Media, Post, PostType, Site, SiteInventory, Summary } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -20,6 +20,7 @@ const TOOLS = [
   "delete-theme",
   "update-core",
   "update-translations",
+  "list-post-types",
 ];
 const ABILITIES = [...TOOLS, ...Array(184 - TOOLS.length).fill("x")];
 const fixture = new URLSearchParams(location.search).get("fixture") ?? "fleet";
@@ -163,6 +164,80 @@ function startJob(title: string, changes: Change[]): Job {
   });
   return job;
 }
+// Content: posts, pages and a custom post type, one page built with blocks and one with Elementor.
+const tax = (name: string, label: string, hierarchical: boolean) => ({ name, label, hierarchical, can_add: true, rest_base: "" });
+const ptype = (name: string, label: string, singular: string, taxonomies: PostType["taxonomies"] = []): PostType => ({
+  name,
+  label,
+  singular,
+  hierarchical: name === "page",
+  supports: ["title", "editor", "thumbnail"],
+  can_publish: true,
+  can_delete: true,
+  taxonomies,
+  rest_base: "",
+});
+const TYPES = [
+  ptype("post", "Posts", "Post", [tax("category", "Categories", true), tax("post_tag", "Tags", false)]),
+  ptype("page", "Pages", "Page"),
+  ptype("cm_book", "Books", "Book", [tax("cm_genre", "Genres", false)]),
+];
+const swatch = (fill: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="${fill}"/></svg>`)}`;
+const MEDIA: Media[] = [
+  { id: 31, title: "shop-front", url: swatch("#c8a27a"), mime: "image/jpeg", alt: "The bakery's shop front at dawn", date: "2026-10-20 08:10:00" },
+  { id: 32, title: "sourdough", url: swatch("#8a6a4f"), mime: "image/jpeg", alt: "A sliced sourdough loaf", date: "2026-10-18 12:00:00" },
+  { id: 33, title: "menu-board", url: swatch("#3d5a4c"), mime: "image/png", alt: "", date: "2026-10-11 16:30:00" },
+  { id: 34, title: "price-list", url: "", mime: "application/pdf", alt: "", date: "2026-10-02 09:00:00" },
+];
+const post = (id: number, post_type: string, title: string, status: string, over: Partial<Post> = {}): Post => ({
+  id,
+  post_type,
+  title,
+  status,
+  date: "2026-10-26 10:00:00",
+  modified: "2026-10-27 15:42:00",
+  link: `https://mc-a.local/?p=${id}`,
+  featured_image: 0,
+  featured_url: null,
+  terms: {},
+  builder: null,
+  blocks: [],
+  locked: null,
+  ...over,
+});
+const POSTS: Post[] = [
+  post(11, "page", "Our menu", "publish", {
+    featured_image: 31,
+    featured_url: MEDIA[0].url,
+    blocks: [
+      { index: 0, name: "core/heading", depth: 0, editable: true, html: "Fresh every morning" },
+      { index: 1, name: "core/paragraph", depth: 0, editable: true, html: "Bread from 7, cakes from 9. Ask about <strong>gluten free</strong> loaves." },
+      { index: 2, name: "core/columns", depth: 0, editable: false, html: "Columns" },
+      { index: 3, name: "core/image", depth: 1, editable: false, html: "Image" },
+      { index: 4, name: "core/paragraph", depth: 1, editable: true, html: "Open Tuesday to Sunday." },
+      { index: 5, name: "core/buttons", depth: 0, editable: false, html: "Book a table" },
+    ],
+  }),
+  post(12, "page", "Home", "publish", { builder: "elementor", locked: "This page is built with Elementor, so its body is edited in Elementor. You can still change its title, status and featured image here." }),
+  post(13, "page", "Catering", "draft"),
+  post(21, "post", "Autumn opening hours", "publish", { terms: { category: [{ id: 2, name: "News" }], post_tag: [] } }),
+  post(22, "post", "Pumpkin loaf is back", "future"),
+  post(23, "post", "Hiring a morning baker", "pending"),
+  post(31, "cm_book", "Kind of Blue", "publish", { terms: { cm_genre: [{ id: 5, name: "Jazz" }] } }),
+];
+const TERMS: Record<string, { id: number; name: string }[]> = {
+  category: [
+    { id: 1, name: "Uncategorized" },
+    { id: 2, name: "News" },
+  ],
+  post_tag: [{ id: 3, name: "seasonal" }],
+  cm_genre: [
+    { id: 5, name: "Jazz" },
+    { id: 6, name: "Blues" },
+  ],
+};
+const summary = (p: Post): Summary => ({ id: p.id, title: p.title, status: p.status, date: p.date, modified: p.modified, author: "Joy", link: p.link });
+
 const listeners: Array<() => void> = [];
 const changed = () => listeners.forEach((f) => f());
 const edit = (id: number, over: Partial<Site>) => {
@@ -213,6 +288,28 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
         { slug: "wordpress-seo", name: "Yoast SEO – Advanced SEO with real-time guidance", version: "26.2", active_installs: 10000000, summary: "Improve your SEO with real-time feedback and schema." },
         { slug: "seo-by-rank-math", name: "Rank Math SEO", version: "1.0.250", active_installs: 3000000, summary: "SEO made easy for everyone." },
       ]);
+    case "content_types":
+      return r(TYPES);
+    case "content_list": {
+      const q = args.query as { post_type: string; status?: string; search?: string };
+      const rows = POSTS.filter((p) => p.post_type === q.post_type && (q.status ? p.status === q.status : p.status !== "trash") && (!q.search || p.title.toLowerCase().includes(q.search.toLowerCase())));
+      return r({ posts: rows.map(summary), total: rows.length, page: 1, pages: 1 });
+    }
+    case "content_get":
+      return r(POSTS.find((p) => p.id === args.postId));
+    case "content_terms":
+      return r(TERMS[args.taxonomy as string] ?? []);
+    case "content_create":
+    case "content_edit":
+      await new Promise((ok) => setTimeout(ok, 300));
+      return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
+    case "content_trash":
+      return r(null);
+    case "media_list":
+      return r(args.images ? MEDIA.filter((m) => m.mime.startsWith("image/")) : MEDIA);
+    case "media_import":
+      await new Promise((ok) => setTimeout(ok, 300));
+      return r(MEDIA[0]);
     case "job_start":
       return r(startJob(args.title as string, args.changes as Change[]));
     case "job_get":

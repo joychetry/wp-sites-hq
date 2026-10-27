@@ -110,9 +110,28 @@ test("the palette gives focus back when it closes", async ({ page }) => {
   await expect(search).toBeFocused();
 });
 
+test("the content editor works from the keyboard and gives focus back", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "content")!, "light");
+  await page.getByRole("button", { name: "Pages", exact: true }).click();
+  const open = page.getByRole("button", { name: "Our menu" });
+  await open.focus();
+  await page.keyboard.press("Enter");
+  const sheet = page.getByRole("dialog", { name: /^Edit page/ });
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("textbox", { name: "Paragraph 2" }).focus();
+  await page.keyboard.type(" Closed Mondays.");
+  await expect(sheet.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  for (let i = 0; i < 20; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(open).toBeFocused();
+});
+
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
