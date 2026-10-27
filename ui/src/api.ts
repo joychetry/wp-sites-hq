@@ -95,6 +95,59 @@ export type Found = { slug: string; name: string; version: string; active_instal
 
 export type PluginVersions = { installed?: string; versions?: { version: string; current?: boolean }[]; notice?: string };
 
+export type Taxonomy = { name: string; label: string; hierarchical: boolean; can_add: boolean; rest_base: string };
+
+export type PostType = {
+  name: string;
+  label: string;
+  singular: string;
+  hierarchical: boolean;
+  supports: string[];
+  can_publish: boolean;
+  can_delete: boolean;
+  taxonomies: Taxonomy[];
+  rest_base: string;
+};
+
+export type Summary = { id: number; title: string; status: string; date: string; modified: string; author: string; link: string };
+export type Listing = { posts: Summary[]; total: number; page: number; pages: number };
+export type Query = { post_type: string; status?: string; search?: string; page?: number };
+export type Term = { id: number; name: string };
+
+/** One block of a body. Editable blocks carry their text as HTML; others a short preview. */
+export type Block = { index: number; name: string; depth: number; editable: boolean; html: string };
+
+export type Post = {
+  id: number;
+  post_type: string;
+  title: string;
+  status: string;
+  date: string;
+  modified: string;
+  link: string;
+  featured_image: number;
+  featured_url: string | null;
+  terms: Record<string, Term[]>;
+  builder: string | null;
+  blocks: Block[];
+  locked: string | null;
+};
+
+/** A term picked by id, or typed by name (the site adds it). */
+export type TermRef = number | string;
+
+export type Draft = {
+  title?: string;
+  status?: string;
+  terms?: Record<string, TermRef[]>;
+  featured_image?: number;
+  body?: string;
+  edits?: { index: number; html: string }[];
+  seen_modified?: string;
+};
+
+export type Media = { id: number; title: string; url: string; mime: string; alt: string; date: string };
+
 export const api = {
   status: () => invoke<CoreStatus>("core_status"),
   sites: () => invoke<Site[]>("sites_list"),
@@ -117,7 +170,27 @@ export const api = {
   searchPlugins: (query: string) => invoke<Found[]>("plugin_search", { query }),
   startJob: (title: string, changes: Change[]) => invoke<Job>("job_start", { title, changes }),
   job: (id: number) => invoke<Job>("job_get", { id }),
+  postTypes: (id: number) => invoke<PostType[]>("content_types", { id }),
+  posts: (id: number, query: Query) => invoke<Listing>("content_list", { id, query }),
+  post: (id: number, postType: string, postId: number) => invoke<Post>("content_get", { id, postType, postId }),
+  terms: (id: number, taxonomy: string, search = "") => invoke<Term[]>("content_terms", { id, taxonomy, search }),
+  createPost: (id: number, postType: string, draft: Draft) => invoke<Post>("content_create", { id, postType, draft }),
+  editPost: (id: number, postType: string, postId: number, draft: Draft) =>
+    invoke<Post>("content_edit", { id, postType, postId, draft }),
+  trashPost: (id: number, postType: string, postId: number) => invoke<void>("content_trash", { id, postType, postId }),
+  media: (id: number, page: number, search: string, images: boolean) => invoke<Media[]>("media_list", { id, page, search, images }),
+  importMedia: (id: number, url: string, alt: string) => invoke<Media>("media_import", { id, url, alt }),
 };
+
+/** Why this site's content can't be managed here now, or null. */
+export function contentBlocked(s: Site): string | null {
+  if (s.sign_in_again) return "Sign in again first.";
+  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
+  const tools = s.capabilities.abilities;
+  if (s.mode === "classic_monks" && !(Array.isArray(tools) && tools.includes("list-post-types")))
+    return "Classic Monks on this site is older. Update it, then check the site, to manage its content here.";
+  return null;
+}
 
 /** A list from the core, loaded again whenever `event` fires. */
 function useLive<T>(load: () => Promise<T>, event: string) {

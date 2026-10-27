@@ -11,6 +11,8 @@ import { Settings } from "./screens/Settings";
 import { planTitle, Updates, updatesOf } from "./screens/Updates";
 import { Matrix } from "./screens/Matrix";
 import { Install } from "./screens/Install";
+import { Content } from "./screens/Content";
+import { Media } from "./screens/Media";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -25,7 +27,7 @@ const GROUPS = [
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -197,6 +199,10 @@ export default function App() {
         onInstall={section === "Plugins" ? () => setInstalling(true) : undefined}
       />
     );
+  } else if (section === "Content") {
+    body = <Content sites={scoped} />;
+  } else if (section === "Media") {
+    body = <Media sites={scoped} />;
   } else if (section === "Settings") {
     body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   } else {
