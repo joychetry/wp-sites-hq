@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use monks_core::connect::Removed;
+use monks_core::content::{Draft, Listing, Media, Post, PostType, Query, Term};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
 use monks_core::sites::{Mode, Site};
@@ -203,6 +204,108 @@ fn jobs_list(state: State<'_, AppCore>) -> Res<Vec<Job>> {
     core(&state)?.jobs(20).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn content_types(state: State<'_, AppCore>, id: i64) -> Res<Vec<PostType>> {
+    let core = core(&state)?;
+    core.post_types(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn content_list(state: State<'_, AppCore>, id: i64, query: Query) -> Res<Listing> {
+    let core = core(&state)?;
+    core.posts(id, &query).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn content_get(
+    state: State<'_, AppCore>,
+    id: i64,
+    post_type: String,
+    post_id: i64,
+) -> Res<Post> {
+    let core = core(&state)?;
+    core.post(id, &post_type, post_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn content_terms(
+    state: State<'_, AppCore>,
+    id: i64,
+    taxonomy: String,
+    search: String,
+) -> Res<Vec<Term>> {
+    let core = core(&state)?;
+    core.terms(id, &taxonomy, &search)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The human pressed Save in the editor.
+#[tauri::command]
+async fn content_create(
+    state: State<'_, AppCore>,
+    id: i64,
+    post_type: String,
+    draft: Draft,
+) -> Res<Post> {
+    let core = core(&state)?;
+    core.create_post(id, &post_type, draft)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn content_edit(
+    state: State<'_, AppCore>,
+    id: i64,
+    post_type: String,
+    post_id: i64,
+    draft: Draft,
+) -> Res<Post> {
+    let core = core(&state)?;
+    core.edit_post(id, &post_type, post_id, draft)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The human confirmed moving it to the trash.
+#[tauri::command]
+async fn content_trash(
+    state: State<'_, AppCore>,
+    id: i64,
+    post_type: String,
+    post_id: i64,
+) -> Res<()> {
+    let core = core(&state)?;
+    core.trash_post(id, &post_type, post_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn media_list(
+    state: State<'_, AppCore>,
+    id: i64,
+    page: u32,
+    search: String,
+    images: bool,
+) -> Res<Vec<Media>> {
+    let core = core(&state)?;
+    core.media(id, page, &search, images)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn media_import(state: State<'_, AppCore>, id: i64, url: String, alt: String) -> Res<Media> {
+    let core = core(&state)?;
+    core.import_media(id, &url, &alt)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 fn main() {
     let core = tauri::async_runtime::block_on(async {
         let home = paths::data_dir().map_err(|e| e.to_string())?;
@@ -266,6 +369,15 @@ fn main() {
             job_start,
             job_get,
             jobs_list,
+            content_types,
+            content_list,
+            content_get,
+            content_terms,
+            content_create,
+            content_edit,
+            content_trash,
+            media_list,
+            media_import,
         ])
         .run(tauri::generate_context!())
         .expect("Monks Central couldn't open its window");
