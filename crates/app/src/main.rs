@@ -8,8 +8,10 @@ use std::sync::Arc;
 
 use monks_core::connect::Removed;
 use monks_core::content::{Draft, Listing, Media, Post, PostType, Query, Term};
+use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
+use monks_core::people::{Comments, NewUser, User, Users};
 use monks_core::sites::{Mode, Site};
 use monks_core::{Core, Options, paths, vault};
 use serde_json::Value;
@@ -306,6 +308,155 @@ async fn media_import(state: State<'_, AppCore>, id: i64, url: String, alt: Stri
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn users_list(state: State<'_, AppCore>, id: i64, search: String, page: u32) -> Res<Users> {
+    let core = core(&state)?;
+    core.users(id, &search, page)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn user_create(state: State<'_, AppCore>, id: i64, user: NewUser) -> Res<User> {
+    let core = core(&state)?;
+    core.create_user(id, user).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn user_set_role(state: State<'_, AppCore>, id: i64, user_id: i64, role: String) -> Res<()> {
+    let core = core(&state)?;
+    core.set_role(id, user_id, &role)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The human confirmed deleting the user and who gets their content.
+#[tauri::command]
+async fn user_delete(state: State<'_, AppCore>, id: i64, user_id: i64, reassign: i64) -> Res<()> {
+    let core = core(&state)?;
+    core.delete_user(id, user_id, reassign)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Returns the address the email went to.
+#[tauri::command]
+async fn user_reset(state: State<'_, AppCore>, id: i64, user_id: i64) -> Res<String> {
+    let core = core(&state)?;
+    core.send_password_reset(id, user_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn comments_list(state: State<'_, AppCore>, id: i64, status: String) -> Res<Comments> {
+    let core = core(&state)?;
+    core.comments(id, &status).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn comment_moderate(
+    state: State<'_, AppCore>,
+    id: i64,
+    comment_id: i64,
+    action: String,
+) -> Res<()> {
+    let core = core(&state)?;
+    core.moderate(id, comment_id, &action)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn comment_reply(
+    state: State<'_, AppCore>,
+    id: i64,
+    comment_id: i64,
+    post_id: i64,
+    text: String,
+) -> Res<()> {
+    let core = core(&state)?;
+    core.reply(id, comment_id, post_id, &text)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Sign into the site's wp-admin in the browser, as the connected user.
+#[tauri::command]
+async fn site_login(state: State<'_, AppCore>, id: i64) -> Res<()> {
+    let core = core(&state)?;
+    let link = core.login_link(id).await.map_err(|e| e.to_string())?;
+    browser(&link).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn cm_features(state: State<'_, AppCore>, id: i64) -> Res<Vec<FeatureGroup>> {
+    let core = core(&state)?;
+    core.features(id).await.map_err(|e| e.to_string())
+}
+
+/// Returns the activity row that undoes the change, if the site has one.
+#[tauri::command]
+async fn cm_set_feature(
+    state: State<'_, AppCore>,
+    id: i64,
+    name: String,
+    on: bool,
+) -> Res<Option<i64>> {
+    let core = core(&state)?;
+    core.set_feature(id, &name, on)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn cm_settings(state: State<'_, AppCore>, id: i64) -> Res<Vec<Setting>> {
+    let core = core(&state)?;
+    core.settings(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn cm_set_setting(
+    state: State<'_, AppCore>,
+    id: i64,
+    name: String,
+    value: Value,
+) -> Res<Option<i64>> {
+    let core = core(&state)?;
+    core.set_setting(id, &name, value)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn cm_activity(state: State<'_, AppCore>, id: i64, page: u32) -> Res<Activity> {
+    let core = core(&state)?;
+    core.activity(id, page).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn cm_undo(state: State<'_, AppCore>, id: i64, row: i64) -> Res<()> {
+    let core = core(&state)?;
+    core.undo(id, row).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn cm_approvals(state: State<'_, AppCore>, id: i64) -> Res<Vec<Approval>> {
+    let core = core(&state)?;
+    core.approvals(id).await.map_err(|e| e.to_string())
+}
+
+/// Open the site's own page to approve or decline a waiting change.
+#[tauri::command]
+async fn cm_approval_open(state: State<'_, AppCore>, id: i64, op: i64) -> Res<()> {
+    let core = core(&state)?;
+    let link = core
+        .approval_link(id, op)
+        .await
+        .map_err(|e| e.to_string())?;
+    browser(&link).map_err(|e| e.to_string())
+}
+
 fn main() {
     let core = tauri::async_runtime::block_on(async {
         let home = paths::data_dir().map_err(|e| e.to_string())?;
@@ -378,6 +529,23 @@ fn main() {
             content_trash,
             media_list,
             media_import,
+            users_list,
+            user_create,
+            user_set_role,
+            user_delete,
+            user_reset,
+            comments_list,
+            comment_moderate,
+            comment_reply,
+            site_login,
+            cm_features,
+            cm_set_feature,
+            cm_settings,
+            cm_set_setting,
+            cm_activity,
+            cm_undo,
+            cm_approvals,
+            cm_approval_open,
         ])
         .run(tauri::generate_context!())
         .expect("Monks Central couldn't open its window");
