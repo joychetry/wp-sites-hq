@@ -746,6 +746,14 @@ impl Core {
         if let Some(v) = details.wp_version.as_deref().filter(|v| !at_least_7_1(v)) {
             return Err(SiteError::TooOld(v.to_string()));
         }
+        // The REST index names the site.
+        let index = self.rest_get(key, &root, "/", &[], &secret).await?;
+        if let Some(name) = index
+            .json::<Value>()
+            .and_then(|v| v["name"].as_str().map(String::from))
+        {
+            details.name = name;
+        }
         let caps = &me["capabilities"];
         details.capabilities = json!({
             "user": me["username"],
@@ -1319,6 +1327,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(s.mode, Mode::Basic);
+        assert_eq!(s.name, "Test Site");
         assert_eq!(s.api_url, format!("{}/wp-json/", site.url));
         assert_eq!(
             (s.wp_version.as_deref(), s.php_version.as_deref()),

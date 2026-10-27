@@ -103,6 +103,7 @@ impl TestSite {
             .route(&format!("{oauth}/revoke"), post(revoke))
             .route("/", get(home))
             .route("/wp-json/classic-monks/v1/mcp", post(mcp))
+            .route("/wp-json/", get(rest_index))
             .route("/wp-json/wp/v2/users/me", get(users_me))
             .route(
                 "/wp-json/wp-abilities/v1/abilities/core/get-environment-info/run",
@@ -394,4 +395,8 @@ async fn environment(Ax(s): Ax<Shared>, h: HeaderMap) -> Response {
     }
     Json(json!({ "environment": "local", "php_version": "8.4.26", "wp_version": s.wp_version }))
         .into_response()
+}
+
+async fn rest_index() -> Response {
+    Json(json!({ "name": "Test Site", "namespaces": ["wp/v2", "wp-abilities/v1"] })).into_response()
 }
