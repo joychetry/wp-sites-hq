@@ -259,7 +259,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       {s.tags.length > 0 && <span className="tag">{s.tags[0]}</span>}
                       {s.tags.length > 1 && <span className="dim"> +{s.tags.length - 1}</span>}
                     </td>
-                    <td className="m">{ago(s.checked_at)}</td>
+                    <td>{ago(s.checked_at)}</td>
                   </tr>
                 );
               })}
@@ -356,11 +356,11 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
         <h3>Stack</h3>
         <dl className="kv">
           <dt>WordPress</dt>
-          <dd className="mono">{s.wp_version ?? "unknown"}</dd>
+          <dd className={s.wp_version ? "mono" : undefined}>{s.wp_version ?? "unknown"}</dd>
           <dt>PHP</dt>
-          <dd className="mono">{s.php_version ?? "unknown"}</dd>
+          <dd className={s.php_version ? "mono" : undefined}>{s.php_version ?? "unknown"}</dd>
           <dt>Classic Monks</dt>
-          <dd className="mono">{s.cm_version ?? (s.mode === "basic" ? "not used" : "unknown")}</dd>
+          <dd className={s.cm_version ? "mono" : undefined}>{s.cm_version ?? (s.mode === "basic" ? "not used" : "unknown")}</dd>
           <dt>Connection</dt>
           <dd>{connectionLabel(s)}</dd>
           {s.mode === "basic" && (

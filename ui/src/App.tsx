@@ -163,7 +163,7 @@ export default function App() {
               </option>
             ))}
           </select>
-          <span className="mono dim">{scoped.length}</span>
+          <span className="n dim">{scoped.length}</span>
           <span className="dim" aria-hidden="true">
             ▾
           </span>
@@ -200,7 +200,7 @@ export default function App() {
             {nextCheck != null && ` Next check in ${nextCheck} min.`}
           </p>
           {status && (
-            <p className="mono">
+            <p>
               {status.version} · {status.role}
             </p>
           )}
