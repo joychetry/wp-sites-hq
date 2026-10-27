@@ -2,7 +2,7 @@
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Updates, updatesOf } from "./Updates";
-import { Matrix } from "./Matrix";
+import { Matrix, olderStable } from "./Matrix";
 import { Install } from "./Install";
 import { JobSheet, type PlanRow } from "../components/JobSheet";
 import { site } from "../test-fixtures";
@@ -111,14 +111,27 @@ test("the inspector updates, deactivates and turns automatic updates on for one 
   expect(p.onPlan.mock.lastCall![2]).toBe("plan");
 });
 
+test("olderStable: only stable releases below the installed one", () => {
+  expect(olderStable("11.1.2", "11.2.1")).toBe(true);
+  expect(olderStable("11.2", "11.2.1")).toBe(true);
+  expect(olderStable("11.2.1", "11.2.1")).toBe(false);
+  expect(olderStable("11.3.0", "11.2.1")).toBe(false);
+  expect(olderStable("11.1.0-rc.1", "11.2.1")).toBe(false);
+  expect(olderStable("11.2.1", "11.3.0-beta.1")).toBe(true);
+  expect(olderStable("11.3.0", "11.3.0-beta.1")).toBe(false);
+  expect(olderStable("1.0", "")).toBe(false);
+});
+
 test("rolling back asks the site for older versions, then confirms as a risky change", async () => {
-  mockInvoke.mockResolvedValue({ installed: "10.2.0", versions: [{ version: "10.3.0" }, { version: "10.2.0" }, { version: "10.1.0" }] });
+  const offered = ["10.3.0-beta.1", "10.3.0", "10.2.0", "10.2.0-rc.1", "10.1.0"].map((version) => ({ version }));
+  mockInvoke.mockResolvedValue({ installed: "10.2.0", versions: offered });
   const p = matrix();
   fireEvent.click(screen.getByRole("button", { name: /^WooCommerce on Alpha/ }));
   fireEvent.click(screen.getByRole("button", { name: "Choose an older version" }));
   expect(mockInvoke).toHaveBeenCalledWith("plugin_versions", { id: 1, plugin: WOO });
   fireEvent.click(await screen.findByRole("button", { name: "Roll back to 10.1.0" }));
-  expect(screen.queryByRole("button", { name: "Roll back to 10.2.0" })).not.toBeInTheDocument();
+  // Only older stable releases: not the installed one, not newer ones, not betas or release candidates.
+  expect(screen.getAllByRole("button", { name: /^Roll back to/ }).map((b) => b.textContent)).toEqual(["Roll back to 10.1.0"]);
   expect(p.onPlan).toHaveBeenLastCalledWith(
     "Roll back WooCommerce on Alpha",
     [expect.objectContaining({ from: "10.2.0", to: "10.1.0", change: { site_id: 1, action: { do: "rollback_plugin", plugin: WOO, version: "10.1.0" } } })],

@@ -20,6 +20,20 @@ type Props = {
   onInstall?: () => void;
 };
 
+/** A stable release older than the installed one: rolling back never upgrades, and never lands on a beta. */
+export function olderStable(version: string, installed: string): boolean {
+  if (!/^\d+(\.\d+)*$/.test(version)) return false;
+  const base = installed.match(/^\d+(\.\d+)*/)?.[0];
+  if (!base) return false;
+  const a = version.split(".").map(Number);
+  const b = base.split(".").map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d) return d < 0;
+  }
+  return false;
+}
+
 const itemsOf = (kind: Kind, inv: SiteInventory | undefined) => (kind === "plugins" ? inv?.inventory.plugins : inv?.inventory.themes) ?? [];
 
 /** The plugin's folder is its WordPress.org slug. */
@@ -284,7 +298,7 @@ function Inspector({ kind, site: s, col, item, everywhere, onPlan, onRun, onClos
       setLoading(false);
     }
   };
-  const older = (versions?.versions ?? []).filter((v) => v.version !== item?.version && !v.current);
+  const older = (versions?.versions ?? []).filter((v) => olderStable(v.version, item?.version ?? ""));
 
   const acts: React.ReactNode[] = [];
   if (item) {
