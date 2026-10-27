@@ -656,7 +656,8 @@ impl Core {
 
     /// Record a job the human confirmed, then run it in the background.
     /// Sites run side by side; one site's changes run one after another.
-    pub fn start_job(
+    /// Async only so every caller is inside the runtime the job is spawned on.
+    pub async fn start_job(
         self: &Arc<Self>,
         title: &str,
         changes: Vec<Change>,
@@ -1075,6 +1076,7 @@ mod tests {
                     })
                     .to_vec(),
             )
+            .await
             .unwrap();
         assert_eq!(job.items.len(), 2);
         assert_eq!(job.items[0].label, "Update WooCommerce");
@@ -1112,6 +1114,7 @@ mod tests {
                     },
                 }],
             )
+            .await
             .unwrap();
         let back = wait(&core, back.id).await;
         assert_eq!(
@@ -1159,6 +1162,7 @@ mod tests {
                     },
                 ],
             )
+            .await
             .unwrap();
         let job = wait(&core, job.id).await;
         assert_eq!(job.items[0].state, ItemState::Failed);
@@ -1170,7 +1174,7 @@ mod tests {
             job.items[2].message
         );
         assert!(!core.inventory_of(s.id).unwrap().unwrap().plugins[0].active);
-        assert!(core.start_job("none", vec![]).is_err());
+        assert!(core.start_job("none", vec![]).await.is_err());
     }
 
     #[tokio::test]
@@ -1188,6 +1192,7 @@ mod tests {
                     action: Action::UpdatePlugin { plugin: woo() },
                 }],
             )
+            .await
             .unwrap();
         let job = wait(&core, job.id).await;
         assert!(
@@ -1243,6 +1248,7 @@ mod tests {
                     },
                 ],
             )
+            .await
             .unwrap();
         let job = wait(&core, job.id).await;
         let states: Vec<_> = job.items.iter().map(|i| i.state).collect();
@@ -1267,6 +1273,7 @@ mod tests {
                     action: Action::ActivatePlugin { plugin: woo() },
                 }],
             )
+            .await
             .unwrap();
         let job = wait(&core, job.id).await;
         assert!(matches!(job.items[0].message.as_str(), m if m.contains("Sign in again")));

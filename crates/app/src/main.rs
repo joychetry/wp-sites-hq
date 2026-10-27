@@ -186,9 +186,10 @@ async fn plugin_search(state: State<'_, AppCore>, query: String) -> Res<Vec<Foun
 
 /// The human confirmed these changes in the window: run them.
 #[tauri::command]
-fn job_start(state: State<'_, AppCore>, title: String, changes: Vec<Change>) -> Res<Job> {
+async fn job_start(state: State<'_, AppCore>, title: String, changes: Vec<Change>) -> Res<Job> {
     core(&state)?
         .start_job(&title, changes)
+        .await
         .map_err(|e| e.to_string())
 }
 
