@@ -20,6 +20,9 @@ pub const GLOBAL: usize = 8;
 /// Tries for a read-only request: the first and two retries.
 const TRIES: u32 = 3;
 const MAX_WAIT: Duration = Duration::from_secs(10);
+/// A change may download and unpack a zip on the site, and is never sent
+/// twice, so it gets far longer to answer than a read.
+const WRITE_WAIT: Duration = Duration::from_secs(300);
 
 pub fn client() -> reqwest::Result<reqwest::Client> {
     reqwest::Client::builder()
@@ -122,7 +125,7 @@ pub async fn send(
     loop {
         let outcome = {
             let _permits = limits.acquire(site).await;
-            match build().send().await {
+            match with_wait(build(), retry).send().await {
                 Ok(resp) => {
                     let status = resp.status().as_u16();
                     let headers = resp.headers().clone();
@@ -145,6 +148,13 @@ pub async fn send(
         }
         tokio::time::sleep(wait.unwrap_or(Duration::from_millis(300 * u64::from(attempt)))).await;
         attempt += 1;
+    }
+}
+
+fn with_wait(req: reqwest::RequestBuilder, retry: Retry) -> reqwest::RequestBuilder {
+    match retry {
+        Retry::ReadOnly => req,
+        Retry::Write => req.timeout(WRITE_WAIT),
     }
 }
 
@@ -257,6 +267,20 @@ mod tests {
     use tokio_rustls::TlsAcceptor;
     use tokio_rustls::rustls::ServerConfig;
     use tokio_rustls::rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
+
+    #[test]
+    fn a_change_waits_longer_than_a_read() {
+        let http = client().unwrap();
+        let wait = |retry| {
+            with_wait(http.post("https://example.test/"), retry)
+                .build()
+                .unwrap()
+                .timeout()
+                .copied()
+        };
+        assert_eq!(wait(Retry::Write), Some(WRITE_WAIT));
+        assert_eq!(wait(Retry::ReadOnly), None, "reads keep the client's 30 s");
+    }
 
     #[tokio::test]
     async fn self_signed_site_is_not_trusted_in_plain_words() {
