@@ -3,9 +3,12 @@
 pub mod ipc;
 pub mod lock;
 pub mod net;
+pub mod oauth;
 pub mod paths;
 pub mod sites;
 pub mod store;
+#[cfg(test)]
+mod testsite;
 pub mod vault;
 
 pub use keyring_core::CredentialStore;
