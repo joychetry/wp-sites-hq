@@ -23,6 +23,21 @@
 //!   create <url> <post type> <draft JSON>  add an entry (JSON back)
 //!   edit <url> <post type> <id> <draft JSON>
 //!   import <url> <image link> <alt text>   add an image to the media library
+//!   users <url> [search]                   a page of users with the roles offered (JSON)
+//!   add-user <url> <new user JSON>
+//!   set-role <url> <user id> <role>
+//!   delete-user <url> <user id> <reassign to id>
+//!   reset <url> <user id>                  email a password reset (Classic Monks M7)
+//!   comments <url> [pending|approved|spam|trash]
+//!   moderate <url> <comment id> <approve|unapprove|spam|trash>
+//!   reply <url> <comment id> <post id> <text>
+//!   login-check <url>   make a login link and use it like a browser: who it signs in,
+//!                       and that it works once (the link itself is never printed)
+//!   agent <url> <tool>  the same tool called as an AI agent on the socket would
+//!   features <url> [word]                  Classic Monks features matching a word
+//!   set-feature <url> <option name> <on|off>   prints the activity row that undoes it
+//!   undo <url> <activity row id>
+//!   activity <url> | approvals <url> | settings <url>
 //!
 //! The browser step is played by this program: a login cookie made with
 //! `studio wp` (no password is handled), then the site's real consent form,
@@ -267,8 +282,201 @@ async fn main() -> Res<()> {
                 .import_media(site_id(&core, arg(1)?)?, arg(2)?, arg(3)?)
                 .await?,
         ),
+        "users" => show(
+            &core
+                .users(
+                    site_id(&core, arg(1)?)?,
+                    args.get(2).map_or("", String::as_str),
+                    1,
+                )
+                .await?,
+        ),
+        "add-user" => show(
+            &core
+                .create_user(site_id(&core, arg(1)?)?, serde_json::from_str(arg(2)?)?)
+                .await?,
+        ),
+        "set-role" => {
+            core.set_role(site_id(&core, arg(1)?)?, arg(2)?.parse()?, arg(3)?)
+                .await?;
+            println!("role set");
+            Ok(())
+        }
+        "delete-user" => {
+            core.delete_user(site_id(&core, arg(1)?)?, arg(2)?.parse()?, arg(3)?.parse()?)
+                .await?;
+            println!("deleted");
+            Ok(())
+        }
+        "reset" => {
+            let to = core
+                .send_password_reset(site_id(&core, arg(1)?)?, arg(2)?.parse()?)
+                .await?;
+            println!("reset email sent to {to}");
+            Ok(())
+        }
+        "comments" => show(
+            &core
+                .comments(
+                    site_id(&core, arg(1)?)?,
+                    args.get(2).map_or("pending", String::as_str),
+                )
+                .await?,
+        ),
+        "moderate" => {
+            core.moderate(site_id(&core, arg(1)?)?, arg(2)?.parse()?, arg(3)?)
+                .await?;
+            println!("{} done", arg(3)?);
+            Ok(())
+        }
+        "reply" => {
+            core.reply(
+                site_id(&core, arg(1)?)?,
+                arg(2)?.parse()?,
+                arg(3)?.parse()?,
+                arg(4)?,
+            )
+            .await?;
+            println!("replied");
+            Ok(())
+        }
+        "login-check" => login_check(&core, arg(1)?).await,
+        "agent" => {
+            match core.agent_call(arg(1)?, arg(2)?, json!({})).await {
+                Ok(_) => println!("agent call ran"),
+                Err(e) => println!("agent call refused: {e}"),
+            }
+            Ok(())
+        }
+        "features" => {
+            let word = args.get(2).map_or("", String::as_str);
+            for g in core.features(site_id(&core, arg(1)?)?).await? {
+                for t in g.toggles.iter().filter(|t| t.name.contains(word)) {
+                    println!(
+                        "{} / {}: {} ({}){}",
+                        g.label,
+                        t.label,
+                        if t.on { "on" } else { "off" },
+                        t.name,
+                        if t.locked { ", locked" } else { "" }
+                    );
+                }
+            }
+            Ok(())
+        }
+        "set-feature" => {
+            let undo = core
+                .set_feature(site_id(&core, arg(1)?)?, arg(2)?, arg(3)? == "on")
+                .await?;
+            println!("set {} {}; undo row {:?}", arg(2)?, arg(3)?, undo);
+            Ok(())
+        }
+        "undo" => {
+            core.undo(site_id(&core, arg(1)?)?, arg(2)?.parse()?)
+                .await?;
+            println!("undone");
+            Ok(())
+        }
+        "activity" => show(&core.activity(site_id(&core, arg(1)?)?, 1).await?),
+        "approvals" => show(&core.approvals(site_id(&core, arg(1)?)?).await?),
+        "settings" => show(&core.settings(site_id(&core, arg(1)?)?).await?),
         other => Err(format!("unknown command {other}").into()),
     }
+}
+
+/// Use a login link as a browser would, with no cookies of its own: a GET only
+/// shows the form, the POST signs in, the dashboard says who, a second use fails.
+async fn login_check(core: &Core, url: &str) -> Res<()> {
+    let link = core.login_link(site_id(core, url)?).await?;
+    let parsed = reqwest::Url::parse(&link)?;
+    println!(
+        "link: {}://{}{} (single-use token not shown)",
+        parsed.scheme(),
+        parsed.host_str().unwrap_or_default(),
+        parsed.path()
+    );
+    let http = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
+    let get = http.get(&link).send().await?;
+    // Every WordPress auth cookie the answer sets, as one Cookie header.
+    let signed = |r: &reqwest::Response| {
+        let all: Vec<String> = r
+            .headers()
+            .get_all(reqwest::header::SET_COOKIE)
+            .iter()
+            .filter_map(|c| c.to_str().ok())
+            .filter(|c| c.starts_with("wordpress_") && !c.contains("=deleted"))
+            .map(|c| c.split(';').next().unwrap_or_default().to_string())
+            .collect();
+        all.iter()
+            .any(|c| c.starts_with("wordpress_logged_in_"))
+            .then(|| all.join("; "))
+    };
+    println!(
+        "GET: {} {}",
+        get.status(),
+        if signed(&get).is_some() {
+            "signed in (wrong)"
+        } else {
+            "only the form, not signed in"
+        }
+    );
+    let referrer = get
+        .headers()
+        .get("referrer-policy")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("none")
+        .to_string();
+    let token = parsed
+        .query_pairs()
+        .find(|(k, _)| k == "token")
+        .map(|(_, v)| v.into_owned())
+        .ok_or("no token")?;
+    let post = http
+        .post(&link)
+        .form(&[("token", token.as_str())])
+        .send()
+        .await?;
+    let to = post
+        .headers()
+        .get(LOCATION)
+        .and_then(|l| l.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
+    let cookie = signed(&post).ok_or("the POST didn't sign in")?;
+    println!(
+        "POST: {} to {to} (Referrer-Policy: {referrer})",
+        post.status()
+    );
+    let profile = http
+        .get(absolute(&link, "/wp-admin/profile.php")?)
+        .header(COOKIE, &cookie)
+        .send()
+        .await?
+        .text()
+        .await?;
+    let login = profile
+        .split("id=\"user_login\"")
+        .nth(1)
+        .and_then(|rest| attr(rest, "value"))
+        .unwrap_or_else(|| "nobody".into());
+    println!("dashboard profile says: signed in as {login}");
+    let again = http
+        .post(&link)
+        .form(&[("token", token.as_str())])
+        .send()
+        .await?;
+    println!(
+        "second use: {} {}",
+        again.status(),
+        if signed(&again).is_some() {
+            "signed in again (wrong)"
+        } else {
+            "refused"
+        }
+    );
+    Ok(())
 }
 
 fn show(v: &impl serde::Serialize) -> Res<()> {
