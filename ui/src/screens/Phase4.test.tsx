@@ -196,6 +196,8 @@ describe("Classic Monks", () => {
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(await screen.findByText("Undone: Turned on SVG Support on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_undo", { id: 1, row: 42 }]);
+    // The list reads the site again, so it shows what the undo put back.
+    expect(await screen.findByRole("button", { name: "Turn on SVG Support" })).toBeInTheDocument();
   });
 
   it("finds features in every section and shows locked ones as locked", async () => {

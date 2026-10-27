@@ -41,6 +41,8 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
   const blocked = site ? cmBlocked(site) : null;
   const [tab, setTab] = useState<Tab>("features");
   const [done, setDone] = useState<Done | null>(null);
+  // Bumped after an undo so the open tab reads the site again.
+  const [round, setRound] = useState(0);
 
   if (sites.length === 0) {
     return (
@@ -58,6 +60,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
     try {
       await api.undo(site.id, done.undo);
       setDone({ text: `Undone: ${done.text}`, undo: null, ok: true });
+      setRound((r) => r + 1);
     } catch (e) {
       setDone({ text: String(e), undo: null, ok: false });
     }
@@ -121,9 +124,9 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
           <p>{blocked}</p>
         </div>
       ) : current === "features" ? (
-        <Features key={site.id} site={site} onDone={setDone} />
+        <Features key={site.id} site={site} onDone={setDone} round={round} />
       ) : current === "settings" ? (
-        <Settings key={site.id} site={site} onDone={setDone} />
+        <Settings key={site.id} site={site} onDone={setDone} round={round} />
       ) : current === "activity" ? (
         <Log key={site.id} site={site} onDone={setDone} />
       ) : (
@@ -133,7 +136,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
   );
 }
 
-type Part = { site: Site; onDone: (d: Done) => void };
+type Part = { site: Site; onDone: (d: Done) => void; round?: number };
 
 /** Reads once per site, with Try again. */
 function useRead<T>(read: () => Promise<T>, deps: unknown[]) {
@@ -158,8 +161,8 @@ function Failed({ what, error, retry }: { what: string; error: string; retry: ()
   );
 }
 
-function Features({ site, onDone }: Part) {
-  const { data, setData, error, load } = useRead<FeatureGroup[]>(() => api.features(site.id), [site.id]);
+function Features({ site, onDone, round }: Part) {
+  const { data, setData, error, load } = useRead<FeatureGroup[]>(() => api.features(site.id), [site.id, round]);
   const [group, setGroup] = useState("");
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -234,8 +237,8 @@ function Features({ site, onDone }: Part) {
   );
 }
 
-function Settings({ site, onDone }: Part) {
-  const { data, error, load } = useRead<Setting[]>(() => api.settings(site.id), [site.id]);
+function Settings({ site, onDone, round }: Part) {
+  const { data, error, load } = useRead<Setting[]>(() => api.settings(site.id), [site.id, round]);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   if (error) return <Failed what="Classic Monks' settings" error={error} retry={load} />;
