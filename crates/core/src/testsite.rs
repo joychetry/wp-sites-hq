@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use axum::extract::{Form, Query, State as Ax};
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -43,6 +43,13 @@ pub struct State {
     pub mcp_calls: usize,
     /// Bearer tokens the MCP endpoint saw in Authorization and X-CM-Authorization.
     pub seen_x_cm: usize,
+    /// Plugins as `get-site-snapshot` lists them; Basic mode's REST shows the same ones.
+    pub plugins: Vec<serde_json::Value>,
+    pub needs_credentials: bool,
+    /// This tool fails, as an update that couldn't be installed.
+    pub fail_tool: Option<String>,
+    /// Every tool called, with its arguments.
+    pub calls: Vec<(String, serde_json::Value)>,
     /// Code -> (PKCE challenge, client).
     codes: HashMap<String, (String, String)>,
     clients: u32,
@@ -71,6 +78,13 @@ impl Default for State {
             app_password: "abcd efgh ijkl mnop qrst uvwx".into(),
             mcp_calls: 0,
             seen_x_cm: 0,
+            plugins: vec![json!({
+                "plugin": "woocommerce/woocommerce.php", "name": "WooCommerce", "version": "10.2.0",
+                "active": true, "auto_update": false, "update": "10.3.0",
+            })],
+            needs_credentials: false,
+            fail_tool: None,
+            calls: Vec::new(),
             codes: HashMap::new(),
             clients: 0,
             families: HashMap::new(),
@@ -117,6 +131,15 @@ impl TestSite {
                 "/wp-json/wp-abilities/v1/abilities/core/get-environment-info/run",
                 get(environment),
             )
+            .route(
+                "/wp-json/wp/v2/plugins",
+                get(rest_plugins).post(rest_install),
+            )
+            .route(
+                "/wp-json/wp/v2/plugins/{*plugin}",
+                post(rest_set_status).merge(delete(rest_delete)),
+            )
+            .route("/wp-json/wp/v2/themes", get(rest_themes))
             .with_state(state.clone());
         tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
         Self { url, state }
@@ -191,6 +214,7 @@ async fn server_metadata(Ax(s): Ax<Shared>) -> Response {
     .into_response()
 }
 
+/// A new client for every sign-in, as dynamic client registration does.
 async fn register(Ax(s): Ax<Shared>, Json(body): Json<serde_json::Value>) -> Response {
     assert_eq!(body["redirect_uris"][0], crate::oauth::REDIRECT_URI);
     let mut s = s.lock().unwrap();
@@ -362,6 +386,9 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 json!({ "name": "get-posts", "annotations": { "readOnlyHint": true } }),
                 json!({ "name": "update-post", "annotations": { "readOnlyHint": false, "destructiveHint": false } }),
             ];
+            for (name, read_only) in PLUGIN_TOOLS {
+                tools.push(json!({ "name": name, "annotations": { "readOnlyHint": read_only } }));
+            }
             if !s.no_hq {
                 tools.push(json!({ "name": "get-hq-status", "annotations": { "readOnlyHint": true } }));
             }
@@ -381,6 +408,27 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
         }
         Some("tools/call") if req["params"]["name"] == "get-posts" => {
             json!({ "content": [{ "type": "text", "text": "[]" }], "structuredContent": { "posts": [] } })
+        }
+        Some("tools/call")
+            if PLUGIN_TOOLS
+                .iter()
+                .any(|(n, _)| req["params"]["name"] == *n) =>
+        {
+            let name = req["params"]["name"].as_str().unwrap_or_default().to_string();
+            let args = req["params"]["arguments"].clone();
+            s.calls.push((name.clone(), args.clone()));
+            let out = if s.fail_tool.as_deref() == Some(name.as_str()) {
+                Err("The update could not be installed.".to_string())
+            } else {
+                plugin_tool(&mut s, &name, &args)
+            };
+            match out {
+                Ok(v) => json!({ "content": [{ "type": "text", "text": v.to_string() }], "structuredContent": v }),
+                Err(e) => {
+                    let err = json!({ "error": e });
+                    json!({ "content": [{ "type": "text", "text": err.to_string() }], "structuredContent": err, "isError": true })
+                }
+            }
         }
         Some("tools/call") => {
             let err = json!({ "error": "Unknown tool", "code": "x" });
@@ -436,4 +484,171 @@ async fn environment(Ax(s): Ax<Shared>, h: HeaderMap) -> Response {
 
 async fn rest_index() -> Response {
     Json(json!({ "name": "Test Site", "namespaces": ["wp/v2", "wp-abilities/v1"] })).into_response()
+}
+
+/// The plugin tools the fake site has, and whether each only reads.
+const PLUGIN_TOOLS: &[(&str, bool)] = &[
+    ("get-site-snapshot", true),
+    ("list-plugin-versions", true),
+    ("update-plugin", false),
+    ("rollback-plugin", false),
+    ("activate-plugin", false),
+    ("deactivate-plugin", false),
+    ("uninstall-plugin", false),
+    ("set-plugin-auto-update", false),
+    ("install-plugin", false),
+];
+
+fn plugin_tool(
+    s: &mut State,
+    name: &str,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let file = args["plugin_file"]
+        .as_str()
+        .or(args["plugin"].as_str())
+        .unwrap_or_default()
+        .to_string();
+    if name == "get-site-snapshot" {
+        return Ok(json!({
+            "core": { "version": s.wp_version, "update": null },
+            "plugins": s.plugins,
+            "themes": [{ "stylesheet": "twentytwentyfive", "name": "Twenty Twenty-Five", "version": "1.2", "active": true, "auto_update": false, "update": null }],
+            "updates": { "translations": [] },
+            "filesystem": { "needs_credentials": s.needs_credentials },
+        }));
+    }
+    if name == "install-plugin" {
+        let slug = args["slug"]
+            .as_str()
+            .ok_or("Only WordPress.org slugs here.")?;
+        s.plugins.push(json!({ "plugin": format!("{slug}/{slug}.php"), "name": slug, "version": "1.0", "active": args["activate"] == true, "auto_update": false, "update": null }));
+        return Ok(json!({ "installed": true, "message": "Installed." }));
+    }
+    let i = s
+        .plugins
+        .iter()
+        .position(|p| p["plugin"] == file.as_str())
+        .ok_or("That plugin isn't installed.")?;
+    let p = &mut s.plugins[i];
+    Ok(match name {
+        "list-plugin-versions" => json!({
+            "plugin": file,
+            "installed": p["version"],
+            "versions": [{ "version": "10.3.0" }, { "version": "10.2.0" }, { "version": "10.1.0" }],
+        }),
+        "update-plugin" if p["update"].is_string() => {
+            let previous = p["version"].clone();
+            p["version"] = p["update"].take();
+            json!({ "updated": true, "previous_version": previous, "version": p["version"], "message": "Updated." })
+        }
+        "update-plugin" => json!({ "updated": false, "message": "This plugin is up to date." }),
+        "rollback-plugin" => {
+            let from = p["version"].clone();
+            p["version"] = args["version"].clone();
+            p["update"] = from.clone();
+            json!({ "plugin": file, "from": from, "to": args["version"], "message": "Rolled back." })
+        }
+        "activate-plugin" | "deactivate-plugin" => {
+            p["active"] = json!(name == "activate-plugin");
+            json!({ "active": p["active"] })
+        }
+        "set-plugin-auto-update" => {
+            p["auto_update"] = args["enabled"].clone();
+            json!({ "enabled": args["enabled"] })
+        }
+        "uninstall-plugin" => {
+            s.plugins.remove(i);
+            json!({ "uninstalled": true })
+        }
+        _ => unreachable!("not a plugin tool: {name}"),
+    })
+}
+
+/// Core REST plugins: files without `.php`, status active or inactive.
+async fn rest_plugins(Ax(s): Ax<Shared>, h: HeaderMap) -> Response {
+    let s = s.lock().unwrap();
+    if !basic_ok(&s, &h) {
+        return not_logged_in();
+    }
+    let list: Vec<_> = s
+        .plugins
+        .iter()
+        .map(|p| {
+            json!({
+                "plugin": p["plugin"].as_str().unwrap_or_default().trim_end_matches(".php"),
+                "name": p["name"],
+                "version": p["version"],
+                "status": if p["active"] == true { "active" } else { "inactive" },
+            })
+        })
+        .collect();
+    Json(list).into_response()
+}
+
+async fn rest_themes(Ax(s): Ax<Shared>, h: HeaderMap) -> Response {
+    if !basic_ok(&s.lock().unwrap(), &h) {
+        return not_logged_in();
+    }
+    Json(json!([{ "stylesheet": "twentytwentyfive", "name": { "rendered": "Twenty Twenty-Five" }, "version": "1.2", "status": "active" }])).into_response()
+}
+
+async fn rest_install(
+    Ax(s): Ax<Shared>,
+    h: HeaderMap,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    let mut s = s.lock().unwrap();
+    if !basic_ok(&s, &h) {
+        return not_logged_in();
+    }
+    let slug = body["slug"].as_str().unwrap_or_default();
+    s.plugins.push(json!({ "plugin": format!("{slug}/{slug}.php"), "name": slug, "version": "1.0", "active": body["status"] == "active" }));
+    StatusCode::CREATED.into_response()
+}
+
+fn rest_find(s: &State, plugin: &str) -> Option<usize> {
+    s.plugins
+        .iter()
+        .position(|p| p["plugin"] == format!("{plugin}.php"))
+}
+
+async fn rest_set_status(
+    Ax(s): Ax<Shared>,
+    axum::extract::Path(plugin): axum::extract::Path<String>,
+    h: HeaderMap,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    let mut s = s.lock().unwrap();
+    if !basic_ok(&s, &h) {
+        return not_logged_in();
+    }
+    let Some(i) = rest_find(&s, &plugin) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    s.plugins[i]["active"] = json!(body["status"] == "active");
+    StatusCode::OK.into_response()
+}
+
+async fn rest_delete(
+    Ax(s): Ax<Shared>,
+    axum::extract::Path(plugin): axum::extract::Path<String>,
+    h: HeaderMap,
+) -> Response {
+    let mut s = s.lock().unwrap();
+    if !basic_ok(&s, &h) {
+        return not_logged_in();
+    }
+    match rest_find(&s, &plugin) {
+        Some(i) if s.plugins[i]["active"] == true => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "code": "rest_cannot_delete_active_plugin", "message": "Deactivate the plugin before deleting it." })),
+        )
+            .into_response(),
+        Some(i) => {
+            s.plugins.remove(i);
+            StatusCode::OK.into_response()
+        }
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }

@@ -8,6 +8,7 @@ use rusqlite::{Connection, TransactionBehavior};
 const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0001_credentials.sql"),
     include_str!("../migrations/0002_sites.sql"),
+    include_str!("../migrations/0003_fleet.sql"),
 ];
 
 /// Schema version this build writes.

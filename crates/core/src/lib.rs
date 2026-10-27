@@ -1,6 +1,7 @@
 //! Monks Central core.
 
 pub mod connect;
+pub mod fleet;
 pub mod ipc;
 pub mod lock;
 pub mod net;
@@ -37,6 +38,28 @@ pub enum CoreError {
     TakeOver(String),
 }
 
+/// What changed, for the window to reload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Changed {
+    /// Added, removed, checked or edited.
+    Sites,
+    /// What a site runs: plugins, themes, updates.
+    Inventory,
+    /// A job started, moved on or finished.
+    Jobs,
+}
+
+impl Changed {
+    /// The window event name.
+    pub fn event(self) -> &'static str {
+        match self {
+            Changed::Sites => "sites-changed",
+            Changed::Inventory => "inventory-changed",
+            Changed::Jobs => "jobs-changed",
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Options {
     /// Started by `monks core` (or by the CLI for itself), not by the app.
@@ -69,7 +92,7 @@ pub struct Core {
     limits: net::Limits,
     refresh_locks: Mutex<HashMap<i64, Arc<tokio::sync::Mutex<()>>>>,
     sign_in: Mutex<Option<oneshot::Sender<()>>>,
-    changed: broadcast::Sender<()>,
+    changed: broadcast::Sender<Changed>,
     shutdown: Notify,
     /// Site work holds a read guard; `finish` takes the write guard.
     work: RwLock<()>,
@@ -148,8 +171,8 @@ impl Core {
         self.work.read().await
     }
 
-    /// Fires after sites change (added, removed, checked, edited).
-    pub fn subscribe(&self) -> broadcast::Receiver<()> {
+    /// Fires after sites, their inventory or a job change.
+    pub fn subscribe(&self) -> broadcast::Receiver<Changed> {
         self.changed.subscribe()
     }
 

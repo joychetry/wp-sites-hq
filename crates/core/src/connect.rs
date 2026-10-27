@@ -14,7 +14,7 @@ use crate::net::{self, Reply, Retry};
 use crate::oauth::{self, RefreshError, Tokens};
 use crate::sites::{self, Details, Health, Mode, NewSite, OAuthClient, Site};
 use crate::vault::{Vault, VaultError};
-use crate::{Core, vault};
+use crate::{Changed, Core, vault};
 
 /// How long the app waits for the human in the browser.
 const SIGN_IN_WAIT: Duration = Duration::from_secs(600);
@@ -34,7 +34,7 @@ pub enum SiteError {
     TooOld(String),
 }
 
-fn plain(msg: impl Into<String>) -> SiteError {
+pub(crate) fn plain(msg: impl Into<String>) -> SiteError {
     SiteError::Plain(msg.into())
 }
 
@@ -58,9 +58,9 @@ impl From<oauth::OAuthError> for SiteError {
 
 /// A Basic mode secret, sealed in the vault as JSON.
 #[derive(Serialize, Deserialize)]
-struct AppPassword {
-    username: String,
-    password: String,
+pub(crate) struct AppPassword {
+    pub(crate) username: String,
+    pub(crate) password: String,
 }
 
 /// What removing a site did on the site itself.
@@ -88,12 +88,15 @@ pub fn at_least_7_1(version: &str) -> bool {
 }
 
 impl Core {
-    fn db<T>(&self, f: impl FnOnce(&Connection) -> rusqlite::Result<T>) -> Result<T, SiteError> {
+    pub(crate) fn db<T>(
+        &self,
+        f: impl FnOnce(&Connection) -> rusqlite::Result<T>,
+    ) -> Result<T, SiteError> {
         Ok(f(self.store.lock().unwrap().conn())?)
     }
 
-    fn notify(&self) {
-        let _ = self.changed.send(());
+    pub(crate) fn notify(&self) {
+        let _ = self.changed.send(Changed::Sites);
     }
 
     fn vault(&self) -> Result<Arc<Vault>, SiteError> {
@@ -121,7 +124,10 @@ impl Core {
 
     /// The site's secret, or "Sign in again" (and the site marked so) when it
     /// is missing or won't open.
-    fn load_secret<T: serde::de::DeserializeOwned>(&self, id: i64) -> Result<T, SiteError> {
+    pub(crate) fn load_secret<T: serde::de::DeserializeOwned>(
+        &self,
+        id: i64,
+    ) -> Result<T, SiteError> {
         let vault = self.vault()?;
         let got = self.db(|c| Ok(vault.get(c, &secret_name(id))))?;
         let parsed = match got {
@@ -606,7 +612,7 @@ impl Core {
         self.call_ability_inner(id, tool, args).await
     }
 
-    async fn call_ability_inner(
+    pub(crate) async fn call_ability_inner(
         &self,
         id: i64,
         tool: &str,
@@ -806,7 +812,7 @@ impl Core {
         Ok(from_link.unwrap_or_else(|| format!("{home}/wp-json/")))
     }
 
-    async fn rest_get(
+    pub(crate) async fn rest_get(
         &self,
         key: &str,
         root: &str,
@@ -835,6 +841,10 @@ impl Core {
         let (health, detail) = self.health(&site).await;
         let _ = self.db(|c| sites::set_health(c, id, health, &detail));
         self.notify();
+        if health == Health::Ok {
+            // Plugins, themes and updates, for the screens that show them.
+            let _ = self.refresh_inventory_inner(id).await;
+        }
     }
 
     async fn health(&self, site: &Site) -> (Health, String) {
@@ -931,10 +941,11 @@ impl Core {
         while set.join_next().await.is_some() {}
     }
 
-    /// At start: renew every grant, check every site, then check again every
-    /// 15 minutes while the core runs.
+    /// At start: close jobs a closed app left, renew every grant, check every
+    /// site (and read its plugins), then check again every 15 minutes.
     pub fn start_background(self: &Arc<Self>) {
         let weak: Weak<Self> = Arc::downgrade(self);
+        let _ = self.close_unfinished_jobs();
         tokio::spawn(async move {
             if let Some(core) = weak.upgrade() {
                 core.refresh_all().await;
