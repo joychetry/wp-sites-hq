@@ -1,8 +1,27 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Site } from "../src/api";
+import type { Action, Change, Item, Job, Site, SiteInventory } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
+// Real tool names first, so the screens offer the actions a Classic Monks site has.
+const TOOLS = [
+  "get-hq-status",
+  "get-site-snapshot",
+  "update-plugin",
+  "rollback-plugin",
+  "list-plugin-versions",
+  "activate-plugin",
+  "deactivate-plugin",
+  "uninstall-plugin",
+  "set-plugin-auto-update",
+  "install-plugin",
+  "update-theme",
+  "activate-theme",
+  "delete-theme",
+  "update-core",
+  "update-translations",
+];
+const ABILITIES = [...TOOLS, ...Array(184 - TOOLS.length).fill("x")];
 const fixture = new URLSearchParams(location.search).get("fixture") ?? "fleet";
 
 function site(over: Partial<Site>): Site {
@@ -16,7 +35,7 @@ function site(over: Partial<Site>): Site {
     wp_version: "7.1.3",
     php_version: "8.4.26",
     cm_version: "2.6.0",
-    capabilities: { operator: true, abilities: Array(184).fill("x"), hq_status: true, approvals: true, degraded: false },
+    capabilities: { operator: true, abilities: ABILITIES, hq_status: true, approvals: true, degraded: false },
     sign_in_again: false,
     health: "ok",
     health_detail: "Answered in 0.8 s.",
@@ -35,7 +54,7 @@ const FLEET: Site[] = [
     tags: ["shop", "woocommerce"],
     capabilities: {
       operator: true,
-      abilities: Array(184).fill("x"),
+      abilities: ABILITIES,
       hq_status: true,
       approvals: true,
       degraded: false,
@@ -52,6 +71,98 @@ const FLEET: Site[] = [
 ];
 
 let sites: Site[] = fixture === "empty" ? [] : FLEET.map((s) => ({ ...s }));
+
+const item = (id: string, name: string, version: string, over: Partial<Item> = {}): Item => ({
+  id,
+  name,
+  version,
+  active: true,
+  auto_update: false,
+  update: null,
+  ...over,
+});
+const CM = item("classic-monks/classic-monks.php", "Classic Monks", "2.6.0");
+const WOO = "woocommerce/woocommerce.php";
+const TT5 = item("twentytwentyfive", "Twenty Twenty-Five", "1.2");
+const inv = (site_id: number, over: Partial<SiteInventory["inventory"]>): SiteInventory => ({
+  site_id,
+  fetched_at: now - 300,
+  inventory: {
+    wordpress: "7.1.3",
+    wordpress_update: null,
+    plugins: [],
+    themes: [TT5],
+    translations: 0,
+    updates_known: true,
+    needs_credentials: false,
+    ...over,
+  },
+});
+let inventory: SiteInventory[] =
+  fixture === "empty"
+    ? []
+    : [
+        inv(1, {
+          wordpress_update: "7.1.4",
+          translations: 2,
+          plugins: [
+            CM,
+            item(WOO, "WooCommerce", "10.2.0", { update: "10.3.0" }),
+            item("elementor/elementor.php", "Elementor", "3.30.2", { active: false }),
+            item("akismet/akismet.php", "Akismet Anti-spam: Spam Protection", "5.3", { update: "5.5", auto_update: true }),
+          ],
+          themes: [TT5, item("bricks", "Bricks", "2.4.3", { active: false, auto_update: null })],
+        }),
+        inv(2, {
+          plugins: [item(WOO, "WooCommerce", "10.1.0", { update: "10.3.0" }), item("wordpress-seo/wp-seo.php", "Yoast SEO", "26.1", { update: "26.2" })],
+        }),
+        inv(3, {
+          updates_known: false,
+          plugins: [item(WOO, "WooCommerce", "10.3.0", { auto_update: null }), item("elementor/elementor.php", "Elementor", "3.30.2", { auto_update: null })],
+        }),
+        inv(6, {
+          plugins: [CM, item("akismet/akismet.php", "Akismet Anti-spam: Spam Protection", "5.5")],
+          themes: [{ ...TT5, update: "1.3" }],
+        }),
+      ];
+
+const jobs: Job[] = [];
+const label = (a: Action) => a.do.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+/** Runs the job a step at a time; the second change fails, so the screens show both. */
+function startJob(title: string, changes: Change[]): Job {
+  const job: Job = {
+    id: jobs.length + 1,
+    title,
+    created_at: now,
+    finished_at: null,
+    items: changes.map((c, i) => ({
+      id: i + 1,
+      site_id: c.site_id,
+      site_name: sites.find((s) => s.id === c.site_id)?.name ?? "a site",
+      action: c.action,
+      label: label(c.action),
+      from_version: "10.2.0",
+      to_version: "10.3.0",
+      state: "waiting",
+      message: "",
+    })),
+  };
+  jobs.push(job);
+  job.items.forEach((it, i) => {
+    setTimeout(() => {
+      it.state = "running";
+      changed();
+    }, 100 + i * 200);
+    setTimeout(() => {
+      const fail = i === 1;
+      it.state = fail ? "failed" : "done";
+      it.message = fail ? "The site took too long to answer. Nothing was changed." : "Updated.";
+      if (i === job.items.length - 1) job.finished_at = now;
+      changed();
+    }, 250 + i * 200);
+  });
+  return job;
+}
 const listeners: Array<() => void> = [];
 const changed = () => listeners.forEach((f) => f());
 const edit = (id: number, over: Partial<Site>) => {
@@ -88,6 +199,24 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "sign_in_cancel":
     case "site_open":
       return r(null);
+    case "inventory_list":
+      return r(inventory);
+    case "inventory_refresh":
+      await new Promise((ok) => setTimeout(ok, 300));
+      inventory = inventory.map((i) => ({ ...i, fetched_at: Math.floor(Date.now() / 1000) }));
+      changed();
+      return r(null);
+    case "plugin_versions":
+      return r({ installed: "10.2.0", versions: ["10.3.0", "10.2.0", "10.1.0", "10.0.4"].map((version) => ({ version })) });
+    case "plugin_search":
+      return r([
+        { slug: "wordpress-seo", name: "Yoast SEO – Advanced SEO with real-time guidance", version: "26.2", active_installs: 10000000, summary: "Improve your SEO with real-time feedback and schema." },
+        { slug: "seo-by-rank-math", name: "Rank Math SEO", version: "1.0.250", active_installs: 3000000, summary: "SEO made easy for everyone." },
+      ]);
+    case "job_start":
+      return r(startJob(args.title as string, args.changes as Change[]));
+    case "job_get":
+      return r(structuredClone(jobs[(args.id as number) - 1]));
     default:
       // Adding and signing in need a real site.
       return new Promise<T>(() => {});

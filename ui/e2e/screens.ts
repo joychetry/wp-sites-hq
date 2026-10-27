@@ -42,7 +42,72 @@ export const SCREENS: Screen[] = [
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
   { name: "settings", open: nav("Settings") },
-  { name: "later", open: nav("Plugins") },
+  { name: "later", open: nav("Content") },
+  { name: "updates", open: nav("Updates") },
+  {
+    name: "updates-plan",
+    open: async (page) => {
+      await nav("Updates")(page);
+      await page.getByRole("button", { name: /^Update all/ }).click();
+    },
+  },
+  {
+    name: "updates-confirm",
+    open: async (page) => {
+      await nav("Updates")(page);
+      await page.getByRole("button", { name: /^Update all/ }).click();
+      await page.getByRole("checkbox", { name: "Update Akismet Anti-spam: Spam Protection on MC A", exact: true }).click();
+      await page.getByRole("button", { name: /^Review/ }).click();
+    },
+  },
+  {
+    name: "updates-progress",
+    open: async (page) => {
+      await nav("Updates")(page);
+      await page.getByRole("button", { name: /^Update all/ }).click();
+      await page.getByRole("button", { name: /^Review/ }).click();
+      await page.getByRole("button", { name: /^Make these/ }).click();
+      await page.getByText(/^Finished\./).waitFor();
+    },
+  },
+  { name: "plugins", open: nav("Plugins") },
+  {
+    name: "plugins-inspector",
+    open: async (page) => {
+      await nav("Plugins")(page);
+      await page.getByRole("button", { name: /^WooCommerce on MC A/ }).click();
+    },
+  },
+  {
+    name: "plugins-rollback",
+    open: async (page) => {
+      await nav("Plugins")(page);
+      await page.getByRole("button", { name: /^WooCommerce on MC A/ }).click();
+      await page.getByRole("button", { name: "Choose an older version" }).click();
+      await page.getByRole("button", { name: "Roll back to 10.1.0" }).click();
+    },
+  },
+  { name: "themes", open: nav("Themes") },
+  {
+    name: "install",
+    open: async (page) => {
+      await nav("Plugins")(page);
+      await page.getByRole("button", { name: "Install a plugin" }).click();
+      await page.getByRole("textbox", { name: "Search WordPress.org plugins" }).fill("seo");
+      await page.keyboard.press("Enter");
+      await page.getByRole("list", { name: "Plugins found" }).waitFor();
+    },
+  },
+  {
+    name: "install-sites",
+    open: async (page) => {
+      await nav("Plugins")(page);
+      await page.getByRole("button", { name: "Install a plugin" }).click();
+      await page.getByRole("textbox", { name: "Search WordPress.org plugins" }).fill("seo");
+      await page.keyboard.press("Enter");
+      await page.getByRole("button", { name: "Choose Rank Math SEO" }).click();
+    },
+  },
   { name: "loading", fixture: "loading" },
   { name: "error", fixture: "error" },
 ];

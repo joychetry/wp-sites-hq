@@ -65,6 +65,33 @@ test("the Sites table works from the keyboard", async ({ page }) => {
   await expect(page.getByRole("textbox", { name: "Filter sites" })).toBeFocused();
 });
 
+test("the Plugins matrix is one Tab stop, arrow keys move and Enter opens a cell", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "plugins")!, "light");
+  await page.getByRole("button", { name: /^Update \d+ plugins/ }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: /^WooCommerce on MC A/ })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("button", { name: /^WooCommerce on mc-c/ })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("complementary", { name: "WooCommerce on mc-c" })).toBeVisible();
+  // The next Tab leaves the grid instead of walking every cell.
+  await page.getByRole("button", { name: /^WooCommerce on mc-c/ }).focus();
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(() => document.activeElement?.closest("[role=grid]"))).toBeNull();
+});
+
+test("Tab stays inside the job sheet, and Esc gives focus back", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "updates")!, "light");
+  const open = page.getByRole("button", { name: /^Update all/ });
+  await open.click();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(open).toBeFocused();
+});
+
 test("Tab stays inside the Add a site sheet", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "add-site")!, "light");
   for (let i = 0; i < 8; i++) {
@@ -85,7 +112,7 @@ test("the palette gives focus back when it closes", async ({ page }) => {
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
