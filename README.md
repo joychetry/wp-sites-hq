@@ -3,9 +3,9 @@
 Every WordPress site you run, in one app on your computer. Free, open source,
 nothing to host.
 
-Status: Phase 0 (foundation). Not ready for use.
+Status: Phase 1 (connect sites). Not ready for use.
 
-- `crates/core`: store, vault, network, core lock, local socket
+- `crates/core`: store, vault, network, core lock, local socket, sites (OAuth and Basic mode)
 - `crates/cli`: the `monks` command (`monks doctor`, `monks core`, `monks status`)
 - `crates/app`: the desktop app (Tauri 2)
 - `ui/`: the app's web UI (React + TypeScript)
