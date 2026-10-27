@@ -12,7 +12,7 @@
   "app": {
     "windows": [{ "title": "Monks Central", "width": 1200, "height": 800 }],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:"
     }
   },
   "bundle": {
