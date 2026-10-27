@@ -87,7 +87,7 @@ textarea.input { height: auto; min-height: 56px; padding: var(--sp-2) var(--sp-2
 .crumb span { color: var(--text-3); font-weight: 400; }
 .top .fresh { margin-left: auto; color: var(--text-3); font-size: var(--fs-sm); display: flex; gap: var(--sp-3); align-items: center; }
 .body { flex: 1; min-height: 0; display: flex; }
-.scroll { flex: 1; min-width: 0; overflow: auto; }
+.scroll { flex: 1; min-width: 0; overflow: auto; position: relative; }
 .empty { padding: var(--sp-7) var(--pad); color: var(--text-2); max-width: 560px; }
 .empty h2 { font: 400 var(--fs-xl)/var(--lh-tight) var(--serif); color: var(--text); margin: 0 0 var(--sp-3); }
 
