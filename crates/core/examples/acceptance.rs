@@ -1,6 +1,10 @@
 //! Live acceptance driver for Studio sites. Uses the same core API as the app.
 //!
-//!   MONKS_HOME=<private test folder> cargo run -p monks-core --example acceptance -- <command>
+//!   MONKS_HOME=<data folder> cargo run -p monks-core --example acceptance -- <command>
+//!
+//! The data folder is the app's default (~/.local/share/com.classicmonks.monks-central)
+//! for the sites that stay connected, or a throwaway folder for tests that break a
+//! connection on purpose (corrupt, remove).
 //!
 //!   connect-oauth <url> <studio site path>   sign in as the site's admin, tick "operator"
 //!   sign-in-again <url> <studio site path>
@@ -13,7 +17,8 @@
 //!
 //! The browser step is played by this program: a login cookie made with
 //! `studio wp` (no password is handled), then the site's real consent form,
-//! submitted with "This is my Monks Central app (operator)" ticked when shown. Cookies
+//! submitted with every tool group, Full access and "This is my Monks Central app
+//! (operator)" ticked when shown. Cookies
 //! and tokens are never printed.
 
 use std::path::Path;
@@ -32,7 +37,7 @@ async fn main() -> Res<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let home = paths::data_dir()?;
     if std::env::var_os("MONKS_HOME").is_none() {
-        return Err("set MONKS_HOME to a private test folder".into());
+        return Err("set MONKS_HOME to the data folder to use".into());
     }
     let keychain = vault::os_keychain().map_err(|e| e.to_string());
     if args.first().map(String::as_str) == Some("forget-key") {
@@ -244,7 +249,8 @@ echo LOGGED_IN_COOKIE, '=', wp_generate_auth_cookie( $u->ID, $exp, 'logged_in', 
     Ok(cookies.join("; "))
 }
 
-/// Load the consent page as the signed-in admin, tick operator, press Connect,
+/// Load the consent page as the signed-in admin, tick every tool group and
+/// operator, press Connect,
 /// then follow the redirect back to the app's loopback.
 async fn consent(auth_url: &str, cookie: &str) -> Res<()> {
     let http = reqwest::Client::builder()
@@ -266,11 +272,26 @@ async fn consent(auth_url: &str, cookie: &str) -> Res<()> {
     }
     let action =
         attr(&page[page.find("<form").ok_or("no form")?..], "action").ok_or("no form action")?;
-    let mut form: Vec<(String, String)> = inputs(&page)
-        .into_iter()
+    let fields = inputs(&page);
+    let mut form: Vec<(String, String)> = fields
+        .iter()
         .filter(|(t, _, _)| t == "hidden")
-        .map(|(_, n, v)| (n, v))
+        .map(|(_, n, v)| (n.clone(), v.clone()))
         .collect();
+    // Like a person who wants everything: every tool group and the widest access.
+    let groups: Vec<_> = fields
+        .iter()
+        .filter(|(t, n, _)| t == "checkbox" && n == "toolsets[]")
+        .map(|(_, n, v)| (n.clone(), v.clone()))
+        .collect();
+    println!("consent page: ticking all {} tool groups", groups.len());
+    form.extend(groups);
+    if fields
+        .iter()
+        .any(|(t, n, v)| t == "radio" && n == "scope" && v == "full")
+    {
+        form.push(("scope".into(), "full".into()));
+    }
     if operator {
         form.push(("operator".into(), "1".into()));
     }
