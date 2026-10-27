@@ -44,3 +44,8 @@ test("a refusal is shown in plain words", async () => {
   fireEvent.click(screen.getByRole("button", { name: /Open the sign-in page/ }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Update WordPress to 7.1 or newer first.");
 });
+
+test("the Classic Monks steps say to tick the tool groups", () => {
+  render(<AddSite onClose={vi.fn()} onDone={vi.fn()} />);
+  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("Tick the tool groups Monks Central may use");
+});

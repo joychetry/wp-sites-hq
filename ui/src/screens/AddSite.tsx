@@ -52,7 +52,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
   return (
     <Sheet
       title={title}
-      intro={again ? "Group, tags and notes stay as they are." : "WordPress 7.1 or newer."}
+      intro={again ? "Group, tags and notes stay as they are." : "The site needs WordPress 7.1 or newer."}
       onClose={close}
       footer={
         <>
@@ -107,6 +107,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
           <ol className="steps">
             <li>Your browser opens the site's sign-in page.</li>
             <li>Sign in as an administrator.</li>
+            <li>Tick the tool groups Monks Central may use. With none ticked it can't do anything.</li>
             <li>
               Tick <b>This is my Monks Central app (operator)</b>, then press Connect.
             </li>
@@ -114,7 +115,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
           </ol>
         ) : (
           <>
-            <p className="dim" style={{ marginTop: 0 }}>
+            <p style={{ marginTop: 0, color: "var(--text-2)" }}>
               For sites without Classic Monks. Make an application password under Users &gt; Profile on the site.
               Updates, one-click login and Classic Monks modules need Classic Monks.
             </p>

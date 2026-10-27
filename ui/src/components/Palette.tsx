@@ -67,6 +67,9 @@ export function Palette({ commands, onClose }: { commands: Command[]; onClose: (
             } else if (e.key === "Enter") {
               e.preventDefault();
               run(hits[active]);
+            } else if (e.key === "Tab") {
+              // The input is the palette's only stop; arrows move through the list.
+              e.preventDefault();
             } else if (e.key === "Escape") {
               e.stopPropagation();
               onClose();
