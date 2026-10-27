@@ -14,6 +14,10 @@
 //!   corrupt <url>        damage the saved secret
 //!   remove <url>
 //!   forget-key           delete this data folder's keychain item
+//!   inventory            read every site's plugins and themes, list plugins
+//!   update-plugin <plugin file> <url>...   one job: update the plugin on those sites
+//!   versions <url> <plugin file>           versions the site can roll back to
+//!   rollback <url> <plugin file> <version> a job that rolls the plugin back
 //!
 //! The browser step is played by this program: a login cookie made with
 //! `studio wp` (no password is handled), then the site's real consent form,
@@ -25,6 +29,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
+use monks_core::fleet::{Action, Change, Job};
 use monks_core::oauth::Tokens;
 use monks_core::{Core, Options, connect::SiteError, paths, vault};
 use reqwest::header::{COOKIE, LOCATION};
@@ -139,7 +144,126 @@ async fn main() -> Res<()> {
             );
             Ok(())
         }
+        "inventory" => {
+            for s in core.sites()? {
+                match core.refresh_inventory(s.id).await {
+                    Ok(inv) => {
+                        let updates = inv.plugins.iter().filter(|p| p.update.is_some()).count();
+                        println!(
+                            "{}: {} plugins ({} active, {} with an update), {} themes, WordPress update {}, updates known {}",
+                            s.name,
+                            inv.plugins.len(),
+                            inv.plugins.iter().filter(|p| p.active).count(),
+                            updates,
+                            inv.themes.len(),
+                            inv.wordpress_update.as_deref().unwrap_or("none"),
+                            inv.updates_known
+                        );
+                        for p in inv
+                            .plugins
+                            .iter()
+                            .filter(|p| p.id.starts_with("woocommerce/"))
+                        {
+                            println!(
+                                "  {} {} active {} update {}",
+                                p.id,
+                                p.version,
+                                p.active,
+                                p.update.as_deref().unwrap_or("none")
+                            );
+                        }
+                    }
+                    Err(e) => println!("{}: not read: {e}", s.name),
+                }
+            }
+            Ok(())
+        }
+        "update-plugin" => {
+            let plugin = arg(1)?.to_string();
+            let mut changes = Vec::new();
+            for url in &args[2..] {
+                changes.push(Change {
+                    site_id: site_id(&core, url)?,
+                    action: Action::UpdatePlugin {
+                        plugin: plugin.clone(),
+                    },
+                });
+            }
+            let job = core
+                .start_job(
+                    &format!("Update {plugin} on {} sites", changes.len()),
+                    changes,
+                )
+                .await?;
+            print_job(&wait(&core, job.id).await?);
+            Ok(())
+        }
+        "versions" => {
+            let id = site_id(&core, arg(1)?)?;
+            let v = core.plugin_versions(id, arg(2)?).await?;
+            let list: Vec<&str> = v["versions"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|v| v["version"].as_str())
+                .take(8)
+                .collect();
+            println!(
+                "installed {}, newest versions offered: {}",
+                v["installed"].as_str().unwrap_or("?"),
+                list.join(", ")
+            );
+            Ok(())
+        }
+        "rollback" => {
+            let id = site_id(&core, arg(1)?)?;
+            let job = core
+                .start_job(
+                    "Roll back",
+                    vec![Change {
+                        site_id: id,
+                        action: Action::RollbackPlugin {
+                            plugin: arg(2)?.into(),
+                            version: arg(3)?.into(),
+                        },
+                    }],
+                )
+                .await?;
+            print_job(&wait(&core, job.id).await?);
+            Ok(())
+        }
         other => Err(format!("unknown command {other}").into()),
+    }
+}
+
+async fn wait(core: &Core, job: i64) -> Res<Job> {
+    for _ in 0..600 {
+        let j = core.job(job)?;
+        if j.finished_at.is_some() {
+            return Ok(j);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+    Err("the job didn't finish in 5 minutes".into())
+}
+
+fn print_job(job: &Job) {
+    println!(
+        "job {} \"{}\": {} changes",
+        job.id,
+        job.title,
+        job.items.len()
+    );
+    for i in &job.items {
+        println!(
+            "  {:?}  {}, {}  {} -> {}  ({})",
+            i.state,
+            i.site_name,
+            i.label,
+            i.from_version.as_deref().unwrap_or("?"),
+            i.to_version.as_deref().unwrap_or("?"),
+            i.message
+        );
     }
 }
 
