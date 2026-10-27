@@ -282,7 +282,13 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       <td>{s.mode === "basic" ? "Basic mode" : "Classic Monks"}</td>
                       <td title={s.tags.join(", ")}>
                         {s.tags.length > 0 && <span className="tag">{s.tags[0]}</span>}
-                        {s.tags.length > 1 && <span className="dim"> +{s.tags.length - 1} more</span>}
+                        {s.tags.length > 1 && (
+                          <span className="dim">
+                            {" "}
+                            +{s.tags.length - 1}
+                            <span className="sr-only"> more tags</span>
+                          </span>
+                        )}
                       </td>
                       <td>{ago(s.checked_at)}</td>
                     </tr>
