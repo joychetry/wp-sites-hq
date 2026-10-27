@@ -3,6 +3,7 @@
 //!   MONKS_HOME=<private test folder> cargo run -p monks-core --example acceptance -- <command>
 //!
 //!   connect-oauth <url> <studio site path>   sign in as the site's admin, tick "operator"
+//!   sign-in-again <url> <studio site path>
 //!   connect-basic <url> <user> <password file>
 //!   list | check
 //!   burst <url>          expire the access token, then 20 parallel calls
@@ -12,7 +13,7 @@
 //!
 //! The browser step is played by this program: a login cookie made with
 //! `studio wp` (no password is handled), then the site's real consent form,
-//! submitted with "This is my Monks Central app (operator)" ticked. Cookies
+//! submitted with "This is my Monks Central app (operator)" ticked when shown. Cookies
 //! and tokens are never printed.
 
 use std::path::Path;
@@ -54,22 +55,13 @@ async fn main() -> Res<()> {
     let arg = |i: usize| args.get(i).map(String::as_str).ok_or("missing argument");
     match arg(0)? {
         "connect-oauth" => {
-            let (url, wp_path) = (arg(1)?.to_string(), arg(2)?.to_string());
-            let cookie = login_cookie(&wp_path)?;
-            let c = core.clone();
-            let site = core
-                .add_site_oauth(&url, move |auth_url| {
-                    let auth_url = auth_url.to_string();
-                    tokio::spawn(async move {
-                        if let Err(e) = consent(&auth_url, &cookie).await {
-                            eprintln!("consent failed: {e}");
-                            c.cancel_sign_in();
-                        }
-                    });
-                    Ok(())
-                })
-                .await;
-            report(site)
+            let browser = browser(&core, arg(2)?)?;
+            report(core.add_site_oauth(arg(1)?, browser).await)
+        }
+        "sign-in-again" => {
+            let id = site_id(&core, arg(1)?)?;
+            let browser = browser(&core, arg(2)?)?;
+            report(core.sign_in_again_oauth(id, browser).await)
         }
         "connect-basic" => {
             let password = std::fs::read_to_string(arg(3)?)?;
@@ -111,11 +103,21 @@ async fn main() -> Res<()> {
         }
         "corrupt" => {
             let id = site_id(&core, arg(1)?)?;
-            let n = core.store.lock().unwrap().conn().execute(
-                "UPDATE credentials SET blob = substr(blob, 1, 30) || x'00' || substr(blob, 32) WHERE name = ?1",
-                [format!("site:{id}")],
-            )?;
-            println!("damaged {n} saved secret (one byte flipped to 0)");
+            {
+                let store = core.store.lock().unwrap();
+                let name = format!("site:{id}");
+                let mut blob: Vec<u8> = store.conn().query_row(
+                    "SELECT blob FROM credentials WHERE name = ?1",
+                    [&name],
+                    |r| r.get(0),
+                )?;
+                blob[31] ^= 0xff;
+                store.conn().execute(
+                    "UPDATE credentials SET blob = ?1 WHERE name = ?2",
+                    rusqlite::params![blob, name],
+                )?;
+            }
+            println!("damaged the saved secret (one byte flipped)");
             match core.call_ability(id, "get-hq-status", json!({})).await {
                 Err(e @ SiteError::SignInAgain) => println!("call: {e}"),
                 other => println!("call: unexpected {other:?}"),
@@ -134,6 +136,22 @@ async fn main() -> Res<()> {
         }
         other => Err(format!("unknown command {other}").into()),
     }
+}
+
+/// Plays the person in the browser: signed in as the site's admin, ticks operator.
+fn browser(core: &Arc<Core>, wp_path: &str) -> Res<impl FnOnce(&str) -> std::io::Result<()>> {
+    let cookie = login_cookie(wp_path)?;
+    let c = core.clone();
+    Ok(move |auth_url: &str| {
+        let auth_url = auth_url.to_string();
+        tokio::spawn(async move {
+            if let Err(e) = consent(&auth_url, &cookie).await {
+                eprintln!("consent failed: {e}");
+                c.cancel_sign_in();
+            }
+        });
+        Ok(())
+    })
 }
 
 fn report(r: Result<monks_core::sites::Site, SiteError>) -> Res<()> {
@@ -240,10 +258,12 @@ async fn consent(auth_url: &str, cookie: &str) -> Res<()> {
             None => break r.text().await?,
         }
     };
-    if !page.contains("name=\"operator\"") {
-        return Err("the consent page has no operator checkbox".into());
+    let operator = page.contains("name=\"operator\"");
+    if operator {
+        println!("consent page: shows \"This is my Monks Central app (operator)\"; ticking it");
+    } else {
+        println!("consent page: no operator checkbox (this Classic Monks predates it)");
     }
-    println!("consent page: shows \"This is my Monks Central app (operator)\"; ticking it");
     let action =
         attr(&page[page.find("<form").ok_or("no form")?..], "action").ok_or("no form action")?;
     let mut form: Vec<(String, String)> = inputs(&page)
@@ -251,7 +271,9 @@ async fn consent(auth_url: &str, cookie: &str) -> Res<()> {
         .filter(|(t, _, _)| t == "hidden")
         .map(|(_, n, v)| (n, v))
         .collect();
-    form.push(("operator".into(), "1".into()));
+    if operator {
+        form.push(("operator".into(), "1".into()));
+    }
     form.push(("decision".into(), "approve".into()));
     let r = http
         .post(absolute(&url, &action)?)
