@@ -1,0 +1,19 @@
+[package]
+name = "monks-cli"
+description = "The monks command"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "monks"
+path = "src/main.rs"
+
+[dependencies]
+monks-core = { path = "../core" }
+
+[lints]
+workspace = true
