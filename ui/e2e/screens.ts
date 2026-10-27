@@ -42,7 +42,73 @@ export const SCREENS: Screen[] = [
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
   { name: "settings", open: nav("Settings") },
-  { name: "later", open: nav("Users") },
+  { name: "later", open: nav("Security") },
+  { name: "users", open: nav("Users") },
+  {
+    name: "users-add",
+    open: async (page) => {
+      await nav("Users")(page);
+      await page.getByRole("button", { name: "Add a user" }).click();
+      await page.getByRole("combobox", { name: "Role" }).selectOption("administrator");
+    },
+  },
+  {
+    name: "users-delete",
+    open: async (page) => {
+      await nav("Users")(page);
+      await page.getByRole("button", { name: "Delete Sam Okafor from MC A" }).click();
+      await page.getByRole("combobox", { name: "Give their posts and pages to" }).waitFor();
+    },
+  },
+  { name: "comments", open: nav("Comments") },
+  {
+    name: "comments-reply",
+    open: async (page) => {
+      await nav("Comments")(page);
+      await page.getByRole("button", { name: "Reply to Mira Patel on MC A" }).click();
+      await page.getByRole("textbox", { name: "Your reply to Mira Patel" }).fill("Plain milk, and a spoon of yoghurt.");
+    },
+  },
+  { name: "classic-monks", open: nav("Classic Monks") },
+  {
+    name: "classic-monks-undo",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("button", { name: "Turn on SVG Support" }).click();
+      await page.getByRole("button", { name: "Undo", exact: true }).waitFor();
+    },
+  },
+  {
+    name: "classic-monks-settings",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("group", { name: "Show" }).getByRole("button", { name: "Settings", exact: true }).click();
+      await page.getByRole("list", { name: "Settings" }).waitFor();
+    },
+  },
+  {
+    name: "classic-monks-activity",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("group", { name: "Show" }).getByRole("button", { name: "Activity", exact: true }).click();
+      await page.getByRole("table", { name: "Activity" }).waitFor();
+    },
+  },
+  {
+    name: "classic-monks-approvals",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("group", { name: "Show" }).getByRole("button", { name: "Waiting for approval", exact: true }).click();
+      await page.getByRole("table", { name: "Waiting for approval" }).waitFor();
+    },
+  },
+  {
+    name: "classic-monks-basic",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("combobox", { name: "Site", exact: true }).selectOption({ label: "mc-c (no Classic Monks)" });
+    },
+  },
   { name: "content", open: nav("Content") },
   {
     name: "content-editor",

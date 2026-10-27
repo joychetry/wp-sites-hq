@@ -129,9 +129,48 @@ test("the content editor works from the keyboard and gives focus back", async ({
   await expect(open).toBeFocused();
 });
 
+test("a comment is answered from the keyboard", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "comments")!, "light");
+  const reply = page.getByRole("button", { name: "Reply to Mira Patel on MC A" });
+  await reply.focus();
+  await page.keyboard.press("Enter");
+  const box = page.getByRole("textbox", { name: "Your reply to Mira Patel" });
+  await expect(box).toBeFocused();
+  await page.keyboard.type("Plain milk.");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Send the reply" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status").getByText("Replied to Mira Patel on MC A.")).toBeVisible();
+});
+
+test("a feature is turned on and undone from the keyboard", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
+  await page.getByRole("button", { name: "Turn on SVG Support" }).focus();
+  await page.keyboard.press("Enter");
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
+  await undo.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/^Undone: Turned on SVG Support/)).toBeVisible();
+});
+
+test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "users")!, "light");
+  const add = page.getByRole("button", { name: "Add a user" });
+  await add.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Add a user" })).toBeVisible();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(add).toBeFocused();
+});
+
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);

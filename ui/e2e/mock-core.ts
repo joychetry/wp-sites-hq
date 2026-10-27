@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, Change, Item, Job, Media, Post, PostType, Site, SiteInventory, Summary } from "../src/api";
+import type { Action, ActivityRow, Change, Comment, FeatureGroup, Item, Job, Media, Post, PostType, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -21,6 +21,23 @@ const TOOLS = [
   "update-core",
   "update-translations",
   "list-post-types",
+  "get-users",
+  "create-user",
+  "update-user",
+  "delete-user",
+  "send-password-reset",
+  "get-comments",
+  "moderate-comment",
+  "reply-to-comment",
+  "create-login-link",
+  "get-features",
+  "update-features",
+  "get-settings-schema",
+  "get-settings",
+  "update-settings",
+  "list-ai-activity",
+  "undo-operation",
+  "list-pending-approvals",
 ];
 const ABILITIES = [...TOOLS, ...Array(184 - TOOLS.length).fill("x")];
 const fixture = new URLSearchParams(location.search).get("fixture") ?? "fleet";
@@ -238,6 +255,64 @@ const TERMS: Record<string, { id: number; name: string }[]> = {
 };
 const summary = (p: Post): Summary => ({ id: p.id, title: p.title, status: p.status, date: p.date, modified: p.modified, author: "Joy", link: p.link });
 
+const user = (id: number, username: string, name: string, role: string): User => ({ id, username, email: `${username}@example.com`, name, role, registered: "2026-01-02 03:04:05" });
+const USERS: Record<number, User[]> = {
+  1: [user(1, "joy", "Joy Chetry", "administrator"), user(2, "sam", "Sam Okafor", "shop_manager"), user(3, "ana", "Ana Lima", "editor")],
+  2: [user(1, "baker", "Rosa Baker", "administrator"), user(4, "till", "Front Till", "subscriber")],
+  3: [user(1, "admin", "admin", "administrator"), user(5, "writer", "Guest Writer", "author")],
+};
+const ROLES = [
+  { id: "administrator", name: "Administrator" },
+  { id: "editor", name: "Editor" },
+  { id: "author", name: "Author" },
+  { id: "shop_manager", name: "Shop manager" },
+  { id: "subscriber", name: "Subscriber" },
+];
+const comment = (id: number, author: string, post_title: string, content: string, date: string, status: Comment["status"] = "pending"): Comment => ({
+  id,
+  post_id: 5,
+  post_title,
+  author,
+  email: `${author.toLowerCase().replace(/ .*/, "")}@example.com`,
+  content,
+  date,
+  status,
+  parent: 0,
+});
+let COMMENTS: Record<number, Comment[]> = {
+  1: [
+    comment(11, "Mira Patel", "Sourdough pancakes", "Made these on Sunday. Do you use <b>buttermilk</b> or plain milk?", "2026-10-28 09:41:00"),
+    comment(12, "Tom", "Autumn opening hours", "Are you open on the bank holiday?", "2026-10-27 18:02:00"),
+    comment(13, "Lena", "Sourdough pancakes", "Lovely recipe, thank you.", "2026-10-25 08:00:00", "approved"),
+  ],
+  3: [comment(14, "Guest", "Hello world", "First visit, nice blog &amp; photos.", "2026-10-28 07:15:00")],
+};
+let FEATURES: FeatureGroup[] = [
+  {
+    key: "performance",
+    label: "Performance",
+    toggles: [
+      { name: "enable_svg_support", label: "SVG Support", description: "Allow SVG uploads to the media library, cleaned before saving.", section: "Media", on: false, locked: false },
+      { name: "enable_lazy_load", label: "Lazy Loading", description: "Load images and videos as they scroll into view.", section: "Lazy Loading", on: true, locked: false },
+    ],
+  },
+  {
+    key: "security",
+    label: "Security",
+    toggles: [{ name: "enable_login_lockdown", label: "Login Lockdown", description: "Block an address after repeated failed logins.", section: "Login", on: true, locked: true }],
+  },
+];
+const SETTINGS: Setting[] = [
+  { name: "limit_post_revisions", label: "Limit Post Revisions", description: "", tab: "Performance", section: "Heartbeat", control: "select", options: ["default", "disable", "1", "2", "3"], min: null, max: null, step: null, value: "default" },
+  { name: "auto_resize_quality", label: "Image Quality (%)", description: "JPEG and WebP quality, 1 to 100.", tab: "Performance", section: "Media", control: "number", options: [], min: 1, max: 100, step: 1, value: 82 },
+];
+let ACTIVITY: ActivityRow[] = [
+  { id: 41, time: "2026-10-28 09:30:12", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true },
+  { id: 40, time: "2026-10-28 09:12:40", who: "Claude", tool: "delete-post", status: "pending", summary: "", can_undo: false },
+  { id: 39, time: "2026-10-27 21:53:28", who: "Monks Central", tool: "update-post", status: "ok", summary: "", can_undo: false },
+  { id: 38, time: "2026-10-27 20:10:02", who: "WP-CLI", tool: "update-settings", status: "undone", summary: "", can_undo: false },
+];
+
 const listeners: Array<() => void> = [];
 const changed = () => listeners.forEach((f) => f());
 const edit = (id: number, over: Partial<Site>) => {
@@ -310,6 +385,52 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "media_import":
       await new Promise((ok) => setTimeout(ok, 300));
       return r(MEDIA[0]);
+    case "users_list": {
+      const q = String(args.search ?? "").toLowerCase();
+      const list = (USERS[id] ?? []).filter((u) => !q || `${u.name} ${u.username} ${u.email}`.toLowerCase().includes(q));
+      return r({ users: list, total: list.length, roles: ROLES, can_reset: id !== 3 });
+    }
+    case "user_create":
+      await new Promise((ok) => setTimeout(ok, 300));
+      return r({ ...user(9, (args.user as { username: string }).username, "", (args.user as { role: string }).role) });
+    case "user_set_role":
+    case "user_delete":
+      return r(null);
+    case "user_reset":
+      return r(`${(USERS[id] ?? []).find((u) => u.id === args.userId)?.username}@example.com`);
+    case "comments_list": {
+      const list = (COMMENTS[id] ?? []).filter((c) => c.status === args.status);
+      return r({ comments: list, total: list.length });
+    }
+    case "comment_moderate": {
+      const to = { approve: "approved", unapprove: "pending", spam: "spam", trash: "trash" }[args.action as string] as Comment["status"];
+      COMMENTS = { ...COMMENTS, [id]: (COMMENTS[id] ?? []).map((c) => (c.id === args.commentId ? { ...c, status: to } : c)) };
+      return r(null);
+    }
+    case "comment_reply":
+    case "site_login":
+    case "cm_approval_open":
+      return r(null);
+    case "cm_features":
+      return r(FEATURES);
+    case "cm_set_feature":
+      FEATURES = FEATURES.map((g) => ({ ...g, toggles: g.toggles.map((t) => (t.name === args.name ? { ...t, on: args.on as boolean } : t)) }));
+      ACTIVITY = [{ id: 42, time: "2026-10-28 10:00:00", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true }, ...ACTIVITY];
+      return r(42);
+    case "cm_settings":
+      return r(SETTINGS);
+    case "cm_set_setting":
+      return r(43);
+    case "cm_activity":
+      return r({ rows: ACTIVITY, total: ACTIVITY.length, page: 1, pages: 1 });
+    case "cm_undo":
+      ACTIVITY = ACTIVITY.map((a) => (a.id === args.row ? { ...a, status: "undone", can_undo: false } : a));
+      return r(null);
+    case "cm_approvals":
+      return r([
+        { id: 40, tool: "delete-post", who: "Claude", time: "2026-10-28 09:12:40", expires_in: 540 },
+        { id: 37, tool: "update-user", who: "Cursor", time: "2026-10-28 09:05:11", expires_in: 120 },
+      ]);
     case "job_start":
       return r(startJob(args.title as string, args.changes as Change[]));
     case "job_get":
