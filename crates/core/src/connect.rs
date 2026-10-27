@@ -857,13 +857,7 @@ impl Core {
         if let Some(v) = site.wp_version.as_deref().filter(|v| !at_least_7_1(v)) {
             return (Health::Warning, format!("WordPress {v}. {TOO_OLD}"));
         }
-        let secs = format!("{:.1} s", took.as_secs_f64());
-        let said = if took > SLOW {
-            "Slow: the home page took"
-        } else {
-            "Answered in"
-        };
-        (Health::Ok, format!("{said} {secs}."))
+        (Health::Ok, answered(took))
     }
 
     /// The connection works, and the versions are fresh.
@@ -1002,6 +996,17 @@ impl Core {
     }
 }
 
+/// The detail for a healthy site. The UI shows a site whose detail starts with
+/// "Slow" as healthy with a note.
+fn answered(took: Duration) -> String {
+    let said = if took > SLOW {
+        "Slow: the home page took"
+    } else {
+        "Answered in"
+    };
+    format!("{said} {:.1} s.", took.as_secs_f64())
+}
+
 /// `root` + `route`, for both `/wp-json/` and `?rest_route=/` roots.
 pub fn rest_url(root: &str, route: &str) -> String {
     if let Some(i) = root.find("rest_route=") {
@@ -1100,6 +1105,16 @@ mod tests {
         let mut t: Tokens = core.load_secret(id).unwrap();
         t.expires_at = 0;
         core.save_secret(id, &t).unwrap();
+    }
+
+    #[test]
+    fn a_slow_home_page_is_a_note() {
+        assert_eq!(answered(Duration::from_millis(800)), "Answered in 0.8 s.");
+        assert_eq!(answered(SLOW), "Answered in 3.0 s.");
+        assert_eq!(
+            answered(Duration::from_millis(4200)),
+            "Slow: the home page took 4.2 s."
+        );
     }
 
     #[test]
