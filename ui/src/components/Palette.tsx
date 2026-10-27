@@ -90,7 +90,7 @@ export function Palette({ commands, onClose }: { commands: Command[]; onClose: (
                 onMouseMove={() => setActive(i)}
                 onClick={() => run(c)}
               >
-                <Marked text={c.label} term={term} />
+                <span><Marked text={c.label} term={term} /></span>
                 {c.hint && <small>{c.hint}</small>}
                 {c.keys && (
                   <span className="keys">

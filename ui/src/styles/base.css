@@ -92,8 +92,8 @@ textarea.input { height: auto; min-height: 56px; padding: 6px 8px; resize: verti
 
 /* Dense tables */
 table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
-.t th { position: sticky; top: 0; z-index: 2; background: var(--bg); text-align: left; font: 500 11.5px var(--sans); color: var(--text-3); height: 30px; padding: 0 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.t td { height: var(--row); padding: 0 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.t th { position: sticky; top: 0; z-index: 2; background: var(--bg); text-align: left; font: 500 11.5px var(--sans); color: var(--text-3); height: 30px; padding: 0 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.t td { height: var(--row); padding: 0 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .t .r { text-align: right; }
 .t td.m { font: 400 var(--fs-sm) var(--mono); color: var(--text-2); }
 .t tbody tr { cursor: default; }
@@ -127,7 +127,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
 
 /* Overview */
-.sentence { font: 400 var(--fs-sentence)/1.06 var(--serif); letter-spacing: -0.02em; margin: 0; padding: 30px var(--pad) 28px; max-width: 1040px; border-bottom: 1px solid var(--line); text-wrap: balance; }
+.sentence { font: 400 var(--fs-sentence)/1.06 var(--serif); letter-spacing: -0.02em; margin: 0; padding: 30px max(var(--pad), calc(100% - 1040px)) 28px var(--pad); border-bottom: 1px solid var(--line); text-wrap: balance; }
 .sentence .dim { color: var(--text-3); }
 .kpis { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); }
 .kpi { padding: var(--pad); border-right: 1px solid var(--line); }

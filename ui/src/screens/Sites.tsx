@@ -251,16 +251,13 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                     <td>
                       <Status tone={st.tone}>{st.label}</Status>
                     </td>
-                    <td>{s.group ?? <span className="dim">none</span>}</td>
+                    <td>{s.group ?? <span className="dim" aria-label="No group">—</span>}</td>
                     <td className="m">{s.wp_version ?? "?"}</td>
                     <td className="m">{s.php_version?.split(".").slice(0, 2).join(".") ?? "?"}</td>
                     <td>{connectionLabel(s)}</td>
-                    <td>
-                      {s.tags.map((t) => (
-                        <span key={t} className="tag" style={{ marginRight: 4 }}>
-                          {t}
-                        </span>
-                      ))}
+                    <td title={s.tags.join(", ")}>
+                      {s.tags.length > 0 && <span className="tag">{s.tags[0]}</span>}
+                      {s.tags.length > 1 && <span className="dim"> +{s.tags.length - 1}</span>}
                     </td>
                     <td className="m">{ago(s.checked_at)}</td>
                   </tr>
