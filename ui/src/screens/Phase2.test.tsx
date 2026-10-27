@@ -140,6 +140,7 @@ test("themes: a site's active theme can't be deleted", () => {
   const withThemes = site({ id: 1, name: "Alpha", capabilities: { abilities: [...TOOLS, "delete-theme", "activate-theme"] } });
   matrix({ kind: "themes", sites: [withThemes], inventory: themed, onInstall: undefined });
   expect(screen.queryByRole("button", { name: "Install a plugin" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "No theme updates" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: /^Twenty Twenty-Five on Alpha/ }));
   expect(screen.getByText(/This is the theme the site uses/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();

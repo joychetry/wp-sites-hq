@@ -116,7 +116,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
             disabled={waiting === 0}
             onClick={() => onPlan(`Update ${waiting === 1 ? `1 ${noun}` : `${waiting} ${noun}s`}`, updateRows(), "plan")}
           >
-            Update {waiting === 1 ? `1 ${noun}` : `${waiting} ${noun}s`}
+            {waiting === 0 ? `No ${noun} updates` : `Update ${waiting === 1 ? `1 ${noun}` : `${waiting} ${noun}s`}`}
           </Button>
         </div>
         {cols.length === 0 ? (
