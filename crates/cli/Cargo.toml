@@ -13,7 +13,14 @@ name = "monks"
 path = "src/main.rs"
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
 monks-core = { path = "../core" }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+keyring-core = "1"
+tempfile = "3"

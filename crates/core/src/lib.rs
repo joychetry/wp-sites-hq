@@ -7,6 +7,8 @@ pub mod paths;
 pub mod store;
 pub mod vault;
 
+pub use keyring_core::CredentialStore;
+
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
