@@ -113,6 +113,7 @@ install_cm() {
   git -C "$CM_REPO" archive "$ref" | tar -x -C "$dir"
   say "  Classic Monks from $ref ($(git -C "$CM_REPO" rev-parse --short "$ref"))"
   wp "$site" plugin activate classic-monks >/dev/null
+  # shellcheck disable=SC2016 # PHP, not shell
   wp "$site" eval 'foreach ( array( "enable_cm_ai", "cm_mcp_enabled" ) as $o ) { cm_update_option( $o, 1 ); }'
   # A new request: the MCP server loads at boot when the option is on.
   [ "$(wp1 "$site" eval 'echo class_exists( "CM_MCP_Server" ) ? "on" : "off", "\n";')" = on ] \
