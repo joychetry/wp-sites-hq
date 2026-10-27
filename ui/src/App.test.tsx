@@ -22,7 +22,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-test("shows every section in the rail, the sentence and the operator role", async () => {
+test("shows every section in the rail, the sentence and the version", async () => {
   serve();
   render(<App />);
   const nav = screen.getByRole("navigation", { name: "Main" });
@@ -31,7 +31,7 @@ test("shows every section in the rail, the sentence and the operator role", asyn
   }
   expect(screen.getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
   expect(await screen.findByRole("heading", { name: "Both sites are healthy." })).toBeInTheDocument();
-  expect(screen.getByText(/0\.0\.1 · operator/)).toBeInTheDocument();
+  expect(screen.getByText("Version 0.0.1")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("core_status");
 });
 
@@ -66,7 +66,7 @@ test("Ctrl K opens the palette and runs a command", async () => {
 test("the theme follows the system, then light, then dark", async () => {
   serve();
   render(<App />);
-  const btn = screen.getByRole("button", { name: "Theme: follows the system" });
+  const btn = screen.getByRole("button", { name: "Theme: same as my computer" });
   expect(document.documentElement.dataset.theme).toBe("light");
   fireEvent.click(btn);
   fireEvent.click(screen.getByRole("button", { name: "Theme: light" }));

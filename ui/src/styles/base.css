@@ -10,6 +10,9 @@ button:disabled { cursor: default; opacity: 0.55; }
 .mono { font-family: var(--mono); font-size: var(--fs-sm); }
 .num, .t td, .kpi .v, .dist b, .navitem .n, .scope .n { font-variant-numeric: tabular-nums; }
 .dim { color: var(--text-3); }
+.skip { position: absolute; left: var(--sp-2); top: var(--sp-2); z-index: 40; padding: var(--sp-2) var(--sp-3); background: var(--text); color: var(--bg); border-radius: var(--radius); transform: translateY(-200%); }
+.skip:focus { transform: none; }
+#content:focus { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Brand mark */
@@ -74,6 +77,7 @@ textarea.input { height: auto; min-height: 56px; padding: var(--sp-2) var(--sp-2
 .navitem:hover { background: var(--raise); color: var(--text); }
 .navitem[aria-current] { background: var(--raise); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--text); }
 .navitem.later { color: var(--text-3); }
+.navitem.later .n { font-size: var(--fs-xs); }
 .rail .foot { margin-top: auto; padding: var(--sp-3) var(--sp-2) 2px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--text-3); display: grid; gap: var(--sp-2); }
 .rail .foot p { margin: 0; }
 .rail .foot button { background: none; border: 1px solid var(--line-2); border-radius: var(--radius); height: var(--control); font-size: var(--fs-sm); color: var(--text-2); }
@@ -177,7 +181,6 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .waiting { display: flex; align-items: center; gap: var(--sp-3); color: var(--text-2); }
 .waiting::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.2; } }
-@media (prefers-reduced-motion: reduce) { .waiting::before { animation: none; } }
 
 /* Command palette */
 .palette { position: fixed; inset: 0; background: var(--scrim); z-index: 30; }
@@ -199,3 +202,30 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .settings p { margin: 0 0 var(--sp-3); color: var(--text-2); }
 .settings .segmented { margin: 0; max-width: 480px; }
 .settings .segmented button { height: var(--control); }
+
+/* Motion off when the OS asks for less */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* Narrow windows and 200% zoom: one column, the rail on top, nothing cut off */
+@media (max-width: 900px) {
+  .app { display: block; height: auto; }
+  .rail { flex-direction: row; flex-wrap: wrap; align-items: center; border-right: 0; }
+  .rail .brand { width: 100%; padding-bottom: var(--sp-1); }
+  .scope, .search { flex: 1 1 200px; margin: 0; }
+  .rail > div:not(.foot) { display: contents; }
+  .rail ul { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+  .navgroup { display: none; }
+  .navitem { width: auto; }
+  .rail .foot { width: 100%; margin-top: var(--sp-2); }
+  .main, .body { height: auto; }
+  .body { flex-direction: column; }
+  .scroll { overflow-x: auto; }
+  .insp { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+  .top { height: auto; min-height: 56px; flex-wrap: wrap; padding-block: var(--sp-2); }
+  .bar, .selbar { flex-wrap: wrap; }
+  .sentence { font-size: var(--fs-xl); padding-right: var(--pad); }
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .panels { grid-template-columns: 1fr; }
+}

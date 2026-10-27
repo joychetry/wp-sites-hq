@@ -26,7 +26,7 @@ const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
 const THEME_LABEL: Record<ThemeChoice, string> = {
-  system: "Theme: follows the system",
+  system: "Theme: same as my computer",
   light: "Theme: light",
   dark: "Theme: dark",
 };
@@ -35,7 +35,7 @@ export default function App() {
   const [section, setSection] = useState<Section>("Overview");
   const [status, setStatus] = useState<CoreStatus | null>(null);
   const [coreError, setCoreError] = useState<string | null>(null);
-  const { sites, error } = useSites();
+  const { sites, error, reload } = useSites();
   const [scope, setScope] = useState("");
   const [focusId, setFocusId] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
@@ -87,7 +87,7 @@ export default function App() {
     {
       id: "theme",
       group: "Actions",
-      label: `Switch theme (now ${choice === "system" ? "following the system" : choice})`,
+      label: `Switch theme (now ${choice === "system" ? "the same as your computer" : choice})`,
       run: () => setChoice(THEME_NEXT[choice]),
     },
     {
@@ -114,16 +114,24 @@ export default function App() {
       <div className="empty" role="alert">
         <h2>Monks Central couldn't start.</h2>
         <p>{coreError}</p>
+        <p>Close Monks Central and open it again. If it keeps happening, restart the computer.</p>
+        <Button onClick={() => location.reload()}>Try again</Button>
       </div>
     );
   } else if (error) {
     body = (
       <div className="empty" role="alert">
+        <h2>Your sites didn't load.</h2>
         <p>{error}</p>
+        <Button onClick={reload}>Try again</Button>
       </div>
     );
   } else if (!sites) {
-    body = <p className="empty">Starting…</p>;
+    body = (
+      <p className="empty" role="status">
+        Loading your sites…
+      </p>
+    );
   } else if (section === "Overview") {
     body = (
       <Overview
@@ -150,14 +158,18 @@ export default function App() {
   } else {
     body = (
       <div className="empty">
-        <h2>{section}</h2>
-        <p>{section} arrives in a later phase.</p>
+        <h2>{section} is coming soon.</h2>
+        <p>It arrives in a later version of Monks Central. Your sites, their health and their versions are on Sites.</p>
+        <Button onClick={() => setSection("Sites")}>Go to Sites</Button>
       </div>
     );
   }
 
   return (
     <div className="app">
+      <a className="skip" href="#content">
+        Skip to content
+      </a>
       <nav className="rail" aria-label="Main">
         <p className="brand">
           <Logo />
@@ -166,14 +178,13 @@ export default function App() {
         <label className="scope">
           <span className="sr-only">Show</span>
           <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
-            <option value="">All sites</option>
+            <option value="">All sites ({all.length})</option>
             {groups.map((g) => (
               <option key={g} value={g}>
-                {g}
+                {g} ({all.filter((s) => s.group === g).length})
               </option>
             ))}
           </select>
-          <span className="n dim">{scoped.length}</span>
           <span className="dim" aria-hidden="true">
             ▾
           </span>
@@ -195,9 +206,8 @@ export default function App() {
                     onClick={() => setSection(s)}
                   >
                     {s}
-                    {s === "Sites" && sites && (
-                      <span className={`n ${down ? "alert" : ""}`}>{down ? `${down} down` : all.length}</span>
-                    )}
+                    {s === "Sites" && down > 0 && <span className="n alert">{down} down</span>}
+                    {!BUILT.includes(s) && <span className="n">Soon</span>}
                   </button>
                 </li>
               ))}
@@ -209,11 +219,7 @@ export default function App() {
             Checks run while the app is open.
             {nextCheck != null && ` Next check in ${nextCheck} min.`}
           </p>
-          {status && (
-            <p>
-              {status.version} · {status.role}
-            </p>
-          )}
+          {status && <p>Version {status.version}</p>}
           <button type="button" onClick={() => setChoice(THEME_NEXT[choice])}>
             {THEME_LABEL[choice]}
           </button>
@@ -227,14 +233,16 @@ export default function App() {
           </h1>
           {sites && sites.length > 0 && (
             <div className="fresh">
-              {lastCheck && `Checked ${ago(lastCheck)}`}
+              <span role="status">{checking ? "Checking all sites…" : lastCheck && `Checked ${ago(lastCheck)}`}</span>
               <Button small disabled={checking} onClick={checkAll}>
                 {checking ? "Checking…" : "Check all sites now"}
               </Button>
             </div>
           )}
         </header>
-        <main className="body">{body}</main>
+        <main className="body" id="content" tabIndex={-1}>
+          {body}
+        </main>
       </div>
       {palette && <Palette commands={commands} onClose={() => setPalette(false)} />}
       {adding && (
