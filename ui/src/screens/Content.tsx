@@ -167,7 +167,7 @@ export function Content({ sites }: { sites: Site[] }) {
             {list.posts.map((p) => (
               <tr key={p.id}>
                 <td className="name">
-                  <button type="button" className="linkish cut" title={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
+                  <button type="button" className="linkish" title={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
                     {p.title || "(no title)"}
                   </button>
                 </td>
