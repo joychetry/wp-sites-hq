@@ -21,14 +21,14 @@ export const SCREENS: Screen[] = [
     name: "sites-sign-in-again",
     open: async (page) => {
       await nav("Sites")(page);
-      await page.getByRole("cell", { name: "Monks Central Test", exact: true }).click();
+      await page.getByRole("gridcell", { name: "Monks Central Test", exact: true }).click();
     },
   },
   {
     name: "sites-no-tools",
     open: async (page) => {
       await nav("Sites")(page);
-      await page.getByRole("cell", { name: "Studio Blog", exact: true }).click();
+      await page.getByRole("gridcell", { name: "Studio Blog", exact: true }).click();
     },
   },
   { name: "add-site", open: (page) => nav("Sites")(page).then(() => page.keyboard.press("a")) },
