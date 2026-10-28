@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, ActivityRow, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -15,6 +15,7 @@ const TOOLS = [
   "uninstall-plugin",
   "set-plugin-auto-update",
   "install-plugin",
+  "install-zip",
   "update-theme",
   "activate-theme",
   "delete-theme",
@@ -99,6 +100,11 @@ const FLEET: Site[] = [
 ];
 
 let sites: Site[] = fixture === "empty" ? [] : FLEET.map((s) => ({ ...s }));
+
+let BUNDLES: Bundle[] = fixture === "empty" ? [] : [
+  { id: 1, name: "New shop", plugins: [{ source: "woocommerce", name: "WooCommerce" }, { source: "wordpress-seo", name: "Yoast SEO" }, { source: "wp-mail-smtp", name: "" }] },
+  { id: 2, name: "Blog basics", plugins: [{ source: "akismet", name: "Akismet" }, { source: "jetpack", name: "" }] },
+];
 
 let CLIENTS: Client[] = fixture === "empty" ? [] : [
   { id: 1, name: "Corner Bakery", email: "rosa@corner-bakery.test", notes: "Pays by bank transfer, 14 days." },
@@ -534,6 +540,20 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
     case "content_trash":
       return r(null);
+    case "bundles_list":
+      return r(BUNDLES);
+    case "bundle_save": {
+      const b = args.bundle as Bundle;
+      const saved = { ...b, id: b.id || BUNDLES.length + 1 };
+      BUNDLES = [...BUNDLES.filter((x) => x.id !== saved.id), saved];
+      return r(saved);
+    }
+    case "bundle_delete":
+      BUNDLES = BUNDLES.filter((b) => b.id !== id);
+      return r(null);
+    case "zip_stage":
+      await new Promise((ok) => setTimeout(ok, 200));
+      return r({ file: `${"a".repeat(64)}.zip`, name: args.name, size: 2_400_000 });
     case "clients_list":
       return r(CLIENTS);
     case "client_save": {

@@ -160,7 +160,7 @@ test("themes: a site's active theme can't be deleted", () => {
 });
 
 test("Install searches WordPress.org, skips sites that have it, then plans the install", async () => {
-  mockInvoke.mockResolvedValue([{ slug: "woocommerce", name: "WooCommerce", version: "10.3.0", active_installs: 7000000, summary: "Sell online." }]);
+  mockInvoke.mockImplementation(async (cmd: string) => (cmd === "plugin_search" ? [{ slug: "woocommerce", name: "WooCommerce", version: "10.3.0", active_installs: 7000000, summary: "Sell online." }] : []));
   const onPlan = vi.fn();
   render(<Install sites={[A, site({ id: 5, name: "Fresh", capabilities: { abilities: TOOLS } })]} inventory={new Map([...INV, [5, inv(5, { plugins: [] })]])} onClose={vi.fn()} onPlan={onPlan} />);
   fireEvent.change(screen.getByRole("textbox", { name: "Search WordPress.org plugins" }), { target: { value: "woo" } });
@@ -177,6 +177,7 @@ test("Install searches WordPress.org, skips sites that have it, then plans the i
 });
 
 test("Install from a link needs a full address", () => {
+  mockInvoke.mockResolvedValue([]);
   render(<Install sites={[A]} inventory={INV} onClose={vi.fn()} onPlan={vi.fn()} />);
   fireEvent.change(screen.getByPlaceholderText("https://example.com/my-plugin.zip"), { target: { value: "not a link" } });
   fireEvent.click(screen.getByRole("button", { name: "Use this link" }));

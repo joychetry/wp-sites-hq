@@ -62,6 +62,10 @@ export type AppSettings = {
   search_console: boolean;
   agentedseo: boolean;
 };
+export type BundlePlugin = { source: string; name: string };
+export type Bundle = { id: number; name: string; plugins: BundlePlugin[] };
+/** A zip kept in Monks Central for an install job. */
+export type Staged = { file: string; name: string; size: number };
 export type Imported = { sites: number; clients: number; costs: number; not_connected: string[] };
 
 export type Removed = { signed_out: boolean; message: string };
@@ -102,6 +106,7 @@ export type Action =
   | { do: "delete_theme"; theme: string }
   | { do: "update_core" }
   | { do: "update_translations" }
+  | { do: "install_zip"; file: string; name: string; kind: "plugin" | "theme"; activate: boolean; overwrite: boolean }
   | { do: "publish_post"; post_type: string; title: string; body: string; status: string; date?: string; terms?: Record<string, string[]> }
   | { do: "set_post_status"; post_type: string; post_id: number; title: string; status: string }
   | { do: "trash_post"; post_type: string; post_id: number; title: string }
@@ -369,6 +374,11 @@ export const api = {
   exportSites: (csv: boolean) => invoke<string>("sites_export", { csv }),
   importSites: (text: string) => invoke<Imported>("sites_import", { text }),
   showFile: (path: string) => invoke<void>("file_show", { path }),
+  bundles: () => invoke<Bundle[]>("bundles_list"),
+  saveBundle: (bundle: Bundle) => invoke<Bundle>("bundle_save", { bundle }),
+  deleteBundle: (id: number) => invoke<void>("bundle_delete", { id }),
+  /** `data` is the file as base64. */
+  stageZip: (name: string, data: string) => invoke<Staged>("zip_stage", { name, data }),
 };
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */
@@ -480,6 +490,7 @@ const TOOL: Record<Action["do"], string> = {
   delete_theme: "delete-theme",
   update_core: "update-core",
   update_translations: "update-translations",
+  install_zip: "install-zip",
   publish_post: "create-post",
   set_post_status: "update-post",
   trash_post: "delete-post",

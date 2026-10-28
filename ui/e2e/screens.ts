@@ -339,6 +339,31 @@ export const SCREENS: Screen[] = [
       await page.getByRole("button", { name: "Choose Rank Math SEO" }).click();
     },
   },
+  {
+    name: "install-zip",
+    open: async (page) => {
+      await nav("Plugins")(page);
+      await page.getByRole("button", { name: "Install a plugin" }).click();
+      await page.getByLabel("Choose a zip file").setInputFiles({ name: "acme-bookings-3.2.zip", mimeType: "application/zip", buffer: Buffer.from("PK\x03\x04") });
+      await page.getByRole("checkbox", { name: "Install on MC A" }).waitFor();
+    },
+  },
+  {
+    name: "install-bundle-edit",
+    open: async (page) => {
+      await nav("Plugins")(page);
+      await page.getByRole("button", { name: "Install a plugin" }).click();
+      await page.getByRole("button", { name: "Edit the New shop bundle" }).click();
+    },
+  },
+  {
+    name: "install-bundle",
+    open: async (page) => {
+      await nav("Plugins")(page);
+      await page.getByRole("button", { name: "Install a plugin" }).click();
+      await page.getByRole("button", { name: "Install New shop" }).click();
+    },
+  },
   { name: "loading", fixture: "loading" },
   { name: "error", fixture: "error" },
 ];
