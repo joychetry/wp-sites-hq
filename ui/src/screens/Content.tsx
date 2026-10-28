@@ -105,6 +105,8 @@ export function Content({ sites, onPlan }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Open | null>(null);
   const [picked, setPicked] = useState<Set<number>>(new Set());
+  // The entry the editor was opened from gets focus back when it closes.
+  const back = useRef<number | null>(null);
   const [many, setMany] = useState(false);
 
   useEffect(() => {
@@ -169,6 +171,33 @@ export function Content({ sites, onPlan }: Props) {
         <h2>No sites yet.</h2>
         <p>Add a site on Sites, then its posts and pages show here.</p>
       </div>
+    );
+  }
+
+  if (open && site && type) {
+    return (
+      <Editor
+        key={open.postId ?? "new"}
+        site={site}
+        type={type}
+        postId={open.postId}
+        onClose={() => {
+          back.current = open.postId ?? null;
+          setOpen(null);
+        }}
+        onSaved={(msg, undo) => {
+          const again = () =>
+            undo!().then(
+              () => {
+                toast(`Brought it back from the trash on ${site.name}.`);
+                load(true);
+              },
+              (e) => toast(String(e), { tone: "danger" }),
+            );
+          toast(msg, undo ? { undo: again } : undefined);
+          load(true);
+        }}
+      />
     );
   }
 
@@ -294,7 +323,18 @@ export function Content({ sites, onPlan }: Props) {
                     </td>
                   )}
                   <td className="name">
-                    <button type="button" className="linkish" data-tip={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
+                    <button
+                      type="button"
+                      className="linkish"
+                      data-tip={p.title || "(no title)"}
+                      ref={(el) => {
+                        if (el && back.current === p.id) {
+                          back.current = null;
+                          el.focus();
+                        }
+                      }}
+                      onClick={() => setOpen({ postId: p.id })}
+                    >
                       {p.title || "(no title)"}
                     </button>
                   </td>
@@ -434,27 +474,6 @@ export function Content({ sites, onPlan }: Props) {
           onPlan={(t, r) => {
             setMany(false);
             onPlan(t, r, "confirm");
-          }}
-        />
-      )}
-      {open && site && type && (
-        <Editor
-          key={open.postId ?? "new"}
-          site={site}
-          type={type}
-          postId={open.postId}
-          onClose={() => setOpen(null)}
-          onSaved={(msg, undo) => {
-            const back = () =>
-              undo!().then(
-                () => {
-                  toast(`Brought it back from the trash on ${site.name}.`);
-                  load(true);
-                },
-                (e) => toast(String(e), { tone: "danger" }),
-              );
-            toast(msg, undo ? { undo: back } : undefined);
-            load(true);
           }}
         />
       )}

@@ -95,6 +95,7 @@ test("a post found opens in the editor from the results", async () => {
   const ready = { ...A, capabilities: { ...A.capabilities, abilities: ["list-post-types"] } };
   render(<Search sites={[ready]} inventory={inv} query="menu" onGo={() => {}} />);
   fireEvent.click(await screen.findByRole("button", { name: "Edit Menu news on Alpha" }));
-  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Edit post on Alpha" })).toBeInTheDocument();
+  expect(screen.getByText("Opening it…")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("content_types", { id: 1 });
 });

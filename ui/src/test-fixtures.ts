@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { fireEvent } from "@testing-library/react";
+import { createElement } from "react";
 import type { Site } from "./api";
 
 export function site(over: Partial<Site> = {}): Site {
@@ -37,3 +38,29 @@ export function choose(select: HTMLElement, value: string) {
   if (!option) throw new Error(`no option ${value} in ${select.getAttribute("aria-label")}`);
   fireEvent.click(option);
 }
+
+/** The editor fields a Post carries beyond the list's, as a site with nothing set gives them. */
+export const POST_FIELDS = {
+  preview_link: "https://mc-a.local/?p=7&preview=true",
+  slug: "menu",
+  excerpt: "",
+  author_id: 1,
+  author: "Joy",
+  parent: 0,
+  menu_order: 0,
+  template: "",
+  password: "",
+  page_fields: true,
+  choices: { authors: [{ id: 1, name: "Joy" }], parents: [], templates: {} },
+};
+
+/**
+ * TinyMCE doesn't run in jsdom: RichText and InlineText become plain textareas with the same label
+ * and the same onChange (null while the text is as it opened).
+ */
+export const richTextStandIn = {
+  RichText: ({ label, html, onChange }: { label: string; html: string; onChange: (h: string | null) => void }) =>
+    createElement("textarea", { "aria-label": label, defaultValue: html, onChange: (e: { target: { value: string } }) => onChange(e.target.value === html ? null : e.target.value) }),
+  InlineText: ({ label, html, onChange }: { label: string; html: string; onChange: (h: string | null) => void }) =>
+    createElement("textarea", { "aria-label": label, defaultValue: html, onChange: (e: { target: { value: string } }) => onChange(e.target.value === html ? null : e.target.value) }),
+};

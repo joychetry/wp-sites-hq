@@ -119,6 +119,21 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
     else toast(`Couldn't open it here. Open it on Content for ${s.name}.`, { tone: "danger" });
   };
 
+  // An entry opens on its own full page, in place of the results.
+  if (editing) {
+    return (
+      <Editor
+        site={editing.site}
+        type={editing.type}
+        postId={editing.id}
+        onClose={() => setEditing(null)}
+        onSaved={(msg, undo) =>
+          toast(msg, undo ? { undo: () => undo().then(() => toast(`Brought it back from the trash on ${editing.site.name}.`), (e) => toast(String(e), { tone: "danger" })) } : undefined)
+        }
+      />
+    );
+  }
+
   return (
     <div className="scroll page search">
       <form
@@ -234,17 +249,6 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
             </p>
           )}
         </>
-      )}
-      {editing && (
-        <Editor
-          site={editing.site}
-          type={editing.type}
-          postId={editing.id}
-          onClose={() => setEditing(null)}
-          onSaved={(msg, undo) =>
-            toast(msg, undo ? { undo: () => undo().then(() => toast(`Brought it back from the trash on ${editing.site.name}.`), (e) => toast(String(e), { tone: "danger" })) } : undefined)
-          }
-        />
       )}
       <p className="callout">
         <Glyph name="command" />

@@ -2,6 +2,7 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|fleet300|first|empty|loading|error
 // (first: one site, as just after adding it).
+import { ACF_FIELDS } from "./acf-fixture";
 import type { Action, ActivityRow, AppSettings, ReportAsk, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
@@ -35,6 +36,8 @@ const TOOLS = [
   "restore-replaced-media",
   "trash-media",
   "restore-media",
+  "get-acf-fields",
+  "update-acf-fields",
   "get-users",
   "create-user",
   "update-user",
@@ -398,6 +401,24 @@ const post = (id: number, post_type: string, title: string, status: string, over
   builder: null,
   blocks: [],
   locked: null,
+  preview_link: `https://mc-a.local/?p=${id}&preview=true`,
+  slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+  excerpt: "",
+  author_id: 1,
+  author: "Joy Chetry",
+  parent: 0,
+  menu_order: 0,
+  template: "",
+  password: "",
+  page_fields: true,
+  choices: {
+    authors: [
+      { id: 1, name: "Joy Chetry" },
+      { id: 3, name: "Ana Lima" },
+    ],
+    parents: post_type === "page" ? [{ id: 13, title: "Catering" }] : [],
+    templates: post_type === "page" ? { "page-wide.php": "Wide page", "page-no-title": "Page No Title" } : {},
+  },
   ...over,
 });
 let APP: AppSettings = { report_name: "Studio North", report_footer: "hello@studio-north.test", report_accent: "#1f6feb", white_label: false, search_console: false, agentedseo: false };
@@ -432,7 +453,15 @@ const POSTS: Post[] = [
   post(23, "post", "Hiring a morning baker", "pending"),
   post(24, "post", "Summer menu", "trash"),
   post(31, "cm_book", "Kind of Blue", "publish", { terms: { cm_genre: [{ id: 5, name: "Jazz" }] } }),
+  post(25, "post", "Winter opening hours", "publish", {
+    terms: { category: [{ id: 2, name: "News" }], post_tag: [] },
+    excerpt: "Shorter days, the same bread.",
+    blocks: [{ index: 0, name: "", depth: 0, editable: true, html: "From December we open at 8.\n\nWe are closed on <strong>Mondays</strong>, and the café shuts at 4.\n<ul>\n<li>Bread from 8</li>\n<li>Cakes from 10</li>\n</ul>" }],
+  }),
+  post(26, "post", "Monks test fields post", "publish", { terms: { category: [{ id: 1, name: "Uncategorized" }], post_tag: [] } }),
 ];
+// The ACF group on "Monks test fields post": one field of every type.
+let ACF = structuredClone(ACF_FIELDS) as { key: string; label: string; type: string; value?: unknown }[];
 const TERMS: Record<string, { id: number; name: string }[]> = {
   category: [
     { id: 1, name: "Uncategorized" },
@@ -664,6 +693,24 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
     case "content_trash":
       return r(null);
+    case "content_acf": {
+      if (args.postId !== 26) return r({ post_id: args.postId, groups: [], refs: {} });
+      const pic = (id: number) => MEDIA.find((m) => m.id === id)!;
+      const ref = (id: number) => ({ title: pic(id).title, url: pic(id).url, thumbnail: pic(id).url, mime_type: pic(id).mime });
+      return r({
+        post_id: 26,
+        groups: [{ key: "group_monks_test_fields", title: "Monks test fields", fields: ACF }],
+        refs: { media: { 31: ref(31), 32: ref(32) }, posts: { 21: { title: "Autumn opening hours", type: "post" }, 11: { title: "Our menu", type: "page" } }, terms: { 1: { name: "Uncategorized" } }, users: { 1: { name: "Joy Chetry" } } },
+      });
+    }
+    case "content_acf_save": {
+      await new Promise((ok) => setTimeout(ok, 300));
+      const sent = args.fields as Record<string, unknown>;
+      const mail = sent.field_monks_test_fields_email;
+      if (typeof mail === "string" && mail.endsWith("@")) return Promise.reject(`Email: '${mail}' is not a valid email address`);
+      ACF = ACF.map((f) => (f.key in sent ? { ...f, value: sent[f.key] } : f));
+      return r({ values: sent, undo: 77 });
+    }
     case "app_settings_get":
       return r(APP);
     case "app_update_check":

@@ -51,3 +51,137 @@
 .pm-sites .pm-name { flex: none; }
 .pm-sites .row.check small { flex: 1 1 12em; color: var(--text-3); font-size: var(--fs-sm); }
 .pm-sites .row.check.na { color: var(--text-3); cursor: not-allowed; }
+
+/* The full-page editor (screens/Editor.tsx): a top bar, then the main column and the side boxes,
+   like WordPress's classic editor. One column under 900px. */
+.ed-page { display: grid; gap: var(--sp-4); align-content: start; }
+.ed-top { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; min-height: var(--control); }
+.ed-top h2 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--display); }
+.ed-top h2 .dim { font: 400 var(--fs-md)/1.3 var(--sans); }
+.ed-top > .btn:first-child .glyph { transform: scaleX(-1); }
+.ed-top .tag.warning { margin-left: auto; }
+.ed-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--sp-4); align-items: start; }
+@media (max-width: 1200px) { .ed-grid { grid-template-columns: minmax(0, 1fr) 260px; } }
+@media (max-width: 900px) { .ed-grid { grid-template-columns: minmax(0, 1fr); } }
+.ed-card .card-head { min-height: 48px; }
+.ed-card-body { display: grid; gap: var(--sp-3); padding: var(--pad); min-width: 0; }
+.ed-card-body > .field, .ed-card-body > fieldset.field { margin: 0; }
+.ed-card-body.fields { border: 0; }
+.ed-box-title { margin: 0; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); font: 600 var(--fs)/1.4 var(--sans); }
+.ed-box-body { display: grid; gap: var(--sp-3); padding: var(--sp-4); min-width: 0; }
+.ed-box-body > .field, .ed-box-body > fieldset { margin: 0; }
+.ed-box .imgpick .mthumbs.small { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ed-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.ed-acts.end { justify-content: space-between; padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.ed-acts.end .disc { margin-left: auto; }
+.ed-slug { flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-sm); }
+.ed-slug .input { flex: 1 1 12em; max-width: 26em; }
+.ed-base { max-width: 26em; color: var(--text-2); }
+.ed-vis { display: grid; gap: var(--sp-1); margin: 0; padding: 0; border: 0; }
+.ed-vis legend { margin-bottom: var(--sp-1); padding: 0; font-size: var(--fs-sm); font-weight: 600; }
+.ed-vis .row.check { min-height: 28px; }
+.ed-side .terms .row { flex-wrap: wrap; }
+.ed-side .featured { width: 100%; height: auto; border-radius: var(--radius); }
+
+/* The body (components/RichText.tsx): Add media and the Visual / Text tabs on top, then TinyMCE's
+   toolbar (room for its two rows is kept, so nothing jumps when it opens) and the text. */
+.rte { border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); min-width: 0; }
+.rte-head { display: flex; align-items: flex-end; gap: var(--sp-2); padding: var(--sp-2) var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.rte-head > .btn { margin-bottom: var(--sp-2); }
+.rte-head .tabs { border: 0; padding: 0; }
+.rte-head .tabs [role="tab"] { height: 36px; }
+.rte [role="tabpanel"] { position: relative; }
+.rte-bar { min-height: 84px; border-bottom: 1px solid var(--line); }
+.rte-body { min-height: 320px; padding: var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius) var(--radius); }
+.rte-body:focus, .rte-body:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.rte-source { display: block; width: 100%; min-height: 404px; border: 0; border-radius: 0 0 var(--radius) var(--radius); font: var(--fs-sm)/1.6 var(--mono); resize: vertical; }
+.rte-wait { position: absolute; top: var(--sp-3); left: var(--sp-4); margin: 0; color: var(--text-3); font-size: var(--fs-sm); }
+.rte-media { padding: var(--sp-3); border-bottom: 1px solid var(--line); }
+
+/* Text in the editor reads like a page. */
+.prose { font-size: var(--fs-md); line-height: 1.6; color: var(--text); }
+.prose > :first-child { margin-top: 0; }
+.prose p { margin: 0 0 var(--sp-3); }
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { margin: var(--sp-4) 0 var(--sp-2); font-family: var(--display); line-height: 1.3; }
+.prose h1 { font-size: var(--fs-xl); }
+.prose h2 { font-size: var(--fs-lg); }
+.prose h3, .prose h4, .prose h5, .prose h6 { font-size: var(--fs-md); }
+.prose blockquote { margin: 0 0 var(--sp-3); padding-left: var(--sp-4); border-left: 3px solid var(--line-ui); color: var(--text-2); }
+.prose ul, .prose ol { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); }
+.prose img { max-width: 100%; height: auto; }
+.prose a, .blk-text a { color: var(--brand-text); }
+.prose pre { padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--panel); font: var(--fs-sm)/1.5 var(--mono); white-space: pre-wrap; }
+.prose hr { border: 0; border-top: 1px solid var(--line-ui); }
+.prose .mce-pagebreak, .prose img.mce-object { display: block; }
+
+/* A block page: each text block is its own box that becomes an editor when it gets focus; the
+   other blocks are locked rows. */
+.blk { display: grid; gap: var(--sp-1); margin-bottom: var(--sp-3); }
+.blk-text { min-height: var(--field); margin: 0; padding: 8px 12px; border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); color: var(--text); font: inherit; line-height: 1.5; cursor: text; overflow-wrap: anywhere; }
+.blk-text.heading { font: 600 var(--fs-lg)/1.3 var(--display); }
+pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; }
+.blk-text:focus, .blk-text:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.blk.locked .tag .glyph { width: 12px; height: 12px; }
+
+/* ACF fields (screens/AcfFields.tsx). */
+.ed-card-body fieldset.field { display: grid; gap: var(--sp-2); min-width: 0; padding: 0; border: 0; }
+.ed-card-body fieldset.field > legend { margin-bottom: 6px; padding: 0; font-size: var(--fs-sm); font-weight: 600; }
+.acf-wrap { display: flex; align-items: center; gap: var(--sp-2); }
+.acf-choices { display: grid; gap: var(--sp-1); }
+.acf-choices.row { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.acf-link { display: grid; gap: var(--sp-2); }
+.acf-group, .acf-row { padding: var(--sp-3) var(--sp-4) !important; border: 1px solid var(--line) !important; border-radius: var(--radius); }
+.acf-row { display: grid; gap: var(--sp-3); margin: 0; }
+.acf-row > legend { padding: 0 var(--sp-1); font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.acf-row > .field { margin: 0; }
+.acf-row .row { flex-wrap: wrap; }
+.acf-row .push { margin-left: auto; }
+.acf-media { display: grid; gap: var(--sp-2); justify-items: start; }
+.acf-media .imgpick { justify-self: stretch; }
+.acf-picks { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.acf-picks li { display: flex; align-items: center; gap: var(--sp-2); max-width: 260px; padding: 4px 4px 4px 4px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); font-size: var(--fs-sm); }
+.acf-picks img { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius-sm); }
+.acf-picks .cut { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acf-picks .icon-btn { width: 28px; height: 28px; }
+.acf-posts .tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.acf-ro .callout { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: 0; }
+.acf-ro .callout > span { flex: 1 1 16em; }
+
+/* TinyMCE's own toolbar, menus and dialogs in the redesign's colours, both themes (its oxide skin
+   is underneath; "html" outranks the skin, which loads after this file). */
+html .tox { font-family: var(--sans); color: var(--text); }
+html .tox .tox-toolbar, html .tox .tox-toolbar__primary, html .tox .tox-toolbar__overflow, html .tox .tox-editor-header { background: var(--bg); }
+html .tox .tox-toolbar__group { padding: 0 var(--sp-1); }
+html .tox .tox-tbtn, html .tox .tox-split-button, html .tox .tox-split-button .tox-tbtn { color: var(--text); background: transparent; border-radius: var(--radius-sm); }
+html .tox .tox-tbtn svg { fill: var(--text); }
+html .tox .tox-tbtn:hover, html .tox .tox-split-button:hover { background: var(--panel); color: var(--text); }
+html .tox .tox-tbtn--enabled, html .tox .tox-tbtn--enabled:hover { background: var(--sel); }
+html .tox .tox-tbtn--enabled svg { fill: var(--brand-text); }
+html .tox .tox-tbtn--disabled svg, html .tox .tox-tbtn:disabled svg { fill: var(--text-3); }
+html .tox .tox-tbtn:focus-visible, html .tox .tox-split-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; background: var(--panel); }
+html .tox .tox-tbtn__select-label { color: var(--text); }
+html .tox .tox-tbtn--select svg, html .tox .tox-split-button__chevron svg { fill: var(--text-2); }
+html .tox.tox-tinymce-inline .tox-editor-header { background: var(--bg); border: 1px solid var(--line-ui); border-radius: var(--radius); box-shadow: var(--shadow-pop); overflow: hidden; }
+html .rte .tox.tox-tinymce-inline .tox-editor-header { border: 0; border-radius: 0; box-shadow: none; }
+html .tox .tox-menu, html .tox .tox-collection--list, html .tox .tox-collection--toolbar, html .tox .tox-collection--grid { background: var(--bg); border-color: var(--line-ui); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+html .tox .tox-collection__item { color: var(--text); }
+html .tox .tox-collection__item--active, html .tox .tox-collection__item--enabled { background: var(--panel); color: var(--text); }
+html .tox .tox-collection__item-icon svg, html .tox .tox-collection__item-checkmark svg, html .tox .tox-collection__item-caret svg { fill: var(--text); }
+html .tox .tox-collection__item-label * { color: inherit; }
+html .tox .tox-dialog-wrap__backdrop { background: var(--scrim); }
+html .tox .tox-dialog { background: var(--bg); color: var(--text); border-color: var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); }
+html .tox .tox-dialog__header, html .tox .tox-dialog__body, html .tox .tox-dialog__footer { background: var(--bg); color: var(--text); border-color: var(--line); }
+html .tox .tox-dialog__title { font: 600 var(--fs-lg)/1.3 var(--display); color: var(--text); }
+html .tox .tox-label, html .tox .tox-form__group label, html .tox .tox-checkbox__label { color: var(--text); font-size: var(--fs-sm); font-weight: 600; }
+html .tox .tox-textfield, html .tox .tox-textarea, html .tox .tox-listboxfield .tox-listbox--select, html .tox .tox-selectfield select { background: var(--bg); color: var(--text); border-color: var(--line-ui); border-radius: var(--radius); font-family: var(--sans); }
+html .tox .tox-textfield:focus, html .tox .tox-listboxfield .tox-listbox--select:focus { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+html .tox .tox-listbox__select-label { color: var(--text); }
+html .tox .tox-button { border-radius: var(--radius-pill); background: var(--green); border-color: var(--green); color: var(--on-green); font: 600 var(--fs)/1 var(--sans); }
+html .tox .tox-button:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); }
+html .tox .tox-button--secondary, html .tox .tox-button--secondary:hover:not(:disabled) { background: var(--bg); border-color: var(--line-ui); color: var(--text); }
+html .tox .tox-button--naked, html .tox .tox-button--naked:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--text); }
+html .tox .tox-button--naked svg { fill: var(--text); }
+html .tox .tox-swatches-menu, html .tox .tox-collection--grid { background: var(--bg); }
+html .tox .tox-tooltip__body { background: var(--text); color: var(--bg); font-family: var(--sans); }
+html .tox .tox-tooltip__arrow { border-top-color: var(--text); border-bottom-color: var(--text); }
+html .tox .tox-icon svg, html .tox .tox-collection__item-icon svg { fill: currentColor; }

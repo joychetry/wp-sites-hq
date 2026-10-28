@@ -765,7 +765,7 @@ export function parseTime(s: string): string | null {
   return h < 24 && min < 60 ? `${pad(h)}:${pad(min)}` : null;
 }
 
-function TimeField({ value, onChange, label, disabled }: { value: string; onChange: (t: string) => void; label: string; disabled?: boolean }) {
+export function TimeField({ value, onChange, label, disabled }: { value: string; onChange: (t: string) => void; label: string; disabled?: boolean }) {
   const [draft, setDraft] = useState(value);
   const [bad, setBad] = useState(false);
   useEffect(() => {

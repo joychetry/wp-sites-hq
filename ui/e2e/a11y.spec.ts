@@ -116,20 +116,65 @@ test("the palette gives focus back when it closes", async ({ page }) => {
 test("the content editor works from the keyboard and gives focus back", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "content")!, "light");
   await page.getByRole("button", { name: "Pages", exact: true }).click();
-  const open = page.getByRole("button", { name: "Our menu" });
-  await open.focus();
+  await page.getByRole("button", { name: "Our menu" }).focus();
   await page.keyboard.press("Enter");
-  const sheet = page.getByRole("dialog", { name: /^Edit page/ });
-  await expect(sheet).toBeVisible();
-  await sheet.getByRole("textbox", { name: "Paragraph 2" }).focus();
+  await expect(page.getByRole("heading", { name: "Edit page on MC A" })).toBeVisible();
+  // Tab from the title reaches the slug, then the first text block, which starts its editor.
+  await page.getByRole("textbox", { name: "Title" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("textbox", { name: "Slug" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("textbox", { name: "Heading 1" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  const text = page.getByRole("textbox", { name: "Paragraph 2" });
+  await expect(text).toBeFocused();
+  await expect(text).toHaveAttribute("contenteditable", "true");
+  await page.keyboard.press("End");
   await page.keyboard.type(" Closed Mondays.");
-  await expect(sheet.getByRole("button", { name: "Save changes" })).toBeEnabled();
-  for (let i = 0; i < 20; i++) {
-    await page.keyboard.press("Tab");
-    expect(await page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
-  }
+  await expect(page.getByText("Unsaved changes")).toBeVisible();
+  // Ctrl+S saves from inside the editor.
+  await page.keyboard.press("Control+s");
+  await expect(page.getByText('Saved "Our menu" on MC A.')).toBeVisible();
+  await expect(page.getByText("Unsaved changes")).toHaveCount(0);
+  await page.getByRole("button", { name: "Back to pages" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Our menu" })).toBeFocused();
+});
+
+test("leaving with unsaved changes asks, from Back and from the rail", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "content-leave")!, "light");
+  const ask = page.getByRole("dialog", { name: "Leave without saving?" });
   await page.keyboard.press("Escape");
-  await expect(open).toBeFocused();
+  await expect(ask).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Our winter menu");
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Media/ }).click();
+  await expect(ask).toBeVisible();
+  await ask.getByRole("button", { name: "Leave without saving" }).click();
+  await expect(page.getByRole("heading", { name: "Media", exact: true })).toBeVisible();
+});
+
+test("saving and its messages never move the page: title, a body edit and an ACF error", async ({ page }) => {
+  const y = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!.y;
+  await show(page, SCREENS.find((s) => s.name === "content-classic")!, "light");
+  const title = page.getByRole("textbox", { name: "Title" });
+  const top = await y(title);
+  await page.getByRole("textbox", { name: "Body" }).click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type(" New line.");
+  await expect(page.getByText("Unsaved changes")).toBeVisible();
+  expect(await y(title)).toBe(top);
+  await page.getByRole("button", { name: "Update", exact: true }).click();
+  await expect(page.getByText('Saved "Winter opening hours" on MC A.')).toBeVisible();
+  expect(await y(title)).toBe(top);
+
+  await show(page, SCREENS.find((s) => s.name === "content-acf")!, "light");
+  const mail = page.getByRole("textbox", { name: "Email" });
+  await mail.fill("baker@");
+  const at = await y(mail);
+  await page.keyboard.press("Control+s");
+  await expect(page.getByText(/Nothing was saved/)).toBeVisible();
+  await expect(mail).toHaveAttribute("aria-invalid", "true");
+  expect(await y(mail)).toBe(at);
 });
 
 test("entries are ticked and changed in bulk from the keyboard", async ({ page }) => {
@@ -302,7 +347,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search", "store", "store-change", "classic-monks-reports", "reports", "reports-made", "settings-search-console"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "content-classic", "content-acf", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search", "store", "store-change", "classic-monks-reports", "reports", "reports-made", "settings-search-console"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -418,9 +463,9 @@ test("approving from the keyboard moves focus to the next comment, and a new scr
 
 test("custom field boxes are as tall as the other fields, and Remove lines up with its box", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "content-editor")!, "light");
-  const sheet = page.getByRole("dialog");
+  const sheet = page.getByRole("region", { name: "Custom fields" });
   const fields = sheet.getByRole("group", { name: "Custom fields" });
-  const title = (await sheet.getByRole("textbox", { name: "Title" }).boundingBox())!;
+  const title = (await fields.getByRole("textbox", { name: "New field value" }).boundingBox())!;
   for (const name of ["New field name", "New field value", "opening_hours"]) {
     const box = (await fields.getByRole("textbox", { name }).boundingBox())!;
     expect(box.height, name).toBe(title.height);

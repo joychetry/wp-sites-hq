@@ -15,6 +15,7 @@ import { planTitle, Updates, updatesOf } from "./screens/Updates";
 import { Matrix } from "./screens/Matrix";
 import { Install } from "./screens/Install";
 import { Content } from "./screens/Content";
+import { leaveGuard } from "./screens/Editor";
 import { Media } from "./screens/Media";
 import { Users } from "./screens/Users";
 import { Comments } from "./screens/Comments";
@@ -96,7 +97,9 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
 ];
 
 export default function App() {
-  const [section, setSection] = useState<Section>("Overview");
+  const [section, setSectionNow] = useState<Section>("Overview");
+  // An editor with unsaved changes asks before the page changes.
+  const setSection = (s: Section) => (leaveGuard.ask ? leaveGuard.ask(() => setSectionNow(s)) : setSectionNow(s));
   const sectionRef = useRef(section);
   sectionRef.current = section;
   // Messages belong to the screen they came from; on another screen they would only cover it.

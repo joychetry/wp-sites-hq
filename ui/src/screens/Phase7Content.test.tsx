@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { ReactElement, ReactNode } from "react";
 import { Content, bulkRows } from "./Content";
 import { siteDate } from "./Editor";
-import { site, choose } from "../test-fixtures";
+import { site, POST_FIELDS } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import type { Post, PostType } from "../api";
 
@@ -15,6 +15,7 @@ const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider val
 const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+vi.mock("../components/RichText", async (orig) => ({ ...(await orig<object>()), ...(await import("../test-fixtures")).richTextStandIn }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
 const mockInvoke = vi.mocked(invoke);
 afterEach(() => mockInvoke.mockReset());
@@ -50,6 +51,7 @@ const POST: Post = {
   builder: null,
   blocks: [],
   locked: null,
+  ...POST_FIELDS,
 };
 const row = (id: number, title: string, status = "draft") => ({ id, title, status, date: "", modified: "", author: "Joy", link: "" });
 
@@ -85,9 +87,8 @@ test("an entry moved to the trash comes back with Undo on the message", async ()
   const calls = core();
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  const sheet = await screen.findByRole("dialog");
-  fireEvent.click(await within(sheet).findByRole("button", { name: "Move to the trash" }));
-  fireEvent.click(within(sheet).getByRole("button", { name: "Move it to the trash" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Move to the trash" }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Move it to the trash" }));
   fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_untrash" && c[1].postId === 7)).toBe(true));
   expect(await screen.findByText("Brought it back from the trash on Alpha.")).toBeInTheDocument();
@@ -102,7 +103,7 @@ test("schedules an entry and changes its custom fields", async () => {
   const calls = core();
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  const sheet = await screen.findByRole("dialog");
+  const sheet = document.body;
   const fields = await within(sheet).findByRole("group", { name: "Custom fields" });
   expect(within(fields).getByText("kept as is (not plain text)")).toBeInTheDocument();
   fireEvent.change(within(fields).getByRole("textbox", { name: "price" }), { target: { value: "14" } });
@@ -112,14 +113,13 @@ test("schedules an entry and changes its custom fields", async () => {
   fireEvent.change(within(fields).getByRole("textbox", { name: "New field name" }), { target: { value: "chef" } });
   fireEvent.change(within(fields).getByRole("textbox", { name: "New field value" }), { target: { value: "Ana" } });
   fireEvent.click(within(fields).getByRole("button", { name: "Add the field" }));
-  choose(within(sheet).getByRole("combobox", { name: "Status" }), "publish");
   const day = within(sheet).getByRole("textbox", { name: "Publish date: date" });
   fireEvent.change(day, { target: { value: "1 Dec 2026" } });
   fireEvent.blur(day);
   const time = within(sheet).getByRole("textbox", { name: "Publish date: time" });
   fireEvent.change(time, { target: { value: "8:00" } });
   fireEvent.blur(time);
-  fireEvent.click(within(sheet).getByRole("button", { name: "Save changes" }));
+  fireEvent.click(within(sheet).getByRole("button", { name: "Schedule" }));
   await waitFor(() =>
     expect(calls.find((c) => c[0] === "content_edit")?.[1].draft).toEqual({
       status: "publish",
@@ -135,9 +135,9 @@ test("puts an earlier version back after asking, and brings an entry back from t
 
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  const sheet = await screen.findByRole("dialog");
+  const sheet = document.body;
   fireEvent.click(await within(sheet).findByRole("button", { name: "Show earlier versions" }));
-  const put = await within(sheet).findByRole("button", { name: "Put this version back, from 2026-10-20 08:00:00" });
+  const put = await within(sheet).findByRole("button", { name: "Put back the version from 2026-10-20 08:00:00" });
   fireEvent.click(put);
   fireEvent.click(within(sheet).getByRole("button", { name: "Put it back" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_restore_revision" && c[1].revisionId === 70)).toBe(true));
@@ -151,7 +151,7 @@ test("Basic mode and older Classic Monks don't offer fields, versions or the tra
   core({ content_get: () => ({ ...POST, meta: {}, status: "trash" }) });
   const { unmount } = render(<Content sites={[BASIC]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  const sheet = await screen.findByRole("dialog");
+  const sheet = document.body;
   await within(sheet).findByRole("textbox", { name: "Title" });
   expect(within(sheet).queryByRole("group", { name: "Custom fields" })).toBeNull();
   expect(within(sheet).queryByRole("button", { name: "Show earlier versions" })).toBeNull();

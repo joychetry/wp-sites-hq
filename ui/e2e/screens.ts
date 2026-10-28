@@ -273,6 +273,55 @@ export const SCREENS: Screen[] = [
     },
   },
   {
+    name: "content-classic",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Winter opening hours" }).click();
+      await page.locator(".rte .tox-toolbar__group").first().waitFor();
+      await page.getByRole("textbox", { name: "Body" }).getByText("Mondays").waitFor();
+    },
+  },
+  {
+    name: "content-classic-text",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Winter opening hours" }).click();
+      await page.locator(".rte .tox-toolbar__group").first().waitFor();
+      await page.getByRole("tab", { name: "Text" }).click();
+      await page.getByRole("textbox", { name: "Body, as HTML" }).waitFor();
+    },
+  },
+  {
+    name: "content-block-text",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Pages", exact: true }).click();
+      await page.getByRole("button", { name: "Our menu" }).click();
+      await page.getByRole("textbox", { name: "Paragraph 2" }).click();
+      await page.locator(".tox-tinymce-inline .tox-toolbar__group").first().waitFor();
+    },
+  },
+  {
+    name: "content-acf",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Monks test fields post" }).click();
+      await page.getByRole("region", { name: "Monks test fields" }).scrollIntoViewIfNeeded();
+      await page.getByRole("textbox", { name: "Email" }).waitFor();
+    },
+  },
+  {
+    name: "content-leave",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Pages", exact: true }).click();
+      await page.getByRole("button", { name: "Our menu" }).click();
+      await page.getByRole("textbox", { name: "Title" }).fill("Our winter menu");
+      await page.getByRole("button", { name: "Back to pages" }).click();
+      await page.getByRole("dialog", { name: "Leave without saving?" }).waitFor();
+    },
+  },
+  {
     name: "content-builder",
     open: async (page) => {
       await nav("Content")(page);
@@ -296,7 +345,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Content")(page);
       await page.getByRole("button", { name: "Autumn opening hours" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Move to the trash" }).click();
+      await page.getByRole("region", { name: "Publish" }).getByRole("button", { name: "Move to the trash" }).click();
+      await page.getByRole("dialog", { name: /to the trash\?$/ }).waitFor();
     },
   },
   {
@@ -306,7 +356,7 @@ export const SCREENS: Screen[] = [
       await page.getByRole("button", { name: "Pages", exact: true }).click();
       await page.getByRole("button", { name: "Our menu" }).click();
       await page.getByRole("button", { name: "Show earlier versions" }).click();
-      await page.getByRole("button", { name: "Put this version back, from 2026-10-20 09:10:00" }).click();
+      await page.getByRole("button", { name: "Put back the version from 2026-10-20 09:10:00" }).click();
     },
   },
   {
@@ -397,9 +447,9 @@ export const SCREENS: Screen[] = [
       await nav("Content")(page);
       await page.getByRole("button", { name: "Pages", exact: true }).click();
       await page.getByRole("button", { name: "Our menu" }).click();
-      await page.getByRole("button", { name: "Choose an image" }).click();
+      await page.getByRole("region", { name: "Featured image" }).getByRole("button", { name: /^(Choose|Change) the image$/ }).click();
       await page.getByRole("list", { name: "Images" }).waitFor();
-      await page.locator(".imgpick").evaluate((e) => e.closest("fieldset")!.scrollIntoView({ block: "start" }));
+      await page.getByRole("region", { name: "Featured image" }).evaluate((e) => e.scrollIntoView({ block: "start" }));
     },
   },
   { name: "updates", open: nav("Updates") },

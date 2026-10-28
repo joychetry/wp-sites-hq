@@ -6,7 +6,7 @@ import type { ReactElement, ReactNode } from "react";
 import { Content } from "./Content";
 import { blockLabel, toBlocks } from "./Editor";
 import { Media } from "./Media";
-import { site, choose } from "../test-fixtures";
+import { site, choose, POST_FIELDS } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { contentBlocked, type Post, type PostType } from "../api";
 
@@ -16,6 +16,7 @@ const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider val
 const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+vi.mock("../components/RichText", async (orig) => ({ ...(await orig<object>()), ...(await import("../test-fixtures")).richTextStandIn }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
 const mockInvoke = vi.mocked(invoke);
 afterEach(() => mockInvoke.mockReset());
@@ -34,7 +35,7 @@ const BOOK: PostType = {
   taxonomies: [{ name: "cm_genre", label: "Genres", hierarchical: false, can_add: true, rest_base: "" }],
   rest_base: "",
 };
-const PAGE_TYPE: PostType = { ...BOOK, name: "page", label: "Pages", singular: "Page", taxonomies: [] };
+const PAGE_TYPE: PostType = { ...BOOK, name: "page", label: "Pages", singular: "Page", hierarchical: true, supports: [...BOOK.supports, "excerpt", "page-attributes"], taxonomies: [] };
 
 const POST: Post = {
   id: 7,
@@ -55,6 +56,7 @@ const POST: Post = {
     { index: 2, name: "core/paragraph", depth: 0, editable: true, html: "Bread daily." },
   ],
   locked: null,
+  ...POST_FIELDS,
 };
 
 export const SHOP = { id: 9, title: "shop", url: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", mime: "image/jpeg", alt: "The shop", date: "", caption: "", description: "", file_name: "shop.jpg", author: "Joy", width: 0, height: 0, size: 0, thumb: "", usage: null };
@@ -141,66 +143,130 @@ test("the editor changes only edited text blocks and keeps the others", async ()
   const calls = core();
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  const sheet = await screen.findByRole("dialog", { name: "Edit page on Alpha" });
-  const blocks = await within(sheet).findByRole("list", { name: "Blocks" });
+  expect(await screen.findByRole("heading", { name: "Edit page on Alpha" })).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  const blocks = await screen.findByRole("list", { name: "Blocks" });
   expect(within(blocks).getByText("Kept as is")).toBeInTheDocument();
   expect(within(blocks).getAllByRole("textbox")).toHaveLength(2);
-  const save = within(sheet).getByRole("button", { name: "Save changes" });
+  const save = screen.getByRole("button", { name: "Save draft" });
   expect(save).toBeDisabled();
-  fireEvent.change(within(blocks).getByRole("textbox", { name: "Paragraph 3" }), { target: { value: "Bread at 7." } });
-  fireEvent.change(within(sheet).getByRole("textbox", { name: "Title" }), { target: { value: "Our menu" } });
+  fireEvent.change(within(blocks).getByRole("textbox", { name: "Paragraph 3" }), { target: { value: "Bread at <b>7</b>." } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Our menu" } });
+  expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
   fireEvent.click(save);
   await waitFor(() =>
     expect(calls.find((c) => c[0] === "content_edit")?.[1]).toEqual({
       id: 1,
       postType: "page",
       postId: 7,
-      draft: { title: "Our menu", edits: [{ index: 2, html: "Bread at 7." }], seen_modified: "2026-10-28 09:05:00" },
+      draft: { title: "Our menu", status: "draft", edits: [{ index: 2, html: "Bread at <b>7</b>." }], seen_modified: "2026-10-28 09:05:00" },
     }),
   );
   expect(await screen.findByText('Saved "Our menu" on Alpha.')).toBeInTheDocument();
 });
 
-test("a builder page keeps its body; errors from the site are shown", async () => {
-  core({
-    content_get: () => ({ ...POST, builder: "elementor", blocks: [], locked: "This page is built with Elementor, so its body lives in Elementor." }),
-    content_edit: () => Promise.reject("This changed on the site after you opened it."),
+test("a classic body is edited whole; Ctrl+S saves and a changed entry offers the site's version", async () => {
+  let n = 0;
+  const calls = core({
+    content_get: () => ({ ...POST, status: "publish", blocks: [{ index: 0, name: "", depth: 0, editable: true, html: "<p>Old</p>" }] }),
+    content_edit: () => (n++ ? { ...POST, status: "publish" } : Promise.reject("This changed on the site after you opened it.")),
   });
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  const sheet = await screen.findByRole("dialog");
-  expect(await within(sheet).findByText(/built with Elementor/)).toBeInTheDocument();
-  expect(within(sheet).queryByRole("list", { name: "Blocks" })).toBeNull();
-  choose(within(sheet).getByRole("combobox", { name: "Status" }), "publish");
-  fireEvent.click(within(sheet).getByRole("button", { name: "Save changes" }));
-  expect(await within(sheet).findByRole("alert")).toHaveTextContent("changed on the site");
+  const body = await screen.findByRole("textbox", { name: "Body" });
+  expect(screen.queryByRole("list", { name: "Blocks" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+  fireEvent.change(body, { target: { value: "<p>New</p>" } });
+  fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+  await waitFor(() => expect(calls.find((c) => c[0] === "content_edit")?.[1].draft).toEqual({ edits: [{ index: 0, html: "<p>New</p>" }], seen_modified: "2026-10-28 09:05:00" }));
+  expect(await screen.findByText("This changed on the site after you opened it.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Open the site's version" }));
+  await waitFor(() => expect(calls.filter((c) => c[0] === "content_get")).toHaveLength(2));
 });
 
-test("a new entry gets paragraph blocks, terms by name and a featured image", async () => {
+test("leaving with unsaved changes asks first", async () => {
+  core();
+  render(<Content sites={[CM]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  fireEvent.change(await screen.findByRole("textbox", { name: "Title" }), { target: { value: "Our menu" } });
+  fireEvent.click(screen.getByRole("button", { name: "Back to pages" }));
+  const ask = screen.getByRole("dialog", { name: "Leave without saving?" });
+  fireEvent.click(within(ask).getByRole("button", { name: "Keep editing" }));
+  expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Our menu");
+  fireEvent.click(screen.getByRole("button", { name: "Back to pages" }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Leave without saving" }));
+  expect(await screen.findByRole("table", { name: "Pages" })).toBeInTheDocument();
+});
+
+test("slug, excerpt, author and page attributes go to the site only when changed", async () => {
+  const calls = core({
+    content_get: () => ({ ...POST, choices: { authors: [{ id: 1, name: "Joy" }, { id: 2, name: "Sam" }], parents: [{ id: 4, title: "Shop" }], templates: { "page-wide.php": "Wide" } } }),
+  });
+  render(<Content sites={[CM]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  fireEvent.change(await screen.findByRole("textbox", { name: "Slug" }), { target: { value: "our-menu" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Excerpt" }), { target: { value: "Bread." } });
+  choose(screen.getByRole("combobox", { name: "Author" }), "2");
+  choose(screen.getByRole("combobox", { name: "Parent" }), "4");
+  choose(screen.getByRole("combobox", { name: "Template" }), "page-wide.php");
+  fireEvent.click(screen.getByRole("radio", { name: "Password protected" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Password" }), { target: { value: "bread" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  await waitFor(() =>
+    expect(calls.find((c) => c[0] === "content_edit")?.[1].draft).toEqual({
+      status: "draft",
+      excerpt: "Bread.",
+      slug: "our-menu",
+      password: "bread",
+      author: 2,
+      parent: 4,
+      template: "page-wide.php",
+      seen_modified: "2026-10-28 09:05:00",
+    }),
+  );
+});
+
+test("a builder page keeps its body; errors from the site are shown", async () => {
+  core({
+    content_get: () => ({ ...POST, builder: "elementor", blocks: [], locked: "This page is built with Elementor, so its body lives in Elementor." }),
+    content_edit: () => Promise.reject("The site said no."),
+  });
+  render(<Content sites={[CM]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  expect(await screen.findByText(/built with Elementor/)).toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "Blocks" })).toBeNull();
+  expect(screen.queryByRole("textbox", { name: "Body" })).toBeNull();
+  choose(screen.getByRole("combobox", { name: "Status" }), "pending");
+  fireEvent.click(screen.getByRole("button", { name: "Save as pending" }));
+  expect(await screen.findByText("The site said no.")).toBeInTheDocument();
+});
+
+test("a new entry gets its body, terms by name and a featured image", async () => {
   const calls = core({ content_create: () => ({ ...POST, title: "Kind of Blue", status: "draft" }) });
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Books" }));
   fireEvent.click(await screen.findByRole("button", { name: "New book" }));
-  const sheet = await screen.findByRole("dialog", { name: "New book on Alpha" });
-  const add = within(sheet).getByRole("button", { name: "Add the book" });
-  expect(add).toBeDisabled();
-  fireEvent.change(within(sheet).getByRole("textbox", { name: "Title" }), { target: { value: "Kind of Blue" } });
-  fireEvent.change(within(sheet).getByRole("textbox", { name: /^Text/ }), { target: { value: "Modal jazz." } });
-  const genre = within(sheet).getByRole("combobox", { name: "Add to Genres" });
+  expect(await screen.findByRole("heading", { name: "New book on Alpha" })).toBeInTheDocument();
+  const add = screen.getByRole("button", { name: "Save draft" });
+  fireEvent.click(add);
+  expect(await screen.findByText("Give it a title first.")).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Kind of Blue" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Body" }), { target: { value: "<p>Modal jazz.</p>" } });
+  const genre = screen.getByRole("combobox", { name: "Add to Genres" });
   for (const name of ["jazz", "Cool"]) {
     fireEvent.change(genre, { target: { value: name } });
     fireEvent.keyDown(genre, { key: "Enter" });
   }
-  await waitFor(() => expect(within(sheet).getByText("(new)", { exact: false })).toBeInTheDocument());
-  fireEvent.click(within(sheet).getByRole("button", { name: "Choose an image" }));
-  fireEvent.click(await within(sheet).findByRole("button", { name: "Use shop" }));
-  expect(within(sheet).getByRole("img", { name: "The featured image" })).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText("(new)", { exact: false })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: "Choose an image" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Use shop" }));
+  expect(screen.getByRole("img", { name: "The featured image" })).toBeInTheDocument();
   fireEvent.click(add);
   await waitFor(() =>
     expect(calls.find((c) => c[0] === "content_create")?.[1]).toEqual({
       id: 1,
       postType: "cm_book",
-      draft: { title: "Kind of Blue", status: "draft", body: "<!-- wp:paragraph -->\n<p>Modal jazz.</p>\n<!-- /wp:paragraph -->", featured_image: 9, terms: { cm_genre: [3, "Cool"] } },
+      draft: { title: "Kind of Blue", status: "draft", body: "<p>Modal jazz.</p>", featured_image: 9, terms: { cm_genre: [3, "Cool"] } },
     }),
   );
   expect(await screen.findByText('Added "Kind of Blue" to Alpha as draft.')).toBeInTheDocument();
@@ -210,16 +276,16 @@ test("existing terms only, when new ones can't be added; trash asks first", asyn
   const calls = core({ content_types: () => [{ ...BOOK, taxonomies: [{ ...BOOK.taxonomies[0], can_add: false }] }], content_get: () => ({ ...POST, post_type: "cm_book", terms: { cm_genre: [{ id: 3, name: "Jazz" }] } }) });
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  const sheet = await screen.findByRole("dialog");
-  const genre = await within(sheet).findByRole("combobox", { name: "Add to Genres" });
+  const genre = await screen.findByRole("combobox", { name: "Add to Genres" });
   fireEvent.change(genre, { target: { value: "Polka" } });
-  fireEvent.click(within(sheet).getByRole("button", { name: "Add" }));
-  expect(within(sheet).getByText("Pick one of the existing genres.")).toBeInTheDocument();
-  fireEvent.click(within(sheet).getByRole("button", { name: "Remove Jazz" }));
-  expect(within(sheet).getByRole("button", { name: "Save changes" })).toBeEnabled();
-  fireEvent.click(within(sheet).getByRole("button", { name: "Move to the trash" }));
-  expect(within(sheet).getByText(/WordPress keeps it there for 30 days/)).toBeInTheDocument();
-  fireEvent.click(within(sheet).getByRole("button", { name: "Move it to the trash" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add" }));
+  expect(screen.getByText("Pick one of the existing genres.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Remove Jazz" }));
+  expect(screen.getByRole("button", { name: "Save draft" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Move to the trash" }));
+  const ask = screen.getByRole("dialog");
+  expect(within(ask).getByText(/WordPress keeps it there for 30 days/)).toBeInTheDocument();
+  fireEvent.click(within(ask).getByRole("button", { name: "Move it to the trash" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_trash")).toBe(true));
   expect(await screen.findByText('Moved "Menu" to the trash on Alpha.')).toBeInTheDocument();
 });

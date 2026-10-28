@@ -284,6 +284,21 @@ export type Post = {
   builder: string | null;
   blocks: Block[];
   locked: string | null;
+  /** Where a signed-in editor sees it as it is now, drafts too. */
+  preview_link: string;
+  slug: string;
+  excerpt: string;
+  author_id: number;
+  author: string;
+  parent: number;
+  menu_order: number;
+  /** Page template file; empty for the default. */
+  template: string;
+  /** Visitors type it to read the entry; empty when public. */
+  password: string;
+  /** Whether the site takes slug, author, page attributes and the password. */
+  page_fields: boolean;
+  choices: { authors: { id: number; name: string }[]; parents: { id: number; title: string }[]; templates: Record<string, string> };
 };
 
 /** A term picked by id, or typed by name (the site adds it). */
@@ -301,6 +316,14 @@ export type Draft = {
   date?: string;
   /** Custom fields to set; null removes one. */
   meta?: Record<string, unknown>;
+  excerpt?: string;
+  slug?: string;
+  author?: number;
+  parent?: number;
+  menu_order?: number;
+  template?: string;
+  /** Empty makes it public again. */
+  password?: string;
 };
 
 export type Revision = { id: number; date: string; author: string; title: string };
@@ -417,6 +440,9 @@ export const api = {
   restoreRevision: (id: number, postId: number, revisionId: number) =>
     invoke<string>("content_restore_revision", { id, postId, revisionId }),
   untrash: (id: number, postId: number) => invoke<string>("content_untrash", { id, postId }),
+  /** ACF groups and values (screens/AcfFields.tsx reads them); null without ACF. */
+  acf: (id: number, postId: number) => invoke<unknown>("content_acf", { id, postId }),
+  saveAcf: (id: number, postId: number, fields: Record<string, unknown>) => invoke<{ values: Record<string, unknown>; undo: number | null }>("content_acf_save", { id, postId, fields }),
   media: (id: number, query: MediaQuery) => invoke<Library>("media_list", { id, query }),
   mediaItem: (id: number, mediaId: number) => invoke<Media>("media_get", { id, mediaId }),
   /** `data` is the picked file as base64; progress comes as `media-progress` events with `key`. */
