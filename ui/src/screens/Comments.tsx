@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // One comment inbox for every site shown: approve, unapprove, spam, trash and reply (plan Phase 4).
+import "../styles/screens/comments.css";
 import { Skeleton, toast } from "../components/feedback";
+import { dayLabel, Menu } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Comment, type CommentState, type Moderation, type Site } from "../api";
-import { Button } from "../components/ui";
+import { initials, SiteTile } from "../components/SiteTile";
+import { Button, Glyph } from "../components/ui";
 
 const SHOW: [CommentState, string][] = [
   ["pending", "Waiting for approval"],
@@ -20,7 +23,7 @@ const DONE: Record<Moderation, string> = {
 };
 
 type Row = { site: Site; c: Comment };
-type Loaded = { rows: Row[]; partial: { site: Site; shown: number; total: number }[]; failed: { site: Site; error: string }[] };
+type Loaded = { rows: Row[]; total: number; partial: { site: Site; shown: number; total: number }[]; failed: { site: Site; error: string }[] };
 
 /** Comments arrive as HTML from the site: show the words only. */
 export const plainText = (html: string) =>
@@ -42,6 +45,8 @@ export function Comments({ sites }: { sites: Site[] }) {
   const [replying, setReplying] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  // The Site filter works on the comments already read.
+  const [siteF, setSiteF] = useState<number | null>(null);
   const ids = usable.map((s) => s.id).join(",");
 
   // Only the newest request's answer is shown, so a slow older search or tab can't replace it.
@@ -58,11 +63,12 @@ export function Comments({ sites }: { sites: Site[] }) {
         ),
       ),
     ).then((all) => {
-      const out: Loaded = { rows: [], partial: [], failed: [] };
+      const out: Loaded = { rows: [], total: 0, partial: [], failed: [] };
       for (const r of all) {
         if ("error" in r) out.failed.push({ site: r.site, error: r.error });
         else {
           out.rows.push(...r.c.comments.map((c) => ({ site: r.site, c })));
+          out.total += r.c.total;
           if (r.c.total > r.c.comments.length) out.partial.push({ site: r.site, shown: r.c.comments.length, total: r.c.total });
         }
       }
@@ -128,102 +134,116 @@ export function Comments({ sites }: { sites: Site[] }) {
   };
 
   const label = SHOW.find(([v]) => v === show)![1].toLowerCase();
+  const rows = (loaded?.rows ?? []).filter((r) => siteF == null || r.site.id === siteF);
   let body;
   if (!loaded) {
     body = (
       <Skeleton label={`Reading comments on ${usable.length} ${usable.length === 1 ? "site" : "sites"}…`} />
     );
-  } else if (loaded.rows.length === 0) {
+  } else if (rows.length === 0) {
     body = (
-      <div className="empty">
+      <div className="card empty">
         <h2>{show === "pending" ? "No comments are waiting." : `No ${label} comments.`}</h2>
-        <p>{show === "pending" ? "New comments that need approval show here, from every site." : "Pick another list above."}</p>
+        <p>{siteF != null ? "None on this site. Pick another site, or any site." : show === "pending" ? "New comments that need approval show here, from every site." : "Pick another list above."}</p>
       </div>
     );
   } else {
     body = (
       <>
-        <p className="legend" id="comments-legend">
+        <p className="sr-only" id="comments-legend">
           Newest first, from every site shown. Dates are in each site's own time zone.
         </p>
-        <ul className="inbox" aria-label={`Comments, ${label}`} aria-describedby="comments-legend">
-          {loaded.rows.map((r) => {
+        <ul className="stack inbox" aria-label={`Comments, ${label}`} aria-describedby="comments-legend">
+          {rows.map((r) => {
             const k = key(r);
             const who = r.c.author || "A visitor";
+            const open = replying === k;
+            const day = dayLabel(r.c.date);
+            const time = r.c.date.slice(11, 16);
             return (
-              <li key={k}>
-                <p className="meta">
-                  <b>{who}</b>
-                  {r.c.email && <span className="dim">{r.c.email}</span>}
-                  <span>
-                    on <span data-tip={r.c.post_title}>{r.c.post_title || "a page with no title"}</span>
-                  </span>
-                  <span className="dim">{r.site.name}</span>
-                  <span className="num dim">{r.c.date}</span>
-                </p>
-                <p className="said">{plainText(r.c.content) || "(empty)"}</p>
-                <div className="row">
-                  {show === "pending" && (
-                    <Button small kind="primary" disabled={busy === k} aria-label={`Approve ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "approve")}>
-                      Approve
-                    </Button>
-                  )}
-                  {show === "approved" && (
-                    <Button small disabled={busy === k} aria-label={`Unapprove ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "unapprove")}>
-                      Unapprove
-                    </Button>
-                  )}
-                  {(show === "spam" || show === "trash") && (
-                    <Button small disabled={busy === k} aria-label={`Approve ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "approve")}>
-                      Approve
-                    </Button>
-                  )}
-                  {show !== "spam" && (
-                    <Button small disabled={busy === k} aria-label={`Mark ${who}'s comment on ${r.site.name} as spam`} onClick={() => act(r, "spam")}>
-                      Spam
-                    </Button>
-                  )}
-                  {show !== "trash" && (
-                    <Button small kind="danger" disabled={busy === k} aria-label={`Move ${who}'s comment on ${r.site.name} to the trash`} onClick={() => act(r, "trash")}>
-                      Trash
-                    </Button>
-                  )}
-                  {(show === "pending" || show === "approved") && replying !== k && (
-                    <Button
-                      small
-                      aria-label={`Reply to ${who} on ${r.site.name}`}
-                      onClick={() => {
-                        setReplying(k);
-                        setReply("");
+              <li key={k} className="card">
+                <div className="card-body">
+                  <div className="cwho">
+                    <span className="av lg well" aria-hidden="true">
+                      {initials(who)}
+                    </span>
+                    <div>
+                      <b data-tip={r.c.email || undefined}>{who}</b>
+                      <span className="on">
+                        on <SiteTile site={r.site} size="sm" />
+                        <b>{r.site.name}</b>, on <span data-tip={r.c.post_title}>{r.c.post_title || "a page with no title"}</span>
+                      </span>
+                    </div>
+                    <span className="when" data-tip={r.c.date}>
+                      {day ? `${day}${time ? `, ${time}` : ""}` : r.c.date}
+                    </span>
+                  </div>
+                  <p className="said">{plainText(r.c.content) || "(empty)"}</p>
+                  <div className="rowacts">
+                    {show !== "approved" && (
+                      <Button small kind="soft" disabled={busy === k} aria-label={`Approve ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "approve")}>
+                        <Glyph name="check" />
+                        Approve
+                      </Button>
+                    )}
+                    {show === "approved" && (
+                      <Button small disabled={busy === k} aria-label={`Unapprove ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "unapprove")}>
+                        Unapprove
+                      </Button>
+                    )}
+                    {show !== "spam" && (
+                      <Button small className="ghost" disabled={busy === k} aria-label={`Mark ${who}'s comment on ${r.site.name} as spam`} onClick={() => act(r, "spam")}>
+                        Mark as spam
+                      </Button>
+                    )}
+                    {show !== "trash" && (
+                      <Button small className="ghost" disabled={busy === k} aria-label={`Move ${who}'s comment on ${r.site.name} to the trash`} onClick={() => act(r, "trash")}>
+                        <Glyph name="trash" />
+                        Move to the trash
+                      </Button>
+                    )}
+                    {(show === "pending" || show === "approved") && (
+                      <Button
+                        small
+                        aria-label={`Reply to ${who} on ${r.site.name}`}
+                        aria-expanded={open}
+                        onClick={() => {
+                          setReplying(open ? null : k);
+                          setReply("");
+                        }}
+                      >
+                        <Glyph name="reply" />
+                        Reply
+                      </Button>
+                    )}
+                  </div>
+                  {open && (
+                    <form
+                      className="reply"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        send(r);
                       }}
                     >
-                      Reply
-                    </Button>
+                      <label className="field">
+                        <span>Your reply to {who}</span>
+                        <textarea className="input" rows={3} autoFocus value={reply} onChange={(e) => setReply(e.target.value)} />
+                        <small>It goes up at once, as you, on {r.site.name}.</small>
+                      </label>
+                      <div className="rowacts">
+                        <Button small className="ghost" onClick={() => setReplying(null)}>
+                          Cancel
+                        </Button>
+                        <Button small kind="primary" className="disc" type="submit" disabled={busy === k || !reply.trim()}>
+                          {busy === k ? "Sending…" : "Send the reply"}
+                          <span className="btn-disc">
+                            <Glyph name="arrow" />
+                          </span>
+                        </Button>
+                      </div>
+                    </form>
                   )}
                 </div>
-                {replying === k && (
-                  <form
-                    className="reply"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      send(r);
-                    }}
-                  >
-                    <label className="field">
-                      <span>Your reply to {who}</span>
-                      <textarea className="input" rows={3} autoFocus value={reply} onChange={(e) => setReply(e.target.value)} />
-                      <small>It goes up at once, as you, on {r.site.name}.</small>
-                    </label>
-                    <div className="row">
-                      <Button small kind="primary" type="submit" disabled={busy === k || !reply.trim()}>
-                        {busy === k ? "Sending…" : "Send the reply"}
-                      </Button>
-                      <Button small onClick={() => setReplying(null)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                )}
               </li>
             );
           })}
@@ -231,38 +251,55 @@ export function Comments({ sites }: { sites: Site[] }) {
       </>
     );
   }
+  const siteName = usable.find((s) => s.id === siteF)?.name;
 
   return (
-    <div className="scroll">
-      <div className="bar">
-        <div className="segmented types" role="group" aria-label="Show">
-          {SHOW.map(([v, l]) => (
-            <button key={v} type="button" aria-pressed={v === show} onClick={() => setShow(v)}>
-              {l}
-            </button>
-          ))}
+    <div className="scroll page comments">
+      <div className="stack">
+        <div className="filters">
+          <div className="segmented inline" role="group" aria-label="Show">
+            {SHOW.map(([v, l]) => (
+              <button key={v} type="button" aria-pressed={v === show} onClick={() => setShow(v)}>
+                {l}
+                {v === show && loaded && loaded.total > 0 && <small>{loaded.total}</small>}
+              </button>
+            ))}
+          </div>
+          <span className="end" />
+          <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
+            Site: <b>{siteName ?? "Any"}</b>
+          </Menu>
         </div>
+        {body}
+        {loaded && (loaded.partial.length > 0 || loaded.failed.length > 0 || blocked.length > 0) && (
+          <ul className="pnotes" aria-label="Sites not fully shown">
+            {loaded.partial.map((p) => (
+              <li key={p.site.id} className="callout">
+                <Glyph name="info" />
+                <span>
+                  {p.site.name}: showing the newest {p.shown} of {p.total}. Deal with these to see the rest.
+                </span>
+              </li>
+            ))}
+            {loaded.failed.map((f) => (
+              <li key={f.site.id} className="callout warning">
+                <Glyph name="alert" />
+                <span>
+                  {f.site.name}: the comments didn't load. {f.error}
+                </span>
+              </li>
+            ))}
+            {blocked.map((s) => (
+              <li key={s.id} className="callout">
+                <Glyph name="info" />
+                <span>
+                  {s.name}: {peopleBlocked(s, "get-comments")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      {body}
-      {loaded && (loaded.partial.length > 0 || loaded.failed.length > 0 || blocked.length > 0) && (
-        <ul className="notes" aria-label="Sites not fully shown">
-          {loaded.partial.map((p) => (
-            <li key={p.site.id}>
-              {p.site.name}: showing the newest {p.shown} of {p.total}. Deal with these to see the rest.
-            </li>
-          ))}
-          {loaded.failed.map((f) => (
-            <li key={f.site.id}>
-              {f.site.name}: the comments didn't load. {f.error}
-            </li>
-          ))}
-          {blocked.map((s) => (
-            <li key={s.id}>
-              {s.name}: {peopleBlocked(s, "get-comments")}
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

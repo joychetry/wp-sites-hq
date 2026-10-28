@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Users (board 08): search and filters on the ground, then one flush card with every site's users. */
+.users .t th, .users .t td { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+.users .t td { height: 60px; }
+.users .site small { overflow-wrap: anywhere; }
+.users .conn .fav { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
+.users .when { font: 400 var(--fs-xs)/16px var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.users .rowacts { gap: var(--sp-1); }
+.users .rowacts .btn.ghost .glyph { width: 14px; height: 14px; }
+.users .rowacts .icon-btn { width: 32px; height: 32px; color: var(--text-3); }
+.users .rowacts .icon-btn .glyph { width: 16px; height: 16px; }
+.users .card-foot .count { color: var(--text-3); font-size: var(--fs-sm); }
+.users .filters .srch { flex: 1 1 260px; max-width: 340px; }
+
+/* Sites the list can't fully show: a callout each, under the card. */
+.pnotes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+
+/* Add a user and Change role (board D06): the administrator note in amber. */
+.callout.admin-note { margin: 0 0 var(--sp-4); }

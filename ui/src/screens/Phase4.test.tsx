@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Users, the comment inbox and Classic Monks (features, settings, activity, approvals).
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render as draw, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
 import { ClassicMonks, toolLabel } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
+import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
+
+// The page head's action slot, as App gives it: the screen's main actions render there.
+const head = document.body.appendChild(document.createElement("div"));
+const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider value={head}>{children}</HeadSlot.Provider>;
+const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -107,6 +114,9 @@ describe("Users", () => {
     fireEvent.click(to);
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["JOY (joy)"]);
     fireEvent.keyDown(to, { key: "Escape" });
+    // Nobody is picked for them until you choose.
+    expect(within(sheet).getByRole("button", { name: "Delete SAM" })).toBeDisabled();
+    choose(to, "1");
     fireEvent.click(within(sheet).getByRole("button", { name: "Delete SAM" }));
     expect(await screen.findByText("Deleted SAM from Alpha. Their posts and pages now belong to JOY.")).toBeInTheDocument();
     expect(calls).toContainEqual(["user_delete", { id: 1, userId: 2, reassign: 1 }]);
