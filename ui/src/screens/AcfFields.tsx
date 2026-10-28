@@ -3,7 +3,7 @@
 // plan lists, drawn with the app's own controls. Values keep the shape ACF stores (ids, Ymd dates,
 // sub-fields and rows keyed by field key). Flexible content, clone and unknown types are cards with
 // Edit in WordPress.
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api, type Media, type Site } from "../api";
 import { ColorInput, Combobox, DateInput, MultiSelect, NumberInput, Select, Slider, TimeField } from "../components/controls";
 import { MediaPicker } from "../components/MediaPicker";
@@ -223,10 +223,20 @@ function Field({ f, value, error, ctx, onChange }: { f: AcfField; value: unknown
 function Repeater({ f, label, value, error, ctx, onChange }: { f: AcfField; label: string; value: unknown; error?: string | null; ctx: Ctx; onChange: (v: unknown) => void }) {
   const rows = (Array.isArray(value) ? value : []) as Record<string, unknown>[];
   const max = Number(f.settings.max) || 0;
+  // Each row keeps its own key as it moves, so its editors (a wysiwyg holds its text) move with it.
+  const ids = useRef<number[]>([]);
+  const next = useRef(0);
+  while (ids.current.length < rows.length) ids.current.push(next.current++);
+  ids.current.length = rows.length;
   const move = (i: number, by: number) => {
-    const next = [...rows];
-    [next[i], next[i + by]] = [next[i + by], next[i]];
-    onChange(next);
+    const moved = [...rows];
+    [moved[i], moved[i + by]] = [moved[i + by], moved[i]];
+    [ids.current[i], ids.current[i + by]] = [ids.current[i + by], ids.current[i]];
+    onChange(moved);
+  };
+  const remove = (i: number) => {
+    ids.current.splice(i, 1);
+    onChange(rows.filter((_, j) => j !== i));
   };
   return (
     <fieldset className="field acf-rows">
@@ -234,7 +244,7 @@ function Repeater({ f, label, value, error, ctx, onChange }: { f: AcfField; labe
       {f.instructions && <small>{f.instructions}</small>}
       {rows.length === 0 && <span className="dim">No rows yet.</span>}
       {rows.map((row, i) => (
-        <fieldset key={i} className="acf-row">
+        <fieldset key={ids.current[i]} className="acf-row">
           <legend>
             Row {i + 1} of {rows.length}
           </legend>
@@ -248,7 +258,7 @@ function Repeater({ f, label, value, error, ctx, onChange }: { f: AcfField; labe
             <Button small disabled={i === rows.length - 1} onClick={() => move(i, 1)}>
               Move down
             </Button>
-            <Button small kind="danger" className="push" onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+            <Button small kind="danger" className="push" onClick={() => remove(i)}>
               Remove row {i + 1}
             </Button>
           </div>

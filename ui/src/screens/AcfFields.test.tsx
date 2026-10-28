@@ -3,7 +3,7 @@
 // messages under the fields they name, and Undo for a save.
 import { render as draw, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
-import type { ReactElement, ReactNode } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 import { AcfGroups, acfErrors, fromYmd, invalid, toYmd, type Acf, type AcfField } from "./AcfFields";
 import { Content } from "./Content";
 import { ACF_FIELDS } from "../../e2e/acf-fixture";
@@ -92,6 +92,31 @@ test("the editor checks ACF's rules first, saves the fields, and Undo puts them 
   fireEvent.click(screen.getByRole("button", { name: "Update" }));
   await waitFor(() => expect(calls.find((c) => c[0] === "content_acf_save" && c[1].fields && (c[1].fields as Record<string, unknown>)[field("email").key] === "x@y.co")?.[1]).toEqual({ id: 1, postId: 7, fields: { [field("email").key]: "x@y.co" } }));
   expect(calls.some((c) => c[0] === "content_edit")).toBe(false);
+  // After Undo every ACF editor shows the site's values again, a wysiwyg (which reads its text once) too.
+  const words = screen.getByRole("textbox", { name: "Wysiwyg" });
+  fireEvent.change(words, { target: { value: "typed after the save" } });
   fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
   await waitFor(() => expect(calls.find((c) => c[0] === "cm_undo")?.[1]).toEqual({ id: 1, row: 77 }));
+  expect(await screen.findByText("The ACF fields are back as they were.")).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "Wysiwyg" })).toHaveValue(String(field("wysiwyg").value)));
+});
+
+test("a repeater row's editors move with the row, and Remove takes that row's text away", () => {
+  const sub = (key: string, type: string, label: string): AcfField => ({ key, name: key, label, type, instructions: "", required: false, editable: true, settings: {} });
+  const rep: AcfField = { ...sub("field_r", "repeater", "Notes"), sub_fields: [sub("field_w", "wysiwyg", "Words")] };
+  const acf: Acf = { post_id: 7, groups: [{ key: "g", title: "Rows", fields: [{ ...rep, value: [{ field_w: "First" }, { field_w: "Second" }] }] }], refs: { media: {}, posts: {}, terms: {}, users: {} } };
+  let last: unknown = null;
+  const Host = () => {
+    const [values, setValues] = useState<Record<string, unknown>>({});
+    return <AcfGroups acf={acf} values={values} errors={{}} site={CM} editUrl="" onChange={(k, v) => (setValues({ ...values, [k]: v }), (last = v))} />;
+  };
+  render(<Host />);
+  const words = () => screen.getAllByRole("textbox", { name: "Words" }).map((t) => (t as HTMLTextAreaElement).value);
+  expect(words()).toEqual(["First", "Second"]);
+  fireEvent.click(screen.getAllByRole("button", { name: "Move down" })[0]);
+  expect(words()).toEqual(["Second", "First"]);
+  fireEvent.change(screen.getAllByRole("textbox", { name: "Words" })[0], { target: { value: "Second, edited" } });
+  expect(last).toEqual([{ field_w: "Second, edited" }, { field_w: "First" }]);
+  fireEvent.click(screen.getByRole("button", { name: "Remove row 1" }));
+  expect(words()).toEqual(["First"]);
 });

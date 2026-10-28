@@ -340,6 +340,8 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
   const [leaving, setLeaving] = useState<(() => void) | null>(null);
   // Bumped on every load, so the body editors start again with the site's text.
   const [round, setRound] = useState(0);
+  // The same for the ACF fields: after an Undo or a reload their editors show the site's values.
+  const [acfRound, setAcfRound] = useState(0);
   const cm = site.mode === "classic_monks";
   const canFields = cm && hasTool(site, "get-post-meta");
   const canHistory = cm && hasTool(site, "list-revisions");
@@ -373,6 +375,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         setAcf(a as Acf | null);
         setAcfValues({});
         setAcfShown({});
+        setAcfRound((r) => r + 1);
       },
       () => setAcf(null),
     );
@@ -660,6 +663,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
           {canFields && <FieldsEdit meta={post?.meta ?? {}} value={fields} owned={acfOwns} onChange={setFields} />}
           {acf && acf.groups.length > 0 && (
             <AcfGroups
+              key={acfRound}
               acf={acf}
               values={acfValues}
               errors={acfShown}
