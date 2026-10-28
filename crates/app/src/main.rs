@@ -12,7 +12,7 @@ use monks_core::activity::{Actor, Entry};
 use monks_core::business::{AppSettings, Client, Cost, Imported};
 use monks_core::connect::{Removed, SiteError};
 use monks_core::content::{
-    Draft, Found as ContentFound, Listing, Post, PostType, Query, Revision, Term,
+    AcfSaved, Draft, Found as ContentFound, Listing, Post, PostType, Query, Revision, Term,
 };
 use monks_core::control::{Activity, Approval, CmReports, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
@@ -385,6 +385,33 @@ async fn content_untrash(state: State<'_, AppCore>, id: i64, post_id: i64) -> Re
         &core,
         Some(id),
         &format!("Brought entry {post_id} back from the trash"),
+        r,
+    )
+}
+
+/// The entry's ACF field groups and values; null when the site has no ACF.
+#[tauri::command]
+async fn content_acf(state: State<'_, AppCore>, id: i64, post_id: i64) -> Res<Option<Value>> {
+    let core = core(&state)?;
+    core.acf_fields(id, post_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The human saved ACF fields in the editor.
+#[tauri::command]
+async fn content_acf_save(
+    state: State<'_, AppCore>,
+    id: i64,
+    post_id: i64,
+    fields: serde_json::Map<String, Value>,
+) -> Res<AcfSaved> {
+    let core = core(&state)?;
+    let r = core.save_acf(id, post_id, fields).await;
+    done(
+        &core,
+        Some(id),
+        &format!("Saved ACF fields of entry {post_id}"),
         r,
     )
 }
@@ -1259,6 +1286,8 @@ fn main() {
             content_revisions,
             content_restore_revision,
             content_untrash,
+            content_acf,
+            content_acf_save,
             media_list,
             media_get,
             media_upload,

@@ -419,7 +419,12 @@ impl Core {
     }
 
     /// The newest undoable activity row for this tool that touched `key`.
-    async fn undo_row(&self, id: i64, tool: &str, key: &str) -> Result<Option<i64>, SiteError> {
+    pub(crate) async fn undo_row(
+        &self,
+        id: i64,
+        tool: &str,
+        key: &str,
+    ) -> Result<Option<i64>, SiteError> {
         if !has_tool(&self.site(id)?, "list-ai-activity") {
             return Ok(None);
         }

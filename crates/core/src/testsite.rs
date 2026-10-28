@@ -104,6 +104,8 @@ pub struct State {
     pub settings: serde_json::Map<String, serde_json::Value>,
     /// Activity log rows, newest first, each with what undoing it puts back.
     pub activity: Vec<serde_json::Value>,
+    /// The ACF group every entry shows: a required text, an email and a group.
+    pub acf: serde_json::Value,
     pub approvals: Vec<serde_json::Value>,
     /// Users a password reset email went to.
     pub resets: Vec<i64>,
@@ -205,6 +207,11 @@ impl Default for State {
             .map(|(k, v)| (k.to_string(), v))
             .collect(),
             activity: Vec::new(),
+            acf: json!([{ "key": "group_t", "title": "Details", "fields": [
+                { "key": "field_tag", "name": "tagline", "label": "Tagline", "type": "text", "required": true, "editable": true, "settings": {}, "value": "Fresh daily" },
+                { "key": "field_mail", "name": "contact", "label": "Contact", "type": "email", "required": false, "editable": true, "settings": {}, "value": "" },
+                { "key": "field_flex", "name": "rows", "label": "Rows", "type": "flexible_content", "required": false, "editable": false, "settings": {}, "value": null },
+            ] }]),
             approvals: vec![
                 json!({ "op_id": 31, "tool": "delete-post", "client_label": "Claude [agent]", "user": "admin", "created_at": "2026-10-28 09:10:00", "expires_in": 600, "approve_url": "/wp-admin/admin.php?page=cm-ai-approve&op=31" }),
             ],
@@ -1020,6 +1027,8 @@ const CONTENT_TOOLS: &[(&str, bool)] = &[
     ("restore-replaced-media", false),
     ("trash-media", false),
     ("restore-media", false),
+    ("get-acf-fields", true),
+    ("update-acf-fields", false),
 ];
 
 /// (name, plural, singular, REST base, taxonomies)
@@ -1141,6 +1150,19 @@ impl State {
         if let Some(date) = f["date"].as_str() {
             p["date"] = date.into();
         }
+        for k in [
+            "slug",
+            "excerpt",
+            "author",
+            "parent",
+            "menu_order",
+            "template",
+            "password",
+        ] {
+            if !f[k].is_null() {
+                p[k] = f[k].clone();
+            }
+        }
         // WordPress schedules a published entry with a date after now.
         if p["status"] == "publish" && p["date"].as_str().unwrap_or_default() > modified.as_str() {
             p["status"] = "future".into();
@@ -1177,7 +1199,11 @@ impl State {
             "date": p["date"], "modified": p["modified"], "permalink": format!("{}/?p={}", self.base, p["id"]),
             "featured_image_id": featured,
             "featured_image": (featured > 0).then(|| format!("{}/img.png", self.base)),
-            "terms": terms, "builder": p["builder"],
+            "terms": terms, "builder": p["builder"], "slug": p["slug"].as_str().unwrap_or_default(),
+            "excerpt": p["excerpt"].as_str().unwrap_or_default(), "author_id": p["author"].as_i64().unwrap_or(1), "author": "admin",
+            "parent": p["parent"].as_i64().unwrap_or_default(), "menu_order": p["menu_order"].as_i64().unwrap_or_default(),
+            "template": p["template"].as_str().unwrap_or_default(), "password": p["password"].as_str().unwrap_or_default(),
+            "preview_link": format!("{}/?p={}&preview=true", self.base, p["id"]),
         })
     }
 
@@ -1194,7 +1220,10 @@ impl State {
             "title": { "raw": p["title"], "rendered": p["title"] },
             "content": { "raw": p["content"], "rendered": rendered },
             "date": date(&p["date"]), "modified": date(&p["modified"]), "featured_media": p["featured"],
-            "_embedded": { "author": [{ "name": "admin" }] },
+            "_embedded": { "author": [{ "name": "admin" }] }, "slug": p["slug"].as_str().unwrap_or_default(),
+            "excerpt": { "raw": p["excerpt"].as_str().unwrap_or_default() }, "author": p["author"].as_i64().unwrap_or(1),
+            "parent": p["parent"].as_i64().unwrap_or_default(), "menu_order": p["menu_order"].as_i64().unwrap_or_default(),
+            "template": p["template"].as_str().unwrap_or_default(), "password": p["password"].as_str().unwrap_or_default(),
         });
         for tax in ty.4 {
             let base = TAXES.iter().find(|t| t.0 == *tax).unwrap().2;
@@ -1266,7 +1295,67 @@ fn content_tool(
             })).collect();
             json!({ "posts": posts, "total": all.len() })
         }
-        "get-post-by-id" => s.cm_post(&post(s)?),
+        "get-post-by-id" => {
+            let mut v = s.cm_post(&post(s)?);
+            if a["choices"] == true {
+                let parents: Vec<_> = s
+                    .posts
+                    .iter()
+                    .filter(|p| p["type"] == v["type"] && p["id"] != v["id"] && v["type"] == "page")
+                    .map(|p| json!({ "id": p["id"], "title": p["title"] }))
+                    .collect();
+                v["choices"] = json!({ "authors": [{ "id": 1, "name": "admin" }, { "id": 2, "name": "Sam" }],
+                    "parents": parents, "templates": { "page-wide.php": "Wide" } });
+            }
+            v
+        }
+        "get-acf-fields" => {
+            post(s)?;
+            json!({ "post_id": a["post_id"], "groups": s.acf, "refs": { "media": {}, "posts": {}, "terms": {}, "users": {} } })
+        }
+        "update-acf-fields" => {
+            post(s)?;
+            let fields = s.acf[0]["fields"].as_array_mut().unwrap();
+            let mut errors = vec![];
+            for (k, v) in a["fields"].as_object().into_iter().flatten() {
+                let f = fields
+                    .iter()
+                    .find(|f| f["key"] == *k || f["name"] == *k)
+                    .ok_or(format!("{k} is not an ACF field of this entry."))?;
+                if f["editable"] == false {
+                    return Err(format!(
+                        "{} ({}) can only be changed in WordPress.",
+                        f["label"].as_str().unwrap(),
+                        f["type"].as_str().unwrap()
+                    ));
+                }
+                let text = v.as_str().unwrap_or_default();
+                if f["required"] == true && text.is_empty() {
+                    errors.push(format!(
+                        "{} value is required",
+                        f["label"].as_str().unwrap()
+                    ));
+                } else if f["type"] == "email" && !text.is_empty() && !text.contains('@') {
+                    errors.push(format!("Contact: '{text}' is not a valid email address"));
+                }
+            }
+            if !errors.is_empty() {
+                return Err(errors.join("\n"));
+            }
+            let mut old = serde_json::Map::new();
+            let mut values = serde_json::Map::new();
+            for (k, v) in a["fields"].as_object().into_iter().flatten() {
+                let f = fields
+                    .iter_mut()
+                    .find(|f| f["key"] == *k || f["name"] == *k)
+                    .unwrap();
+                old.insert(f["key"].as_str().unwrap().into(), f["value"].clone());
+                f["value"] = v.clone();
+                values.insert(f["key"].as_str().unwrap().into(), v.clone());
+            }
+            s.log("update-acf-fields", a.clone(), json!({ "fields": old }));
+            json!({ "post_id": a["post_id"], "updated": values.keys().collect::<Vec<_>>(), "values": values })
+        }
         "get-terms" => {
             let search = a["search"].as_str().unwrap_or_default();
             let terms: Vec<_> = s
@@ -1613,7 +1702,9 @@ async fn rest_content(
             let ty = type_of_base(b).unwrap();
             // Core REST fields to Classic Monks' (the store speaks those).
             let mut f = json!({ "title": json_body["title"], "status": json_body["status"], "content": json_body["content"], "featured_image": json_body["featured_media"], "terms": {},
-                "date": json_body["date"].as_str().map(|d| d.replacen('T', " ", 1)) });
+                "date": json_body["date"].as_str().map(|d| d.replacen('T', " ", 1)), "slug": json_body["slug"], "excerpt": json_body["excerpt"],
+                "author": json_body["author"], "parent": json_body["parent"], "menu_order": json_body["menu_order"], "template": json_body["template"],
+                "password": json_body["password"] });
             for tax in TYPES.iter().find(|t| t.0 == ty).unwrap().4 {
                 let base = TAXES.iter().find(|t| t.0 == *tax).unwrap().2;
                 if json_body[base].is_array() {
@@ -1980,6 +2071,13 @@ fn people_tool(
             }
             for (k, v) in row["undo"]["settings"].as_object().into_iter().flatten() {
                 s.settings.insert(k.clone(), v.clone());
+            }
+            for (k, v) in row["undo"]["fields"].as_object().into_iter().flatten() {
+                for f in s.acf[0]["fields"].as_array_mut().unwrap() {
+                    if f["key"] == *k {
+                        f["value"] = v.clone();
+                    }
+                }
             }
             s.activity[i]["status"] = "undone".into();
             s.activity[i]["can_undo"] = false.into();

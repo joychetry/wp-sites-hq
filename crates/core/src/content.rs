@@ -109,6 +109,30 @@ pub struct Term {
     pub name: String,
 }
 
+/// A user who can be an entry's author.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Author {
+    pub id: i64,
+    pub name: String,
+}
+
+/// An entry that can be a parent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Parent {
+    pub id: i64,
+    pub title: String,
+}
+
+/// What the editor can pick from. Empty lists when the site doesn't say.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Choices {
+    /// Only when this connection may give the entry to someone else.
+    pub authors: Vec<Author>,
+    pub parents: Vec<Parent>,
+    /// Template file to name.
+    pub templates: BTreeMap<String, String>,
+}
+
 /// One entry, as the editor opens it.
 #[derive(Debug, Clone, Serialize)]
 pub struct Post {
@@ -119,6 +143,21 @@ pub struct Post {
     pub date: String,
     pub modified: String,
     pub link: String,
+    /// Where a signed-in editor sees it as it is now (drafts too); `link` when not known.
+    pub preview_link: String,
+    pub slug: String,
+    pub excerpt: String,
+    pub author_id: i64,
+    pub author: String,
+    pub parent: i64,
+    pub menu_order: i64,
+    /// Page template file; empty for the default.
+    pub template: String,
+    /// Visitors type this to read it; empty when public.
+    pub password: String,
+    /// Whether the site takes slug, author, parent, order, template and password.
+    pub page_fields: bool,
+    pub choices: Choices,
     pub featured_image: i64,
     pub featured_url: Option<String>,
     pub terms: BTreeMap<String, Vec<Term>>,
@@ -168,6 +207,20 @@ pub struct Draft {
     pub date: Option<String>,
     /// Custom fields to set; null removes one. Classic Monks only.
     pub meta: Option<BTreeMap<String, Value>>,
+    pub excerpt: Option<String>,
+    pub slug: Option<String>,
+    pub author: Option<i64>,
+    pub parent: Option<i64>,
+    pub menu_order: Option<i64>,
+    pub template: Option<String>,
+    pub password: Option<String>,
+}
+
+/// ACF values saved, and the activity row that undoes the save, if the site keeps one.
+#[derive(Debug, Clone, Serialize)]
+pub struct AcfSaved {
+    pub values: Value,
+    pub undo: Option<i64>,
 }
 
 /// A post or page that matched a search on every site.
@@ -273,6 +326,7 @@ pub fn post_from_cm(v: &Value) -> Post {
             (tax.clone(), list)
         })
         .collect();
+    let link = text(&v["permalink"]);
     Post::new(Post {
         id: v["id"].as_i64().unwrap_or_default(),
         post_type: text(&v["type"]),
@@ -280,7 +334,21 @@ pub fn post_from_cm(v: &Value) -> Post {
         status: text(&v["status"]),
         date: text(&v["date"]),
         modified: text(&v["modified"]),
-        link: text(&v["permalink"]),
+        preview_link: v["preview_link"]
+            .as_str()
+            .filter(|l| !l.is_empty())
+            .map_or_else(|| link.clone(), String::from),
+        link,
+        slug: text(&v["slug"]),
+        excerpt: text(&v["excerpt"]),
+        author_id: v["author_id"].as_i64().unwrap_or_default(),
+        author: text(&v["author"]),
+        parent: v["parent"].as_i64().unwrap_or_default(),
+        menu_order: v["menu_order"].as_i64().unwrap_or_default(),
+        template: text(&v["template"]),
+        password: text(&v["password"]),
+        page_fields: v.get("password").is_some(),
+        choices: serde_json::from_value(v["choices"].clone()).unwrap_or_default(),
         featured_image: v["featured_image_id"].as_i64().unwrap_or_default(),
         featured_url: v["featured_image"].as_str().map(String::from),
         terms,
@@ -317,6 +385,17 @@ pub fn post_from_rest(v: &Value, ty: &PostType) -> Post {
         date: local(&v["date"]),
         modified: local(&v["modified"]),
         link: text(&v["link"]),
+        preview_link: text(&v["link"]),
+        slug: text(&v["slug"]),
+        excerpt: text(&v["excerpt"]),
+        author_id: v["author"].as_i64().unwrap_or_default(),
+        author: text(&v["_embedded"]["author"][0]["name"]),
+        parent: v["parent"].as_i64().unwrap_or_default(),
+        menu_order: v["menu_order"].as_i64().unwrap_or_default(),
+        template: text(&v["template"]),
+        password: text(&v["password"]),
+        page_fields: true,
+        choices: Choices::default(),
         featured_image: v["featured_media"].as_i64().unwrap_or_default(),
         featured_url: None,
         terms,
@@ -719,11 +798,13 @@ impl Core {
         let site = self.content_site(id)?;
         match site.mode {
             Mode::ClassicMonks => {
-                let mut post = post_from_cm(
-                    &self
-                        .call_ability_inner(id, "get-post-by-id", json!({ "post_id": post_id }))
-                        .await?,
-                );
+                let mut args = json!({ "post_id": post_id });
+                // `choices` came in the same Classic Monks as replace-media; older ones refuse it.
+                if has_tool(&site, "replace-media") {
+                    args["choices"] = true.into();
+                }
+                let mut post =
+                    post_from_cm(&self.call_ability_inner(id, "get-post-by-id", args).await?);
                 if has_tool(&site, "get-post-meta") {
                     let args = json!({ "post_id": post_id, "exclude_private": true });
                     let v = self.call_ability_inner(id, "get-post-meta", args).await?;
@@ -736,12 +817,16 @@ impl Core {
             Mode::Basic => {
                 let ty = self.rest_type(&site, post_type).await?;
                 let route = format!("/wp/v2/{}/{post_id}", ty.rest_base);
-                let edit = [("context", "edit".to_string())];
+                let edit = [
+                    ("context", "edit".to_string()),
+                    ("_embed", "author".to_string()),
+                ];
                 let (v, _) = self
                     .rest_json(&site, Method::GET, &route, &edit, Body::None)
                     .await?;
                 let mut post = post_from_rest(&v, &ty);
                 self.name_terms(&site, &ty, &mut post).await;
+                post.choices = self.rest_choices(&site, &ty, post_id).await;
                 if post.featured_image > 0 {
                     let route = format!("/wp/v2/media/{}", post.featured_image);
                     if let Ok((m, _)) = self
@@ -754,6 +839,97 @@ impl Core {
                 Ok(post)
             }
         }
+    }
+
+    /// Authors and parents in Basic mode, as far as the application password may list them.
+    /// Core REST has no list of page templates, so those stay empty.
+    async fn rest_choices(&self, site: &Site, ty: &PostType, post_id: i64) -> Choices {
+        let mut c = Choices::default();
+        let q = [
+            ("context", "edit".to_string()),
+            ("per_page", "100".into()),
+            ("capabilities", "edit_posts".into()),
+        ];
+        if let Ok((v, _)) = self
+            .rest_json(site, Method::GET, "/wp/v2/users", &q, Body::None)
+            .await
+        {
+            c.authors = v
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|u| Author {
+                    id: u["id"].as_i64().unwrap_or_default(),
+                    name: text(&u["name"]),
+                })
+                .collect();
+        }
+        if ty.hierarchical {
+            let route = format!("/wp/v2/{}", ty.rest_base);
+            let q = [
+                ("context", "edit".to_string()),
+                ("per_page", "100".into()),
+                ("status", ALL.into()),
+                ("exclude", post_id.to_string()),
+            ];
+            if let Ok((v, _)) = self
+                .rest_json(site, Method::GET, &route, &q, Body::None)
+                .await
+            {
+                c.parents = v
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|p| Parent {
+                        id: p["id"].as_i64().unwrap_or_default(),
+                        title: text(&p["title"]),
+                    })
+                    .collect();
+            }
+        }
+        c
+    }
+
+    /// The ACF field groups shown on an entry, with values, as Classic Monks'
+    /// `get-acf-fields` gives them. None when the site has no ACF.
+    pub async fn acf_fields(&self, id: i64, post_id: i64) -> Result<Option<Value>, SiteError> {
+        let _work = self.working().await;
+        let site = self.content_site(id)?;
+        if !has_tool(&site, "get-acf-fields") {
+            return Ok(None);
+        }
+        let args = json!({ "post_id": post_id });
+        Ok(Some(
+            self.call_ability_inner(id, "get-acf-fields", args).await?,
+        ))
+    }
+
+    /// Save ACF values (field key to value) through ACF on the site. ACF checks every
+    /// value first; one refusal saves nothing and the error names each field.
+    pub async fn save_acf(
+        &self,
+        id: i64,
+        post_id: i64,
+        fields: serde_json::Map<String, Value>,
+    ) -> Result<AcfSaved, SiteError> {
+        let _work = self.working().await;
+        let site = self.content_site(id)?;
+        if !has_tool(&site, "update-acf-fields") {
+            return Err(plain(
+                "This site's Classic Monks can't save ACF fields. Update it, then check the site.",
+            ));
+        }
+        let Some(first) = fields.keys().next().cloned() else {
+            return Err(plain("Nothing to save."));
+        };
+        let args = json!({ "post_id": post_id, "fields": fields });
+        let out = self
+            .call_ability_inner(id, "update-acf-fields", args)
+            .await?;
+        Ok(AcfSaved {
+            values: out["values"].clone(),
+            undo: self.undo_row(id, "update-acf-fields", &first).await?,
+        })
     }
 
     /// Core REST gives term ids only: look up their names.
@@ -925,6 +1101,7 @@ impl Core {
         if d.meta.as_ref().is_some_and(|m| !m.is_empty()) {
             return Err(plain(NEEDS_CM_FIELDS));
         }
+        Self::page_fields(d, &mut body);
         Ok(body)
     }
 
@@ -952,7 +1129,33 @@ impl Core {
         if let Some(m) = &d.meta {
             args["meta"] = json!(m);
         }
+        Self::page_fields(d, &mut args);
         args
+    }
+
+    /// Excerpt, slug, author, page attributes and password: the same names in both modes.
+    fn page_fields(d: &Draft, out: &mut Value) {
+        let text = [
+            ("excerpt", &d.excerpt),
+            ("slug", &d.slug),
+            ("template", &d.template),
+            ("password", &d.password),
+        ];
+        for (k, v) in text {
+            if let Some(v) = v {
+                out[k] = v.as_str().into();
+            }
+        }
+        let numbers = [
+            ("author", d.author),
+            ("parent", d.parent),
+            ("menu_order", d.menu_order),
+        ];
+        for (k, v) in numbers {
+            if let Some(v) = v {
+                out[k] = v.into();
+            }
+        }
     }
 
     /// Add an entry. Returns it as the site saved it.
@@ -1641,6 +1844,101 @@ mod tests {
         assert_eq!(core.untrash_post(s.id, p.id).await.unwrap(), "draft");
         let err = core.untrash_post(s.id, p.id).await.unwrap_err();
         assert!(err.to_string().contains("not in the trash"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn the_editor_sets_page_fields_and_acf_values_with_undo() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+        let parent = core
+            .create_post(s.id, "page", draft("About"))
+            .await
+            .unwrap();
+        let p = core.create_post(s.id, "page", draft("Team")).await.unwrap();
+        assert!(p.page_fields);
+        assert_eq!(p.choices.templates["page-wide.php"], "Wide");
+        assert_eq!(p.choices.authors.len(), 2);
+        assert!(
+            p.choices.parents.iter().any(|x| x.id == parent.id)
+                && p.choices.parents.iter().all(|x| x.id != p.id),
+            "{:?}",
+            p.choices.parents
+        );
+        assert!(p.preview_link.ends_with("&preview=true"));
+        let edit = Draft {
+            slug: Some("our-team".into()),
+            excerpt: Some("Who bakes.\nWho sells.".into()),
+            author: Some(2),
+            parent: Some(parent.id),
+            menu_order: Some(4),
+            template: Some("page-wide.php".into()),
+            password: Some("rye".into()),
+            seen_modified: Some(p.modified.clone()),
+            ..Default::default()
+        };
+        let p = core.edit_post(s.id, "page", p.id, edit).await.unwrap();
+        assert_eq!(
+            (p.slug.as_str(), p.excerpt.as_str(), p.author_id, p.parent),
+            ("our-team", "Who bakes.\nWho sells.", 2, parent.id)
+        );
+        assert_eq!(
+            (p.menu_order, p.template.as_str(), p.password.as_str()),
+            (4, "page-wide.php", "rye")
+        );
+
+        // ACF: read, a refusal saves nothing, a save comes with its Undo.
+        let acf = core.acf_fields(s.id, p.id).await.unwrap().unwrap();
+        assert_eq!(acf["groups"][0]["fields"][0]["value"], "Fresh daily");
+        let bad = serde_json::Map::from_iter([
+            ("field_tag".to_string(), json!("")),
+            ("field_mail".to_string(), json!("nope")),
+        ]);
+        let e = core
+            .save_acf(s.id, p.id, bad)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            e.contains("Tagline value is required") && e.contains("Contact: 'nope'"),
+            "{e}"
+        );
+        let good = serde_json::Map::from_iter([
+            ("field_tag".to_string(), json!("Baked at 5")),
+            ("field_mail".to_string(), json!("hi@bakery.test")),
+        ]);
+        let saved = core.save_acf(s.id, p.id, good).await.unwrap();
+        assert_eq!(saved.values["field_tag"], "Baked at 5");
+        core.undo(s.id, saved.undo.expect("an undo row"))
+            .await
+            .unwrap();
+        let acf = core.acf_fields(s.id, p.id).await.unwrap().unwrap();
+        assert_eq!(acf["groups"][0]["fields"][0]["value"], "Fresh daily");
+        assert_eq!(acf["groups"][0]["fields"][1]["value"], "");
+        let ro = serde_json::Map::from_iter([("field_flex".to_string(), json!([]))]);
+        let e = core.save_acf(s.id, p.id, ro).await.unwrap_err().to_string();
+        assert!(e.contains("can only be changed in WordPress"), "{e}");
+
+        // Basic mode: the same fields over REST; authors from the users list; no ACF.
+        let (_h2, core) = self::core().await;
+        let b = core
+            .add_site_basic(&site.url, "admin", "abcd efgh ijkl mnop qrst uvwx")
+            .await
+            .unwrap();
+        let edit = Draft {
+            slug: Some("team-2".into()),
+            menu_order: Some(1),
+            password: Some(String::new()),
+            ..Default::default()
+        };
+        let p = core.edit_post(b.id, "page", p.id, edit).await.unwrap();
+        assert_eq!(
+            (p.slug.as_str(), p.menu_order, p.password.as_str()),
+            ("team-2", 1, "")
+        );
+        assert!(p.page_fields && !p.choices.authors.is_empty());
+        assert!(p.choices.parents.iter().any(|x| x.id == parent.id));
+        assert!(core.acf_fields(b.id, p.id).await.unwrap().is_none());
     }
 
     #[tokio::test]
