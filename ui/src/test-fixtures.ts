@@ -21,6 +21,8 @@ export function site(over: Partial<Site> = {}): Site {
     notes: [],
     added_at: 0,
     agent_access: false,
+    client_id: null,
+    client: null,
     ...over,
   };
 }

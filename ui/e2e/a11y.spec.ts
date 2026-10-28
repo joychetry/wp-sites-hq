@@ -141,6 +141,28 @@ test("entries are ticked and changed in bulk from the keyboard", async ({ page }
   await expect(page.getByRole("button", { name: "Make drafts (1)" })).toBeFocused();
 });
 
+test("the import picker is reached by Tab and shows its focus ring", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "settings")!, "light");
+  await page.getByRole("button", { name: "Export as CSV" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Import a JSON or CSV file")).toBeFocused();
+  const ring = await page.locator(".btn.file").evaluate((el) => getComputedStyle(el).outlineStyle);
+  expect(ring).toBe("solid");
+});
+
+test("a client is added from the keyboard", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "clients")!, "light");
+  await page.getByRole("button", { name: "Add a client" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("textbox", { name: "Name" })).toBeFocused();
+  await page.keyboard.type("Hill Farm");
+  await page.getByRole("checkbox", { name: "mc-c" }).focus();
+  await page.keyboard.press("Space");
+  await page.getByRole("button", { name: "Add the client" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Added Hill Farm.")).toBeVisible();
+});
+
 test("a comment is answered from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "comments")!, "light");
   const reply = page.getByRole("button", { name: "Reply to Mira Patel on MC A" });
@@ -216,7 +238,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);

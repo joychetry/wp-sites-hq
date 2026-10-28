@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, ActivityRow, Change, Comment, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -67,6 +67,8 @@ function site(over: Partial<Site>): Site {
     notes: [],
     added_at: 0,
     agent_access: false,
+    client_id: null,
+    client: null,
     ...over,
   };
 }
@@ -86,15 +88,33 @@ const FLEET: Site[] = [
     },
     notes: [{ id: 1, body: "Client renews hosting in March.", added_at: now - 86400 * 3 }],
     agent_access: true,
+    client_id: 1,
+    client: "Corner Bakery",
   }),
-  site({ id: 2, name: "Corner Bakery", url: "https://corner-bakery-and-cafe-downtown.local", group: "Clients", health: "down", health_detail: "The site didn't answer within 20 seconds.", checked_at: now - 60 }),
+  site({ id: 2, client_id: 1, client: "Corner Bakery", name: "Corner Bakery", url: "https://corner-bakery-and-cafe-downtown.local", group: "Clients", health: "down", health_detail: "The site didn't answer within 20 seconds.", checked_at: now - 60 }),
   site({ id: 3, name: "mc-c", url: "https://mc-c.local", mode: "basic", username: "admin", cm_version: null, capabilities: {}, health_detail: "Answered in 0.7 s." }),
   site({ id: 4, name: "Monks Central Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
   site({ id: 5, name: "Studio Blog", url: "https://studio-blog.local", wp_version: "7.1.2", php_version: "8.3.14", cm_version: null, capabilities: { abilities: [], hq_status: false, degraded: true }, health_detail: "Answered in 0.5 s." }),
-  site({ id: 6, name: "Portfolio", url: "https://portfolio.local", group: "Personal", tags: ["static"], php_version: "8.3.14", health: "ok", health_detail: "Slow: the home page took 4.2 s.", checked_at: now - 3600 * 2 }),
+  site({ id: 6, client_id: 2, client: "Studio North", name: "Portfolio", url: "https://portfolio.local", group: "Personal", tags: ["static"], php_version: "8.3.14", health: "ok", health_detail: "Slow: the home page took 4.2 s.", checked_at: now - 3600 * 2 }),
 ];
 
 let sites: Site[] = fixture === "empty" ? [] : FLEET.map((s) => ({ ...s }));
+
+let CLIENTS: Client[] = fixture === "empty" ? [] : [
+  { id: 1, name: "Corner Bakery", email: "rosa@corner-bakery.test", notes: "Pays by bank transfer, 14 days." },
+  { id: 2, name: "Studio North", email: "hello@studio-north.test", notes: "" },
+];
+const cost = (id: number, on: { site_id?: number; client_id?: number }, kind: Cost["kind"], label: string, cents: number, currency: string, every: Cost["every"], renews_on: string | null = null): Cost => ({
+  id, site_id: on.site_id ?? null, client_id: on.client_id ?? null, kind, label, cents, currency, every, renews_on,
+});
+let COSTS: Cost[] = fixture === "empty" ? [] : [
+  cost(1, { site_id: 1 }, "cost", "Hosting", 24000, "EUR", "year", "2027-03-01"),
+  cost(2, { site_id: 2 }, "cost", "Domain", 1500, "EUR", "year", "2026-12-14"),
+  cost(3, { site_id: 1 }, "cost", "WooCommerce Subscriptions licence", 27900, "USD", "year", "2027-05-20"),
+  cost(4, { client_id: 1 }, "charge", "Care plan", 9900, "EUR", "month"),
+  cost(5, { client_id: 2 }, "charge", "Care plan", 4900, "EUR", "month"),
+  cost(6, { site_id: 6 }, "cost", "Hosting", 600, "EUR", "month", "2026-11-01"),
+];
 
 const item = (id: string, name: string, version: string, over: Partial<Item> = {}): Item => ({
   id,
@@ -513,6 +533,37 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       await new Promise((ok) => setTimeout(ok, 300));
       return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
     case "content_trash":
+      return r(null);
+    case "clients_list":
+      return r(CLIENTS);
+    case "client_save": {
+      const c = args.client as Client;
+      const saved = { ...c, id: c.id || CLIENTS.length + 1 };
+      CLIENTS = [...CLIENTS.filter((x) => x.id !== saved.id), saved];
+      return r(saved);
+    }
+    case "client_delete":
+      CLIENTS = CLIENTS.filter((c) => c.id !== id);
+      return r(null);
+    case "site_set_client":
+      edit(id, { client_id: args.client as number | null, client: CLIENTS.find((c) => c.id === args.client)?.name ?? null });
+      return r(null);
+    case "costs_list":
+      return r(COSTS);
+    case "cost_save": {
+      const c = args.cost as Cost;
+      const saved = { ...c, id: c.id || COSTS.length + 1 };
+      COSTS = [...COSTS.filter((x) => x.id !== saved.id), saved];
+      return r(saved);
+    }
+    case "cost_delete":
+      COSTS = COSTS.filter((c) => c.id !== id);
+      return r(null);
+    case "sites_export":
+      return r(`/home/you/Downloads/monks-central-sites-2026-10-28.${args.csv ? "csv" : "json"}`);
+    case "sites_import":
+      return r({ sites: 2, clients: 1, costs: 3, not_connected: ["https://old-shop.example"] });
+    case "file_show":
       return r(null);
     case "content_revisions":
       return r([

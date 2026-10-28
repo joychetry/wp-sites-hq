@@ -36,7 +36,33 @@ export type Site = {
   added_at: number;
   /** AI agents may change this site, each change approved on the site. */
   agent_access: boolean;
+  client_id: number | null;
+  client: string | null;
 };
+
+export type Client = { id: number; name: string; email: string; notes: string };
+export type Every = "month" | "year" | "once";
+/** A cost (hosting, a domain, a licence) or a charge (what the client pays), in cents. */
+export type Cost = {
+  id: number;
+  site_id: number | null;
+  client_id: number | null;
+  kind: "cost" | "charge";
+  label: string;
+  cents: number;
+  currency: string;
+  every: Every;
+  renews_on: string | null;
+};
+export type AppSettings = {
+  report_name: string;
+  report_footer: string;
+  report_accent: string;
+  white_label: boolean;
+  search_console: boolean;
+  agentedseo: boolean;
+};
+export type Imported = { sites: number; clients: number; costs: number; not_connected: string[] };
 
 export type Removed = { signed_out: boolean; message: string };
 
@@ -330,6 +356,19 @@ export const api = {
   confirmPlan: (id: number) => invoke<Job>("plan_confirm", { id }),
   declinePlan: (id: number) => invoke<Job>("plan_decline", { id }),
   activityLog: (before?: number) => invoke<Entry[]>("activity_list", { before }),
+  clients: () => invoke<Client[]>("clients_list"),
+  saveClient: (client: Client) => invoke<Client>("client_save", { client }),
+  deleteClient: (id: number) => invoke<void>("client_delete", { id }),
+  setClient: (id: number, client: number | null) => invoke<void>("site_set_client", { id, client }),
+  costs: () => invoke<Cost[]>("costs_list"),
+  saveCost: (cost: Cost) => invoke<Cost>("cost_save", { cost }),
+  deleteCost: (id: number) => invoke<void>("cost_delete", { id }),
+  appSettings: () => invoke<AppSettings>("app_settings_get"),
+  saveAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_settings_save", { settings }),
+  /** Saves into Downloads; returns the file's path. */
+  exportSites: (csv: boolean) => invoke<string>("sites_export", { csv }),
+  importSites: (text: string) => invoke<Imported>("sites_import", { text }),
+  showFile: (path: string) => invoke<void>("file_show", { path }),
 };
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */

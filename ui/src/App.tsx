@@ -19,6 +19,7 @@ import { ClassicMonks } from "./screens/ClassicMonks";
 import { Ai } from "./screens/Ai";
 import { Security } from "./screens/Security";
 import { Monitoring } from "./screens/Monitoring";
+import { Clients } from "./screens/Clients";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -27,13 +28,14 @@ const GROUPS = [
   ["", ["Overview"]],
   ["Fleet", ["Sites", "Updates", "Plugins", "Themes"]],
   ["Content", ["Content", "Media", "Users", "Comments"]],
-  ["Care", ["Classic Monks", "Monitoring", "Security", "Reports"]],
+  ["Care", ["Classic Monks", "Monitoring", "Security"]],
+  ["Business", ["Clients", "Store", "Reports"]],
   ["App", ["AI", "Settings"]],
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "AI", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "Clients", "AI", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -239,6 +241,8 @@ export default function App() {
     body = <Monitoring sites={scoped} monitors={monitors ?? []} />;
   } else if (section === "Security") {
     body = <Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
+  } else if (section === "Clients") {
+    body = <Clients sites={all} />;
   } else if (section === "AI") {
     body = <Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
   } else if (section === "Settings") {

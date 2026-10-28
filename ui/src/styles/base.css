@@ -363,3 +363,8 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text-2); font-weig
 .row .grow, .row.grow { flex: 1; min-width: 0; }
 ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 ul.plain .row { flex-wrap: wrap; }
+/* A file picker that looks like a button; the ring shows on the label. */
+.btn.file { position: relative; cursor: pointer; }
+.btn.file input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.btn.file:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.m.danger { color: var(--danger); }

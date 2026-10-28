@@ -42,7 +42,34 @@ export const SCREENS: Screen[] = [
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
   { name: "settings", open: nav("Settings") },
-  { name: "later", open: nav("Reports") },
+  { name: "later", open: nav("Store") },
+  { name: "clients", open: nav("Clients") },
+  { name: "clients-empty", fixture: "empty", open: nav("Clients") },
+  {
+    name: "client-edit",
+    open: async (page) => {
+      await nav("Clients")(page);
+      await page.getByRole("button", { name: "Corner Bakery" }).click();
+    },
+  },
+  {
+    name: "cost-add",
+    open: async (page) => {
+      await nav("Clients")(page);
+      await page.getByRole("button", { name: "Add a cost or charge" }).click();
+      await page.getByRole("combobox", { name: "On" }).selectOption({ label: "MC A" });
+      await page.getByRole("textbox", { name: "What it is" }).fill("Backups");
+      await page.getByRole("textbox", { name: "Amount" }).fill("5.50");
+    },
+  },
+  {
+    name: "settings-exported",
+    open: async (page) => {
+      await nav("Settings")(page);
+      await page.getByRole("button", { name: "Export as JSON" }).click();
+      await page.getByRole("button", { name: "Show in folder" }).waitFor();
+    },
+  },
   { name: "security", open: nav("Security") },
   { name: "monitoring", open: nav("Monitoring") },
   { name: "monitoring-empty", fixture: "empty", open: nav("Monitoring") },
