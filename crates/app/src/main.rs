@@ -5,6 +5,7 @@
 // No console window on Windows release builds; `monks` is the console program.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use monks_core::activity::{Actor, Entry};
@@ -24,6 +25,7 @@ use monks_core::security::Report;
 use monks_core::seo::GscStatus;
 use monks_core::shop::{Overview, ProductQuery, Products};
 use monks_core::sites::{Mode, Site};
+use monks_core::wporg::Kind;
 use monks_core::{Core, Options, paths, vault};
 use serde_json::Value;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -75,6 +77,24 @@ fn core_status(state: State<'_, AppCore>) -> Res<Value> {
 #[tauri::command]
 fn sites_list(state: State<'_, AppCore>) -> Res<Vec<Site>> {
     core(&state)?.sites().map_err(|e| e.to_string())
+}
+
+/// The site's icon as a `data:` URL, or null.
+#[tauri::command]
+fn site_icon(state: State<'_, AppCore>, id: i64) -> Res<Option<String>> {
+    Ok(core(&state)?.site_icon(id))
+}
+
+/// A plugin's icon or a theme's screenshot from WordPress.org as a `data:` URL, or null.
+#[tauri::command]
+fn package_icon(state: State<'_, AppCore>, kind: Kind, slug: String) -> Res<Option<String>> {
+    Ok(core(&state)?.package_icon(kind, &slug))
+}
+
+/// Every cached WordPress.org image, `plugin/akismet` to when it was saved.
+#[tauri::command]
+fn package_icons(state: State<'_, AppCore>) -> Res<BTreeMap<String, i64>> {
+    Ok(core(&state)?.package_icons())
 }
 
 #[tauri::command]
@@ -1065,6 +1085,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             core_status,
             sites_list,
+            site_icon,
+            package_icon,
+            package_icons,
             groups_list,
             site_add_oauth,
             site_add_basic,

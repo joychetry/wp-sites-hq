@@ -33,7 +33,7 @@ test("Tab reaches the skip link first, and it moves focus to the content", async
   await page.keyboard.press("Enter");
   await expect(page.locator("#content")).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Check again" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /^Add a site/ })).toBeFocused();
 });
 
 test("every focusable control shows a focus ring", async ({ page }) => {
@@ -62,7 +62,7 @@ test("the Sites table works from the keyboard", async ({ page }) => {
   await page.keyboard.press("j");
   await expect(page.getByRole("complementary", { name: "Corner Bakery details" })).toBeVisible();
   await page.keyboard.press("x");
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
   await page.keyboard.press("Escape");
   await page.keyboard.press("/");
   await expect(page.getByRole("searchbox", { name: "Filter sites" })).toBeFocused();
@@ -70,10 +70,10 @@ test("the Sites table works from the keyboard", async ({ page }) => {
 
 test("the Plugins matrix is one Tab stop, arrow keys move and Enter opens a cell", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "plugins")!, "light");
-  await page.getByRole("button", { name: /^Update \d+ plugins/ }).focus();
+  await page.getByRole("button", { name: /^Status:/ }).focus();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: /^WooCommerce on MC A/ })).toBeFocused();
-  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("button", { name: /^WooCommerce on mc-c/ })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("complementary", { name: "WooCommerce on mc-c" })).toBeVisible();
@@ -144,16 +144,11 @@ test("entries are ticked and changed in bulk from the keyboard", async ({ page }
   await expect(page.getByRole("button", { name: "Make drafts (1)" })).toBeFocused();
 });
 
-test("export is a menu from the keyboard; the import picker is the next Tab stop with a focus ring", async ({ page }) => {
+test("export is two buttons from the keyboard; the import picker is the next Tab stop with a focus ring", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "settings")!, "light");
-  const menu = page.getByRole("button", { name: "Export the sites" });
-  await menu.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("menuitem", { name: /^Export as JSON/ })).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("menuitem", { name: /^Export as CSV/ })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(menu).toBeFocused();
+  await page.getByRole("button", { name: "Export as JSON" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Export as CSV" })).toBeFocused();
   await page.keyboard.press("Tab");
   const pick = page.getByRole("button", { name: "Import a JSON or CSV file" });
   await expect(pick).toBeFocused();
@@ -190,6 +185,9 @@ test("a comment is answered from the keyboard", async ({ page }) => {
   const box = page.getByRole("textbox", { name: "Your reply to Mira Patel" });
   await expect(box).toBeFocused();
   await page.keyboard.type("Plain milk.");
+  // Cancel, then Send the reply: the design's order, the primary last.
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Send the reply" })).toBeFocused();
   await page.keyboard.press("Enter");
@@ -198,8 +196,8 @@ test("a comment is answered from the keyboard", async ({ page }) => {
 
 test("a feature is turned on and undone from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
-  await page.getByRole("button", { name: "Turn on SVG Support" }).focus();
-  await page.keyboard.press("Enter");
+  await page.getByRole("switch", { name: "SVG Support" }).focus();
+  await page.keyboard.press("Space");
   const undo = page.getByRole("button", { name: "Undo", exact: true });
   await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
   await undo.focus();
@@ -223,7 +221,7 @@ test("an AI agent's plan is confirmed from the keyboard and its progress shows",
   await expect(page.getByRole("button", { name: /^Confirm and run .*Turn off Akismet/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Remove Turn off Akismet on Portfolio" }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { name: "No plans are waiting." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No plans waiting" })).toBeVisible();
 });
 
 test("the palette opens an agent's plan with focus on it, two Tabs from Confirm", async ({ page }) => {
@@ -280,11 +278,12 @@ test("a monthly report is made and opened from the keyboard", async ({ page }) =
 
 test("AI agent access is turned on from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-access")!, "light");
-  await page.getByRole("button", { name: "Turn on access for Portfolio" }).focus();
-  await page.keyboard.press("Enter");
+  const access = page.getByRole("tabpanel").getByRole("switch", { name: "Access for Portfolio" });
+  await access.focus();
+  await page.keyboard.press("Space");
   await expect(page.getByText(/leave "This is my Monks Central app \(operator\)" unticked/)).toBeVisible();
   await expect(page.getByText("AI agents can change Portfolio now. The site asks you to approve each change.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Turn off access for Portfolio" })).toBeVisible();
+  await expect(access).toBeChecked();
 });
 
 test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({ page }) => {
@@ -312,11 +311,26 @@ test.describe("200% zoom", () => {
   }
 });
 
+test("the Sites table fits beside the site panel without scrolling sideways", async ({ page }) => {
+  for (const [width, density] of [[1440, "comfortable"], [1301, "comfortable"], [1200, "comfortable"], [1200, "compact"]] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await show(page, SCREENS.find((s) => s.name === "sites-selected")!, "light", density);
+    const [scroll, client] = await page.locator(".scroll").evaluate((e) => [e.scrollWidth, e.clientWidth]);
+    expect(scroll, `${width}px, ${density}`).toBeLessThanOrEqual(client);
+  }
+});
+
+test("a finished job lists every change under the progress bar", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "updates-progress")!, "light");
+  for (const row of await page.getByRole("dialog").getByRole("listitem").all()) await expect(row).toBeInViewport();
+});
+
 test("a vulnerable plugin is fixed from the keyboard, through the plan", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "security")!, "light");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Security 2 known vulnerabilities" })).toBeVisible();
   await page.getByRole("button", { name: "Read more about WooCommerce < 10.3.0 - Authenticated (Shop Manager+) Stored Cross-Site Scripting via product reviews" }).focus();
-  await page.keyboard.press("Tab");
+  // The update comes first in the card, Read more after it.
+  await page.keyboard.press("Shift+Tab");
   await expect(page.getByRole("button", { name: "Update to 10.3.0 on MC A" })).toBeFocused();
   await page.keyboard.press("Enter");
   const sheet = page.getByRole("dialog", { name: /^Update WooCommerce on MC A/ });
@@ -333,7 +347,7 @@ test("PageSpeed runs from the keyboard and the result shows in its row", async (
   await run.focus();
   await page.keyboard.press("Enter");
   const row = page.getByRole("row").filter({ hasText: "Portfolio" });
-  await expect(row.getByText("81")).toBeVisible();
+  await expect(row.getByText(/^81 · /)).toBeVisible();
   await expect(run).toBeFocused();
 });
 
@@ -348,7 +362,7 @@ test("a rolled back update shows why, and only the failed change is offered agai
 test("a long reason in the activity log wraps, so Result stays in view", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-activity")!, "light");
   const sideways = await page.evaluate(() => {
-    let el = document.querySelector('table[aria-label="Activity"]')!.parentElement;
+    let el = document.querySelector('ul[aria-label="Activity"]')!.parentElement;
     while (el && el.scrollWidth <= el.clientWidth) el = el.parentElement;
     return el?.tagName ?? null;
   });
@@ -360,10 +374,10 @@ test("text grows with the browser's text size", async ({ page }) => {
   const at = (px: number) =>
     page.evaluate((px) => {
       document.documentElement.style.fontSize = `${px}px`;
-      return parseFloat(getComputedStyle(document.querySelector(".kpi .l")!).fontSize);
+      return parseFloat(getComputedStyle(document.querySelector(".stat .label")!).fontSize);
     }, px);
-  expect(await at(16)).toBe(13);
-  expect(await at(24)).toBe(19.5);
+  expect(await at(16)).toBe(12);
+  expect(await at(24)).toBe(18);
 });
 
 test("results never move the rows: ticking sites, a check, a feature and its Undo", async ({ page }) => {
@@ -372,17 +386,17 @@ test("results never move the rows: ticking sites, a check, a feature and its Und
   const portfolio = page.getByRole("checkbox", { name: "Select Portfolio" });
   const before = await y(portfolio);
   await page.getByRole("checkbox", { name: "Select MC A" }).click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
   expect(await y(portfolio)).toBe(before);
   await portfolio.click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 selected");
-  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /Check now/ }).click();
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 sites ticked");
+  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /Check them now/ }).click();
   expect(await y(portfolio)).toBe(before);
 
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
-  const first = page.getByRole("button", { name: /^Turn (on|off) / }).first();
+  const first = page.getByRole("switch").first();
   const top = await y(first);
-  await page.getByRole("button", { name: "Turn on SVG Support" }).click();
+  await page.getByRole("switch", { name: "SVG Support" }).click();
   await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
   expect(await y(first)).toBe(top);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
@@ -417,4 +431,23 @@ test("custom field boxes are as tall as the other fields, and Remove lines up wi
   expect(remove.height).toBe(value.height);
   const add = (await fields.getByRole("button", { name: "Add the field" }).boundingBox())!;
   expect(add.height).toBe(title.height);
+});
+
+test("plugins and themes show their WordPress.org pictures in tiles the size of the monograms", async ({ page }) => {
+  const tile = (name: RegExp) => page.getByRole("rowheader", { name }).locator(".ptile");
+  const size = async (l: ReturnType<typeof tile>) => {
+    const b = (await l.boundingBox())!;
+    return [b.width, b.height];
+  };
+  await show(page, SCREENS.find((s) => s.name === "plugins")!, "light");
+  const row = page.getByRole("rowheader", { name: /^WooCommerce/ });
+  const top = (await row.boundingBox())!;
+  await expect(tile(/^WooCommerce/).locator("img")).toBeVisible();
+  await expect(tile(/^Classic Monks/)).toHaveText("C");
+  expect(await size(tile(/^WooCommerce/))).toEqual(await size(tile(/^Classic Monks/)));
+  expect((await row.boundingBox())!).toEqual(top);
+  await show(page, SCREENS.find((s) => s.name === "themes")!, "light");
+  await expect(tile(/^Twenty Twenty-Five/).locator("img")).toBeVisible();
+  await expect(tile(/^Bricks/)).toHaveText("B");
+  expect(await size(tile(/^Twenty Twenty-Five/))).toEqual(await size(tile(/^Bricks/)));
 });

@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Ai } from "./Ai";
 import { site } from "../test-fixtures";
 import type { Entry, Job } from "../api";
+import { HeadSlot } from "../components/ui";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -55,11 +56,12 @@ test("a plan shows every change and runs only when you confirm it", async () => 
   const calls = core();
   const onWatch = vi.fn();
   render(<Ai sites={[ALPHA, BETA]} plans={[PLAN]} onWatch={onWatch} />);
-  expect(screen.getByRole("tab", { name: "Plans to confirm (1)" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("tab", { name: /^Plans to confirm\s?\(1\)$/ })).toHaveAttribute("aria-selected", "true");
   const card = screen.getByRole("region", { name: PLAN.title });
-  expect(within(card).getByText(/Proposed by an AI agent 2 min ago\. 2 changes on 2 sites\./)).toBeInTheDocument();
+  expect(within(card).getByText(/asked 2 min ago/)).toBeInTheDocument();
+  expect(within(card).getByText(/2 changes on 2 sites\./)).toBeInTheDocument();
   expect(within(card).getAllByRole("listitem")).toHaveLength(2);
-  expect(within(card).getAllByRole("listitem")[1]).toHaveTextContent("Beta, Update WooCommerce10.1.0 →to 10.3.0");
+  expect(within(card).getAllByRole("listitem")[1]).toHaveTextContent("SiteBBetaWUpdate WooCommerce10.1.0to10.3.0");
   expect(calls.some(([c]) => c === "plan_confirm")).toBe(false);
 
   fireEvent.click(screen.getByRole("button", { name: `Confirm and run 2 changes: ${PLAN.title}` }));
@@ -83,7 +85,7 @@ test("an expired plan says it never runs and can only be removed", async () => {
   const calls = core();
   const old = { ...PLAN, id: 8, title: "Old plan", created_at: PLAN.created_at - 8 * 86400, expired: true };
   render(<Ai sites={[]} plans={[old, PLAN]} onWatch={() => {}} />);
-  expect(screen.getByRole("tab", { name: "Plans to confirm (1)" })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /^Plans to confirm\s?\(1\)$/ })).toBeInTheDocument();
   const card = screen.getByRole("region", { name: "Old plan" });
   expect(within(card).getByText("Expired")).toBeInTheDocument();
   expect(within(card).getByText(/so it will never run/)).toBeInTheDocument();
@@ -96,7 +98,7 @@ test("an expired plan says it never runs and can only be removed", async () => {
 test("no plans says nothing runs without you", () => {
   core();
   render(<Ai sites={[]} plans={[]} onWatch={() => {}} />);
-  expect(screen.getByRole("heading", { name: "No plans are waiting." })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "No plans waiting" })).toBeInTheDocument();
   expect(screen.getByText(/no AI app can confirm it for you/)).toBeInTheDocument();
 });
 
@@ -104,16 +106,16 @@ test("agent access per site: read only, on with approval, Basic mode needs Class
   const calls = core();
   render(<Ai sites={[ALPHA, BETA, BASIC]} plans={[]} onWatch={() => {}} />);
   fireEvent.click(screen.getByRole("tab", { name: "Agent access" }));
-  const rows = within(screen.getByRole("table", { name: "Agent access" })).getAllByRole("row");
-  expect(rows[1]).toHaveTextContent("AlphaCan read only");
-  expect(rows[2]).toHaveTextContent("BetaCan change, with your approval on the site");
-  expect(rows[3]).toHaveTextContent("GammaNeeds Classic Monks");
-  expect(within(rows[3]).queryByRole("button")).toBeNull();
+  const rows = within(screen.getByRole("list", { name: "Agent access" })).getAllByRole("listitem");
+  expect(rows[0]).toHaveTextContent("AlphaCan read onlyOff");
+  expect(rows[1]).toHaveTextContent("BetaCan change, with your approval on the siteOn");
+  expect(rows[2]).toHaveTextContent("GammaNeeds Classic Monks");
+  expect(within(rows[2]).getByRole("switch")).toBeDisabled();
 
-  fireEvent.click(screen.getByRole("button", { name: "Turn on access for Alpha" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Access for Alpha" }));
   expect(screen.getByText(/leave "This is my Monks Central app \(operator\)" unticked/)).toBeInTheDocument();
   expect(await screen.findByText("AI agents can change Alpha now. The site asks you to approve each change.")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Turn off access for Beta" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Access for Beta" }));
   expect(await screen.findByText("AI agents can only read Beta now.")).toBeInTheDocument();
   expect(calls.map(([c]) => c)).toEqual(["agent_access_on", "agent_access_off"]);
 });
@@ -125,13 +127,13 @@ test("the activity log says who did what, and loads older entries", async () => 
   const calls = core({ activity_list: (a) => (a.before ? [row(1, "human", "done")] : first) });
   render(<Ai sites={[]} plans={[]} onWatch={() => {}} />);
   fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
-  const table = await screen.findByRole("table", { name: "Activity" });
-  const rows = within(table).getAllByRole("row");
-  expect(rows[1]).toHaveTextContent("just nowYouAlphathing 60Done");
-  expect(rows[2]).toHaveTextContent("AI agentAlphathing 59Waiting for you");
-  expect(rows[3]).toHaveTextContent("AI agent, confirmed by youSeveral sitesthing 58Failed");
+  const list = await screen.findByRole("list", { name: "Activity" });
+  const rows = within(list).getAllByRole("listitem");
+  expect(rows[0]).toHaveTextContent(/^YouYou ran thing 60 on Alpha\./);
+  expect(rows[1]).toHaveTextContent(/AI agent ran thing 59 on Alpha\..*Waiting for you$/);
+  expect(rows[2]).toHaveTextContent(/AI agent, confirmed by you, ran thing 58 on several sites\..*Failed$/);
   fireEvent.click(screen.getByRole("button", { name: "Show older entries" }));
-  await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(52));
+  await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(51));
   expect(calls).toContainEqual(["activity_list", { before: 11 }]);
   expect(screen.queryByRole("button", { name: "Show older entries" })).toBeNull();
 });
@@ -140,8 +142,12 @@ test("connect shows the command to add Monks Central to an AI app", async () => 
   core();
   const writeText = vi.fn(() => Promise.resolve());
   Object.assign(navigator, { clipboard: { writeText } });
-  render(<Ai sites={[]} plans={[]} onWatch={() => {}} />);
-  fireEvent.click(screen.getByRole("tab", { name: "Connect an AI app" }));
+  render(
+    <HeadSlot.Provider value={document.body}>
+      <Ai sites={[]} plans={[]} onWatch={() => {}} />
+    </HeadSlot.Provider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Connect an AI app" }));
   expect(screen.getByText("claude mcp add monks-central -- monks mcp")).toBeInTheDocument();
   fireEvent.click(screen.getAllByRole("button", { name: "Copy" })[0]);
   expect(await screen.findByText("Copied the Claude Code command.")).toBeInTheDocument();

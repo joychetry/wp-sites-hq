@@ -3,11 +3,22 @@
 // review it, then watch it run, site by site.
 import { useMemo, useState } from "react";
 import { api, useJob, type Change, type JobItem } from "../api";
-import { Button } from "./ui";
+import { Button, Glyph, type GlyphName } from "./ui";
 import { Sheet } from "./Sheet";
+import { SiteTile } from "./SiteTile";
+import { ChangeTile } from "./PkgTile";
 
-/** One change as the plan shows it, before the core has it. */
-export type PlanRow = { change: Change; site: string; label: string; from?: string | null; to?: string | null };
+/** One change as the plan shows it, before the core has it. Name, icon and note are for the pick list. */
+export type PlanRow = {
+  change: Change;
+  site: string;
+  label: string;
+  from?: string | null;
+  to?: string | null;
+  name?: string;
+  icon?: string | null;
+  note?: string;
+};
 
 export type SheetState =
   | { title: string; rows: PlanRow[]; start: "plan" | "confirm"; danger?: boolean }
@@ -15,15 +26,23 @@ export type SheetState =
 
 type Step = "plan" | "confirm" | "progress";
 const STEPS: [Step, string][] = [
-  ["plan", "1. Plan"],
-  ["confirm", "2. Confirm"],
-  ["progress", "3. Progress"],
+  ["plan", "Pick"],
+  ["confirm", "Review"],
+  ["progress", "Run"],
 ];
 
+const STATE_ICON: Record<JobItem["state"], GlyphName> = { waiting: "clock", running: "loader", done: "check-circle", failed: "x-circle", rolled_back: "undo" };
 const STATE_WORD: Record<JobItem["state"], string> = { waiting: "Waiting", running: "Running", done: "Done", failed: "Failed", rolled_back: "Rolled back" };
 const STATE_TONE: Record<JobItem["state"], string> = { waiting: "", running: "", done: "ok", failed: "danger", rolled_back: "warning" };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** Indexes of rows, by site, in the order the sites first appear. */
+function bySiteOf(rows: PlanRow[], keep: (i: number) => boolean = () => true): [string, number[]][] {
+  const m = new Map<string, number[]>();
+  rows.forEach((r, i) => keep(i) && m.set(r.site, [...(m.get(r.site) ?? []), i]));
+  return [...m];
+}
 
 export function Versions({ from, to }: { from?: string | null; to?: string | null }) {
   if (!from && !to) return null;
@@ -50,12 +69,9 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const chosen = rows.filter((_, i) => picked.has(i));
-  const bySite = useMemo(() => {
-    const m = new Map<string, number[]>();
-    rows.forEach((r, i) => m.set(r.site, [...(m.get(r.site) ?? []), i]));
-    return [...m];
-  }, [rows]);
+  const bySite = useMemo(() => bySiteOf(rows), [rows]);
   const siteCount = new Set(chosen.map((r) => r.change.site_id)).size;
+  const danger = fromPlan && state.danger;
 
   const toggle = (ids: number[], on: boolean) =>
     setPicked((p) => {
@@ -78,11 +94,15 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
     }
   };
 
+  // The design's stepper: numbered rings joined by hairlines; done ones carry a tick.
+  const at = STEPS.findIndex(([s]) => s === step);
   const steps = (
-    <ol className="jobsteps">
-      {STEPS.map(([s, label]) => (
-        <li key={s} aria-current={s === step ? "step" : undefined}>
-          {label}
+    <ol className="jobsteps" aria-label="Steps">
+      {STEPS.map(([s, label], n) => (
+        <li key={s} className={n < at ? "done" : undefined} aria-current={s === step ? "step" : undefined}>
+          <i aria-hidden="true">{n < at ? <Glyph name="check" /> : n + 1}</i>
+          <span>{label}</span>
+          {n < at && <span className="sr-only">, done</span>}
         </li>
       ))}
     </ol>
@@ -97,6 +117,7 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
   return (
     <Sheet
       title={state.title}
+      steps={steps}
       intro={
         step === "plan"
           ? "Untick anything that should stay as it is. Nothing changes until you confirm."
@@ -115,73 +136,92 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
           )}
           <Button onClick={onClose}>Close without changes</Button>
           {step === "plan" ? (
-            <Button kind="primary" disabled={chosen.length === 0} onClick={() => setStep("confirm")}>
+            <Button kind="primary" className="disc" disabled={chosen.length === 0} onClick={() => setStep("confirm")}>
               Review {plural(chosen.length, "change")}
+              <span className="btn-disc">
+                <Glyph name="arrow" />
+              </span>
             </Button>
           ) : (
             <Button
-              kind={fromPlan && state.danger ? "danger" : "primary"}
+              kind={danger ? "danger" : "primary"}
+              className={danger ? undefined : "disc"}
               disabled={busy || chosen.length === 0}
               onClick={() => start(chosen.map((r) => r.change), state.title)}
             >
               {busy ? "Starting…" : confirmLabel}
+              {!danger && (
+                <span className="btn-disc">
+                  <Glyph name="check" />
+                </span>
+              )}
             </Button>
           )}
         </>
       }
     >
-      {steps}
       {error && (
-        <p className="alert danger" role="alert">
-          {error}
+        <p className="callout danger" role="alert">
+          <Glyph name="alert" />
+          <span>{error}</span>
         </p>
       )}
       {step === "plan" ? (
-        bySite.map(([site, ids]) => {
-          const all = ids.every((i) => picked.has(i));
-          return (
-            <section key={site} className="plan-site">
-              <h3>
-                <button
-                  type="button"
-                  className="box"
-                  role="checkbox"
-                  aria-checked={all ? true : ids.some((i) => picked.has(i)) ? "mixed" : false}
-                  aria-label={`Every change on ${site}`}
-                  onClick={() => toggle(ids, !all)}
-                />
-                {site}
-              </h3>
-              <ul className="plan-list">
+        <div className="jobpick">
+          {bySite.map(([site, ids]) => {
+            const all = ids.every((i) => picked.has(i));
+            const first = rows[ids[0]];
+            return (
+              <section key={site} aria-label={site}>
+                {/* The whole line toggles, like a label; the box is the keyboard's way in. */}
+                <div className="jobpick-site" onClick={() => toggle(ids, !all)}>
+                  <button
+                    type="button"
+                    className="box"
+                    role="checkbox"
+                    aria-checked={all ? true : ids.some((i) => picked.has(i)) ? "mixed" : false}
+                    aria-label={`Every change on ${site}`}
+                  />
+                  <SiteTile site={{ id: first.change.site_id, name: site, icon: first.icon }} size="sm" />
+                  <b>Every change on {site}</b>
+                  <small>{ids.length}</small>
+                </div>
+                <ul>
+                  {ids.map((i) => {
+                    const r = rows[i];
+                    return (
+                      <li key={i} onClick={() => toggle([i], !picked.has(i))}>
+                        <button type="button" className="box" role="checkbox" aria-checked={picked.has(i)} aria-label={`${r.label} on ${site}`} />
+                        <ChangeTile action={r.change.action} name={r.name} size="xs" />
+                        <span>{r.name ?? r.label}</span>
+                        <small>{[r.from && r.to && `${r.from} → ${r.to}`, r.note].filter(Boolean).join(" · ")}</small>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="jobreview">
+          {bySiteOf(rows, (i) => picked.has(i)).map(([site, ids]) => (
+            <section key={site} aria-label={`On ${site}`}>
+              <h3 className="label">On {site}</h3>
+              <ul>
                 {ids.map((i) => (
                   <li key={i}>
-                    <button
-                      type="button"
-                      className="box"
-                      role="checkbox"
-                      aria-checked={picked.has(i)}
-                      aria-label={`${rows[i].label} on ${site}`}
-                      onClick={() => toggle([i], !picked.has(i))}
-                    />
-                    <span className="grow">{rows[i].label}</span>
+                    <span className="named">
+                      <ChangeTile action={rows[i].change.action} name={rows[i].name} size="xs" />
+                      {rows[i].label}
+                    </span>
                     <Versions from={rows[i].from} to={rows[i].to} />
                   </li>
                 ))}
               </ul>
             </section>
-          );
-        })
-      ) : (
-        <ul className="plan-list confirm">
-          {chosen.map((r, i) => (
-            <li key={i}>
-              <span className="grow">
-                <b>{r.site}</b>, {r.label}
-              </span>
-              <Versions from={r.from} to={r.to} />
-            </li>
           ))}
-        </ul>
+        </div>
       )}
     </Sheet>
   );
@@ -204,6 +244,7 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
   const back = items.filter((i) => i.state === "rolled_back").length;
   const notDone = [failed.length && `${failed.length} failed`, back && `${back} rolled back`].filter(Boolean).join(", ");
   const over = job?.finished_at != null;
+  const retry = over && failed.length > 0;
   const summary = !job
     ? "Starting…"
     : over
@@ -217,12 +258,17 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
     <Sheet
       title={over ? title : `${title}: running`}
       intro={<span role="status">{summary}</span>}
+      steps={steps}
       onClose={onClose}
       footer={
         <>
           <span className="grow" />
-          {over && failed.length > 0 && (
+          <Button kind={over && !retry ? "primary" : undefined} onClick={onClose}>
+            {over ? "Close" : "Hide this panel"}
+          </Button>
+          {retry && (
             <Button
+              kind="primary"
               onClick={() =>
                 onRetry(
                   failed.filter((i) => i.site_id != null).map((i) => ({ site_id: i.site_id!, action: i.action })),
@@ -230,39 +276,55 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
                 )
               }
             >
+              <Glyph name="refresh" />
               Try the {plural(failed.length, "failed change")} again
             </Button>
           )}
-          <Button kind={over ? "primary" : undefined} onClick={onClose}>
-            {over ? "Close" : "Hide this panel"}
-          </Button>
         </>
       }
     >
-      {steps}
+      <div className="jobmeter-head" aria-hidden="true">
+        <b>
+          {finished} of {items.length} finished
+        </b>
+        {notDone && <span>{notDone}</span>}
+      </div>
       <div
-        className="bar-progress"
+        className="jobmeter"
         role="progressbar"
         aria-label="Changes finished"
         aria-valuemin={0}
         aria-valuemax={items.length || 1}
         aria-valuenow={finished}
       >
-        <span style={{ width: `${items.length ? (finished / items.length) * 100 : 0}%` }} />
+        <i style={{ width: `${items.length ? (finished / items.length) * 100 : 0}%` }} />
       </div>
-      <ul className="plan-list progress">
-        {items.map((i) => (
-          <li key={i.id}>
-            <span className={`tag state ${STATE_TONE[i.state]}`}>{STATE_WORD[i.state]}</span>
-            <span className="grow">
-              {i.site_name}, {i.label}
-              {i.state === "failed" && <span className="why danger">{i.message}</span>}
-              {i.state === "rolled_back" && <span className="why">{i.message}</span>}
-              {i.state === "done" && i.message && i.message !== "Done." && <span className="why">{i.message}</span>}
-            </span>
-            <Versions from={i.from_version} to={i.to_version} />
-          </li>
-        ))}
+      <ul className="jobprog">
+        {items.map((i) => {
+          const say =
+            i.state === "done"
+              ? [i.to_version && `now ${i.to_version}`, i.message !== "Done." && i.message]
+              : i.state === "failed" || i.state === "rolled_back"
+                ? [i.message]
+                : [i.from_version && i.to_version && `${i.from_version} → ${i.to_version}`];
+          return (
+            <li key={i.id} className={i.state}>
+              <Glyph name={STATE_ICON[i.state]} />
+              <span className="named">
+                <ChangeTile action={i.action} size="sm" />
+                <span>
+                  <b>{i.label}</b>
+                  <small>
+                    {[i.site_name, ...say].filter(Boolean).map((t, k) => (
+                      <span key={k}>{t}</span>
+                    ))}
+                  </small>
+                </span>
+              </span>
+              <span className={`meta ${STATE_TONE[i.state]}`}>{STATE_WORD[i.state]}</span>
+            </li>
+          );
+        })}
       </ul>
     </Sheet>
   );

@@ -1,3 +1,4 @@
-IBM Plex Sans, IBM Plex Mono (SIL Open Font License 1.1, IBM) and Newsreader
-(SIL Open Font License 1.1, Production Type), latin subset from Google Fonts.
-Same files as `docs/design/fonts/`.
+Figtree (body), Outfit (titles and numbers) and JetBrains Mono (labels, versions, keys), latin subset from
+Google Fonts, variable. Each is under the SIL Open Font License 1.1; the copyright lines and the licence are in
+`OFL-Figtree.txt`, `OFL-Outfit.txt` and `OFL-JetBrainsMono.txt`, and travel with the font files. Same files as
+the redesign bundles in `docs/design/redesign/source/`.

@@ -1,22 +1,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// A side sheet over the page (bulk actions, adding a site). Esc closes it.
+// A side sheet over the page (bulk actions, editing), or a centred dialog (adding a site). Esc closes it.
 import { useEffect, useRef, type ReactNode } from "react";
+import { Glyph } from "./ui";
 
 const FOCUSABLE = "input:not([disabled]), textarea:not([disabled]), select, button:not([disabled]), [href]";
 
 type Props = {
   title: string;
   intro?: ReactNode;
-  footer: ReactNode;
+  /** Under the title and intro, in the head: a stepper (components/JobSheet.tsx). */
+  steps?: ReactNode;
+  /** A tile before the title, like the design's dialogs. */
+  icon?: ReactNode;
+  /** A centred dialog instead of the side sheet. */
+  dialog?: boolean;
+  /** The foot's buttons; a dialog that only shows something may have none. */
+  footer?: ReactNode;
   onClose: () => void;
   children: ReactNode;
 };
 
-export function Sheet({ title, intro, footer, onClose, children }: Props) {
+export function Sheet({ title, intro, steps, icon, dialog, footer, onClose, children }: Props) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLElement>("input, textarea, select, button")?.focus();
+    // The head's close button is last in line, so focus lands on the sheet's first real control.
+    ref.current?.querySelector<HTMLElement>("input, textarea, select, button:not(.sheet-x)")?.focus();
     return () => opener?.focus?.();
   }, []);
   return (
@@ -24,7 +33,7 @@ export function Sheet({ title, intro, footer, onClose, children }: Props) {
       <div className="scrim" onClick={onClose} />
       <aside
         ref={ref}
-        className="sheet"
+        className={dialog ? "sheet dialog" : "sheet"}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -47,11 +56,18 @@ export function Sheet({ title, intro, footer, onClose, children }: Props) {
         }}
       >
         <header>
-          <h2>{title}</h2>
-          {intro && <p>{intro}</p>}
+          {icon}
+          <div>
+            <h2>{title}</h2>
+            {intro && <p>{intro}</p>}
+            {steps}
+          </div>
+          <button type="button" className="icon-btn sheet-x" aria-label="Close" data-tip="Close (Esc)" onClick={onClose}>
+            <Glyph name="x" />
+          </button>
         </header>
         <div className="content">{children}</div>
-        <footer>{footer}</footer>
+        {footer && <footer>{footer}</footer>}
       </aside>
     </>
   );

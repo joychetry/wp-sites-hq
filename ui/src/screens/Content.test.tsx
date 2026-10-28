@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Content (list, editor with block-safe body, terms, featured image, trash) and Media.
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render as draw, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
+import type { ReactElement, ReactNode } from "react";
 import { Content } from "./Content";
 import { blockLabel, toBlocks } from "./Editor";
 import { Media } from "./Media";
 import { site, choose } from "../test-fixtures";
+import { HeadSlot } from "../components/ui";
 import { contentBlocked, type Post, type PostType } from "../api";
+
+// The page head's action slot, as App gives it: the screen's main actions render there.
+const head = document.body.appendChild(document.createElement("div"));
+const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider value={head}>{children}</HeadSlot.Provider>;
+const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -95,13 +102,15 @@ test("lists a site's entries, pages through them, and says why an older site can
   const table = await screen.findByRole("table", { name: "Pages" });
   expect(within(table).getByRole("button", { name: "Menu" })).toBeInTheDocument();
   expect(within(table).getByText("Draft")).toBeInTheDocument();
-  expect(screen.getByText("Page 1 of 2, 21 entries")).toBeInTheDocument();
+  expect(screen.getByText("1–1 of 21 pages")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Next page" }));
   await waitFor(() => expect(calls.at(-1)).toEqual(["content_list", { id: 1, query: { post_type: "page", page: 2 } }]));
   fireEvent.click(await screen.findByRole("button", { name: "Books" }));
   choose(screen.getByRole("combobox", { name: "Show" }), "trash");
-  fireEvent.change(screen.getByRole("textbox", { name: "Search books" }), { target: { value: " blue " } });
-  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  const box = screen.getByRole("searchbox", { name: "Search books" });
+  fireEvent.change(box, { target: { value: " blue " } });
+  // Enter in the box submits its form.
+  fireEvent.submit(box.closest("form")!);
   await waitFor(() => expect(calls.at(-1)).toEqual(["content_list", { id: 1, query: { post_type: "cm_book", status: "trash", search: "blue", page: 1 } }]));
   choose(screen.getByRole("combobox", { name: "Site" }), "2");
   expect(await screen.findByText(/Classic Monks on this site is older/)).toBeInTheDocument();

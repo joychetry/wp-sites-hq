@@ -2,10 +2,11 @@
 // Updates, the Plugins and Themes matrix, Install and the job sheet.
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
-import { Updates, updatesOf } from "./Updates";
-import { Matrix, olderStable } from "./Matrix";
+import { fixes, Updates, updatesOf } from "./Updates";
+import { Matrix, cellOf, olderStable } from "./Matrix";
 import { Install } from "./Install";
 import { JobSheet, type PlanRow } from "../components/JobSheet";
+import { HeadSlot } from "../components/ui";
 import { site } from "../test-fixtures";
 import type { Item, Job, SiteInventory } from "../api";
 
@@ -36,10 +37,11 @@ const INV = new Map([
 
 test("Updates lists every waiting update, says which sites are left out, and plans them", () => {
   const onPlan = vi.fn();
-  render(<Updates sites={[B, A, BASIC, DOWN]} inventory={INV} onPlan={onPlan} />);
+  render(<HeadSlot.Provider value={document.body}><Updates sites={[B, A, BASIC, DOWN]} inventory={INV} onPlan={onPlan} /></HeadSlot.Provider>);
   const table = screen.getByRole("table", { name: "Updates waiting" });
-  // Alpha: WordPress, WooCommerce, translations; Beta: WooCommerce. Sorted by site.
-  expect(within(table).getAllByRole("row")).toHaveLength(5);
+  // The head, then Alpha (WordPress, WooCommerce, translations) and Beta (WooCommerce), each under its site's row.
+  expect(within(table).getAllByRole("row")).toHaveLength(7);
+  expect(within(table).getByRole("checkbox", { name: "Select every update on Alpha" })).toBeInTheDocument();
   expect(within(table).getByText("7.1.4")).toBeInTheDocument();
   const out = screen.getByRole("region", { name: "Sites not in this list" });
   expect(out).toHaveTextContent("Basic mode can't see updates");
@@ -56,11 +58,22 @@ test("Updates lists every waiting update, says which sites are left out, and pla
 
 test("Updates: nothing waiting, and reading every site again", async () => {
   mockInvoke.mockResolvedValue(null);
-  render(<Updates sites={[BASIC]} inventory={INV} onPlan={vi.fn()} />);
+  render(<HeadSlot.Provider value={document.body}><Updates sites={[BASIC]} inventory={INV} onPlan={vi.fn()} /></HeadSlot.Provider>);
   expect(screen.getByText("No updates waiting.")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Read every site again" }));
   expect(mockInvoke).toHaveBeenCalledWith("inventory_refresh", { id: undefined });
   await waitFor(() => expect(screen.getByRole("button", { name: "Read every site again" })).toBeEnabled());
+});
+
+test("Updates marks an update that fixes a known vulnerability, and only when the new version has the fix", () => {
+  const vuln = { kind: "plugin" as const, id: WOO, name: "WooCommerce", installed: "10.2.0", title: "Stored XSS", severity: "high", fixed_in: "10.3.0", link: null };
+  const report = (fixed_in: string) => ({ site_id: 2, checked_at: 0, vulnerabilities: [{ ...vuln, fixed_in }], abandoned: [], checksums: null, notes: [] });
+  const [woo] = updatesOf(B, INV.get(2));
+  expect(fixes(woo, report("10.3.0"))?.title).toBe("Stored XSS");
+  expect(fixes(woo, report("10.10.0"))).toBeUndefined();
+  render(<HeadSlot.Provider value={document.body}><Updates sites={[B]} inventory={INV} reports={[report("10.3.0")]} onPlan={vi.fn()} /></HeadSlot.Provider>);
+  expect(screen.getByText("Security fix")).toHaveClass("danger");
+  expect(screen.getByText("Action needed")).toBeInTheDocument();
 });
 
 test("updatesOf skips sites that need a sign-in or can't see updates", () => {
@@ -72,28 +85,66 @@ test("updatesOf skips sites that need a sign-in or can't see updates", () => {
 
 function matrix(over: Partial<Omit<React.ComponentProps<typeof Matrix>, "onPlan" | "onRun">> = {}) {
   const props = { kind: "plugins" as const, sites: [A, B, BASIC], inventory: INV, onPlan: vi.fn(), onRun: vi.fn(), onInstall: vi.fn(), ...over };
-  render(<Matrix {...props} />);
+  // The page head's action slot (App.tsx), where the screen puts Install and Update.
+  const slot = document.createElement("div");
+  document.body.append(slot);
+  render(
+    <HeadSlot.Provider value={slot}>
+      <Matrix {...props} />
+    </HeadSlot.Provider>,
+  );
   return props;
 }
 
-test("the matrix has a cell per site and plugin, and arrow keys move between them", () => {
+test("the matrix has a row per plugin and a column per site, and arrow keys move between them", () => {
   const extra = new Map(INV);
   extra.set(2, inv(2, { plugins: [item(), item({ id: "akismet/akismet.php", name: "Akismet", version: "5.3", update: null, active: false })] }));
   matrix({ inventory: extra });
   const grid = screen.getByRole("grid", { name: "Plugins on every site" });
-  const cell = screen.getByRole("button", { name: /^WooCommerce on Alpha: 10.2.0, Update to 10.3.0 waiting/ });
+  expect(within(grid).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Plugin", "Alpha", "Basic", "Beta"]);
+  expect(within(grid).getAllByRole("rowheader").map((h) => h.querySelector("b")!.textContent)).toEqual(["WooCommerce", "Akismet"]);
+  const cell = screen.getByRole("button", { name: /^WooCommerce on Alpha: 10.2.0, Update to 10.3.0/ });
   expect(cell).toHaveAttribute("tabindex", "0");
-  expect(screen.getByRole("button", { name: /^Akismet on Alpha: not installed/ })).toHaveAttribute("tabindex", "-1");
-  expect(screen.getByRole("button", { name: /^Akismet on Beta: 5.3, not active/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^Akismet on Alpha: Not installed/ })).toHaveAttribute("tabindex", "-1");
+  expect(screen.getByRole("button", { name: /^Akismet on Beta: 5.3, Inactive/ })).toBeInTheDocument();
   cell.focus();
-  fireEvent.keyDown(grid, { key: "ArrowRight" });
-  expect(screen.getByRole("button", { name: /^Akismet on Alpha/ })).toHaveFocus();
   fireEvent.keyDown(grid, { key: "ArrowDown" });
+  expect(screen.getByRole("button", { name: /^Akismet on Alpha/ })).toHaveFocus();
+  fireEvent.keyDown(grid, { key: "ArrowRight" });
   expect(screen.getByRole("button", { name: /^Akismet on Basic/ })).toHaveFocus();
+  fireEvent.keyDown(grid, { key: "End" });
+  expect(screen.getByRole("button", { name: /^Akismet on Beta/ })).toHaveFocus();
+  fireEvent.keyDown(grid, { key: "ArrowUp" });
+  expect(screen.getByRole("button", { name: /^WooCommerce on Beta/ })).toHaveFocus();
   fireEvent.keyDown(grid, { key: "Home" });
-  expect(screen.getByRole("button", { name: /^WooCommerce on Basic/ })).toHaveFocus();
-  fireEvent.click(screen.getByRole("button", { name: "Show: every site. Change" }));
+  expect(screen.getByRole("button", { name: /^WooCommerce on Alpha/ })).toHaveFocus();
+  fireEvent.click(screen.getByRole("button", { name: "Show: Every site" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Only sites with updates" }));
   expect(screen.queryByRole("button", { name: /on Basic/ })).not.toBeInTheDocument();
+});
+
+test("the matrix finds a plugin by name and filters by status", () => {
+  const extra = new Map(INV);
+  extra.set(2, inv(2, { plugins: [item({ update: null }), item({ id: "akismet/akismet.php", name: "Akismet", version: "5.3", update: null, active: false })] }));
+  matrix({ inventory: extra });
+  fireEvent.change(screen.getByRole("searchbox", { name: "Find a plugin" }), { target: { value: "akis" } });
+  expect(screen.queryByRole("button", { name: /^WooCommerce on/ })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Find a plugin" }), { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Status: Any" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Update ready" }));
+  expect(screen.queryByRole("button", { name: /^Akismet on/ })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^WooCommerce on Alpha/ })).toHaveAttribute("tabindex", "0");
+});
+
+test("a cell says what state it is in, in words", () => {
+  const vuln = { kind: "plugin" as const, id: WOO, name: "WooCommerce", installed: "10.2.0", title: "XSS", severity: "high", fixed_in: "10.3.0", link: null };
+  expect(cellOf("plugins", item(), vuln)).toEqual({ tone: "vuln", word: "Vulnerable · fix ready" });
+  expect(cellOf("plugins", item({ update: null }), vuln)).toEqual({ tone: "vuln", word: "Vulnerable" });
+  expect(cellOf("plugins", item({ active: false }))).toEqual({ tone: "up", word: "Update to 10.3.0 · inactive" });
+  expect(cellOf("themes", item())).toEqual({ tone: "up", word: "Update to 10.3.0 · active" });
+  expect(cellOf("plugins", item({ update: null }))).toEqual({ tone: "on", word: "Active" });
+  expect(cellOf("themes", item({ update: null, active: false }))).toEqual({ tone: "idle", word: "Installed" });
+  expect(cellOf("plugins", undefined)).toEqual({ tone: "none", word: "Not installed" });
 });
 
 test("the inspector updates, deactivates and turns automatic updates on for one site", () => {
@@ -102,7 +153,7 @@ test("the inspector updates, deactivates and turns automatic updates on for one 
   const insp = screen.getByRole("complementary", { name: "WooCommerce on Alpha" });
   fireEvent.click(within(insp).getByRole("button", { name: "Update to 10.3.0" }));
   expect(p.onRun).toHaveBeenLastCalledWith("Update WooCommerce on Alpha", [{ site_id: 1, action: { do: "update_plugin", plugin: WOO } }]);
-  fireEvent.click(within(insp).getByRole("button", { name: "Turn automatic updates on" }));
+  fireEvent.click(within(insp).getByRole("switch", { name: "Automatic updates" }));
   expect(p.onRun.mock.calls[1][1][0].action).toEqual({ do: "auto_update_plugin", plugin: WOO, on: true });
   fireEvent.click(within(insp).getByRole("button", { name: "Deactivate" }));
   expect(p.onPlan).toHaveBeenLastCalledWith("Deactivate WooCommerce on Alpha", [expect.objectContaining({ label: "Deactivate WooCommerce" })], "confirm", true);
@@ -130,15 +181,33 @@ test("rolling back asks the site for older versions, then confirms as a risky ch
   fireEvent.click(screen.getByRole("button", { name: /^WooCommerce on Alpha/ }));
   fireEvent.click(screen.getByRole("button", { name: "Choose an older version" }));
   expect(mockInvoke).toHaveBeenCalledWith("plugin_versions", { id: 1, plugin: WOO });
-  fireEvent.click(await screen.findByRole("button", { name: "Roll back to 10.1.0" }));
+  const sheet = await screen.findByRole("dialog", { name: "Roll back WooCommerce on Alpha" });
+  fireEvent.click(await within(sheet).findByRole("radio", { name: "10.1.0" }));
   // Only older stable releases: not the installed one, not newer ones, not betas or release candidates.
-  expect(screen.getAllByRole("button", { name: /^Roll back to/ }).map((b) => b.textContent)).toEqual(["Roll back to 10.1.0"]);
+  expect(within(sheet).getAllByRole("radio").map((b) => b.closest("label")!.textContent)).toEqual(["10.1.0"]);
+  expect(within(sheet).queryByRole("checkbox", { name: /automatic updates/ })).not.toBeInTheDocument();
+  fireEvent.click(within(sheet).getByRole("button", { name: "Roll back WooCommerce" }));
   expect(p.onPlan).toHaveBeenLastCalledWith(
     "Roll back WooCommerce on Alpha",
     [expect.objectContaining({ from: "10.2.0", to: "10.1.0", change: { site_id: 1, action: { do: "rollback_plugin", plugin: WOO, version: "10.1.0" } } })],
     "confirm",
     true,
   );
+});
+
+test("rolling back where automatic updates are on turns them off first", async () => {
+  mockInvoke.mockResolvedValue({ installed: "10.2.0", versions: [{ version: "10.1.0" }] });
+  const p = matrix({ inventory: new Map([[1, inv(1, { plugins: [item({ auto_update: true })] })]]), sites: [A] });
+  fireEvent.click(screen.getByRole("button", { name: /^WooCommerce on Alpha/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Choose an older version" }));
+  const sheet = await screen.findByRole("dialog", { name: "Roll back WooCommerce on Alpha" });
+  expect(await within(sheet).findByRole("radio", { name: "10.1.0" })).toBeChecked();
+  expect(within(sheet).getByRole("checkbox", { name: /^Turn automatic updates off/ })).toBeChecked();
+  fireEvent.click(within(sheet).getByRole("button", { name: "Roll back WooCommerce" }));
+  expect(p.onPlan.mock.lastCall![1].map((r: PlanRow) => r.change.action)).toEqual([
+    { do: "auto_update_plugin", plugin: WOO, on: false },
+    { do: "rollback_plugin", plugin: WOO, version: "10.1.0" },
+  ]);
 });
 
 test("Basic mode: activate and delete only, and an active plugin is deactivated first", () => {
@@ -221,11 +290,11 @@ test("a safe update that broke a site says it was rolled back and why, and isn't
 test("the job sheet goes plan, confirm, progress and only sends what stayed ticked", async () => {
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "job_start" ? job({ finished_at: null }) : job()));
   render(<JobSheet state={{ title: "Update WooCommerce on 2 sites", rows: ROWS, start: "plan" }} onClose={vi.fn()} />);
-  expect(screen.getByText("1. Plan")).toHaveAttribute("aria-current", "step");
+  expect(screen.getByText("Pick").closest("li")).toHaveAttribute("aria-current", "step");
   fireEvent.click(screen.getByRole("checkbox", { name: "Update WooCommerce on Beta" }));
   expect(screen.getByRole("checkbox", { name: "Every change on Beta" })).toHaveAttribute("aria-checked", "false");
   fireEvent.click(screen.getByRole("button", { name: "Review 1 change" }));
-  expect(screen.getByText("2. Confirm")).toHaveAttribute("aria-current", "step");
+  expect(screen.getByText("Review").closest("li")).toHaveAttribute("aria-current", "step");
   fireEvent.click(screen.getByRole("button", { name: "Back" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Every change on Beta" }));
   fireEvent.click(screen.getByRole("button", { name: "Review 2 changes" }));

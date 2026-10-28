@@ -22,7 +22,7 @@ const ROSA = { id: 1, name: "Rosa", email: "rosa@x.test", notes: "" };
 
 test("local matches come from sites, inventory and clients, one row per plugin", () => {
   const hits = localHits("WOO", [A, B], inv, [ROSA]);
-  expect(hits).toEqual([{ kind: "Plugins", key: "pluginswoocommerce/woocommerce.php", label: "WooCommerce", detail: "On Alpha (10.2.0), Beta (10.3.0, off)" }]);
+  expect(hits).toEqual([{ kind: "Plugins", key: "pluginswoocommerce/woocommerce.php", label: "WooCommerce", detail: "On Alpha (10.2.0), Beta (10.3.0, off)", pkg: { kind: "plugin", slug: "woocommerce", name: "WooCommerce" } }]);
   expect(localHits("rosa", [A, B], inv, [ROSA]).map((h) => `${h.kind}:${h.label}`)).toEqual(["Sites:Alpha", "Clients:Rosa"]);
   expect(localHits("  ", [A], inv, [ROSA])).toEqual([]);
 });
@@ -37,11 +37,14 @@ test("search shows local results and posts from each site, and names sites it co
   });
   const go = vi.fn();
   render(<Search sites={[A, B]} inventory={inv} query="beta" onGo={go} />);
-  const table = await screen.findByRole("table", { name: "Posts and pages found" });
-  const row = within(table).getByRole("row", { name: /Beta launch/ });
-  expect(within(row).getByText("Page")).toBeInTheDocument();
-  expect(within(row).getByText("Scheduled")).toBeInTheDocument();
-  fireEvent.click(within(row).getByRole("button", { name: "View Beta launch on Alpha" }));
+  const list = screen.getByRole("list", { name: "Results" });
+  const row = await waitFor(() => {
+    const li = within(list).getAllByRole("listitem").find((l) => l.textContent?.includes("Beta launch"));
+    expect(li).toBeDefined();
+    return li!;
+  });
+  expect(row).toHaveTextContent("Page · Alpha · Scheduled");
+  fireEvent.click(within(row).getByRole("button", { name: "View on Alpha: Beta launch" }));
   expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://alpha.test/beta", site: 1 });
   expect(screen.getByText("Not searched: Beta (No answer.)")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open on Sites: Beta" }));
@@ -53,13 +56,12 @@ test("a new search runs on submit, and a short one asks for more", async () => {
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "clients_list" ? [] : { hits: [], failed: [] }));
   render(<Search sites={[A]} inventory={inv} query="" onGo={() => {}} />);
   expect(screen.getByRole("heading", { name: "Search every site at once." })).toBeInTheDocument();
-  const box = screen.getByRole("textbox", { name: "Search everything" });
+  const box = screen.getByRole("searchbox", { name: "Search everything" });
   fireEvent.change(box, { target: { value: "a" } });
   expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
   fireEvent.change(box, { target: { value: "zz" } });
   fireEvent.submit(box.closest("form")!);
-  expect(await screen.findByText("No posts or pages match on any site.")).toBeInTheDocument();
-  expect(screen.getByText("No sites, plugins, themes or clients match.")).toBeInTheDocument();
+  expect(await screen.findByText("Nothing matches on any site: no sites, plugins, themes, clients, posts or pages.")).toBeInTheDocument();
 });
 
 test("the palette offers to search everything once two letters are typed", () => {
@@ -80,4 +82,19 @@ test("a failed search says why", async () => {
   });
   render(<Search sites={[A]} inventory={inv} query="ab" onGo={() => {}} />);
   await waitFor(() => expect(screen.getByText("Type at least two letters.")).toBeInTheDocument());
+});
+
+test("a post found opens in the editor from the results", async () => {
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    if (cmd === "clients_list") return [];
+    if (cmd === "content_search") return { hits: [{ site_id: 1, post_type: "post", id: 9, title: "Menu news", status: "publish", link: "https://alpha.test/news" }], failed: [] };
+    if (cmd === "content_types") return [{ name: "post", label: "Posts", singular: "Post", hierarchical: false, supports: ["title", "editor"], can_publish: true, can_delete: true, taxonomies: [], rest_base: "posts" }];
+    if (cmd === "content_get") return new Promise(() => {});
+    return null;
+  });
+  const ready = { ...A, capabilities: { ...A.capabilities, abilities: ["list-post-types"] } };
+  render(<Search sites={[ready]} inventory={inv} query="menu" onGo={() => {}} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Edit Menu news on Alpha" }));
+  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  expect(mockInvoke).toHaveBeenCalledWith("content_types", { id: 1 });
 });

@@ -1,0 +1,39 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Sites (board 02): tabs, search and a filter above a card with the sites; the site's panel beside it. */
+.sites .t td { height: calc(var(--row) + 14px); }
+.sites .t th.tick { width: 44px; }
+/* Ticked rows keep the ground; only the open row is tinted with the green edge (as in the design). */
+.sites .t tr.sel:not(.focus):not(:hover) td { background: var(--bg); }
+.sites .t tr.warn:not(.focus):not(:hover) td { background: var(--warn-paper); }
+.sites .t tr.focus td { background: var(--sel); }
+.sites .site > span { min-width: 0; }
+.sites .site b, .sites .site small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sites .t .tag .glyph { width: 11px; height: 11px; }
+.sites .card-foot { justify-content: space-between; flex-wrap: wrap; margin: 0; font-size: var(--fs-sm); }
+.sites .card-foot .keys .kbd { margin-right: 2px; }
+.sites .selbar { border-radius: 0 0 var(--radius-lg) var(--radius-lg); gap: 10px 14px; }
+.sites .selbar label { gap: var(--sp-2); font-size: var(--fs-sm); }
+.sites .selbar .btn.ghost { border-color: transparent; }
+/* The row's own buttons go first when the table gets narrow; the panel has the same actions. */
+@media (max-width: 1300px) {
+  .sites .acts-col { display: none; }
+}
+
+.site-pane section { display: grid; gap: var(--sp-3); align-content: start; }
+.site-pane section > h3 { margin: 0; }
+.site-pane .ihead .st.pill { flex: none; }
+.site-pane .dl { margin-top: var(--sp-1); }
+.site-pane .dim-2 { margin: 0; color: var(--text-2); }
+.site-pane .field-label { margin: var(--sp-1) 0 -6px; }
+.site-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.site-notes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: 12px; background: var(--panel); }
+.site-notes b { display: block; font-weight: 600; white-space: pre-wrap; overflow-wrap: anywhere; }
+.site-notes small { display: block; margin-top: 2px; font: 400 var(--fs-xs) var(--mono); color: var(--text-3); }
+.site-notes .icon-btn { margin: -6px -8px 0 0; }
+.site-notes .icon-btn .glyph { width: 16px; height: 16px; }
+.site-pane textarea.input { min-height: 64px; }
+.sites .t td .row.nowrap { flex-wrap: nowrap; }
+.sites .t .m { font: 500 var(--fs-sm) var(--mono); color: var(--text); }
+.sites .selbar b, .sites .selbar label { white-space: nowrap; }
+.sites .selbar .btn.ghost { color: inherit; }
+.sites .selbar .btn.ghost:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); }

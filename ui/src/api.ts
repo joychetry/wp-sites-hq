@@ -39,6 +39,8 @@ export type Site = {
   agent_access: boolean;
   client_id: number | null;
   client: string | null;
+  /** Changes when the cached favicon does (see `api.siteIcon`); null: no icon. */
+  icon: string | null;
 };
 
 export type Client = { id: number; name: string; email: string; notes: string };
@@ -231,6 +233,8 @@ export type Monitor = {
   down_since: number | null;
   uptime_day: number | null;
   uptime_month: number | null;
+  /** The last 24 hours, an hour each, oldest first: null where no check ran. */
+  day: ({ ms: number | null; up: boolean } | null)[];
   cert_expires: number | null;
   domain: string | null;
   domain_expires: number | null;
@@ -345,6 +349,10 @@ export type Approval = { id: number; tool: string; who: string; time: string; ex
 export const api = {
   status: () => invoke<CoreStatus>("core_status"),
   sites: () => invoke<Site[]>("sites_list"),
+  /** The site's favicon as a `data:` URL, or null. Load again when `Site.icon` changes. */
+  siteIcon: (id: number) => invoke<string | null>("site_icon", { id }),
+  packageIcons: () => invoke<Record<string, number>>("package_icons"),
+  packageIcon: (kind: "plugin" | "theme", slug: string) => invoke<string | null>("package_icon", { kind, slug }),
   addOAuth: (url: string) => invoke<Site>("site_add_oauth", { url }),
   addBasic: (url: string, username: string, password: string) =>
     invoke<Site>("site_add_basic", { url, username, password }),

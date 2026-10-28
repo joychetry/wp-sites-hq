@@ -1,13 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // A site's media library: browse, search, and import an image from a link (plan Phase 3).
-import { SearchInput } from "../components/controls";
+import "../styles/screens/media.css";
+import { dayLabel, SearchInput } from "../components/controls";
 import { Skeleton, toast } from "../components/feedback";
 import { useCallback, useEffect, useState } from "react";
 import { api, contentBlocked, type Media as Item, type Site } from "../api";
-import { Button } from "../components/ui";
+import { Button, Glyph } from "../components/ui";
 import { firstUsable, SitePick } from "./Content";
 
 const PAGE = 30;
+
+/** "image/jpeg" -> "JPEG", "application/pdf" -> "PDF". */
+const kind = (mime: string) => (mime.split("/")[1] ?? mime).replace(/^x-/, "").toUpperCase();
+
+/** An item's picture: the image itself, or a file glyph for anything else. */
+function Pic({ m, alt = "" }: { m: Item; alt?: string }) {
+  return (
+    <span className="mthumb-img">{m.mime.startsWith("image/") && m.url ? <img src={m.url} alt={alt} loading="lazy" /> : <Glyph name="file" />}</span>
+  );
+}
 
 export function Media({ sites }: { sites: Site[] }) {
   const [siteId, setSiteId] = useState<number | null>(() => firstUsable(sites));
@@ -24,6 +35,7 @@ export function Media({ sites }: { sites: Site[] }) {
   const [link, setLink] = useState("");
   const [alt, setAlt] = useState("");
   const [importing, setImporting] = useState(false);
+  const [picked, setPicked] = useState<number | null>(null);
 
   const load = useCallback(
     (p: number, keep = false) => {
@@ -68,6 +80,9 @@ export function Media({ sites }: { sites: Site[] }) {
     }
   };
 
+  // The picked item, or the newest one, shows its details beside the library.
+  const chosen = items?.find((m) => m.id === picked) ?? items?.[0] ?? null;
+
   let body;
   if (blocked) {
     body = (
@@ -85,85 +100,146 @@ export function Media({ sites }: { sites: Site[] }) {
       </div>
     );
   } else if (!items) {
-    body = (
-      <Skeleton label={`Reading ${site?.name}'s media library…`} />
-    );
+    body = <Skeleton label={`Reading ${site?.name}'s media library…`} />;
   } else if (items.length === 0) {
     body = (
       <div className="empty">
         <h2>{search ? "Nothing matches." : "The media library is empty."}</h2>
-        <p>{search ? "Try other words." : "Import an image from a link above."}</p>
+        <p>{search ? "Try other words." : "Import an image from a link."}</p>
       </div>
     );
   } else {
     body = (
       <>
-        <p className="legend" id="media-legend">
-          Newest first. The text under each image is its alt text, which screen readers read out.
+        <p className="sr-only" id="media-legend">
+          Newest first. Pick one to see its alt text, which screen readers read out, and its details.
         </p>
-        <ul className="media" aria-label={`${site?.name} media`} aria-describedby="media-legend">
+        <ul className="mthumbs" aria-label={`${site?.name} media`} aria-describedby="media-legend">
           {items.map((m) => (
             <li key={m.id}>
-              {m.mime.startsWith("image/") ? <img src={m.url} alt={m.alt} loading="lazy" /> : <span className="file mono">{m.mime}</span>}
-              <b className="cut" data-tip={m.title}>
-                {m.title || "No title"}
-              </b>
-              <span className={m.alt ? "" : "dim"}>{m.alt || "No alt text"}</span>
+              <button type="button" className="mthumb" aria-pressed={m.id === chosen?.id} onClick={() => setPicked(m.id)}>
+                <Pic m={m} />
+                <b data-tip={m.title}>{m.title || "No title"}</b>
+                <small>
+                  {kind(m.mime)}
+                  {m.date && ` · ${dayLabel(m.date) || m.date}`}
+                </small>
+              </button>
             </li>
           ))}
         </ul>
-        {more && (
-          <div className="pager">
-            <Button small onClick={() => load(page + 1)}>
-              Show more
-            </Button>
-          </div>
-        )}
       </>
     );
   }
 
   return (
-    <div className="scroll">
-      <div className="bar">
-        <SitePick sites={sites} value={current} onChange={setSiteId} />
-        {!blocked && (
+    <div className="scroll page">
+      <div className={blocked ? "stack" : "split-r"}>
+        <section className="card mlib" aria-label={site ? `Media library of ${site.name}` : "Media library"}>
           <form
-            className="row"
+            className="card-head"
             onSubmit={(e) => {
               e.preventDefault();
               setSearch(typed.trim());
             }}
           >
-            <SearchInput className="sm" aria-label="Search the media library" placeholder="Search the media library" value={typed} onChange={(e) => setTyped(e.target.value)} />
-            <Button small type="submit">
-              Search
-            </Button>
+            <SitePick sites={sites} value={current} onChange={setSiteId} />
+            {!blocked && (
+              <>
+                <SearchInput className="sm" aria-label="Search the media library" placeholder="Search the media library" value={typed} onChange={(e) => setTyped(e.target.value)} />
+                <Button small type="submit">
+                  Search
+                </Button>
+              </>
+            )}
           </form>
+          {body}
+          {items && items.length > 0 && !blocked && !error && (
+            <div className="card-foot">
+              <span className="count">
+                {items.length === 1 ? "1 item" : `${items.length} items`}
+                {more && " so far"}
+              </span>
+              {more && (
+                <Button small onClick={() => load(page + 1)}>
+                  Load more
+                </Button>
+              )}
+            </div>
+          )}
+        </section>
+        {!blocked && (
+          <div className="stack mside">
+            <form
+              className="card"
+              aria-labelledby="media-import"
+              onSubmit={(e) => {
+                e.preventDefault();
+                add();
+              }}
+            >
+              <div className="card-head">
+                <h2 id="media-import">
+                  <Glyph name="link" />
+                  Import an image
+                </h2>
+              </div>
+              <div className="card-body">
+                <label className="field">
+                  <span>Image link</span>
+                  <input className="input" type="url" spellCheck={false} placeholder="https://" value={link} onChange={(e) => setLink(e.target.value)} />
+                </label>
+                <div className="field">
+                  <label htmlFor="media-alt">Alt text</label>
+                  <input id="media-alt" className="input" aria-describedby="media-alt-help" placeholder="Describe the image for people who can't see it" value={alt} onChange={(e) => setAlt(e.target.value)} />
+                  <small id="media-alt-help">Screen readers read this aloud. Leave it empty only for decoration.</small>
+                </div>
+                <div>
+                  <Button kind="primary" className="disc" type="submit" disabled={importing || !link.trim()}>
+                    {importing ? "Importing…" : "Import the image"}
+                    <span className="btn-disc">
+                      <Glyph name="download" />
+                    </span>
+                  </Button>
+                </div>
+              </div>
+            </form>
+            {chosen && (
+              <section className="card" aria-label={`Selected: ${chosen.title || "No title"}`}>
+                <div className="card-body">
+                  <div className="mpicked">
+                    <Pic m={chosen} alt={chosen.alt} />
+                    <div>
+                      <b>{chosen.title || "No title"}</b>
+                      <span className="mono dim">{chosen.mime}</span>
+                    </div>
+                  </div>
+                  <dl className="dl">
+                    <div>
+                      <dt>Alt text</dt>
+                      <dd className={chosen.alt ? undefined : "dim"}>{chosen.alt || "No alt text"}</dd>
+                    </div>
+                    <div>
+                      <dt>Uploaded</dt>
+                      <dd>{dayLabel(chosen.date) || chosen.date || "not known"}</dd>
+                    </div>
+                    {chosen.url && (
+                      <div>
+                        <dt>File</dt>
+                        <dd>
+                          <button type="button" className="link" onClick={() => api.openLink(chosen.url).catch((e) => toast(String(e), { tone: "danger" }))}>
+                            Open the file
+                          </button>
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              </section>
+            )}
+          </div>
         )}
       </div>
-      {!blocked && (
-        <form
-          className="bar import"
-          onSubmit={(e) => {
-            e.preventDefault();
-            add();
-          }}
-        >
-          <label className="row pick grow">
-            <span>Image link</span>
-            <input className="input sm" placeholder="https://example.com/photo.jpg" value={link} onChange={(e) => setLink(e.target.value)} />
-          </label>
-          <label className="row pick">
-            <span>Alt text</span>
-            <input className="input sm" placeholder="What the image shows" value={alt} onChange={(e) => setAlt(e.target.value)} />
-          </label>
-          <Button kind="primary" small type="submit" disabled={importing || !link.trim()}>
-            {importing ? "Importing…" : "Import the image"}
-          </Button>
-        </form>
-      )}
-      {body}
     </div>
   );
 }

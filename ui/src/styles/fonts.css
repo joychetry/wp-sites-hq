@@ -1,33 +1,20 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Open Font Licence fonts, latin subset, bundled so the app looks the same offline. */
+/* Open Font Licence fonts (fonts/OFL-*.txt), latin subset, variable, bundled so the app looks the same offline. */
 @font-face {
-  font-family: "IBM Plex Sans";
-  font-weight: 100 700;
-  font-stretch: 85% 100%;
+  font-family: "Figtree";
+  font-weight: 300 900;
   font-display: swap;
-  src: url(../fonts/IBMPlexSans-normal-100-700.woff2) format("woff2");
+  src: url(../fonts/Figtree-normal-latin.woff2) format("woff2");
 }
 @font-face {
-  font-family: "IBM Plex Mono";
-  font-weight: 400;
+  font-family: "Outfit";
+  font-weight: 100 900;
   font-display: swap;
-  src: url(../fonts/IBMPlexMono-normal-400.woff2) format("woff2");
+  src: url(../fonts/Outfit-normal-latin.woff2) format("woff2");
 }
 @font-face {
-  font-family: "IBM Plex Mono";
-  font-weight: 500;
+  font-family: "JetBrains Mono";
+  font-weight: 100 800;
   font-display: swap;
-  src: url(../fonts/IBMPlexMono-normal-500.woff2) format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-weight: 600;
-  font-display: swap;
-  src: url(../fonts/IBMPlexMono-normal-600.woff2) format("woff2");
-}
-@font-face {
-  font-family: "Newsreader";
-  font-weight: 300 800;
-  font-display: swap;
-  src: url(../fonts/Newsreader-normal-300-800.woff2) format("woff2");
+  src: url(../fonts/JetBrainsMono-normal-latin.woff2) format("woff2");
 }

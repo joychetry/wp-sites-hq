@@ -49,12 +49,23 @@ pub struct Monitor {
     /// Share of checks that found it up, as a percentage.
     pub uptime_day: Option<f64>,
     pub uptime_month: Option<f64>,
+    /// The last 24 hours, an hour each, oldest first: None where no check ran.
+    pub day: Vec<Option<Hour>>,
     pub cert_expires: Option<i64>,
     pub domain: Option<String>,
     pub domain_expires: Option<i64>,
     /// Why there's no expiry date, when there isn't.
     pub domain_note: String,
     pub pagespeed: Option<PageSpeed>,
+}
+
+/// One hour of home page checks.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct Hour {
+    /// Average response time of the checks that found it up.
+    pub ms: Option<i64>,
+    /// Every check that hour found it up.
+    pub up: bool,
 }
 
 fn now() -> i64 {
@@ -356,6 +367,17 @@ impl Core {
                 };
                 m.uptime_day = share(24 * 3600)?;
                 m.uptime_month = share(30 * 24 * 3600)?;
+                m.day = vec![None; 24];
+                let mut hours = c.prepare_cached(
+                    "SELECT (unixepoch() - at) / 3600, CAST(avg(CASE WHEN up = 1 THEN ms END) AS INTEGER), min(up)
+                     FROM uptime WHERE site_id = ?1 AND at > unixepoch() - 24 * 3600 GROUP BY 1",
+                )?;
+                for h in hours.query_map([s.id], |r| Ok((r.get::<_, i64>(0)?, r.get(1)?, r.get::<_, i64>(2)?)))? {
+                    let (ago, ms, up) = h?;
+                    if let Some(slot) = usize::try_from(23 - ago).ok().and_then(|i| m.day.get_mut(i)) {
+                        *slot = Some(Hour { ms, up: up == 1 });
+                    }
+                }
                 if m.up == Some(false) {
                     m.down_since = c.query_row(
                         "SELECT min(at) FROM uptime WHERE site_id = ?1 AND up = 0
@@ -649,6 +671,12 @@ mod tests {
         assert_eq!(m.error, "The home page answered 503.");
         assert!(m.down_since.is_some());
         assert!((m.uptime_day.unwrap() - 100.0 / 3.0).abs() < 0.01);
+        // All three checks fall in this hour: the last slot, down at least once, timed by the one up check.
+        assert_eq!(m.day.len(), 24);
+        assert!(m.day[..23].iter().all(Option::is_none));
+        let hour = m.day[23].unwrap();
+        assert!(!hour.up);
+        assert!(hour.ms.is_some());
         site.state().home_status = 200;
         core.check_uptime(&core.site(s.id).unwrap()).await.unwrap();
         assert_eq!(core.monitors().unwrap()[0].down_since, None, "up again");

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Settings: how the app looks (remembered on this computer), how reports look,
 // Search Console and AgentedSEO, and your site list in and out.
-import { ColorInput, FilePicker, Menu, Slider } from "../components/controls";
-import { useEffect, useState } from "react";
+import { ColorInput, FilePicker, Slider } from "../components/controls";
+import { useEffect, useState, type ReactNode } from "react";
+import "../styles/screens/settings.css";
 import { api, type AppSettings, type GscStatus, type Imported } from "../api";
-import { Button } from "../components/ui";
+import { Button, Glyph, type GlyphName } from "../components/ui";
+import { Sheet } from "../components/Sheet";
 import { toast } from "../components/feedback";
 import { setTextSize, textSize, type Density, type ThemeChoice } from "../theme";
 
@@ -18,16 +20,32 @@ export function importNote(r: Imported): string {
   return `Imported: ${parts.join(", ")}.${missing}`;
 }
 
+const fail = (e: unknown) => toast(String(e), { tone: "danger" });
+
+/** A card with an icon and a title in its head. */
+function Card({ icon, title, id, children }: { icon: GlyphName; title: string; id: string; children: ReactNode }) {
+  return (
+    <section className="card" aria-labelledby={id}>
+      <div className="card-head">
+        <h2 id={id}>
+          <Glyph name={icon} />
+          {title}
+        </h2>
+      </div>
+      <div className="card-body">{children}</div>
+    </section>
+  );
+}
+
 function YourData() {
-  const [note, setNote] = useState<{ tone: "ok" | "danger"; text: string; path?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const exportAs = async (csv: boolean) => {
     setBusy(true);
     try {
       const path = await api.exportSites(csv);
-      setNote({ tone: "ok", text: `Saved ${path}`, path });
+      toast(`Saved ${path}`, { action: { label: "Show in folder", icon: "folder", run: () => api.showFile(path).catch(fail) } });
     } catch (e) {
-      setNote({ tone: "danger", text: String(e) });
+      fail(e);
     } finally {
       setBusy(false);
     }
@@ -36,70 +54,54 @@ function YourData() {
     if (!file) return;
     setBusy(true);
     try {
-      setNote({ tone: "ok", text: importNote(await api.importSites(await file.text())) });
+      const r = await api.importSites(await file.text());
+      // A list of sites left out is worth reading at leisure.
+      toast(importNote(r), { stay: r.not_connected.length > 0 });
     } catch (e) {
-      setNote({ tone: "danger", text: String(e) });
+      fail(e);
     } finally {
       setBusy(false);
     }
   };
   return (
-    <section>
-      <h2>Your site list, in and out</h2>
-      <p>
-        Export saves your sites with their groups, tags, notes, clients and costs into Downloads. Passwords and sign-ins
-        never go in the file. CSV has the site list only, for a spreadsheet. Import reads either back: connected sites
-        get the file's groups, tags, clients and notes, and costs are added once.
+    <Card icon="folder" title="Your data" id="set-data">
+      <p className="hint">
+        Take your sites, groups, tags, notes, clients and costs with you, or bring them in from another computer. Exports go into
+        Downloads; passwords and sign-ins never go in the file. CSV has the site list only, for a spreadsheet.
       </p>
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <Menu
-          small
-          label="Export the sites"
-          items={[
-            { label: "Export as JSON (for importing again)", run: () => exportAs(false), disabled: busy },
-            { label: "Export as CSV (for a spreadsheet)", run: () => exportAs(true), disabled: busy },
-          ]}
-        >
-          Export the sites
-        </Menu>
+      <div className="row acts-row">
+        <Button small disabled={busy} onClick={() => exportAs(false)}>
+          <Glyph name="download" />
+          Export as JSON
+        </Button>
+        <Button small disabled={busy} onClick={() => exportAs(true)}>
+          <Glyph name="download" />
+          Export as CSV
+        </Button>
         <FilePicker label="Import a JSON or CSV file" accept=".json,.csv,application/json,text/csv" disabled={busy} onFile={importFile} />
       </div>
-      <div role="status" className="notice">
-        {note && (
-          <p className={`alert ${note.tone}`}>
-            {note.text}{" "}
-            {note.path && (
-              <Button small onClick={() => api.showFile(note.path!).catch((e) => setNote({ tone: "danger", text: String(e) }))}>
-                Show in folder
-              </Button>
-            )}
-          </p>
-        )}
-      </div>
-    </section>
+    </Card>
   );
 }
 
 /** Report branding, and the search numbers reports may add. Both integrations start off. */
-function Reports() {
+function useReportSettings() {
   const [s, setS] = useState<AppSettings | null>(null);
   const [gsc, setGsc] = useState<GscStatus | null>(null);
-  const [client, setClient] = useState({ id: "", secret: "" });
-  const [note, setNote] = useState<{ tone: "ok" | "danger"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    api.appSettings().then(setS, (e) => setNote({ tone: "danger", text: String(e) }));
+    api.appSettings().then(setS, fail);
     api.gscStatus().then(setGsc, () => {});
   }, []);
-  if (!s) return null;
   const run = async (what: () => Promise<unknown>, done: string) => {
     setBusy(true);
-    setNote(null);
     try {
       await what();
-      setNote({ tone: "ok", text: done });
+      toast(done);
+      return true;
     } catch (e) {
-      setNote({ tone: "danger", text: String(e) });
+      fail(e);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -109,102 +111,185 @@ function Reports() {
       setS(await api.saveAppSettings(next));
       setGsc(await api.gscStatus());
     }, done);
+  return { s, setS, gsc, setGsc, busy, run, save };
+}
+type ReportSettings = ReturnType<typeof useReportSettings>;
+
+function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
+  const accent = /^#[0-9a-f]{6}$/i.test(s.report_accent) ? s.report_accent : "#111111";
   return (
-    <>
-      <section>
-        <h2>Reports</h2>
-        <p>How monthly reports for your clients look. Leave the name empty to show none.</p>
-        <label className="field">
-          <span>Your business name</span>
-          <input className="input" value={s.report_name} onChange={(e) => setS({ ...s, report_name: e.target.value })} />
-        </label>
-        <label className="field">
-          <span>Line at the bottom of each page</span>
-          <input className="input" placeholder="hello@yourstudio.com, +44 20 7946 0000" value={s.report_footer} onChange={(e) => setS({ ...s, report_footer: e.target.value })} />
-        </label>
-        <div className="field">
-          <span>Accent colour</span>
-          <ColorInput label="Accent colour" value={s.report_accent} onChange={(c) => setS({ ...s, report_accent: c })} />
-          <small>Empty uses black.</small>
+    <Card icon="file" title="Reports" id="set-reports">
+      <label className="field">
+        <span>Your business name</span>
+        <input className="input" placeholder="Shown at the top of every report" value={s.report_name} onChange={(e) => setS({ ...s, report_name: e.target.value })} />
+      </label>
+      <label className="field">
+        <span>Line at the bottom of each page</span>
+        <input className="input" placeholder="For example, your website and phone number" value={s.report_footer} onChange={(e) => setS({ ...s, report_footer: e.target.value })} />
+      </label>
+      <div className="field">
+        <span>Accent colour</span>
+        <ColorInput label="Accent colour" value={s.report_accent} onChange={(c) => setS({ ...s, report_accent: c })} />
+        <small>Empty uses black.</small>
+      </div>
+      <label className="row check">
+        <input type="checkbox" checked={s.white_label} onChange={(e) => setS({ ...s, white_label: e.target.checked })} />
+        <span>White label: leave out &ldquo;Made with Monks Central&rdquo;</span>
+      </label>
+      <div className="rpreview" aria-label="Preview" role="group">
+        <span className="label">Preview</span>
+        <div style={{ borderTopColor: accent }}>
+          <b>{s.report_name || "[Your business name]"}</b>
+          <span>Monthly report · your client</span>
+          {(s.report_footer || !s.white_label) && (
+            <small>
+              <span>{s.report_footer}</span>
+              {!s.white_label && <span>Made with Monks Central</span>}
+            </small>
+          )}
         </div>
-        <label className="row check">
-          <input type="checkbox" checked={s.white_label} onChange={(e) => setS({ ...s, white_label: e.target.checked })} />
-          <span>White label: leave out &ldquo;Made with Monks Central&rdquo;</span>
-        </label>
-        <Button small kind="primary" disabled={busy} onClick={() => save(s)}>
+      </div>
+      <div>
+        <Button kind="primary" className="disc" disabled={busy} onClick={() => save(s)}>
           Save report settings
+          <span className="btn-disc">
+            <Glyph name="check" />
+          </span>
         </Button>
-      </section>
-      <section>
-        <h2>Search numbers in reports</h2>
-        <p>Both are off until you turn them on. Nothing is sent to Google while Search Console is off.</p>
-        <label className="row check">
-          <input type="checkbox" role="switch" checked={s.agentedseo} disabled={busy} onChange={(e) => save({ ...s, agentedseo: e.target.checked }, e.target.checked ? "AgentedSEO numbers go into reports for sites that have it." : "AgentedSEO is off.")} />
-          <span>Read SEO numbers from AgentedSEO on sites that have it</span>
-        </label>
-        <label className="row check">
-          <input type="checkbox" role="switch" checked={s.search_console} disabled={busy} onChange={(e) => save({ ...s, search_console: e.target.checked }, e.target.checked ? "Search Console is on. Add your Google client next." : "Search Console is off.")} />
-          <span>Add Google Search Console clicks and searches to reports</span>
-        </label>
-        {s.search_console && gsc && (
-          <div className="indent">
-            <p className="dim">
-              {gsc.connected
-                ? "Your Google account is connected, read only."
-                : gsc.client
-                  ? "Your Google client is saved. Connect your Google account next."
-                  : "Make an OAuth client of the Desktop app type in Google Cloud, with the Search Console API turned on, then paste its ID and secret here. They stay in this computer's keychain."}
-            </p>
-            {!gsc.client && (
-              <>
-                <label className="field">
-                  <span>Client ID</span>
-                  <input className="input" autoComplete="off" value={client.id} onChange={(e) => setClient({ ...client, id: e.target.value })} />
-                </label>
-                <label className="field">
-                  <span>Client secret</span>
-                  <input className="input" type="password" autoComplete="off" value={client.secret} onChange={(e) => setClient({ ...client, secret: e.target.value })} />
-                </label>
-              </>
-            )}
-            <div className="row" style={{ flexWrap: "wrap" }}>
-              {!gsc.client && (
-                <Button small disabled={busy || !client.id.trim() || !client.secret.trim()} onClick={() => run(async () => setGsc(await api.gscSetClient(client.id, client.secret)), "Saved your Google client.")}>
-                  Save the client
-                </Button>
-              )}
-              {gsc.client && !gsc.connected && (
+      </div>
+    </Card>
+  );
+}
+
+function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: AppSettings }) {
+  const [setup, setSetup] = useState(false);
+  const [client, setClient] = useState({ id: "", secret: "" });
+  const gscLine = !s.search_console
+    ? "Clicks and searches for each site. Nothing is sent to Google while this is off."
+    : gsc?.connected
+      ? "Your Google account is connected, read only."
+      : gsc?.client
+        ? "Your Google client is saved. Connect your Google account next."
+        : "Needs your own Google client. Set it up to start.";
+  return (
+    <Card icon="chart" title="Data sources" id="set-sources">
+      <div className="dsrc">
+        <input
+          type="checkbox"
+          role="switch"
+          id="ds-seo"
+          aria-describedby="ds-seo-d"
+          checked={s.agentedseo}
+          disabled={busy}
+          onChange={(e) => save({ ...s, agentedseo: e.target.checked }, e.target.checked ? "AgentedSEO numbers go into reports for sites that have it." : "AgentedSEO is off.")}
+        />
+        <div>
+          <label htmlFor="ds-seo">Read SEO numbers from AgentedSEO</label>
+          <span id="ds-seo-d">On sites that have it installed.</span>
+        </div>
+      </div>
+      <div className="dsrc">
+        <input
+          type="checkbox"
+          role="switch"
+          id="ds-gsc"
+          aria-describedby="ds-gsc-d"
+          checked={s.search_console}
+          disabled={busy}
+          onChange={async (e) => {
+            const on = e.target.checked;
+            const ok = await save({ ...s, search_console: on }, on ? "Search Console is on. Add your Google client next." : "Search Console is off.");
+            if (ok && on && !gsc?.client) setSetup(true);
+          }}
+        />
+        <div>
+          <label htmlFor="ds-gsc">Add Google Search Console to reports</label>
+          <span id="ds-gsc-d">{gscLine}</span>
+          {s.search_console && gsc?.client && (
+            <div className="row acts-row">
+              {!gsc.connected && (
                 <Button small kind="primary" disabled={busy} onClick={() => run(async () => setGsc(await api.gscConnect()), "Connected to Search Console.")}>
                   Connect your Google account
                 </Button>
               )}
-              {gsc.client && (
-                <Button small disabled={busy} onClick={() => run(async () => setGsc(await api.gscForget()), "Removed the Google client and sign-in from this computer.")}>
-                  Remove the Google client
-                </Button>
-              )}
+              <Button small className="ghost" disabled={busy} onClick={() => run(async () => setGsc(await api.gscForget()), "Removed the Google client and sign-in from this computer.")}>
+                Remove the Google client
+              </Button>
             </div>
-            {busy && !gsc.connected && gsc.client && <p className="dim">Finish signing in to Google in your browser.</p>}
-          </div>
-        )}
-        <div role="status" className="notice">
-          {note && <p className={`alert ${note.tone}`}>{note.text}</p>}
+          )}
+          {busy && s.search_console && gsc?.client && !gsc.connected && <span>Finish signing in to Google in your browser.</span>}
         </div>
-      </section>
-    </>
+        {s.search_console && gsc && !gsc.client && (
+          <Button small onClick={() => setSetup(true)}>
+            Set up
+          </Button>
+        )}
+      </div>
+      {setup && (
+        <Sheet
+          dialog
+          title="Google Search Console"
+          icon={
+            <span className="tile neutral">
+              <Glyph name="chart" />
+            </span>
+          }
+          intro="Add your own OAuth client so reports can read clicks and searches."
+          onClose={() => setSetup(false)}
+          footer={
+            <>
+              <Button onClick={() => setSetup(false)}>Cancel</Button>
+              <Button
+                kind="primary"
+                className="disc"
+                disabled={busy || !client.id.trim() || !client.secret.trim()}
+                onClick={async () => {
+                  if (await run(async () => setGsc(await api.gscSetClient(client.id, client.secret)), "Saved your Google client.")) setSetup(false);
+                }}
+              >
+                Save the client
+                <span className="btn-disc">
+                  <Glyph name="check" />
+                </span>
+              </Button>
+            </>
+          }
+        >
+          <p className="callout">
+            <Glyph name="info" />
+            <span>Make an OAuth client of the Desktop app type in Google Cloud, with the Search Console API turned on, then paste its ID and secret here.</span>
+          </p>
+          <label className="field">
+            <span>Client ID</span>
+            <input className="input mono" spellCheck={false} autoComplete="off" value={client.id} onChange={(e) => setClient({ ...client, id: e.target.value })} />
+          </label>
+          <div className="field">
+            <label className="field">
+              <span>Client secret</span>
+              <input className="input" type="password" autoComplete="off" aria-describedby="gsc-kept" value={client.secret} onChange={(e) => setClient({ ...client, secret: e.target.value })} />
+            </label>
+            <small className="lockline" id="gsc-kept">
+              <Glyph name="lock" />
+              Kept in this computer&rsquo;s keychain.
+            </small>
+          </div>
+        </Sheet>
+      )}
+    </Card>
   );
 }
 
 function Choice<T extends string>({ label, value, options, onChange }: {
   label: string;
   value: T;
-  options: [T, string][];
+  options: [T, string, GlyphName?][];
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="segmented" role="group" aria-label={label}>
-      {options.map(([v, text]) => (
+    <div className="segmented inline" role="group" aria-label={label}>
+      {options.map(([v, text, icon]) => (
         <button key={v} type="button" aria-pressed={v === value} onClick={() => onChange(v)}>
+          {icon && <Glyph name={icon} />}
           {text}
         </button>
       ))}
@@ -223,7 +308,7 @@ function AppUpdate() {
       if (!ready) toast("You have the newest version of Monks Central.");
     } catch (e) {
       setState({});
-      toast(String(e), { tone: "danger" });
+      fail(e);
     }
   };
   const install = async () => {
@@ -232,47 +317,27 @@ function AppUpdate() {
       await api.updateInstall();
     } catch (e) {
       setState({ ready: state.ready });
-      toast(String(e), { tone: "danger" });
+      fail(e);
     }
   };
   return (
-    <section>
-      <h2>Updates for Monks Central</h2>
-      <p>New versions come from the Monks Central releases on GitHub. Each one is signed, and Monks Central checks the signature before it installs anything. Installing one restarts the app; your sites and settings stay.</p>
-      <div className="row">
+    <Card icon="refresh" title="Updates for Monks Central" id="set-app">
+      <p className="hint">
+        New versions come from the Monks Central releases on GitHub. Each one is signed, and Monks Central checks the signature before it
+        installs anything. Installing one restarts the app; your sites and settings stay.
+      </p>
+      <div>
         {state.ready ? (
-          <Button kind="primary" disabled={!!state.busy} onClick={install}>
+          <Button small kind="primary" disabled={!!state.busy} onClick={install}>
             {state.busy === "install" ? "Installing…" : `Install ${state.ready} and restart`}
           </Button>
         ) : (
-          <Button disabled={!!state.busy} onClick={check}>
+          <Button small disabled={!!state.busy} onClick={check}>
             {state.busy === "check" ? "Checking…" : "Check for a new version"}
           </Button>
         )}
       </div>
-    </section>
-  );
-}
-
-function TextSize() {
-  const [pct, setPct] = useState(textSize);
-  return (
-    <section>
-      <h2>Text size</h2>
-      <p>Makes every word in Monks Central bigger or smaller. Your computer's own text size still applies.</p>
-      <Slider
-        label="Text size"
-        value={pct}
-        min={90}
-        max={130}
-        step={10}
-        format={(n) => `${n}%`}
-        onChange={(n) => {
-          setPct(n);
-          setTextSize(n);
-        }}
-      />
-    </section>
+    </Card>
   );
 }
 
@@ -284,40 +349,61 @@ type Props = {
 };
 
 export function Settings({ theme, setTheme, density, setDensity }: Props) {
+  const [pct, setPct] = useState(textSize);
+  const rs = useReportSettings();
   return (
-    <div className="scroll">
-      <div className="settings">
-        <section>
-          <h2>Theme</h2>
-          <p>Light, dark, or the same as your computer.</p>
-          <Choice
-            label="Theme"
-            value={theme}
-            onChange={setTheme}
-            options={[
-              ["system", "Same as my computer"],
-              ["light", "Light"],
-              ["dark", "Dark"],
-            ]}
-          />
-        </section>
-        <section>
-          <h2>Row height</h2>
-          <p>Comfortable is easier to read. Compact fits more sites on the screen.</p>
-          <Choice
-            label="Row height"
-            value={density}
-            onChange={setDensity}
-            options={[
-              ["comfortable", "Comfortable"],
-              ["compact", "Compact"],
-            ]}
-          />
-        </section>
-        <TextSize />
-        <AppUpdate />
-        <Reports />
-        <YourData />
+    <div className="scroll page setpage">
+      <div className="g2">
+        <div className="stack">
+          <Card icon="sun" title="Look" id="set-look">
+            <div className="field">
+              <span>Theme</span>
+              <Choice
+                label="Theme"
+                value={theme}
+                onChange={setTheme}
+                options={[
+                  ["system", "Same as my computer", "monitor"],
+                  ["light", "Light", "sun"],
+                  ["dark", "Dark", "moon"],
+                ]}
+              />
+            </div>
+            <div className="field">
+              <span>Density</span>
+              <Choice
+                label="Density"
+                value={density}
+                onChange={setDensity}
+                options={[
+                  ["comfortable", "Comfortable"],
+                  ["compact", "Compact"],
+                ]}
+              />
+              <small>Comfortable is easier to read. Compact fits more sites on the screen.</small>
+            </div>
+            <div className="field">
+              <span>Text size</span>
+              <Slider
+                label="Text size"
+                value={pct}
+                min={90}
+                max={130}
+                step={10}
+                format={(n) => `${n}%`}
+                onChange={(n) => {
+                  setPct(n);
+                  setTextSize(n);
+                }}
+              />
+              <small>Makes every word in Monks Central bigger or smaller. Your computer&rsquo;s own text size still applies.</small>
+            </div>
+          </Card>
+          {rs.s && <DataSources {...rs} s={rs.s} />}
+          <YourData />
+          <AppUpdate />
+        </div>
+        {rs.s && <Reports {...rs} s={rs.s} />}
       </div>
     </div>
   );

@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Install a plugin from WordPress.org (search), a zip link, a zip on this computer
 // (plugin or theme, Classic Monks M8) or a bundle, on the sites you pick.
+import "../styles/screens/install.css";
 import { FilePicker, SearchInput } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, blocked, can, count, hasTool, type Bundle, type Found, type Site, type SiteInventory, type Staged } from "../api";
-import { Button } from "../components/ui";
+import { Button, Glyph } from "../components/ui";
+import { SiteTile } from "../components/SiteTile";
 import { toast } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import type { PlanRow } from "../components/JobSheet";
-import { slugOf } from "./Matrix";
+import { PkgTile, slugOf } from "../components/PkgTile";
 
 type Props = {
   sites: Site[];
@@ -105,8 +107,8 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
     setDeleting(false);
   };
   return (
-    <fieldset className="field" style={{ marginTop: 24 }}>
-      <legend>Or a bundle</legend>
+    <fieldset className="field">
+      <legend>Bundles</legend>
       {error && <p className="alert danger">{error}</p>}
       {editing ? (
         <>
@@ -120,29 +122,34 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
             <small>WordPress.org slugs (the end of the plugin's address there), or https links to zips.</small>
           </label>
           {deleting ? (
-            <div className="row">
+            <div className="row ins-acts">
               <span className="sum">Delete the {editing.name} bundle? Sites keep the plugins it installed.</span>
               <span className="grow" />
               <Button small onClick={() => setDeleting(false)}>
                 Keep it
               </Button>
               <Button small kind="danger" onClick={remove}>
+                <Glyph name="trash" />
                 Delete the bundle
               </Button>
             </div>
           ) : (
-            <div className="row">
+            <div className="row ins-acts">
               {editing.id > 0 && (
                 <Button small kind="danger" onClick={() => setDeleting(true)}>
+                  <Glyph name="trash" />
                   Delete the bundle
                 </Button>
               )}
               <span className="grow" />
-              <Button small onClick={() => setEditing(null)}>
+              <Button small className="ghost" onClick={() => setEditing(null)}>
                 Close without saving
               </Button>
-              <Button small kind="primary" disabled={!editing.name.trim() || !text.trim()} onClick={save}>
+              <Button small kind="primary" className="disc" disabled={!editing.name.trim() || !text.trim()} onClick={save}>
                 Save the bundle
+                <span className="btn-disc">
+                  <Glyph name="check" />
+                </span>
               </Button>
             </div>
           )}
@@ -150,24 +157,38 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
       ) : (
         <>
           {list.length === 0 && <p className="dim">A bundle installs several plugins in one go, like the ones every new shop gets.</p>}
-          <ul className="plain" aria-label="Bundles">
+          <ul className="ins-bundles" aria-label="Bundles">
             {list.map((b) => (
-              <li key={b.id} className="row">
-                <span className="grow">
-                  <b>{b.name}</b> <span className="dim">{b.plugins.map((p) => p.name || p.source.split("/").pop()).join(", ")}</span>
+              <li key={b.id}>
+                <span className="tile sm" aria-hidden="true">
+                  <Glyph name="package" />
                 </span>
-                <Button small aria-label={`Edit the ${b.name} bundle`} onClick={() => edit(b)}>
-                  Edit
+                <span className="grow">
+                  <b>{b.name}</b>
+                  <small className="named">
+                    <span className="tiles">
+                      {b.plugins.map((p) => !isLink(p.source) && <PkgTile key={p.source} kind="plugin" slug={p.source} name={p.name || p.source} size="xs" />)}
+                    </span>
+                    <span>
+                      {b.plugins.length === 1 ? "1 plugin" : `${b.plugins.length} plugins`}: {b.plugins.map((p) => p.name || p.source.split("/").pop()).join(", ")}
+                    </span>
+                  </small>
+                </span>
+                <Button small className="ghost" onClick={() => edit(b)}>
+                  Edit the {b.name} bundle
                 </Button>
-                <Button small onClick={() => onPick(b)}>
+                <Button small kind="soft" onClick={() => onPick(b)}>
                   Install {b.name}
                 </Button>
               </li>
             ))}
           </ul>
-          <Button small onClick={() => edit({ id: 0, name: "", plugins: [] })}>
-            New bundle
-          </Button>
+          <div>
+            <Button small className="ghost" onClick={() => edit({ id: 0, name: "", plugins: [] })}>
+              <Glyph name="plus" />
+              New bundle
+            </Button>
+          </div>
         </>
       )}
     </fieldset>
@@ -260,7 +281,7 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
 
   return (
     <Sheet
-      title="Install a plugin"
+      title={pick ? (pick.bundle ? `Install the ${pick.name} bundle` : `Install ${pick.name}`) : "Install a plugin"}
       intro={pick ? "Pick the sites. You confirm before anything is installed." : "Search WordPress.org, paste a link, choose a zip, or install a bundle."}
       onClose={onClose}
       footer={
@@ -296,7 +317,7 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <Button kind="primary" type="submit" disabled={searching || query.trim().length < 2}>
+            <Button type="submit" disabled={searching || query.trim().length < 2}>
               {searching ? "Searching…" : "Search"}
             </Button>
           </form>
@@ -304,22 +325,28 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
             {found && `${found.length === 0 ? "Nothing found." : `${found.length} found on WordPress.org.`}`}
           </div>
           {found && found.length > 0 && (
-            <ul className="found" aria-label="Plugins found">
-              {found.map((f) => (
+            <ul className="ins-found" aria-label="Plugins found">
+              {found.map((f, i) => (
                 <li key={f.slug}>
-                  <div className="grow">
-                    <b>{f.name}</b> <span className="mono dim">{f.version}</span>
-                    <p>{f.summary}</p>
-                    <span className="dim">{count(f.active_installs)} sites use it</span>
-                  </div>
-                  <Button small onClick={() => choose({ source: f.slug, name: f.name, link: false })}>
+                  <PkgTile kind="plugin" slug={f.slug} name={f.name} />
+                  <span className="grow">
+                    <b>{f.name}</b>
+                    <small className="cut" data-tip={f.summary}>
+                      {f.summary}
+                    </small>
+                    <small>
+                      <span className="mono">{f.version}</span> · <span>{count(f.active_installs)} sites use it</span>
+                    </small>
+                  </span>
+                  <Button small kind={i === 0 ? "soft" : undefined} onClick={() => choose({ source: f.slug, name: f.name, link: false })}>
                     Choose {f.name.length > 24 ? "this one" : f.name}
                   </Button>
                 </li>
               ))}
             </ul>
           )}
-          <label className="field" style={{ marginTop: 24 }}>
+          <hr className="ins-rule" />
+          <label className="field">
             <span>Or a link to a zip</span>
             <div className="row">
               <input
@@ -332,9 +359,14 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
                 Use this link
               </Button>
             </div>
-            <small>Needs Classic Monks Pro on the site. Only use links you trust: the zip runs as code on the site.</small>
+            <span className="callout warning">
+              <Glyph name="alert" />
+              <span>
+                <b>Needs Classic Monks Pro on the site.</b> Only use links you trust: the zip runs as code on the site.
+              </span>
+            </span>
           </label>
-          <fieldset className="field" style={{ marginTop: 24 }}>
+          <fieldset className="field ins-zip">
             <legend>Or a zip from this computer</legend>
             <div className="segmented" role="group" aria-label="The zip holds">
               <button type="button" aria-pressed={zipKind === "plugin"} onClick={() => setZipKind("plugin")}>
@@ -346,11 +378,14 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
             </div>
             <label className="row check">
               <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
-              <span>Replace it where it's already installed (for a new version of a paid plugin or theme)</span>
+              <span>
+                Replace it where it's already installed <span className="dim">for a new version of a paid plugin or theme</span>
+              </span>
             </label>
             <FilePicker label="Choose a zip file" busy={reading ? "Reading the zip…" : undefined} accept=".zip,application/zip" disabled={reading} onFile={useZip} />
             <small>Needs Classic Monks on the site. Only use zips you trust: they run as code on the site.</small>
           </fieldset>
+          <hr className="ins-rule" />
           <Bundles onPick={(b) => choose({ bundle: b, name: b.name })} />
         </>
       ) : (
@@ -361,11 +396,11 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
             {pick.zip && <span className="dim"> {pick.kind === "theme" ? "theme" : "plugin"}, {(pick.zip.size / 1048576).toFixed(1)} MB{pick.overwrite ? ", replaces an installed copy" : ""}</span>}
             {pick.bundle && <span className="dim"> {pick.bundle.plugins.map((p) => p.name || p.source).join(", ")}. Each site gets the ones it doesn't have.</span>}
           </p>
-          <ul className="plan-list" aria-label="Sites">
+          <ul className="ins-sites" aria-label="Sites">
             {sites.map((s) => {
               const why = cannot(s, inventory.get(s.id), pick);
               return (
-                <li key={s.id}>
+                <li key={s.id} className={why ? "no" : undefined}>
                   <button
                     type="button"
                     className="box"
@@ -382,13 +417,16 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
                       })
                     }
                   />
-                  <span className="grow">{s.name}</span>
-                  {why && <span className="dim">{why}</span>}
+                  <SiteTile site={s} size="sm" />
+                  <span className="grow">
+                    {s.name}
+                    {why && <span className="dim"> {why}</span>}
+                  </span>
                 </li>
               );
             })}
           </ul>
-          <p className="row">
+          <p className="row ins-then">
             <button
               type="button"
               className="box"

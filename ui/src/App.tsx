@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
+// The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
-import { useEffect, useMemo, useState } from "react";
-import { ago, api, hasTool, siteStatus, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ago, api, hasTool, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
-import { Button, Kbd, Logo } from "./components/ui";
+import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
-import { Overview } from "./screens/Overview";
+import { attention, Overview, summary } from "./screens/Overview";
 import { Sites } from "./screens/Sites";
 import { AddSite } from "./screens/AddSite";
 import { Settings } from "./screens/Settings";
@@ -36,44 +36,69 @@ const GROUPS = [
   ["Content", ["Content", "Media", "Users", "Comments"]],
   ["Care", ["Classic Monks", "Monitoring", "Security"]],
   ["Business", ["Clients", "Store", "Reports"]],
-  ["App", ["AI", "Settings"]],
+  ["App", ["AI", "Settings", "Search"]],
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 
-// One line drawing per rail item, 16px, so the rail can be scanned by shape as well as by word.
-const NAV_ICONS: Record<(typeof SECTIONS)[number], string> = {
-  Overview: "M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5H9z",
-  Sites: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM1.5 8h13M8 1.5c2.2 2.2 2.2 10.8 0 13M8 1.5c-2.2 2.2-2.2 10.8 0 13",
-  Updates: "M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3.5H10",
-  Plugins: "M6 1.5v3M10 1.5v3M4 4.5h8v3a4 4 0 0 1-8 0zM8 11.5v3",
-  Themes: "M2.5 2.5h11v11h-11zM2.5 6h11M6 6v7.5",
-  Content: "M4 1.5h5.5l3 3v10H4zM9.5 1.5v3h3M6 8h4.5M6 10.5h4.5",
-  Media: "M2 3h12v10H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 6.2v.1",
-  Users: "M8 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM2.5 14.5c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5",
-  Comments: "M2 3h12v8H6.5L3.5 14v-3H2z",
-  "Classic Monks": "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM5.5 9.5c1.4 1.4 3.6 1.4 5 0M8 5.4v.2",
-  Monitoring: "M1.5 8.5h3l1.5-4 3 7 1.5-3h4",
-  Security: "M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z",
-  Clients: "M2 5h12v8.5H2zM5.5 5V3h5v2M2 9h12",
-  Store: "M3 5h10l-.8 9.5H3.8zM5.5 5a2.5 2.5 0 0 1 5 0",
-  Reports: "M2.5 13.5h11M4.5 11V7.5M8 11V3.5M11.5 11V6",
-  AI: "M8 1.5l1.5 5 5 1.5-5 1.5-1.5 5-1.5-5-5-1.5 5-1.5z",
-  Settings: "M2.5 4.5h11M2.5 11.5h11M5.5 2.5v4M10.5 9.5v4",
+// One of the design's line icons per sidebar item (Classic Monks shows its own mark).
+const NAV_ICONS: Record<(typeof SECTIONS)[number], GlyphName | null> = {
+  Overview: "dashboard",
+  Sites: "globe",
+  Updates: "download",
+  Plugins: "plug",
+  Themes: "palette",
+  Content: "file",
+  Media: "image",
+  Users: "users",
+  Comments: "message",
+  "Classic Monks": null,
+  Monitoring: "activity",
+  Security: "shield",
+  Clients: "briefcase",
+  Store: "bag",
+  Reports: "chart",
+  AI: "sparkle",
+  Settings: "gear",
+  Search: "search",
 };
-// Search is reached from the palette, not the rail.
-type Section = (typeof SECTIONS)[number] | "Search";
+type Section = (typeof SECTIONS)[number];
+const LABEL: Partial<Record<Section, string>> = { Search: "Search everything" };
+
+// The line under each page title.
+const ABOUT: Record<Section, string> = {
+  Overview: "What needs you across the fleet, right now.",
+  Sites: "See every site, open it, and keep its notes.",
+  Updates: "Every pending update across the fleet. Pick what to run, review exactly what changes, then run it.",
+  Plugins: "Every plugin on every site in one grid. Open a cell to manage that plugin on that site.",
+  Themes: "Every theme on every site in one grid. Open a cell to manage that theme on that site.",
+  Content: "Posts, pages and every custom post type, site by site.",
+  Media: "Browse a site's media library and bring in images by link.",
+  Users: "Every user on every site. Add people, change roles, and remove them.",
+  Comments: "Moderate every site's comments in one queue.",
+  "Classic Monks": "Switch module features on each site, change their settings, and undo what changed.",
+  Monitoring: "Uptime and speed of every home page.",
+  Security: "Known vulnerabilities across the fleet, fixed in one place.",
+  Clients: "Who owns which sites, and what each one costs you and earns you.",
+  Store: "WooCommerce sales and stock, site by site.",
+  Reports: "A monthly client report, as a PDF and a web page, with your branding.",
+  AI: "Confirm what AI agents plan to change, and decide which sites they can reach. Nothing runs without your OK.",
+  Settings: "How the app looks, how your reports are branded, where numbers come from, and your data.",
+  Search: "Find any post, page or product across every site.",
+};
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
-const THEME_LABEL: Record<ThemeChoice, string> = {
-  system: "Theme: same as my computer",
-  light: "Theme: light",
-  dark: "Theme: dark",
-};
+const THEMES: [ThemeChoice, GlyphName, string][] = [
+  ["system", "monitor", "Theme: same as my computer"],
+  ["light", "sun", "Theme: light"],
+  ["dark", "moon", "Theme: dark"],
+];
 
 export default function App() {
   const [section, setSection] = useState<Section>("Overview");
+  const sectionRef = useRef(section);
+  sectionRef.current = section;
   // Messages belong to the screen they came from; on another screen they would only cover it.
   useEffect(() => dismissAll(), [section]);
   const [status, setStatus] = useState<CoreStatus | null>(null);
@@ -95,6 +120,7 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [adding, setAdding] = useState<{ again?: Site } | null>(null);
   const [checking, setChecking] = useState(false);
+  const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
   const { choice, setChoice } = useTheme();
   const { density, setDensity } = useDensity();
 
@@ -113,6 +139,18 @@ export default function App() {
         e.preventDefault();
         setPalette((p) => !p);
       }
+      const t = e.target as HTMLElement;
+      // A adds a site from the Overview too (Sites has its own keys).
+      if (
+        e.key === "a" &&
+        sectionRef.current === "Overview" &&
+        !e.ctrlKey && !e.metaKey && !e.altKey && !e.defaultPrevented &&
+        !["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) &&
+        !document.querySelector('[aria-modal="true"]')
+      ) {
+        e.preventDefault();
+        setAdding({});
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -124,12 +162,37 @@ export default function App() {
   const scope = groups.includes(scopeChoice) ? scopeChoice : "";
   const scoped = scope ? all.filter((s) => s.group === scope) : all;
   const lastCheck = Math.max(0, ...all.map((s) => s.checked_at ?? 0)) || null;
-  const nextCheck = lastCheck ? Math.max(1, Math.ceil((lastCheck + CHECK_EVERY - Date.now() / 1000) / 60)) : null;
-  const down = all.filter((s) => siteStatus(s).tone === "danger").length;
+  // A check that is already due shows the next round, never a time in the past.
+  const nextCheck = lastCheck
+    ? new Date(Math.max(lastCheck + CHECK_EVERY, Date.now() / 1000 + 60) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : null;
+  const needs = scoped.filter((s) => attention(s)).length;
+  const { lead, rest } = summary(scoped);
+  const sentence = rest ? `${lead} ${rest}` : lead;
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
   const vulnerable = (reports ?? []).reduce((n, r) => n + r.vulnerabilities.length, 0);
+  const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
+  const ofKind = (k: string) => new Set(waiting.filter((w) => w.kind === k).map((w) => w.name)).size;
+  // The design's sidebar counts: what waits on each page, amber where something is wrong.
+  const counts: Partial<Record<Section, { n: number; say: string; alert?: boolean }>> = Object.fromEntries(
+    (
+      [
+        ["Overview", needs, "need attention", true],
+        ["Sites", scoped.length, scoped.length === 1 ? "site" : "sites"],
+        ["Updates", waiting.length, "waiting"],
+        ["Plugins", ofKind("Plugin"), "with an update waiting"],
+        ["Themes", ofKind("Theme"), "with an update waiting"],
+        ["Classic Monks", approvals, "waiting for approval"],
+        ["Monitoring", offline, "down", true],
+        ["Security", vulnerable, "known vulnerabilities", true],
+        ["AI", livePlans, "to confirm"],
+      ] as const
+    )
+      .filter(([, n]) => n > 0)
+      .map(([s, n, say, alert]) => [s, { n, say, alert }]),
+  );
 
   const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
     setSheet({ title, rows, start, danger });
@@ -158,34 +221,37 @@ export default function App() {
   };
 
   const commands: Command[] = [
-    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Go to", label: s, run: () => setSection(s) })),
-    { id: "add", group: "Actions", label: "Add a site", keys: "A", run: () => setAdding({}) },
-    { id: "check", group: "Actions", label: "Check all sites now", run: checkAll },
+    { id: "add", group: "Actions", label: "Add a site", keys: "A", icon: "plus", run: () => setAdding({}) },
+    { id: "check", group: "Actions", label: "Check all sites now", icon: "refresh", run: checkAll },
     {
       id: "update-all",
       group: "Actions",
       label: waiting.length ? `Update everything waiting (${waiting.length})` : "Update everything waiting (nothing now)",
+      icon: "download",
       run: () => (waiting.length ? plan(planTitle(waiting), waiting) : setSection("Updates")),
     },
-    { id: "install", group: "Actions", label: "Install a plugin", run: () => setInstalling(true) },
-    { id: "scan", group: "Actions", label: "Scan all sites for security problems", run: () => api.scanSecurity().catch(() => {}) },
-    { id: "read", group: "Actions", label: "Read every site's plugins and themes again", run: () => api.refreshInventory().catch(() => {}) },
+    { id: "install", group: "Actions", label: "Install a plugin", icon: "plug", run: () => setInstalling(true) },
+    { id: "scan", group: "Actions", label: "Scan all sites for security problems", icon: "shield", run: () => api.scanSecurity().catch(() => {}) },
+    { id: "read", group: "Actions", label: "Read every site's plugins and themes again", icon: "refresh", run: () => api.refreshInventory().catch(() => {}) },
     {
       id: "theme",
       group: "Actions",
       label: `Switch theme (now ${choice === "system" ? "the same as your computer" : choice})`,
+      icon: choice === "dark" ? "moon" : choice === "light" ? "sun" : "monitor",
       run: () => setChoice(THEME_NEXT[choice]),
     },
     {
       id: "density",
       group: "Actions",
       label: density === "compact" ? "Use comfortable rows" : "Use compact rows",
+      icon: "sliders",
       run: () => setDensity(density === "compact" ? "comfortable" : "compact"),
     },
     ...(plans ?? []).filter((p) => !p.expired).map((p) => ({
       id: `plan-${p.id}`,
       group: "Actions",
       label: `Review the AI agent's plan: ${p.title}`,
+      icon: "sparkle" as const,
       run: () => {
         setFocusPlan(p.id);
         setSection("AI");
@@ -196,32 +262,51 @@ export default function App() {
       group: "Sites",
       label: s.name,
       hint: s.url.replace(/^https?:\/\//, ""),
+      site: s,
       run: () => openSite(s.id),
     })),
     ...all
       .filter((s) => hasTool(s, "create-login-link") && !s.sign_in_again)
-      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, run: () => login(s) })),
+      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, icon: "login" as const, run: () => login(s) })),
     ...all
       .filter((s) => s.sign_in_again)
-      .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, run: () => signInAgain(s.id) })),
+      .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, icon: "login" as const, run: () => signInAgain(s.id) })),
+    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${LABEL[s] ?? s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
   ];
 
   let body;
   if (coreError) {
     body = (
       <div className="empty" role="alert">
+        <span className="danger-disc" aria-hidden="true">
+          <Glyph name="alert" />
+        </span>
         <h2>Monks Central couldn't start.</h2>
-        <p>{coreError}</p>
-        <p>Close Monks Central and open it again. If it keeps happening, restart the computer.</p>
-        <Button onClick={() => location.reload()}>Try again</Button>
+        <p>
+          <b>Nothing was changed.</b> Close Monks Central and open it again. If it keeps happening, restart the computer.
+        </p>
+        <Button onClick={() => location.reload()}>
+          <Glyph name="refresh" />
+          Try again
+        </Button>
+        <p className="mono dim detail">{coreError}</p>
       </div>
     );
   } else if (error) {
     body = (
       <div className="empty" role="alert">
+        <span className="danger-disc" aria-hidden="true">
+          <Glyph name="alert" />
+        </span>
         <h2>Your sites didn't load.</h2>
-        <p>{error}</p>
-        <Button onClick={reload}>Try again</Button>
+        <p>
+          <b>Nothing was changed.</b> Try again; if it keeps happening, close Monks Central and open it again.
+        </p>
+        <Button onClick={reload}>
+          <Glyph name="refresh" />
+          Try again
+        </Button>
+        <p className="mono dim detail">{error}</p>
       </div>
     );
   } else if (!sites) {
@@ -248,6 +333,10 @@ export default function App() {
     body = (
       <Overview
         sites={scoped}
+        waiting={waiting}
+        plans={plans ?? []}
+        reports={reports ?? []}
+        monitors={monitors ?? []}
         onOpen={openSite}
         onCheck={(id) => api.check(id)}
         onSignInAgain={signInAgain}
@@ -264,10 +353,11 @@ export default function App() {
         setFocusId={setFocusId}
         onAdd={() => setAdding({})}
         onSignInAgain={(s) => setAdding({ again: s })}
+        onUpdates={() => setSection("Updates")}
       />
     );
   } else if (section === "Updates") {
-    body = <Updates sites={scoped} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
+    body = <Updates sites={scoped} inventory={inv} reports={reports ?? []} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Plugins" || section === "Themes") {
     body = (
       <Matrix
@@ -299,7 +389,7 @@ export default function App() {
   } else if (section === "Store") {
     body = <Store sites={scoped} onPlan={plan} />;
   } else if (section === "Reports") {
-    body = <Reports sites={scoped} />;
+    body = <Reports sites={scoped} onSettings={() => setSection("Settings")} />;
   } else if (section === "Search") {
     body = (
       <Search
@@ -322,22 +412,26 @@ export default function App() {
         Skip to content
       </a>
       <nav className="rail" aria-label="Main">
-        <p className="brand">
+        <div className="brand">
           <Logo />
-          Monks Central
-        </p>
-        <Select className="scope" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
-          <option value="">All sites ({all.length})</option>
-          {groups.map((g) => (
-            <option key={g} value={g}>
-              {g} ({all.filter((s) => s.group === g).length})
-            </option>
-          ))}
-        </Select>
-        <button type="button" className="search" onClick={() => setPalette(true)}>
-          Search or run
-          <Kbd>Ctrl K</Kbd>
-        </button>
+          <p>
+            Monks Central
+            <small>by Classic Monks</small>
+          </p>
+        </div>
+        <div className="scope-field">
+          <span className="label" aria-hidden="true">
+            Sites to show
+          </span>
+          <Select className="scope sm" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
+            <option value="">All sites ({all.length})</option>
+            {groups.map((g) => (
+              <option key={g} value={g}>
+                Group: {g}
+              </option>
+            ))}
+          </Select>
+        </div>
         {GROUPS.map(([g, items]) => (
           <div key={g || "top"}>
             {g && <p className="navgroup">{g}</p>}
@@ -350,30 +444,12 @@ export default function App() {
                     aria-current={s === section ? "page" : undefined}
                     onClick={() => setSection(s)}
                   >
-                    <svg className="nav-ico" viewBox="0 0 16 16" aria-hidden="true">
-                      <path d={NAV_ICONS[s]} />
-                    </svg>
-                    {s}
-                    {s === "Sites" && down > 0 && <span className="n alert">{down} down</span>}
-                    {s === "AI" && livePlans > 0 && (
-                      <span className="n alert">
-                        {livePlans}
-                        <span className="sr-only"> to confirm</span>
-                      </span>
-                    )}
-                    {s === "Monitoring" && offline > 0 && (
-                      <span className="n alert">{offline} down</span>
-                    )}
-                    {s === "Security" && vulnerable > 0 && (
-                      <span className="n alert">
-                        {vulnerable}
-                        <span className="sr-only"> known vulnerabilities</span>
-                      </span>
-                    )}
-                    {s === "Updates" && waiting.length > 0 && (
-                      <span className="n">
-                        {waiting.length}
-                        <span className="sr-only"> waiting</span>
+                    {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
+                    {LABEL[s] ?? s}
+                    {counts[s] && (
+                      <span className={counts[s].alert ? "n alert" : "n"}>
+                        {counts[s].n}
+                        <span className="sr-only"> {counts[s].say}</span>
                       </span>
                     )}
                   </button>
@@ -383,34 +459,90 @@ export default function App() {
           </div>
         ))}
         <div className="foot">
-          <p>
-            Checks every 15 min, also from the tray.
-            {nextCheck != null && ` Next in ${nextCheck} min.`}
+          <p className="next">
+            <Glyph name="clock" />
+            <span>
+              <b>{nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."}</b> Automatic checks run only while the app
+              or its tray agent is open.
+            </span>
           </p>
-          {status && <p>Version {status.version}</p>}
-          <button type="button" onClick={() => setChoice(THEME_NEXT[choice])}>
-            {THEME_LABEL[choice]}
-          </button>
+          <div className="foot-row">
+            <div className="themes" role="group" aria-label="Theme">
+              {THEMES.map(([t, icon, label]) => (
+                <button key={t} type="button" aria-label={label} aria-pressed={choice === t} data-tip={label} onClick={() => setChoice(t)}>
+                  <Glyph name={icon} />
+                </button>
+              ))}
+            </div>
+            {status && <span className="ver">v{status.version}</span>}
+          </div>
         </div>
       </nav>
       <div className="main">
         <header className="top">
-          <h1 className="crumb">
-            {section}
-            {["Sites", "Plugins", "Themes"].includes(section) && <span>/ {scope || "All sites"}</span>}
-            {section === "Updates" && <span>/ {waiting.length} waiting</span>}
-          </h1>
           {sites && sites.length > 0 && (
-            <div className="fresh">
-              <span role="status">{checking ? "Checking all sites…" : lastCheck && `Checked ${ago(lastCheck)}`}</span>
-              <Button small disabled={checking} onClick={checkAll}>
-                {checking ? "Checking…" : "Check all sites now"}
-              </Button>
-            </div>
+            <p className="fresh" role="status">
+              <span className="pulse" aria-hidden="true" />
+              {checking ? (
+                "Checking all sites…"
+              ) : (
+                lastCheck && (
+                  <span>
+                    Last checked <b>{ago(lastCheck)}</b>
+                  </span>
+                )
+              )}
+              {needs > 0 && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <button type="button" className={section === "Overview" ? "link go" : "link quiet"} onClick={() => setSection("Sites")}>
+                    {needs === 1 ? "1 site needs attention" : `${needs} sites need attention`}
+                  </button>
+                </>
+              )}
+            </p>
           )}
+          <div className="top-end">
+            <button type="button" className="kbar" onClick={() => setPalette(true)}>
+              <Glyph name="search" />
+              <span>Search or run a command</span>
+              <Kbd>Ctrl K</Kbd>
+            </button>
+            {sites && sites.length > 0 && (
+              section === "Overview" ? (
+                <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
+                  {checking ? "Checking…" : "Check all sites now"}
+                  <span className="btn-disc">
+                    <Glyph name="refresh" />
+                  </span>
+                </Button>
+              ) : (
+                // The page head holds this page's main action, so checking steps back to a plain button.
+                <Button disabled={checking} onClick={checkAll}>
+                  <Glyph name="refresh" />
+                  {checking ? "Checking…" : "Check all sites now"}
+                </Button>
+              )
+            )}
+          </div>
         </header>
         <main className="body" id="content" tabIndex={-1}>
-          {body}
+          <header className="phead">
+            <div className={section === "Classic Monks" ? "marked" : undefined}>
+              {section === "Classic Monks" && <Logo />}
+              <h1>{LABEL[section] ?? section}</h1>
+              <p>{section === "Overview" && all.length > 0 ? sentence : ABOUT[section]}</p>
+            </div>
+            <div className="phead-acts" ref={setHeadSlot}>
+              {section === "Overview" && all.length > 0 && (
+                <Button keys="A" onClick={() => setAdding({})}>
+                  <Glyph name="plus" />
+                  Add a site
+                </Button>
+              )}
+            </div>
+          </header>
+          <HeadSlot.Provider value={headSlot}>{body}</HeadSlot.Provider>
         </main>
       </div>
       {palette && (

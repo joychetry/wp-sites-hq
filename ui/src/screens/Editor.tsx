@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // One entry in a side sheet: title, status, terms, featured image, and the body
 // through the block-safe editor (only text blocks change; every other block stays).
+import "../styles/screens/media.css";
+import "../styles/screens/editor.css";
 import { Combobox, DateInput, Select } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, hasTool, type Block, type Draft, type Media, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
-import { Button } from "../components/ui";
+import { Button, Glyph } from "../components/ui";
 import { toast } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import { STATUS_LABEL } from "./Content";
@@ -33,6 +35,9 @@ export function toBlocks(text: string): string {
 }
 
 type Pick = { id?: number; name: string };
+
+/** "Sam Okafor" -> "SO", "joy" -> "J", "" -> "?": the avatar on a version. */
+const initials = (name: string) => (name.match(/(?<![\p{L}\p{N}])[\p{L}\p{N}]/gu) ?? ["?"]).slice(0, 2).join("").toUpperCase();
 
 /** A datetime-local value ("2026-11-02T09:30" or with seconds) as the site takes it. */
 export function siteDate(local: string): string {
@@ -74,24 +79,25 @@ function FieldsEdit({ meta, value, onChange }: { meta: Record<string, unknown>; 
           <div key={k} className={typeof now === "string" ? "row fieldrow" : "row"}>
             {typeof now === "string" ? (
               <label className="field grow">
-                <span className="mono">{k}</span>
+                <span>{k}</span>
                 <input className="input" value={now} onChange={(e) => onChange({ ...value, [k]: e.target.value })} />
               </label>
             ) : (
               <span className="grow">
-                <span className="mono">{k}</span> <span className="dim">kept as is (not plain text)</span>
+                <b>{k}</b> <span className="dim">kept as is (not plain text)</span>
               </span>
             )}
-            <Button aria-label={`Remove the field ${k}`} onClick={() => onChange({ ...value, [k]: null })}>
-              Remove
-            </Button>
+            <button type="button" className="icon-btn line" aria-label={`Remove the field ${k}`} data-tip={`Remove ${k}`} onClick={() => onChange({ ...value, [k]: null })}>
+              <Glyph name="x" />
+            </button>
           </div>
         );
       })}
       <div className="row">
-        <input className="input" aria-label="New field name" placeholder="Field name" value={key} onChange={(e) => setKey(e.target.value)} />
-        <input className="input" aria-label="New field value" placeholder="Value" value={val} onChange={(e) => setVal(e.target.value)} />
+        <input className="input" aria-label="New field name" placeholder="New field name" value={key} onChange={(e) => setKey(e.target.value)} />
+        <input className="input" aria-label="New field value" placeholder="New field value" value={val} onChange={(e) => setVal(e.target.value)} />
         <Button onClick={add} disabled={!key.trim() || key.trim().startsWith("_")}>
+          <Glyph name="plus" />
           Add the field
         </Button>
       </div>
@@ -128,41 +134,57 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
   if (!open) {
     return (
       <Button small onClick={show}>
+        <Glyph name="history" />
         Show earlier versions
       </Button>
     );
   }
   return (
-    <div>
+    <div className="versions">
       {error && <p className="alert danger">{error}</p>}
       {!list && !error && <p role="status">Reading earlier versions…</p>}
       {list?.length === 0 && <p className="dim">No earlier versions are saved.</p>}
       {list && list.length > 0 && (
-        <ul className="plain" aria-label="Earlier versions">
-          {list.map((r) => (
-            <li key={r.id} className="row">
-              <span className="grow">
-                <b>{r.date}</b> by {r.author || "someone"}: {r.title || "(no title)"}
-              </span>
-              {asking?.id === r.id ? (
-                <>
-                  <Button small onClick={() => setAsking(null)}>
-                    Keep the current one
-                  </Button>
-                  <Button small kind="primary" disabled={busy} onClick={() => restore(r)}>
-                    {busy ? "Putting it back…" : "Put it back"}
-                  </Button>
-                </>
-              ) : (
-                <Button small aria-label={`Put this version back, from ${r.date}`} onClick={() => setAsking(r)}>
+        <ul className="vlist" aria-label="Earlier versions">
+          {list.map((r) => {
+            const on = asking?.id === r.id;
+            return (
+              <li key={r.id} className={on ? "on" : undefined}>
+                <span className="av" aria-hidden="true">
+                  {initials(r.author)}
+                </span>
+                <span className="vwho">
+                  <b>{r.author || "Someone"}</b>
+                  <span>
+                    <span className="mono">{r.date}</span> · {r.title || "(no title)"}
+                  </span>
+                </span>
+                <Button small className={on ? undefined : "quiet"} aria-pressed={on} aria-label={`Put this version back, from ${r.date}`} onClick={() => setAsking(on ? null : r)}>
                   Put this version back
                 </Button>
-              )}
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
-      {asking && <p className="help-text">The title and body go back to that version. The current one is kept as a version too, so you can undo this.</p>}
+      {asking && (
+        <div className="callout vask">
+          <Glyph name="undo" />
+          <div>
+            <p>
+              <b>Put back the version from {asking.date}?</b> The title and body go back to that version. The current one is kept as a version too, so you can undo this.
+            </p>
+            <div className="row">
+              <Button small onClick={() => setAsking(null)}>
+                Keep the current one
+              </Button>
+              <Button small kind="primary" disabled={busy} onClick={() => restore(asking)}>
+                {busy ? "Putting it back…" : "Put it back"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -193,11 +215,11 @@ function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy;
       <div className="tags">
         {value.length === 0 && <span className="dim">None</span>}
         {value.map((t) => (
-          <span key={t.name} className="tag">
+          <span key={t.name} className="term">
             {t.name}
             {t.id == null && " (new)"}
             <button type="button" aria-label={`Remove ${t.name}`} onClick={() => onChange(value.filter((v) => v !== t))}>
-              ×
+              <Glyph name="x" />
             </button>
           </span>
         ))}
@@ -229,29 +251,41 @@ function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy;
 function ImagePick({ site, onPick, onCancel }: { site: Site; onPick: (m: Media) => void; onCancel: () => void }) {
   const [images, setImages] = useState<Media[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [at, setAt] = useState<number | null>(null);
   useEffect(() => {
     api.media(site.id, 1, "", true).then(setImages, (e) => setError(String(e)));
   }, [site.id]);
+  // The one clicked, or the newest, is the one Use puts on the entry.
+  const chosen = images?.find((m) => m.id === at) ?? images?.[0] ?? null;
   return (
     <div className="imgpick">
       {error && <p className="alert danger">{error}</p>}
       {!images && !error && <p role="status">Reading the media library…</p>}
       {images?.length === 0 && <p>The media library has no images yet. Add one on Media first.</p>}
       {images && images.length > 0 && (
-        <ul className="media small" aria-label="Images">
+        <ul className="mthumbs small" aria-label="Images">
           {images.map((m) => (
             <li key={m.id}>
-              <img src={m.url} alt={m.alt} />
-              <Button small onClick={() => onPick(m)}>
-                Use {m.title || "this image"}
-              </Button>
+              <button type="button" className="mthumb" aria-pressed={m.id === chosen?.id} onClick={() => setAt(m.id)}>
+                <span className="mthumb-img">
+                  <img src={m.url} alt="" />
+                </span>
+                <b data-tip={m.title}>{m.title || "No title"}</b>
+              </button>
             </li>
           ))}
         </ul>
       )}
-      <Button small onClick={onCancel}>
-        Keep the current image
-      </Button>
+      <div className="row">
+        {chosen && (
+          <Button small kind="soft" onClick={() => onPick(chosen)}>
+            Use {chosen.title || "this image"}
+          </Button>
+        )}
+        <Button small className="quiet" onClick={onCancel}>
+          Keep the current image
+        </Button>
+      </div>
     </div>
   );
 }
@@ -280,7 +314,7 @@ function BlockRow({ b, value, onChange }: { b: Block; value: string; onChange: (
   );
 }
 
-type Props = { site: Site; type: PostType; postId?: number; onClose: () => void; onSaved: (message: string) => void };
+type Props = { site: Site; type: PostType; postId?: number; onClose: () => void; onSaved: (message: string, undo?: () => Promise<unknown>) => void };
 
 export function Editor({ site, type, postId, onClose, onSaved }: Props) {
   const isNew = postId == null;
@@ -388,7 +422,9 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
     setError(null);
     try {
       await api.trashPost(site.id, type.name, postId!);
-      onSaved(`Moved "${post?.title}" to the trash on ${site.name}.`);
+      // Classic Monks can bring it straight back from the message.
+      const back = cm && hasTool(site, "untrash-post") ? () => api.untrash(site.id, postId!) : undefined;
+      onSaved(`Moved "${post?.title}" to the trash on ${site.name}.`, back);
       onClose();
     } catch (e) {
       setError(String(e));
@@ -421,7 +457,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         )}
         <label className="field">
           <span>Title</span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input className={isNew ? "input title-lg" : "input"} value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <label className="field">
           <span>Status</span>
@@ -461,10 +497,11 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
             ) : (
               <div className="row">
                 <Button small onClick={() => setPicking(true)}>
+                  <Glyph name="image" />
                   Choose an image
                 </Button>
                 {image.id > 0 && (
-                  <Button small onClick={() => setImage({ id: 0, url: null })}>
+                  <Button small className="quiet" onClick={() => setImage({ id: 0, url: null })}>
                     Remove the image
                   </Button>
                 )}
@@ -515,9 +552,15 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
 
   const footer = trashing ? (
     <>
-      <span className="sum">Move "{post?.title}" to the trash? WordPress keeps it there for 30 days.</span>
+      <p className="callout danger sum">
+        <Glyph name="trash" />
+        <span>
+          <b>Move "{post?.title}" to the trash?</b> It comes off the site. WordPress keeps it there for 30 days, so you can bring it back.
+        </span>
+      </p>
       <Button onClick={() => setTrashing(false)}>Keep it</Button>
-      <Button kind="danger" disabled={saving} onClick={trash}>
+      <Button kind="danger" className="solid" disabled={saving} onClick={trash}>
+        <Glyph name="trash" />
         {saving ? "Moving…" : "Move it to the trash"}
       </Button>
     </>
@@ -534,14 +577,22 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         </Button>
       )}
       <Button onClick={onClose}>{dirty ? "Close without saving" : "Close"}</Button>
-      <Button kind="primary" disabled={saving || !dirty || !!loadError || (!isNew && !post)} onClick={save}>
+      <Button kind="primary" className="disc" disabled={saving || !dirty || !!loadError || (!isNew && !post)} onClick={save}>
         {saving ? "Saving…" : isNew ? `Add the ${noun}` : "Save changes"}
+        <span className="btn-disc">
+          <Glyph name="check" />
+        </span>
       </Button>
     </>
   );
 
   return (
-    <Sheet title={isNew ? `New ${noun} on ${site.name}` : `Edit ${noun} on ${site.name}`} intro={post?.link || undefined} onClose={onClose} footer={footer}>
+    <Sheet
+      title={isNew ? `New ${noun} on ${site.name}` : `Edit ${noun} on ${site.name}`}
+      intro={post ? <span className="mono">{post.link || `${post.title} · ${STATUS_LABEL[post.status] ?? post.status}`}</span> : undefined}
+      onClose={onClose}
+      footer={footer}
+    >
       {content}
     </Sheet>
   );

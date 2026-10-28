@@ -1,0 +1,32 @@
+/* Updates (board 03): kind tabs, one table grouped by site, a side column of what's waiting */
+.updates .t { table-layout: fixed; }
+.updates .t th:first-child, .updates .t td:first-child { width: 44px; padding-right: 0; }
+.updates .t th:nth-child(3) { width: 190px; }
+.updates .t th:nth-child(4) { width: 224px; }
+.updates .t td { height: 56px; }
+.updates .t .grp td { height: 44px; background: var(--panel); white-space: normal; }
+.updates .grp .item { flex-wrap: wrap; row-gap: 4px; }
+.updates .t .grp td:first-child { background: var(--bg); }
+.updates .item { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.updates .item > span { min-width: 0; }
+.updates .item b { display: block; font-weight: 600; }
+.updates .item b.cut { max-width: none; overflow: hidden; text-overflow: ellipsis; }
+.updates .item small { display: block; font-size: var(--fs-xs); color: var(--text-3); }
+.updates .grp .item b { display: inline; }
+.updates .grp .dim { font-size: var(--fs-sm); }
+.updates .filters .check { padding: 0; flex-wrap: nowrap; }
+.updates .filters .check > span { flex: none; }
+.updates .card-foot .grow { flex: 1; font-size: var(--fs-sm); }
+.k-tr { --k: var(--text-3); }
+/* Action needed: the updates that fix a known vulnerability */
+.upd-alert { background: var(--warn-paper); border-color: var(--warn-line); }
+.upd-alert .card-body { gap: var(--sp-3); }
+.upd-alert .row { gap: 10px; }
+.upd-alert p { margin: 0; line-height: 20px; }
+.upd-fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); font-size: var(--fs-sm); }
+.upd-fixes small { display: block; font-size: var(--fs-xs); color: var(--text-2); }
+/* Sites not in this list: a tile, the name and why */
+.unseen-list { list-style: none; margin: 0; padding: 0; }
+.unseen-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: var(--sp-3) 20px; border-top: 1px solid var(--line); }
+.unseen-list li:first-child { border-top: 0; }
+.unseen-list .dim { font-size: var(--fs-sm); }

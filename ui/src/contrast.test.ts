@@ -43,19 +43,26 @@ const TEXT = 4.5;
 const UI = 3;
 const pairs = (fgs: string[], bgs: string[], min: number) => fgs.flatMap((fg) => bgs.map((bg) => [fg, bg, min] as const));
 
-// Content area, then the rail (dark in both themes).
+// Every surface text and controls sit on; the sidebar uses the same tokens as the content.
+const SURFACES = ["--bg", "--panel", "--raise", "--sel", "--ground", "--tint-2", "--warn-paper"];
 const PAIRS = [
-  ...pairs(["--text", "--text-2", "--text-3"], ["--bg", "--panel", "--raise", "--sel"], TEXT),
-  ...pairs(["--ok", "--warn", "--danger"], ["--bg", "--panel", "--sel", "--raise"], TEXT),
-  // Inverted: primary buttons, tooltips and the ticked checkbox draw --bg on --text.
-  ["--bg", "--text", TEXT],
+  ...pairs(["--text", "--text-2", "--text-3"], SURFACES, TEXT),
+  ...pairs(["--ok", "--warn", "--danger", "--brand-text"], ["--bg", "--panel", "--sel", "--raise", "--ground"], TEXT),
+  // Status words on their own tinted grounds.
   ["--ok", "--ok-bg", TEXT],
   ["--warn", "--warn-bg", TEXT],
   ["--danger", "--danger-bg", TEXT],
-  ...pairs(["--line-ui", "--focus"], ["--bg", "--panel", "--raise"], UI),
-  ...pairs(["--rail-text", "--rail-text-2", "--rail-text-3"], ["--rail-bg", "--rail-raise", "--rail-field"], TEXT),
-  ...pairs(["--rail-ok", "--rail-warn", "--rail-danger"], ["--rail-bg", "--rail-raise"], TEXT),
-  ...pairs(["--rail-line-ui", "--rail-focus", "--rail-text"], ["--rail-bg", "--rail-field"], UI),
+  ["--text", "--warn-bg", TEXT],
+  ["--text", "--danger-bg", TEXT],
+  // Filled buttons, the bulk bar, toasts and tooltips.
+  ["--on-green", "--green", TEXT],
+  ["--on-green", "--green-hover", TEXT],
+  ["--btn-on-ink", "--btn-ink", TEXT],
+  ["--btn-on-ink", "--btn-ink-hover", TEXT],
+  ["--bg", "--text", TEXT],
+  // Control borders, the focus ring, green fills (checkbox, switch) and status dots.
+  ...pairs(["--line-ui", "--focus", "--accent", "--green"], ["--bg", "--panel", "--raise", "--ground"], UI),
+  ...pairs(["--focus", "--accent"], ["--sel", "--tint-2"], UI),
 ] as const;
 
 const results = Object.entries(THEMES).flatMap(([theme, vars]) =>

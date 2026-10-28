@@ -1098,7 +1098,8 @@ export function Slider({ label, value, min, max, step: by = 1, format = String, 
 export type MenuItem = { label: string; run: () => void; danger?: boolean; disabled?: boolean };
 
 /** A menu button (WAI-ARIA): arrows move, Enter runs, Escape closes and gives focus back. */
-export function Menu({ label, items, children, small }: { label: string; items: MenuItem[]; children?: ReactNode; small?: boolean }) {
+/** `className` replaces the button's look (a dashed filter chip: "chip"). */
+export function Menu({ label, items, children, small, className }: { label: string; items: MenuItem[]; children?: ReactNode; small?: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
@@ -1116,7 +1117,7 @@ export function Menu({ label, items, children, small }: { label: string; items: 
       <button
         ref={btn}
         type="button"
-        className={cx("btn", small && "sm")}
+        className={className ?? cx("btn", small && "sm")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}

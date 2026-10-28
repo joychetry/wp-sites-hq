@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Security (board 12): three stat cards, then a card per vulnerability beside the clear sites. */
+.sec-split { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.sec .stat-n { margin-top: 2px; }
+.vulns { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-4); }
+.vuln.danger { border-color: var(--danger-bg); }
+.vuln .card-body { gap: 18px; }
+.vhead { display: flex; align-items: flex-start; gap: var(--sp-3); }
+.vhead > div { flex: 1; min-width: 0; display: grid; gap: var(--sp-1); }
+.vhead .meta { font: 400 var(--fs-xs)/16px var(--mono); color: var(--text-3); }
+.vhead h3 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; color: var(--text); }
+.vhead p { margin: 0; color: var(--text-2); overflow-wrap: anywhere; }
+/* The facts sit in a well; versions in mono */
+.dl.well { padding: var(--sp-1) var(--sp-4); border-radius: 12px; background: var(--panel); }
+.dl.well > div { align-items: center; }
+.dl.well dd.m { font: 500 var(--fs-sm) var(--mono); }
+.dl.well dd { display: grid; justify-items: end; gap: var(--sp-1); }
+.dl.well .conn { color: var(--text-2); }
+.dl.well .conn .fav { width: 22px; height: 22px; border-radius: 6px; font-size: var(--fs-xs); }
+.dl.well .conn .fav img { width: 14px; height: 14px; }
+.vuln .acts { flex-wrap: wrap; }
+.vuln .acts .dim { font-size: var(--fs-sm); }
+.sec .fix .st.pill { flex: none; }
+.sec .fix.two { grid-template-columns: auto minmax(0, 1fr); }
+.sec .card .t th { position: static; }
+.sec .card .t .site { font-size: var(--fs-sm); }
+.sec .note { padding: 0 var(--sp-1); }
+/* .fix greys every span; a site's tile keeps its own ink. */
+.sec .fix > .fav { color: #ffffff; font-size: var(--fs-xs); }
+.sec .fix > .fav:not(.m1):not(.m2):not(.m3) { color: var(--btn-on-ink); }
+@media (max-width: 1100px) {
+  .sec-split { grid-template-columns: minmax(0, 1fr); }
+}

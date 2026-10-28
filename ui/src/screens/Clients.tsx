@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Clients, their sites, and what the sites cost you and earn (plan Phase 7).
+import "../styles/screens/clients.css";
 import { Skeleton, toast } from "../components/feedback";
-import { DateInput, MultiSelect, Select } from "../components/controls";
-import { useCallback, useEffect, useState } from "react";
+import { DateInput, dayLabel, MultiSelect, Select } from "../components/controls";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
-import { Button } from "../components/ui";
+import { initials, SiteTile } from "../components/SiteTile";
+import { Button, Glyph, HeadActions } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 
-/** "€12.50"; an unknown code still reads ("XYZ 12.50"). */
-export function money(cents: number, currency: string): string {
+/** "€12.50"; an unknown code still reads ("XYZ 12.50"). `whole` drops ".00" (the stat cards: "€340"). */
+export function money(cents: number, currency: string, whole = false): string {
   try {
-    return new Intl.NumberFormat("en", { style: "currency", currency }).format(cents / 100);
+    return new Intl.NumberFormat("en", { style: "currency", currency, ...(whole && cents % 100 === 0 ? { minimumFractionDigits: 0 } : {}) }).format(cents / 100);
   } catch {
     return `${currency} ${(cents / 100).toFixed(2)}`;
   }
@@ -36,18 +38,27 @@ export function toCents(s: string): number | null {
   return m ? Number(m[1]) * 100 + Number((m[2] ?? "0").padEnd(2, "0")) : null;
 }
 
-const EVERY: Record<Every, string> = { month: "Every month", year: "Every year", once: "Once" };
+const EVERY: Record<Every, string> = { month: "Monthly", year: "Yearly", once: "Once" };
 
+/** Days from today to a "2026-12-01" date; negative when it has passed. */
+export function daysTo(day: string, now = new Date()): number {
+  const [y, m, d] = day.split("-").map(Number);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86400000);
+}
+
+/** Monthly amounts by currency, a line each; Left is red with its minus sign when it is below zero. */
 function Amounts({ costs, what }: { costs: Cost[]; what: "cost" | "charge" | "left" }) {
-  const list = [...sums(costs)].filter(([, t]) => t.cost || t.charge);
+  // Charged and Costs leave out a currency with nothing in that column; Left shows each.
+  const list = [...sums(costs)].filter(([, t]) => (what === "left" ? t.cost || t.charge : t[what]));
   if (list.length === 0) return <span className="dim">none</span>;
   return (
     <>
       {list.map(([cur, t]) => {
         const n = what === "left" ? t.charge - t.cost : t[what];
         return (
-          <span key={cur} className={`m ${what === "left" && n < 0 ? "danger" : ""}`} style={{ display: "block" }}>
-            {n < 0 ? `minus ${money(-n, cur)}` : money(n, cur)}
+          <span key={cur} className={`m ${what === "left" ? "left" : ""} ${what === "left" && n < 0 ? "danger" : ""}`}>
+            {money(n, cur)}
           </span>
         );
       })}
@@ -90,14 +101,16 @@ export function Clients({ sites }: { sites: Site[] }) {
     );
   }
 
-  const siteName = (id: number | null) => sites.find((s) => s.id === id)?.name ?? "a removed site";
-  const clientName = (id: number | null) => clients.find((c) => c.id === id)?.name ?? "a removed client";
-  const of = (c: Client | null) => {
-    const own = sites.filter((s) => s.client_id === (c?.id ?? null));
-    const ids = new Set(own.map((s) => s.id));
-    return { own, costs: costs.filter((k) => (c && k.client_id === c.id) || (k.site_id != null && ids.has(k.site_id))) };
-  };
-  const nextRenewal = (list: Cost[]) => list.map((k) => k.renews_on).filter(Boolean).sort()[0] ?? null;
+  const siteOf = (id: number | null) => sites.find((s) => s.id === id);
+  const clientName = (id: number | null) => clients.find((c) => c.id === id)?.name;
+  const known = (id: number | null | undefined) => (id != null && clients.some((c) => c.id === id) ? id : null);
+  // Each cost or charge sits under one row: its client, else its site's client, else No client yet.
+  const groupOf = (k: Cost) => known(k.client_id) ?? (k.site_id != null ? known(siteOf(k.site_id)?.client_id) : null);
+  const of = (c: Client | null) => ({
+    own: sites.filter((s) => known(s.client_id) === (c?.id ?? null)),
+    // Charges first, then costs, as on the design.
+    costs: costs.filter((k) => groupOf(k) === (c?.id ?? null)).sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "charge" ? -1 : 1)),
+  });
   const currency = costs.at(-1)?.currency ?? "EUR";
   const blankCost = (): Cost => ({ id: 0, site_id: null, client_id: clients[0]?.id ?? null, kind: "cost", label: "", cents: 0, currency, every: "year", renews_on: null });
   const done = (msg: string) => {
@@ -105,106 +118,210 @@ export function Clients({ sites }: { sites: Site[] }) {
     setEditing(null);
     load();
   };
-  const rows: (Client | null)[] = [...clients, ...(sites.some((s) => s.client_id == null) ? [null] : [])];
+  const rows: (Client | null)[] = [...clients, ...(of(null).own.length > 0 || of(null).costs.length > 0 ? [null] : [])];
+  const open = editing && "client" in editing ? editing.client.id : null;
+
+  // The stat cards count the currency most amounts are in; any other currency is named beside it.
+  const counts = new Map<string, number>();
+  for (const k of costs) counts.set(k.currency, (counts.get(k.currency) ?? 0) + 1);
+  const main = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? currency;
+  const totals = sums(costs);
+  const t = totals.get(main) ?? { cost: 0, charge: 0 };
+  // Other currencies, a quiet line under the number: "Also $23.25".
+  const also = (what: "cost" | "charge" | "left") => {
+    const rest = [...totals].filter(([cur, x]) => cur !== main && (what === "left" ? x.charge - x.cost : x[what]) !== 0).map(([cur, x]) => money(what === "left" ? x.charge - x.cost : x[what], cur, true));
+    return rest.length > 0 && <p className="stat-note">Also {rest.join(" and ")}</p>;
+  };
+  const paying = new Set(costs.filter((k) => k.kind === "charge" && perMonth(k) > 0).map(groupOf).filter((g) => g != null)).size;
+  const costWords = [...new Set(costs.filter((k) => k.kind === "cost").map((k) => k.label.toLowerCase()))].slice(0, 3).join(", ");
+  const left = t.charge - t.cost;
+  const renewing = costs
+    .filter((k) => k.renews_on)
+    .map((k) => ({ k, days: daysTo(k.renews_on!) }))
+    .sort((a, b) => a.k.renews_on!.localeCompare(b.k.renews_on!))
+    .slice(0, 5);
+  const whose = (k: Cost) => clientName(k.client_id) ?? siteOf(k.site_id)?.name ?? "a removed site";
 
   return (
-    <div className="scroll">
-      <div className="bar">
-        <span className="dim">{clients.length === 1 ? "1 client" : `${clients.length} clients`}</span>
-        <span className="grow" />
-        <Button small onClick={() => setEditing({ cost: blankCost() })} disabled={clients.length === 0 && sites.length === 0}>
+    <div className="scroll page clients">
+      <HeadActions>
+        <Button onClick={() => setEditing({ cost: blankCost() })} disabled={clients.length === 0 && sites.length === 0}>
+          <Glyph name="plus" />
           Add a cost or charge
         </Button>
-        <Button small kind="primary" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
+        <Button kind="primary" className="disc" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
           Add a client
+          <span className="btn-disc">
+            <Glyph name="plus" />
+          </span>
         </Button>
-      </div>
+      </HeadActions>
       {clients.length === 0 && costs.length === 0 ? (
-        <div className="empty">
+        <div className="card empty">
           <h2>No clients yet.</h2>
           <p>Add a client, tick their sites, then note what the sites cost you (hosting, domains, licences) and what you charge. Client reports use the same list.</p>
         </div>
       ) : (
-        <>
-          <p className="legend" id="clients-legend">
-            Per month: a yearly amount counts a twelfth, and one-off amounts are left out. Left is what you charge minus what it costs you.
-          </p>
-          <table className="t" aria-label="Clients" aria-describedby="clients-legend">
-            <thead>
-              <tr>
-                <th scope="col">Client</th>
-                <th scope="col">Sites</th>
-                <th scope="col">Costs a month</th>
-                <th scope="col">Charges a month</th>
-                <th scope="col">Left a month</th>
-                <th scope="col">Next renewal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((c) => {
-                const { own, costs: list } = of(c);
-                return (
-                  <tr key={c?.id ?? "none"}>
-                    <td className="name">
-                      {c ? (
-                        <button type="button" className="linkish" onClick={() => setEditing({ client: c })}>
-                          {c.name}
-                        </button>
-                      ) : (
-                        <span className="dim">No client</span>
-                      )}
-                      {c?.email && <span className="why">{c.email}</span>}
-                    </td>
-                    <td className="wrap-s">{own.length ? own.map((s) => s.name).join(", ") : <span className="dim">none</span>}</td>
-                    <td>
-                      <Amounts costs={list} what="cost" />
-                    </td>
-                    <td>
-                      <Amounts costs={list} what="charge" />
-                    </td>
-                    <td>
-                      <Amounts costs={list} what="left" />
-                    </td>
-                    <td className="num">{nextRenewal(list) ?? <span className="dim">none</span>}</td>
+        <div className="stack">
+          <section className="g3" aria-label="This month">
+            <div className="stat">
+              <h2 className="label">Charged each month</h2>
+              <p className="stat-n">
+                <strong>{money(t.charge, main, true)}</strong> <span className="cut">{paying === 1 ? "from 1 client" : `from ${paying} clients`}</span>
+              </p>
+              {also("charge")}
+            </div>
+            <div className="stat">
+              <h2 className="label">Costs each month</h2>
+              <p className="stat-n">
+                <strong>{money(t.cost, main, true)}</strong> <span className="cut" data-tip={costWords || undefined}>{costWords}</span>
+              </p>
+              {also("cost")}
+            </div>
+            <div className="stat">
+              <h2 className="label">Left over</h2>
+              <p className="stat-n">
+                <strong className={left < 0 ? "danger" : undefined}>{money(left, main, true)}</strong> <span className="cut">a month</span>
+              </p>
+              {t.charge > 0 && (
+                <div className="mix" role="img" aria-label={`Costs are ${Math.round((t.cost / t.charge) * 100)}% of charges`}>
+                  <i className="k-off" style={{ flex: Math.min(t.cost, t.charge) }} />
+                  {left > 0 && <i className="k-up" style={{ flex: left }} />}
+                </div>
+              )}
+              {also("left")}
+            </div>
+          </section>
+          <div className="split-r">
+            <section className="card" aria-label="Clients and costs">
+              <table className="t" aria-label="Clients" aria-describedby="clients-legend">
+                <thead>
+                  <tr>
+                    <th scope="col">Client or cost</th>
+                    <th scope="col">Sites</th>
+                    <th scope="col" className="r">
+                      Charged
+                    </th>
+                    <th scope="col" className="r">
+                      Costs
+                    </th>
+                    <th scope="col" className="r">
+                      Monthly
+                    </th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <h2 className="sect">Costs and charges</h2>
-          {costs.length === 0 ? (
-            <p className="dim">None yet. Add what a site costs you, or what a client pays.</p>
-          ) : (
-            <table className="t" aria-label="Costs and charges">
-              <thead>
-                <tr>
-                  <th scope="col">What</th>
-                  <th scope="col">On</th>
-                  <th scope="col">Kind</th>
-                  <th scope="col">Amount</th>
-                  <th scope="col">Renews</th>
-                </tr>
-              </thead>
-              <tbody>
-                {costs.map((k) => (
-                  <tr key={k.id}>
-                    <td className="name">
-                      <button type="button" className="linkish" onClick={() => setEditing({ cost: k })}>
-                        {k.label}
-                      </button>
-                    </td>
-                    <td>{k.site_id != null ? siteName(k.site_id) : clientName(k.client_id)}</td>
-                    <td>{k.kind === "cost" ? "Cost" : "Charge"}</td>
-                    <td className="m">
-                      {money(k.cents, k.currency)} <span className="dim">{EVERY[k.every].toLowerCase()}</span>
-                    </td>
-                    <td className="num">{k.renews_on ?? <span className="dim">none</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </>
+                </thead>
+                <tbody>
+                  {rows.map((c) => {
+                    const { own, costs: list } = of(c);
+                    return (
+                      <Fragment key={c?.id ?? "none"}>
+                        <tr className={c && c.id === open ? "sel" : undefined}>
+                          <td>
+                            <div className="site">
+                              <span className={c ? "av lg well" : "av lg none"} aria-hidden="true">
+                                {c ? initials(c.name) : "?"}
+                              </span>
+                              <span>
+                                {c ? (
+                                  <button type="button" className="linkish" onClick={() => setEditing({ client: c })}>
+                                    {c.name}
+                                  </button>
+                                ) : (
+                                  <b>No client yet</b>
+                                )}
+                                <small>{c ? c.email || "no email" : "Costs you pay yourself"}</small>
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            {own.length ? (
+                              <span className="pchips">
+                                {own.map((s) => (
+                                  <span key={s.id} className="pchip">
+                                    <SiteTile site={s} size="sm" />
+                                    {s.name}
+                                  </span>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="dim">none</span>
+                            )}
+                          </td>
+                          <td className="r">
+                            <Amounts costs={list} what="charge" />
+                          </td>
+                          <td className="r">
+                            <Amounts costs={list} what="cost" />
+                          </td>
+                          <td className="r">
+                            <Amounts costs={list} what="left" />
+                          </td>
+                        </tr>
+                        {list.map((k) => {
+                          const on = k.site_id != null && own.length > 1 ? siteOf(k.site_id)?.name : null;
+                          const when = k.renews_on ? `${k.every === "once" ? "due" : "renews"} ${dayLabel(k.renews_on) || k.renews_on}` : null;
+                          return (
+                            <tr key={k.id} className="item">
+                              <td>
+                                <div className="item-t">
+                                  <button type="button" className="linkish" onClick={() => setEditing({ cost: k })}>
+                                    {k.label}
+                                  </button>
+                                  <span>{[k.kind === "cost" ? "Cost" : "Charge", EVERY[k.every].toLowerCase(), on, when].filter(Boolean).join(" · ")}</span>
+                                </div>
+                              </td>
+                              <td />
+                              <td className="r">{k.kind === "charge" && <span className="m">{money(k.cents, k.currency)}</span>}</td>
+                              <td className="r">{k.kind === "cost" && <span className="m">{money(k.cents, k.currency)}</span>}</td>
+                              <td />
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="card-foot">
+                <span className="count" id="clients-legend">
+                  Monthly: a yearly amount counts a twelfth, and one-off amounts are left out. Monthly is what you charge minus what it costs you.
+                </span>
+              </div>
+            </section>
+            <section className="card" aria-labelledby="renew-t">
+              <div className="card-head">
+                <h2 id="renew-t">
+                  <Glyph name="calendar" />
+                  Renewing soon
+                </h2>
+              </div>
+              {renewing.length === 0 ? (
+                <p className="quiet">Nothing has a renewal date yet. Add one to a cost or charge.</p>
+              ) : (
+                <ul className="fixes">
+                  {renewing.map(({ k, days }) => (
+                    <li key={k.id} className="fix">
+                      <span className="tile sm neutral">
+                        <Glyph name={/domain/i.test(k.label) ? "globe" : /host/i.test(k.label) ? "monitor" : "package"} />
+                      </span>
+                      <div>
+                        <b>
+                          {k.label} · {whose(k)}
+                        </b>
+                        <span>
+                          {dayLabel(k.renews_on!) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency, true)}
+                        </span>
+                      </div>
+                      <span className={`tag ${days < 0 ? "danger" : days <= 30 ? "warning" : ""}`}>
+                        {days < 0 ? `${-days} ${days === -1 ? "day" : "days"} ago` : days === 0 ? "today" : `${days} ${days === 1 ? "day" : "days"}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        </div>
       )}
       {editing && "client" in editing && <ClientSheet client={editing.client} sites={sites} onClose={() => setEditing(null)} onDone={done} />}
       {editing && "cost" in editing && <CostSheet cost={editing.cost} sites={sites} clients={clients} onClose={() => setEditing(null)} onDone={done} />}
@@ -251,7 +368,8 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
     <>
       <span className="sum">Delete {client.name} and the costs and charges on them? Their sites stay.</span>
       <Button onClick={() => setDeleting(false)}>Keep {client.name}</Button>
-      <Button kind="danger" disabled={busy} onClick={remove}>
+      <Button kind="danger" className="solid" disabled={busy} onClick={remove}>
+        <Glyph name="trash" />
         Delete the client
       </Button>
     </>
@@ -259,12 +377,18 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
     <>
       {!isNew && (
         <Button kind="danger" className="push" onClick={() => setDeleting(true)}>
+          <Glyph name="trash" />
           Delete the client
         </Button>
       )}
-      <Button onClick={onClose}>Close without saving</Button>
-      <Button kind="primary" disabled={busy || !c.name.trim()} onClick={save}>
+      <Button className="ghost" onClick={onClose}>
+        Close without saving
+      </Button>
+      <Button kind="primary" className="disc" disabled={busy || !c.name.trim()} onClick={save}>
         {busy ? "Saving…" : isNew ? "Add the client" : "Save changes"}
+        <span className="btn-disc">
+          <Glyph name={isNew ? "plus" : "check"} />
+        </span>
       </Button>
     </>
   );
@@ -276,17 +400,19 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
           {error}
         </p>
       )}
-      <label className="field">
-        <span>Name</span>
-        <input className="input" value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} />
-      </label>
-      <label className="field">
-        <span>Email</span>
-        <input className="input" type="email" value={c.email} onChange={(e) => setC({ ...c, email: e.target.value })} />
-      </label>
+      <div className="g2 pair">
+        <label className="field">
+          <span>Name</span>
+          <input className="input" value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} />
+        </label>
+        <label className="field">
+          <span>Email</span>
+          <input className="input" type="email" spellCheck={false} value={c.email} onChange={(e) => setC({ ...c, email: e.target.value })} />
+        </label>
+      </div>
       <label className="field">
         <span>Notes</span>
-        <textarea className="input" rows={3} value={c.notes} onChange={(e) => setC({ ...c, notes: e.target.value })} />
+        <textarea className="input notes-box" rows={3} value={c.notes} onChange={(e) => setC({ ...c, notes: e.target.value })} />
       </label>
       <div className="field">
         <span>Their sites</span>
@@ -341,12 +467,18 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
     <>
       {!isNew && (
         <Button kind="danger" className="push" disabled={busy} onClick={remove}>
+          <Glyph name="trash" />
           Delete it
         </Button>
       )}
-      <Button onClick={onClose}>Close without saving</Button>
-      <Button kind="primary" disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
+      <Button className="ghost" onClick={onClose}>
+        {isNew ? "Close" : "Close without saving"}
+      </Button>
+      <Button kind="primary" className="disc" disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
         {busy ? "Saving…" : isNew ? "Add it" : "Save changes"}
+        <span className="btn-disc">
+          <Glyph name={isNew ? "plus" : "check"} />
+        </span>
       </Button>
     </>
   );
@@ -366,6 +498,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
           A charge to the client
         </button>
       </div>
+      <div className="g2 pair">
       <label className="field">
         <span>On</span>
         <Select
@@ -393,6 +526,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
           <optgroup label="Sites">
             {sites.map((s) => (
               <option key={s.id} value={`s${s.id}`}>
+                <SiteTile site={s} size="sm" />
                 {s.name}
               </option>
             ))}
@@ -403,17 +537,21 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
         <span>What it is</span>
         <input className="input" placeholder="Hosting, domain, care plan" value={k.label} onChange={(e) => setK({ ...k, label: e.target.value })} />
       </label>
-      <div className="row">
-        <label className="field grow">
-          <span>Amount</span>
-          <input className="input" inputMode="decimal" placeholder="120.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <div className="field amount">
+        <label htmlFor="cost-amount">
+          Amount
         </label>
-        <label className="field">
-          <span>Currency</span>
-          <input className="input" maxLength={3} size={4} value={k.currency} onChange={(e) => setK({ ...k, currency: e.target.value.toUpperCase() })} />
-        </label>
+        <input id="cost-amount" className="input mono" inputMode="decimal" placeholder="120.00" aria-describedby={cents == null ? "cost-amount-why" : undefined} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        {amount.trim() !== "" && cents == null && (
+          <small id="cost-amount-why" className="why danger">
+            Write the amount as a number, like 120 or 9.99.
+          </small>
+        )}
       </div>
-      {amount.trim() !== "" && cents == null && <small className="why danger">Write the amount as a number, like 120 or 9.99.</small>}
+      <label className="field">
+        <span>Currency</span>
+        <input className="input mono" maxLength={3} value={k.currency} onChange={(e) => setK({ ...k, currency: e.target.value.toUpperCase() })} />
+      </label>
       <label className="field">
         <span>How often</span>
         <Select className="input" aria-label="How often" value={k.every} onChange={(e) => setK({ ...k, every: e.target.value as Every })}>
@@ -427,6 +565,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
       <div className="field">
         <span>{k.every === "once" ? "Due on" : "Renews on"}</span>
         <DateInput type="date" aria-label={k.every === "once" ? "Due on" : "Renews on"} value={k.renews_on ?? ""} onChange={(e) => setK({ ...k, renews_on: e.target.value || null })} />
+      </div>
       </div>
     </Sheet>
   );

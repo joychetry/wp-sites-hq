@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Small pieces of the Console design system.
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { Tone } from "../api";
+import { ICONS } from "./icons";
 
 /** The Classic Monks mark, coloured by CSS. */
 export function Logo() {
@@ -16,6 +18,24 @@ export function Logo() {
         d="M32.434 21.865c2.58 0 4.67-2.093 4.67-4.675a4.673 4.673 0 0 0-4.67-4.674 4.673 4.673 0 0 0-4.67 4.674 4.673 4.673 0 0 0 4.67 4.675ZM42.014 25.193c-.75 0-1.497.324-2.068.974a9.906 9.906 0 0 1-14.897 0c-1.141-1.302-2.996-1.302-4.137 0-1.145 1.293-1.145 3.395 0 4.688 6.382 7.24 16.79 7.24 23.171 0 1.145-1.294 1.145-3.395 0-4.688-.57-.65-1.317-.974-2.068-.974ZM32.434 34.18c-7.058 0-14.114 2.691-19.486 8.07a2.925 2.925 0 0 0 0 4.14 2.912 2.912 0 0 0 4.137 0c8.463-8.463 22.235-8.463 30.698 0a2.912 2.912 0 0 0 4.138 0 2.925 2.925 0 0 0 0-4.14c-5.373-5.378-12.428-8.07-19.487-8.07Z"
       />
     </svg>
+  );
+}
+
+/** The design's line icons (components/icons.ts), drawn in currentColor. */
+export type GlyphName = keyof typeof ICONS | "arrow";
+
+export function Glyph({ name }: { name: GlyphName }) {
+  const [width, body] = ICONS[name === "arrow" ? "arrow-right" : name];
+  return (
+    <svg
+      className="glyph"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill={width ? "none" : "currentColor"}
+      stroke={width ? "currentColor" : "none"}
+      strokeWidth={width || undefined}
+      dangerouslySetInnerHTML={{ __html: body }}
+    />
   );
 }
 
@@ -60,7 +80,7 @@ export function Status({ tone, children }: { tone: Tone | "info"; children: Reac
 }
 
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  kind?: "primary" | "danger";
+  kind?: "primary" | "danger" | "soft";
   small?: boolean;
   keys?: string;
 };
@@ -73,4 +93,12 @@ export function Button({ kind, small, keys, className, children, ...rest }: BtnP
       {keys && <Kbd>{keys}</Kbd>}
     </button>
   );
+}
+
+/** The page head's action area (App.tsx); a screen puts its main actions there with <HeadActions>. */
+export const HeadSlot = createContext<HTMLElement | null>(null);
+
+export function HeadActions({ children }: { children: ReactNode }) {
+  const slot = useContext(HeadSlot);
+  return slot ? createPortal(children, slot) : null;
 }

@@ -30,14 +30,14 @@ export const SCREENS: Screen[] = [
     name: "sites-sign-in-again",
     open: async (page) => {
       await nav("Sites")(page);
-      await page.getByRole("gridcell", { name: "Monks Central Test", exact: true }).click();
+      await page.getByRole("gridcell", { name: /^Monks Central Test / }).click();
     },
   },
   {
     name: "sites-no-tools",
     open: async (page) => {
       await nav("Sites")(page);
-      await page.getByRole("gridcell", { name: "Studio Blog", exact: true }).click();
+      await page.getByRole("gridcell", { name: /^Studio Blog / }).click();
     },
   },
   { name: "add-site", open: (page) => nav("Sites")(page).then(() => page.keyboard.press("a")) },
@@ -46,7 +46,18 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Sites")(page);
       await page.keyboard.press("a");
-      await page.getByRole("radio", { name: /^Basic mode/ }).check();
+      await page.getByRole("textbox", { name: "Site address" }).fill("https://mc-e.test");
+      // The radio sits inside its card; the card is what you click.
+      await page.locator("label.choice", { hasText: "Basic mode" }).click();
+      await page.getByRole("button", { name: /^Next/ }).click();
+    },
+  },
+  {
+    name: "sign-in-again",
+    open: async (page) => {
+      await nav("Sites")(page);
+      await page.getByRole("gridcell", { name: /^Monks Central Test / }).click();
+      await page.getByRole("complementary").getByRole("button", { name: "Sign in again" }).click();
     },
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
@@ -126,8 +137,7 @@ export const SCREENS: Screen[] = [
     name: "settings-exported",
     open: async (page) => {
       await nav("Settings")(page);
-      await page.getByRole("button", { name: "Export the sites" }).click();
-      await page.getByRole("menuitem", { name: /^Export as JSON/ }).click();
+      await page.getByRole("button", { name: "Export as JSON" }).click();
       await page.getByRole("button", { name: "Show in folder" }).waitFor();
     },
   },
@@ -166,7 +176,7 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-undo",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("button", { name: "Turn on SVG Support" }).click();
+      await page.getByRole("switch", { name: "SVG Support" }).click();
       await page.getByRole("button", { name: "Undo", exact: true }).waitFor();
     },
   },
@@ -183,7 +193,16 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Classic Monks")(page);
       await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
-      await page.getByRole("table", { name: "Activity" }).waitFor();
+      await page.getByRole("list", { name: "Activity" }).waitFor();
+    },
+  },
+  {
+    name: "classic-monks-undo-ask",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
+      await page.getByRole("list", { name: "Activity" }).getByRole("button", { name: /^Undo/ }).first().click();
+      await page.getByRole("dialog", { name: /^Undo this change/ }).waitFor();
     },
   },
   {
@@ -191,7 +210,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Classic Monks")(page);
       await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Waiting for approval", exact: true }).click();
-      await page.getByRole("table", { name: "Waiting for approval" }).waitFor();
+      await page.getByRole("list", { name: "Waiting for approval" }).waitFor();
     },
   },
   {
@@ -208,7 +227,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("AI")(page);
       await page.getByRole("tab", { name: "Agent access", exact: true }).click();
-      await page.getByRole("table", { name: "Agent access" }).waitFor();
+      await page.getByRole("tabpanel").getByRole("list", { name: "Agent access" }).waitFor();
     },
   },
   {
@@ -216,14 +235,15 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("AI")(page);
       await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
-      await page.getByRole("table", { name: "Activity" }).waitFor();
+      await page.getByRole("list", { name: "Activity" }).waitFor();
     },
   },
   {
     name: "ai-connect",
     open: async (page) => {
       await nav("AI")(page);
-      await page.getByRole("tab", { name: "Connect an AI app", exact: true }).click();
+      await page.getByRole("button", { name: "Connect an AI app", exact: true }).click();
+      await page.getByRole("dialog", { name: "Connect an AI app" }).waitFor();
     },
   },
   {
@@ -384,7 +404,7 @@ export const SCREENS: Screen[] = [
       await nav("Plugins")(page);
       await page.getByRole("button", { name: /^WooCommerce on MC A/ }).click();
       await page.getByRole("button", { name: "Choose an older version" }).click();
-      await page.getByRole("button", { name: "Roll back to 10.1.0" }).click();
+      await page.getByRole("radio", { name: "10.1.0" }).check();
     },
   },
   { name: "themes", open: nav("Themes") },
@@ -439,7 +459,7 @@ export const SCREENS: Screen[] = [
       await page.keyboard.press("Control+k");
       await page.getByRole("combobox", { name: "Command" }).fill("menu");
       await page.getByRole("option", { name: /^Search everything for/ }).click();
-      await page.getByRole("table", { name: "Posts and pages found" }).waitFor();
+      await page.getByRole("list", { name: "Results" }).getByRole("button", { name: /^View / }).first().waitFor();
     },
   },
   { name: "loading", fixture: "loading" },

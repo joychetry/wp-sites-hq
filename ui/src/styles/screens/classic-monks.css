@@ -1,0 +1,77 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Classic Monks (board 10, D07): the mark in the page head, the site picker, tabs, then the tab's cards beside the site's cards. */
+.phead > div.marked { grid-template-columns: 48px minmax(0, 1fr); column-gap: 14px; align-items: center; }
+.phead > div.marked > .mark { grid-row: span 2; width: 48px; height: 48px; }
+
+/* Site and Section pickers: a mono label beside the box; a site shows its tile. */
+.cm-pick { gap: var(--sp-2); }
+.cm-pick > span { font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.phead-acts .cm-pick .input { width: 180px; min-width: 0; }
+.cm .filters .cm-pick .input { width: 170px; min-width: 0; }
+.cm .filters .srch { flex: 1 1 220px; max-width: 320px; }
+.cm .filters .end { font-size: var(--fs-sm); color: var(--text-3); }
+.cm .filters .end b { color: var(--text); font-weight: 600; }
+
+/* Tabs on the ground, the waiting count as a small pill */
+.cm > .stack > .tabs { padding: 0; }
+.cm-n { display: inline-grid; place-items: center; min-width: 22px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Features: a mono label per section, then rows of a switch, the name and what it does */
+.feats { gap: 0; padding-top: var(--sp-4); }
+.feat-group + .feat-group { margin-top: var(--sp-2); padding-top: 18px; border-top: 1px solid var(--line); }
+.feat-group > .label { margin: 0; padding: var(--sp-1) 0 6px; }
+.feat-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.feat-list li { display: flex; align-items: center; gap: 14px; min-height: 52px; }
+.feat-list .what { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.feat-list label { font-weight: 600; cursor: pointer; }
+.feat-list small { font-size: var(--fs-sm); color: var(--text-2); }
+.feat-list .tag .glyph { width: 11px; height: 11px; }
+.feat-list input[aria-busy="true"] { opacity: 0.6; }
+
+/* The side cards: the site with its Classic Monks version, what waits, recent changes */
+.cm-site { display: flex; align-items: center; gap: var(--sp-2); }
+.cm-site > div { display: grid; gap: 2px; margin-right: auto; min-width: 0; }
+.cm-site b { font-weight: 600; }
+.cm-site small { font: 400 var(--fs-xs)/16px var(--mono); color: var(--text-3); }
+.cm .card-body > p.dim { margin: 0; font-size: var(--fs-sm); line-height: 1.45; }
+.cm-wait { background: var(--warn-paper); border-color: var(--warn-line); }
+.cm-wait .card-body { gap: var(--sp-3); }
+.cm-wait b { font-weight: 600; }
+.cm .card-head .link { display: inline-flex; align-items: center; text-decoration: none; }
+.cm .card-head .link:hover { text-decoration: underline; }
+.cm .fixes.recent .fix { grid-template-columns: minmax(0, 1fr) auto; }
+.cm .fixes.recent .av { display: none; }
+.cm .fix.two { grid-template-columns: minmax(0, 1fr) auto; }
+.cm .fix .btn.ghost { color: var(--text-2); }
+.cm .fix > .st { font-size: var(--fs-sm); }
+.cm .av:not(.me) { background: var(--panel); color: var(--text-2); }
+/* .fix greys every span; avatars and tiles keep their own ink. */
+.cm .fix > .av { font-size: var(--fs-xs); }
+.cm .fix > .av.me { color: var(--brand-text); }
+.cm .fix > .tile.warning { color: var(--warn); }
+
+/* Settings: each field with its own Save, lined up with the box */
+.sets { list-style: none; margin: 0; padding: var(--sp-1) 20px; }
+.sets > li { display: flex; align-items: flex-end; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+.sets > li:first-child, .sets > li.head + li { border-top: 0; }
+.sets > li.head { padding: var(--sp-3) 0 0; }
+.sets > li.head .label { margin: 0; }
+.set-field { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.set-field > b { font-size: var(--fs-sm); font-weight: 600; }
+.set-field small { font-size: var(--fs-sm); color: var(--text-3); }
+.set-field .num-in { display: flex; }
+.set-field .num-in .input { flex: 1; width: auto; text-align: left; font-family: var(--mono); }
+.sets > li:has(.set-field small) > .btn { margin-bottom: 25px; }
+.cm .card-foot.note { margin: 0; padding: var(--sp-3) 20px; font-size: var(--fs-sm); color: var(--text-3); }
+.cm .card-foot.pager { padding: var(--sp-3) 20px; }
+.cm .card-foot.pager + .card-foot { border-top: 0; padding-top: 0; }
+
+/* Reports: the numbers in a row, then a card per report */
+.rnums { display: flex; flex-wrap: wrap; gap: var(--sp-4) 28px; }
+.rnum { display: grid; gap: var(--sp-1); align-content: start; }
+.rnum .label { margin: 0; }
+.rnum strong { font: 600 26px/1 var(--display); letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
+.rnum strong.warning { color: var(--warn); }
+.rnum small { font-size: var(--fs-sm); color: var(--text-3); }
+.cm .card .t th { position: static; }
+.cm .card > p.card-body { margin: 0; display: block; }

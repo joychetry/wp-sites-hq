@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Phase 7 business: clients, costs and charges, and the site list in and out.
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render as draw, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Clients, money, perMonth, sums, toCents } from "./Clients";
 import { Settings, importNote } from "./Settings";
 import { site, choose } from "../test-fixtures";
+import { HeadSlot } from "../components/ui";
+import type { ReactElement, ReactNode } from "react";
+
+// The page head's action slot, as App gives it: the screen's main actions render there.
+const head = document.body.appendChild(document.createElement("div"));
+const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider value={head}>{children}</HeadSlot.Provider>;
+const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 import type { Cost } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -59,11 +66,14 @@ test("lists clients with their sites and what is left each month", async () => {
   expect(within(rosa).getByText("€20.00")).toBeInTheDocument();
   expect(within(rosa).getByText("€99.00")).toBeInTheDocument();
   expect(within(rosa).getByText("€79.00")).toBeInTheDocument();
-  const none = within(table).getByText("No client").closest("tr")!;
+  const none = within(table).getByText("No client yet").closest("tr")!;
   expect(within(none).getByText("Beta")).toBeInTheDocument();
-  expect(within(none).getByText("2026-12-01")).toBeInTheDocument();
-  const list = screen.getByRole("table", { name: "Costs and charges" });
-  expect(within(list).getByText("Domain").closest("tr")).toHaveTextContent("$15.00 once");
+  // Each cost or charge is a row under its client, with how often and when it renews or is due.
+  expect(within(table).getByRole("button", { name: "Domain" }).closest("tr")).toHaveTextContent("Cost · once · due 1 Dec 2026$15.00");
+  expect(within(table).getByRole("button", { name: "Care plan" }).closest("tr")).toHaveTextContent("Charge · monthly€99.00");
+  // What renews soon, in date order.
+  const soon = screen.getByRole("region", { name: "Renewing soon" });
+  expect(within(soon).getAllByRole("listitem").map((li) => li.querySelector("b")!.textContent)).toEqual(["Domain · Beta", "Hosting · Alpha"]);
 });
 
 test("adds a client with their sites, and a cost on a site", async () => {
@@ -125,8 +135,7 @@ test("exports into Downloads and imports a file, saying what was left out", asyn
     sites_import: () => ({ sites: 1, clients: 1, costs: 2, not_connected: ["https://gone.test"] }),
   });
   render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Export the sites" }));
-  fireEvent.click(screen.getByRole("menuitem", { name: /^Export as CSV/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Export as CSV" }));
   expect(await screen.findByText("Saved /home/you/Downloads/sites.csv")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "file_show")).toBe(true));

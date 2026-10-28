@@ -827,7 +827,9 @@ impl Core {
     /// snapshot tool is read with two older tools.
     pub async fn refresh_inventory(&self, id: i64) -> Result<Inventory, SiteError> {
         let _work = self.working().await;
-        self.refresh_inventory_inner(id).await
+        let inv = self.refresh_inventory_inner(id).await;
+        self.refresh_package_icons().await;
+        inv
     }
 
     pub(crate) async fn refresh_inventory_inner(&self, id: i64) -> Result<Inventory, SiteError> {
@@ -904,15 +906,16 @@ impl Core {
             .await
     }
 
-    /// Search WordPress.org's plugin directory.
-    pub async fn search_plugins(&self, query: &str) -> Result<Vec<Found>, SiteError> {
+    /// Search WordPress.org's plugin directory. The results' icons are cached
+    /// after it answers, for the tiles.
+    pub async fn search_plugins(self: &Arc<Self>, query: &str) -> Result<Vec<Found>, SiteError> {
         let query = query.trim();
         if query.chars().count() < 2 {
             return Err(plain("Type at least two letters to search."));
         }
         let reply = net::send(&self.limits, "api.wordpress.org", Retry::ReadOnly, || {
             self.http
-                .get("https://api.wordpress.org/plugins/info/1.2/")
+                .get(format!("{}/plugins/info/1.2/", self.feeds.wordpress_org))
                 .query(&[
                     ("action", "query_plugins"),
                     ("request[search]", query),
@@ -920,11 +923,16 @@ impl Core {
                 ])
         })
         .await?;
-        reply
+        let answer = reply
             .json::<Value>()
             .filter(|_| reply.status == 200)
-            .map(|v| found(&v))
-            .ok_or_else(|| plain("WordPress.org didn't answer the search. Try again in a minute."))
+            .ok_or_else(|| {
+                plain("WordPress.org didn't answer the search. Try again in a minute.")
+            })?;
+        let core = self.clone();
+        let results = found(&answer);
+        tokio::spawn(async move { core.cache_found_icons(&answer).await });
+        Ok(results)
     }
 
     /// Record a job the human confirmed, then run it in the background.

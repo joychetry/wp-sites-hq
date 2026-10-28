@@ -80,9 +80,35 @@ function site(over: Partial<Site>): Site {
     agent_access: false,
     client_id: null,
     client: null,
+    icon: "v1",
     ...over,
   };
 }
+
+// A favicon per site: a coloured rounded square or circle with the name's first letter.
+const ICON_COLOURS = ["#e4572e", "#2e86ab", "#3bb273", "#7768ae", "#f4a259", "#1b998b", "#c03221"];
+function iconFor(s: Site): string {
+  const fill = ICON_COLOURS[(s.id - 1) % ICON_COLOURS.length];
+  const shape = s.id % 2 ? `<rect width="32" height="32" rx="7" fill="${fill}"/>` : `<circle cx="16" cy="16" r="16" fill="${fill}"/>`;
+  const letter = (s.name.match(/[a-z0-9]/i)?.[0] ?? "W").toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${shape}<text x="16" y="22" font-family="sans-serif" font-size="17" font-weight="700" fill="#fff" text-anchor="middle">${letter}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+// WordPress.org pictures: plugin icons (square, their own colours) and theme screenshots (4:3, cropped
+// in the tiles). Classic Monks, Bricks and the rest aren't in the directory, so their tiles show monograms.
+const svg = (w: number, h: number, body: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${body}</svg>`)}`;
+const mark = (fill: string, ink: string, letter: string) =>
+  svg(128, 128, `<rect width="128" height="128" fill="${fill}"/><text x="64" y="${letter.length > 1 ? 80 : 86}" font-family="sans-serif" font-size="${letter.length > 1 ? 44 : 64}" font-weight="700" fill="${ink}" text-anchor="middle">${letter}</text>`);
+const PACKAGE_ICONS: Record<string, string> = {
+  "plugin/woocommerce": mark("#7f54b3", "#ffffff", "Woo"),
+  "plugin/akismet": mark("#357b49", "#ffffff", "A"),
+  "plugin/elementor": svg(128, 128, `<rect width="128" height="128" fill="#92003b"/><rect x="40" y="36" width="12" height="56" fill="#fff"/><rect x="62" y="36" width="28" height="12" fill="#fff"/><rect x="62" y="58" width="28" height="12" fill="#fff"/><rect x="62" y="80" width="28" height="12" fill="#fff"/>`),
+  "plugin/wordpress-seo": mark("#a4286a", "#ffffff", "Y"),
+  "plugin/seo-by-rank-math": mark("#e1e8f8", "#4b2ea8", "R"),
+  "plugin/jetpack": svg(128, 128, `<rect width="128" height="128" fill="#ffffff"/><circle cx="64" cy="64" r="48" fill="#069e08"/><path d="M60 26v54H34zM68 102V48h26z" fill="#fff"/>`),
+  "theme/twentytwentyfive": svg(1200, 900, `<rect width="1200" height="900" fill="#fbf7ee"/><rect width="1200" height="120" fill="#ffffff"/><text x="80" y="76" font-family="serif" font-size="40" fill="#111">Twenty Twenty-Five</text><text x="80" y="420" font-family="serif" font-size="140" fill="#111">A calm,</text><text x="80" y="580" font-family="serif" font-size="140" fill="#111">clear voice</text><rect x="80" y="660" width="1040" height="240" fill="#d9c9a8"/>`),
+};
 
 const FLEET: Site[] = [
   site({
@@ -104,8 +130,9 @@ const FLEET: Site[] = [
   }),
   site({ id: 2, client_id: 1, client: "Corner Bakery", name: "Corner Bakery", url: "https://corner-bakery-and-cafe-downtown.local", group: "Clients", health: "down", health_detail: "The site didn't answer within 20 seconds.", checked_at: now - 60 }),
   site({ id: 3, name: "mc-c", url: "https://mc-c.local", mode: "basic", username: "admin", cm_version: null, capabilities: {}, health_detail: "Answered in 0.7 s." }),
-  site({ id: 4, name: "Monks Central Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
-  site({ id: 5, name: "Studio Blog", url: "https://studio-blog.local", wp_version: "7.1.2", php_version: "8.3.14", cm_version: null, capabilities: { abilities: [], hq_status: false, degraded: true }, health_detail: "Answered in 0.5 s." }),
+  // 4 and 5 have no icon, so their tiles show the monogram.
+  site({ id: 4, icon: null, name: "Monks Central Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
+  site({ id: 5, icon: null, name: "Studio Blog", url: "https://studio-blog.local", wp_version: "7.1.2", php_version: "8.3.14", cm_version: null, capabilities: { abilities: [], hq_status: false, degraded: true }, health_detail: "Answered in 0.5 s." }),
   site({ id: 6, client_id: 2, client: "Studio North", name: "Portfolio", url: "https://portfolio.local", group: "Personal", tags: ["static"], php_version: "8.3.14", health: "ok", health_detail: "Slow: the home page took 4.2 s.", checked_at: now - 3600 * 2 }),
 ];
 
@@ -480,6 +507,7 @@ const monitor = (site_id: number, over: Partial<Monitor> = {}): Monitor => ({
   down_since: null,
   uptime_day: 100,
   uptime_month: 99.93,
+  day: dayOf(site_id, over),
   cert_expires: now + 86400 * 61,
   domain: null,
   domain_expires: null,
@@ -487,6 +515,14 @@ const monitor = (site_id: number, over: Partial<Monitor> = {}): Monitor => ({
   pagespeed: null,
   ...over,
 });
+// 24 hourly points around the site's response time, wobbling a little; a down site's last hours are down.
+function dayOf(id: number, over: Partial<Monitor>): Monitor["day"] {
+  if (over.uptime_day === null) return Array(24).fill(null);
+  const base = over.up === false ? 520 : (over.ms ?? 640);
+  const downFrom = over.up === false ? 22 : over.uptime_day != null && over.uptime_day < 100 ? 23 : 24;
+  return Array.from({ length: 24 }, (_, h) => (h >= downFrom ? { ms: null, up: false } : { ms: Math.round(base * (1 + 0.05 * Math.sin(h * 0.6 + id) + 0.03 * Math.sin(h * 2.1 + id * 3))), up: true }));
+}
+
 let MONITORS: Monitor[] =
   fixture === "empty"
     ? []
@@ -533,6 +569,14 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "sites_list":
       if (fixture === "loading") return new Promise<T>(() => {});
       return r(sites);
+    case "site_icon": {
+      const s = sites.find((x) => x.id === id);
+      return r(s?.icon ? iconFor(s) : null);
+    }
+    case "package_icons":
+      return r(Object.fromEntries(Object.keys(PACKAGE_ICONS).map((k) => [k, 1])));
+    case "package_icon":
+      return r(PACKAGE_ICONS[`${args.kind}/${args.slug}`] ?? null);
     case "site_check":
       await new Promise((ok) => setTimeout(ok, 300));
       return r(null);

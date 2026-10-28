@@ -1,0 +1,25 @@
+/* Add a site and Sign in again (D02). */
+.addsite { display: grid; gap: var(--sp-4); }
+.addsite .field, .addsite .alert { margin: 0; }
+.addsite .field .err.reserve { min-height: 0; }
+.addsite .field .err.reserve:empty { display: none; }
+.addsite .lead { margin: 0; color: var(--text-2); line-height: 1.5; }
+.sheet .meta { font-size: var(--fs-xs); color: var(--text-3); }
+.choices { display: grid; gap: var(--sp-2); border: 0; padding: 0; margin: 0; }
+.choices legend { padding: 0; margin-bottom: var(--sp-2); font-size: var(--fs-sm); font-weight: 600; }
+.choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); padding: 14px var(--sp-4); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: pointer; }
+.choice:hover { border-color: var(--line-2); }
+.choice:has(:checked) { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); background: var(--sel); }
+.choice:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.choice > .tile { grid-row: 1 / span 2; }
+.choice > .tile .mark { width: 22px; height: 22px; }
+.choice b { font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); }
+.choice > span:last-child { grid-column: 2; font-size: var(--fs-sm); line-height: 1.4; color: var(--text-2); }
+.addsite .chips { gap: var(--sp-2); }
+.pchip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--panel); font-size: var(--fs-sm); white-space: nowrap; }
+.pchip.outline { background: var(--bg); border: 1px solid var(--line); }
+.pchip .glyph { width: 14px; height: 14px; }
+.lockline { display: flex; align-items: center; gap: 6px; color: var(--text-3); }
+.lockline .glyph { width: 14px; height: 14px; }
+.addsite .golink { justify-self: start; border: 0; background: none; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }
+.addsite .golink .glyph { width: 14px; height: 14px; }
