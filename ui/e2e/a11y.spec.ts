@@ -400,3 +400,20 @@ test("approving from the keyboard moves focus to the next comment, and a new scr
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Sites/ }).click();
   await expect(page.getByText(/^Approved: /)).toHaveCount(0);
 });
+
+test("custom field boxes are as tall as the other fields, and Remove lines up with its box", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "content-editor")!, "light");
+  const sheet = page.getByRole("dialog");
+  const fields = sheet.getByRole("group", { name: "Custom fields" });
+  const title = (await sheet.getByRole("textbox", { name: "Title" }).boundingBox())!;
+  for (const name of ["New field name", "New field value", "opening_hours"]) {
+    const box = (await fields.getByRole("textbox", { name }).boundingBox())!;
+    expect(box.height, name).toBe(title.height);
+  }
+  const value = (await fields.getByRole("textbox", { name: "opening_hours" }).boundingBox())!;
+  const remove = (await fields.getByRole("button", { name: "Remove the field opening_hours" }).boundingBox())!;
+  expect(remove.y).toBe(value.y);
+  expect(remove.height).toBe(value.height);
+  const add = (await fields.getByRole("button", { name: "Add the field" }).boundingBox())!;
+  expect(add.height).toBe(title.height);
+});

@@ -357,6 +357,10 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text-2); font-weig
 .t .tick { width: 2.5rem; }
 .row.check { padding: var(--sp-1) 0; flex-wrap: wrap; }
 .row .grow, .row.grow { flex: 1; min-width: 0; }
+/* Custom fields: every box is full height, and Remove lines up with its box, not its name. */
+.fields { gap: var(--sp-3); }
+.fieldrow { align-items: end; }
+.fieldrow > .field { margin: 0; }
 ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 ul.plain .row { flex-wrap: wrap; }
 /* A file picker that looks like a button; the ring shows on the label. */

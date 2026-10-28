@@ -52,7 +52,7 @@ function FieldsEdit({ meta, value, onChange }: { meta: Record<string, unknown>; 
     setVal("");
   };
   return (
-    <fieldset className="field">
+    <fieldset className="field fields">
       <legend>Custom fields</legend>
       {keys.length === 0 && <span className="dim">None</span>}
       {keys.map((k) => {
@@ -70,27 +70,27 @@ function FieldsEdit({ meta, value, onChange }: { meta: Record<string, unknown>; 
           );
         }
         return (
-          <div key={k} className="row">
+          <div key={k} className={typeof now === "string" ? "row fieldrow" : "row"}>
             {typeof now === "string" ? (
               <label className="field grow">
                 <span className="mono">{k}</span>
-                <input className="input sm" value={now} onChange={(e) => onChange({ ...value, [k]: e.target.value })} />
+                <input className="input" value={now} onChange={(e) => onChange({ ...value, [k]: e.target.value })} />
               </label>
             ) : (
               <span className="grow">
                 <span className="mono">{k}</span> <span className="dim">kept as is (not plain text)</span>
               </span>
             )}
-            <Button small aria-label={`Remove the field ${k}`} onClick={() => onChange({ ...value, [k]: null })}>
+            <Button aria-label={`Remove the field ${k}`} onClick={() => onChange({ ...value, [k]: null })}>
               Remove
             </Button>
           </div>
         );
       })}
       <div className="row">
-        <input className="input sm" aria-label="New field name" placeholder="Field name" value={key} onChange={(e) => setKey(e.target.value)} />
-        <input className="input sm" aria-label="New field value" placeholder="Value" value={val} onChange={(e) => setVal(e.target.value)} />
-        <Button small onClick={add} disabled={!key.trim() || key.trim().startsWith("_")}>
+        <input className="input" aria-label="New field name" placeholder="Field name" value={key} onChange={(e) => setKey(e.target.value)} />
+        <input className="input" aria-label="New field value" placeholder="Value" value={val} onChange={(e) => setVal(e.target.value)} />
+        <Button onClick={add} disabled={!key.trim() || key.trim().startsWith("_")}>
           Add the field
         </Button>
       </div>
