@@ -137,6 +137,25 @@ export type SecurityReport = {
   notes: string[];
 };
 
+export type PageSpeed = { score: number; lcp: string; cls: string; tbt: string; at: number };
+export type Monitor = {
+  site_id: number;
+  public: boolean;
+  checked_at: number | null;
+  up: boolean | null;
+  status: number;
+  ms: number;
+  error: string;
+  down_since: number | null;
+  uptime_day: number | null;
+  uptime_month: number | null;
+  cert_expires: number | null;
+  domain: string | null;
+  domain_expires: number | null;
+  domain_note: string;
+  pagespeed: PageSpeed | null;
+};
+
 export type Found = { slug: string; name: string; version: string; active_installs: number; summary: string };
 
 export type PluginVersions = { installed?: string; versions?: { version: string; current?: boolean }[]; notice?: string };
@@ -255,6 +274,9 @@ export const api = {
   searchPlugins: (query: string) => invoke<Found[]>("plugin_search", { query }),
   security: () => invoke<SecurityReport[]>("security_list"),
   scanSecurity: (id?: number) => invoke<void>("security_scan", { id }),
+  monitors: () => invoke<Monitor[]>("monitors_list"),
+  checkMonitors: () => invoke<void>("monitors_check"),
+  pageSpeed: (id: number) => invoke<PageSpeed>("pagespeed_run", { id }),
   /** Opens an https link from a feed in the browser. */
   openLink: (url: string) => invoke<void>("link_open", { url }),
   startJob: (title: string, changes: Change[]) => invoke<Job>("job_start", { title, changes }),
@@ -348,6 +370,12 @@ function useLive<T>(load: () => Promise<T>, event: string) {
     };
   }, [reload, event]);
   return { data, error, reload };
+}
+
+/** Every site's monitors, as last measured. */
+export function useMonitors() {
+  const { data } = useLive(api.monitors, "monitors-changed");
+  return data;
 }
 
 /** Every site's last security scan. */

@@ -204,7 +204,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -224,6 +224,18 @@ test("a vulnerable plugin is fixed from the keyboard, through the plan", async (
   await expect(sheet.getByRole("checkbox", { name: "Update WooCommerce on MC A" })).toBeChecked();
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
+});
+
+test("PageSpeed runs from the keyboard and the result shows in its row", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "monitoring")!, "light");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Monitoring 1 down" })).toBeVisible();
+  await expect(page.getByText(/^1 site is down: Corner Bakery\./)).toBeVisible();
+  const run = page.getByRole("button", { name: "Run PageSpeed again on Portfolio" });
+  await run.focus();
+  await page.keyboard.press("Enter");
+  const row = page.getByRole("row").filter({ hasText: "Portfolio" });
+  await expect(row.getByText("81")).toBeVisible();
+  await expect(run).toBeFocused();
 });
 
 test("a rolled back update shows why, and only the failed change is offered again", async ({ page }) => {

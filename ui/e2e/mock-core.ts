@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, ActivityRow, Change, Comment, Entry, FeatureGroup, Item, Job, Media, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, Change, Comment, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -400,6 +400,46 @@ const SECURITY: SecurityReport[] =
         { site_id: 6, checked_at: now - 2 * 3600, vulnerabilities: [], abandoned: [], checksums: { checked: 3, not_verifiable: [], changed: [] }, notes: [] },
       ];
 
+// Monitoring: home pages every 5 minutes, certificates, domains, PageSpeed.
+const LOCAL_NOTE = "A local address: there's no domain to renew and PageSpeed can't reach it.";
+const monitor = (site_id: number, over: Partial<Monitor> = {}): Monitor => ({
+  site_id,
+  public: false,
+  checked_at: now - 90,
+  up: true,
+  status: 200,
+  ms: 640,
+  error: "",
+  down_since: null,
+  uptime_day: 100,
+  uptime_month: 99.93,
+  cert_expires: now + 86400 * 61,
+  domain: null,
+  domain_expires: null,
+  domain_note: LOCAL_NOTE,
+  pagespeed: null,
+  ...over,
+});
+let MONITORS: Monitor[] =
+  fixture === "empty"
+    ? []
+    : [
+        monitor(1, { ms: 412 }),
+        monitor(2, { up: false, status: 0, ms: 20000, error: "The site didn't answer within 20 seconds.", down_since: now - 1500, uptime_day: 91.67, uptime_month: 99.42 }),
+        monitor(3, { ms: 705, cert_expires: now + 86400 * 12 }),
+        monitor(4, { checked_at: null, up: null, uptime_day: null, uptime_month: null, cert_expires: null, domain_note: "" }),
+        monitor(5, { ms: 530 }),
+        monitor(6, {
+          public: true,
+          ms: 4210,
+          uptime_day: 98.96,
+          domain: "portfolio.example.com",
+          domain_expires: now + 86400 * 23,
+          domain_note: "",
+          pagespeed: { score: 72, lcp: "3.1 s", cls: "0.04", tbt: "180 ms", at: now - 86400 },
+        }),
+      ];
+
 const listeners: Array<() => void> = [];
 const changed = () => listeners.forEach((f) => f());
 const edit = (id: number, over: Partial<Site>) => {
@@ -547,6 +587,18 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(null);
     case "link_open":
       return r(null);
+    case "monitors_list":
+      return r(MONITORS);
+    case "monitors_check":
+      await new Promise((ok) => setTimeout(ok, 300));
+      return r(null);
+    case "pagespeed_run": {
+      await new Promise((ok) => setTimeout(ok, 300));
+      const ps = { score: 81, lcp: "2.2 s", cls: "0.02", tbt: "90 ms", at: now };
+      MONITORS = MONITORS.map((m) => (m.site_id === id ? { ...m, pagespeed: ps } : m));
+      changed();
+      return r(ps);
+    }
     default:
       // Adding and signing in need a real site.
       return new Promise<T>(() => {});

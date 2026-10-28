@@ -44,6 +44,8 @@ export const SCREENS: Screen[] = [
   { name: "settings", open: nav("Settings") },
   { name: "later", open: nav("Reports") },
   { name: "security", open: nav("Security") },
+  { name: "monitoring", open: nav("Monitoring") },
+  { name: "monitoring-empty", fixture: "empty", open: nav("Monitoring") },
   { name: "security-empty", fixture: "empty", open: nav("Security") },
   { name: "users", open: nav("Users") },
   {

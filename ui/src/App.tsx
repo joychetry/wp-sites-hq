@@ -1,6 +1,6 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
 import { useEffect, useMemo, useState } from "react";
-import { ago, api, hasTool, siteStatus, useInventory, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { ago, api, hasTool, siteStatus, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Kbd, Logo } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
@@ -18,6 +18,7 @@ import { Comments } from "./screens/Comments";
 import { ClassicMonks } from "./screens/ClassicMonks";
 import { Ai } from "./screens/Ai";
 import { Security } from "./screens/Security";
+import { Monitoring } from "./screens/Monitoring";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -26,13 +27,13 @@ const GROUPS = [
   ["", ["Overview"]],
   ["Fleet", ["Sites", "Updates", "Plugins", "Themes"]],
   ["Content", ["Content", "Media", "Users", "Comments"]],
-  ["Care", ["Classic Monks", "Security", "Reports"]],
+  ["Care", ["Classic Monks", "Monitoring", "Security", "Reports"]],
   ["App", ["AI", "Settings"]],
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Security", "AI", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "AI", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -50,6 +51,7 @@ export default function App() {
   const { inventory } = useInventory();
   const { plans } = usePlans();
   const { reports } = useSecurity();
+  const monitors = useMonitors();
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [installing, setInstalling] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export default function App() {
   const down = all.filter((s) => siteStatus(s).tone === "danger").length;
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
+  const offline = (monitors ?? []).filter((m) => m.up === false).length;
   const vulnerable = (reports ?? []).reduce((n, r) => n + r.vulnerabilities.length, 0);
 
   const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
@@ -232,6 +235,8 @@ export default function App() {
     body = <Comments sites={scoped} />;
   } else if (section === "Classic Monks") {
     body = <ClassicMonks sites={scoped} />;
+  } else if (section === "Monitoring") {
+    body = <Monitoring sites={scoped} monitors={monitors ?? []} />;
   } else if (section === "Security") {
     body = <Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "AI") {
@@ -295,6 +300,9 @@ export default function App() {
                         {plans!.length}
                         <span className="sr-only"> to confirm</span>
                       </span>
+                    )}
+                    {s === "Monitoring" && offline > 0 && (
+                      <span className="n alert">{offline} down</span>
                     )}
                     {s === "Security" && vulnerable > 0 && (
                       <span className="n alert">

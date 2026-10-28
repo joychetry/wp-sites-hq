@@ -2,12 +2,15 @@
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Security, fixOf } from "./Security";
+import { Monitoring, expiry } from "./Monitoring";
 import { site } from "../test-fixtures";
-import type { SecurityReport, SiteInventory } from "../api";
+import type { Monitor, SecurityReport, SiteInventory } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 const mockInvoke = vi.mocked(invoke);
-beforeEach(() => mockInvoke.mockReset());
+beforeEach(() => {
+  mockInvoke.mockReset();
+});
 
 const A = site({ id: 1, name: "Alpha" });
 const B = site({ id: 2, name: "Beta" });
@@ -81,5 +84,61 @@ describe("Security", () => {
     fireEvent.click(screen.getByRole("button", { name: "Scan all sites now" }));
     expect(mockInvoke).toHaveBeenCalledWith("security_scan", { id: undefined });
     expect(await screen.findByRole("button", { name: "Scan all sites now" })).toBeEnabled();
+  });
+});
+
+const NOW = Date.now() / 1000;
+const mon = (over: Partial<Monitor>): Monitor => ({
+  site_id: 1,
+  public: false,
+  checked_at: NOW - 60,
+  up: true,
+  status: 200,
+  ms: 412,
+  error: "",
+  down_since: null,
+  uptime_day: 100,
+  uptime_month: 99.8612,
+  cert_expires: NOW + 86400 * 40 + 60,
+  domain: null,
+  domain_expires: null,
+  domain_note: "A local address: there's no domain to renew and PageSpeed can't reach it.",
+  pagespeed: null,
+  ...over,
+});
+
+describe("Monitoring", () => {
+  test("expiry gives a month's and a week's notice", () => {
+    expect(expiry(null)).toBeNull();
+    expect(expiry(NOW + 86400 * 40 + 60, NOW)).toMatchObject({ tone: "ok", text: "40 days left" });
+    expect(expiry(NOW + 86400 * 20 + 60, NOW)?.tone).toBe("warning");
+    expect(expiry(NOW + 86400 + 60, NOW)).toMatchObject({ tone: "danger", text: expect.stringMatching(/^1 day left/) });
+    expect(expiry(NOW - 10, NOW)).toMatchObject({ tone: "danger", text: "Expired" });
+  });
+
+  test("shows up and down sites, expiry, and runs PageSpeed only where it can", async () => {
+    const monitors = [
+      mon({}),
+      mon({ site_id: 2, public: true, up: false, status: 0, error: "The site didn't answer.", down_since: NOW - 600, uptime_day: 97.2222, domain: "beta.com", domain_expires: NOW + 86400 * 5 + 60, pagespeed: { score: 91, lcp: "1.8 s", cls: "0", tbt: "40 ms", at: NOW - 3600 } }),
+    ];
+    render(<Monitoring sites={[A, B]} monitors={monitors} />);
+    expect(screen.getByText(/^1 site is down: Beta\./)).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: "Monitoring" });
+    const [, alpha, beta] = within(table).getAllByRole("row");
+    expect(within(alpha).getByText("Up")).toBeInTheDocument();
+    expect(within(alpha).getByText("0.4 s")).toBeInTheDocument();
+    expect(within(alpha).getByText("99.9%")).toBeInTheDocument();
+    expect(within(alpha).getByText(/^40 days left/)).toBeInTheDocument();
+    expect(within(alpha).getByText("Public sites only")).toBeInTheDocument();
+    expect(within(beta).getByText("Down since 10 min ago")).toBeInTheDocument();
+    expect(within(beta).getByText("The site didn't answer.")).toBeInTheDocument();
+    expect(within(beta).getByText("97.2%")).toBeInTheDocument();
+    expect(within(beta).getByText(/^beta\.com, /)).toBeInTheDocument();
+    expect(within(beta).getByText(/^5 days left/).closest(".st")).toHaveClass("danger");
+    expect(within(beta).getByText("LCP 1.8 s, CLS 0, TBT 40 ms. Tested 1 hr ago.")).toBeInTheDocument();
+    mockInvoke.mockRejectedValue("Google limits PageSpeed tests without a key, and the limit is used up. Try again in an hour.");
+    fireEvent.click(within(beta).getByRole("button", { name: "Run PageSpeed again on Beta" }));
+    expect(mockInvoke).toHaveBeenCalledWith("pagespeed_run", { id: 2 });
+    expect(await within(beta).findByText(/^Google limits PageSpeed/)).toBeInTheDocument();
   });
 });

@@ -35,6 +35,8 @@ pub struct PageSpeed {
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Monitor {
     pub site_id: i64,
+    /// On the public internet: has a domain, and PageSpeed can reach it.
+    pub public: bool,
     pub checked_at: Option<i64>,
     pub up: Option<bool>,
     pub status: u16,
@@ -330,6 +332,7 @@ impl Core {
             for s in &sites {
                 let mut m = Monitor {
                     site_id: s.id,
+                    public: public_host(&s.url).is_some(),
                     ..Default::default()
                 };
                 if let Some((at, up, status, ms, error)) = c
@@ -516,6 +519,7 @@ mod tests {
         assert_eq!((m.uptime_day, m.uptime_month), (Some(100.0), Some(100.0)));
         assert_eq!(m.cert_expires, None, "plain http has no certificate");
         assert_eq!(m.domain_note, LOCAL, "127.0.0.1 has no domain");
+        assert!(!m.public);
 
         site.state().home_status = 503;
         core.check_monitors(false).await;
