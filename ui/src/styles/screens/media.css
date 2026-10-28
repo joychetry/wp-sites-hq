@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Media (screens/Media.tsx): the library card of thumbnails, and beside it Import and the picked item. */
 .mlib .card-head .pick { margin-right: auto; gap: var(--sp-2); }
 .mlib .card-head .pick > span { font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }

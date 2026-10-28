@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Add a site and Sign in again (D02). */
 .addsite { display: grid; gap: var(--sp-4); }
 .addsite .field, .addsite .alert { margin: 0; }

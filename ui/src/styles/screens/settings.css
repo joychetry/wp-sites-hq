@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Settings (board 17, D09): two columns of cards, each with an icon in its head. */
 .setpage > .g2 { max-width: 1040px; align-items: start; }
 .setpage .card-head h2 .glyph { width: 16px; height: 16px; color: var(--text-2); }

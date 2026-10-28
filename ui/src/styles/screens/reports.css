@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Reports: the form and its result on the left, the report's page on the well at the right (design 15) */
 .rep-split { display: grid; grid-template-columns: minmax(0, 0.62fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
 .reports .card-body { display: grid; gap: var(--sp-4); }

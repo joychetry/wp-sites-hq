@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Updates (board 03): kind tabs, one table grouped by site, a side column of what's waiting */
 .updates .t { table-layout: fixed; }
 .updates .t th:first-child, .updates .t td:first-child { width: 44px; padding-right: 0; }

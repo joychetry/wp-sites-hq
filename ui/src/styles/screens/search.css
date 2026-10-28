@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Search everything (board 18): a narrower page, a big search row, kind filters, one card of results */
 .body:has(> .scroll.search) { width: 100%; max-width: 980px; margin: 0 auto; }
 .scroll.page.search { display: grid; gap: var(--sp-5); align-content: start; }

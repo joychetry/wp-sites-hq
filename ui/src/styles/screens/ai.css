@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* AI (board 16, D08): tabs on the ground, plan cards beside the access and how-it-works cards */
 .scroll.page.ai { display: grid; gap: var(--sp-5); align-content: start; }
 .ai > .tabs { padding: 0; }
