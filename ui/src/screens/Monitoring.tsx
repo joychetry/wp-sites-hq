@@ -286,7 +286,8 @@ export function Day({ day, label }: { day: Monitor["day"]; label: string }) {
   const top = Math.max(...ms, 1) * 1.3, low = Math.min(...ms, top) * 0.7;
   const y = (v: number) => 3 + (H - 6) * (1 - (v - low) / (top - low || 1));
   // A line through the hours with a time; a gap where none was taken.
-  const path = day.map((h, i) => (h?.ms != null ? `${i && day[i - 1]?.ms != null ? "L" : "M"}${(i * step).toFixed(1)} ${y(h.ms).toFixed(1)}` : "")).join("");
+  // "l0 0" after each start: an hour with no timed neighbour still shows, as a round dot.
+  const path = day.map((h, i) => (h?.ms != null ? (i && day[i - 1]?.ms != null ? "L" : "M") + `${(i * step).toFixed(1)} ${y(h.ms).toFixed(1)}` + (i && day[i - 1]?.ms != null ? "" : "l0 0") : "")).join("");
   return (
     <svg className="day-line" viewBox={`-2 0 ${W + 4} ${H}`} width={W + 4} height={H} role="img" aria-label={ms.length ? `${label}; ${Math.min(...ms)} to ${Math.max(...ms)} ms` : label}>
       <path d={path} />
