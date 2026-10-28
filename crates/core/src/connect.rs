@@ -179,7 +179,7 @@ impl Core {
     }
 
     /// A secret, or `None` when it is missing or won't open.
-    fn open_named<T: serde::de::DeserializeOwned>(
+    pub(crate) fn open_named<T: serde::de::DeserializeOwned>(
         &self,
         name: &str,
     ) -> Result<Option<T>, SiteError> {

@@ -28,6 +28,10 @@ pub struct Feeds {
     pub vulnerabilities: String,
     pub rdap: String,
     pub pagespeed: String,
+    /// Google sign-in, tokens and Search Console's API, for Search Console.
+    pub google_auth: String,
+    pub google_token: String,
+    pub search_console: String,
 }
 
 impl Default for Feeds {
@@ -36,6 +40,9 @@ impl Default for Feeds {
             vulnerabilities: "https://www.wpvulnerability.net".into(),
             rdap: "https://rdap.org".into(),
             pagespeed: "https://www.googleapis.com/pagespeedonline/v5/runPagespeed".into(),
+            google_auth: "https://accounts.google.com/o/oauth2/v2/auth".into(),
+            google_token: "https://oauth2.googleapis.com/token".into(),
+            search_console: "https://searchconsole.googleapis.com/webmasters/v3".into(),
         }
     }
 }

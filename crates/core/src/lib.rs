@@ -17,6 +17,7 @@ pub mod packages;
 pub mod paths;
 pub mod people;
 pub mod security;
+pub mod seo;
 pub mod shop;
 pub mod sites;
 pub mod store;

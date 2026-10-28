@@ -74,6 +74,8 @@ pub struct State {
     pub no_zip_tool: bool,
     /// No WooCommerce: no store tools.
     pub no_woo: bool,
+    /// AgentedSEO is on the site, its abilities listed through Classic Monks.
+    pub agentedseo: bool,
     /// WooCommerce products as `list-products` gives them.
     pub products: Vec<serde_json::Value>,
     /// `{ id, post_id, date, title, content }`, oldest first.
@@ -159,6 +161,7 @@ impl Default for State {
             zip_kinds: Vec::new(),
             no_zip_tool: false,
             no_woo: false,
+            agentedseo: false,
             products: vec![
                 json!({ "id": 61, "name": "Sourdough", "type": "simple", "status": "publish", "sku": "SD-1", "price": "4.50", "regular_price": "4.50", "sale_price": "", "stock_status": "instock", "manage_stock": true, "stock_quantity": 9, "permalink": "https://shop.test/sourdough" }),
                 json!({ "id": 62, "name": "Rye", "type": "simple", "status": "publish", "sku": "", "price": "3.00", "regular_price": "3.50", "sale_price": "3.00", "stock_status": "instock", "manage_stock": true, "stock_quantity": 1, "permalink": "https://shop.test/rye" }),
@@ -572,6 +575,11 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
             if !s.no_hq {
                 tools.push(json!({ "name": "get-hq-status", "annotations": { "readOnlyHint": true } }));
             }
+            if s.agentedseo {
+                for (name, _) in SEO_TOOLS {
+                    tools.push(json!({ "name": name, "annotations": { "readOnlyHint": true } }));
+                }
+            }
             json!({ "tools": tools })
         }
         Some("tools/call") if req["params"]["name"] == "get-hq-status" && !s.no_hq => {
@@ -593,6 +601,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 .chain(CONTENT_TOOLS)
                 .chain(PEOPLE_TOOLS)
                 .chain(BUSINESS_TOOLS)
+                .chain(SEO_TOOLS)
                 .chain(&[("get-posts", true), ("update-post", false)])
                 .any(|(n, _)| req["params"]["name"] == *n) =>
         {
@@ -604,6 +613,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 .chain(CONTENT_TOOLS)
                 .chain(PEOPLE_TOOLS)
                 .chain(BUSINESS_TOOLS)
+                .chain(SEO_TOOLS)
                 .any(|(n, r)| *n == name && *r)
                 || name == "get-posts";
             // Classic Monks' approval gate: a change by a grant that isn't the operator waits.
@@ -633,6 +643,15 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 plugin_tool(&mut s, &name, &args)
             } else if PEOPLE_TOOLS.iter().any(|(n, _)| *n == name) {
                 people_tool(&mut s, &name, &args)
+            } else if SEO_TOOLS.iter().any(|(n, _)| *n == name) {
+                Ok(match name.as_str() {
+                    "agentedseo_get-capabilities" => json!({ "version": "0.3.0" }),
+                    "agentedseo_get-page-stats" => json!({
+                        "totals": { "clicks": 320, "impressions": 9100, "position": 11.2 },
+                        "pages": [{ "url": "/menu", "clicks": 200 }, { "url": "/", "clicks": 120 }],
+                    }),
+                    _ => json!({ "issues": [{ "code": "META_TITLE_MISSING", "severity": "error" }, { "code": "ALT_MISSING", "severity": "warning" }] }),
+                })
             } else if BUSINESS_TOOLS.iter().any(|(n, _)| *n == name) {
                 Ok(business_tool(&mut s, &name, &args))
             } else {
@@ -1490,6 +1509,12 @@ const BUSINESS_TOOLS: &[(&str, bool)] = &[
     ("list-products", true),
     ("get-store-overview", true),
     ("update-products", false),
+];
+/// AgentedSEO's abilities as Classic Monks lists another plugin's.
+const SEO_TOOLS: &[(&str, bool)] = &[
+    ("agentedseo_get-capabilities", true),
+    ("agentedseo_get-page-stats", true),
+    ("agentedseo_get-audit-issues", true),
 ];
 const WOO_TOOLS: &[&str] = &["list-products", "get-store-overview", "update-products"];
 
