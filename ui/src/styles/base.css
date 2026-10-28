@@ -368,3 +368,5 @@ ul.plain .row { flex-wrap: wrap; }
 .m.danger { color: var(--danger); }
 .indent { padding-left: var(--sp-5); border-left: 2px solid var(--line); margin: var(--sp-3) 0; }
 .preview { width: 100%; height: 70vh; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+/* Section headings, lists and notes sitting straight on a screen line up with its tables. */
+.scroll > .sect, .scroll > * > .sect, .scroll > ul.plain, .scroll > * > ul.plain, .scroll > p.dim, .scroll > * > p.dim { margin-left: var(--pad); margin-right: var(--pad); }

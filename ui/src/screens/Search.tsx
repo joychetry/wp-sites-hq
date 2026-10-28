@@ -104,7 +104,9 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
       ) : (
         <>
           <p className="legend" id="search-legend">
-            Results for <b>{query}</b>. Plugins and themes are as last read from each site.
+            <span>
+              Results for <b>{query}</b>. Plugins and themes are as last read from each site.
+            </span>
           </p>
           {groups.length === 0 && <p className="dim">No sites, plugins, themes or clients match.</p>}
           {groups.map(([kind, list]) => (
