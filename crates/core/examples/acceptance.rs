@@ -25,6 +25,12 @@
 //!   create <url> <post type> <draft JSON>  add an entry (JSON back)
 //!   edit <url> <post type> <id> <draft JSON>
 //!   import <url> <image link> <alt text>   add an image to the media library
+//!   media <url> [query JSON]               a page of the media library (JSON)
+//!   media-upload <url> <file> [details JSON]   upload a file as the window does (chunked)
+//!   media-details <url> <id> <details JSON>    alt, title, caption, description
+//!   media-replace <url> <id> <file> [keep]     replace the file; `keep` uses the new file's name
+//!   media-restore <url> <id>                   put the file from before the last replace back
+//!   acf <url> <post id> | acf-save <url> <post id> <fields JSON>   prints the Undo row
 //!   users <url> [search]                   a page of users with the roles offered (JSON)
 //!   add-user <url> <new user JSON>
 //!   set-role <url> <user id> <role>
@@ -316,6 +322,80 @@ async fn main() -> Res<()> {
                     arg(2)?,
                     arg(3)?.parse()?,
                     serde_json::from_str(arg(4)?)?,
+                )
+                .await?,
+        ),
+        "media" => show(
+            &core
+                .media(
+                    site_id(&core, arg(1)?)?,
+                    &serde_json::from_str(args.get(2).map_or("{}", String::as_str))?,
+                )
+                .await?,
+        ),
+        "media-upload" => {
+            let path = Path::new(arg(2)?);
+            let name = path.file_name().ok_or("no file name")?.to_string_lossy();
+            let details = serde_json::from_str(args.get(3).map_or("{}", String::as_str))?;
+            let stop = std::sync::atomic::AtomicBool::new(false);
+            let shown = |done: u64, all: u64| eprintln!("sent {done} of {all} bytes");
+            show(
+                &core
+                    .upload_media(
+                        site_id(&core, arg(1)?)?,
+                        &name,
+                        &std::fs::read(path)?,
+                        &details,
+                        &shown,
+                        &stop,
+                    )
+                    .await?,
+            )
+        }
+        "media-details" => show(
+            &core
+                .update_media(
+                    site_id(&core, arg(1)?)?,
+                    arg(2)?.parse()?,
+                    &serde_json::from_str(arg(3)?)?,
+                )
+                .await?,
+        ),
+        "media-replace" => {
+            let path = Path::new(arg(3)?);
+            let name = path.file_name().ok_or("no file name")?.to_string_lossy();
+            let stop = std::sync::atomic::AtomicBool::new(false);
+            let shown = |done: u64, all: u64| eprintln!("sent {done} of {all} bytes");
+            show(
+                &core
+                    .replace_media(
+                        site_id(&core, arg(1)?)?,
+                        arg(2)?.parse()?,
+                        &name,
+                        &std::fs::read(path)?,
+                        args.get(4).is_some_and(|k| k == "keep"),
+                        &shown,
+                        &stop,
+                    )
+                    .await?,
+            )
+        }
+        "media-restore" => show(
+            &core
+                .restore_replaced_media(site_id(&core, arg(1)?)?, arg(2)?.parse()?)
+                .await?,
+        ),
+        "acf" => show(
+            &core
+                .acf_fields(site_id(&core, arg(1)?)?, arg(2)?.parse()?)
+                .await?,
+        ),
+        "acf-save" => show(
+            &core
+                .save_acf(
+                    site_id(&core, arg(1)?)?,
+                    arg(2)?.parse()?,
+                    serde_json::from_str(arg(3)?)?,
                 )
                 .await?,
         ),
