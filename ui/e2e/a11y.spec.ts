@@ -165,8 +165,17 @@ test("a client is added from the keyboard", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.getByRole("textbox", { name: "Name" })).toBeFocused();
   await page.keyboard.type("Hill Farm");
-  await page.getByRole("checkbox", { name: "mc-c" }).focus();
-  await page.keyboard.press("Space");
+  // Their sites: a multi-select, typed into and ticked with Enter, focus stays in the box.
+  const theirs = page.getByRole("combobox", { name: "Their sites" });
+  await theirs.focus();
+  await page.keyboard.type("mc-c");
+  await expect(page.getByRole("option", { name: "mc-c" })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("option", { name: "mc-c" })).toHaveAttribute("aria-selected", "true");
+  await expect(theirs).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Add a client" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove mc-c" })).toBeVisible();
   await page.getByRole("button", { name: "Add the client" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByText("Added Hill Farm.")).toBeVisible();

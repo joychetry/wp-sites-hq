@@ -71,8 +71,13 @@ test("adds a client with their sites, and a cost on a site", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Add a client" }));
   let sheet = screen.getByRole("dialog", { name: "Add a client" });
   fireEvent.change(within(sheet).getByRole("textbox", { name: "Name" }), { target: { value: "Studio North" } });
-  expect(within(sheet).getByText("now with Rosa")).toBeInTheDocument();
-  fireEvent.click(within(sheet).getByRole("checkbox", { name: /Beta/ }));
+  const theirs = within(sheet).getByRole("combobox", { name: "Their sites" });
+  fireEvent.change(theirs, { target: { value: "a" } });
+  expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Alpha (now with Rosa)", "Beta"]);
+  fireEvent.change(theirs, { target: { value: "bet" } });
+  expect(screen.getByRole("option", { name: "Beta" })).toHaveAttribute("aria-selected", "false");
+  fireEvent.keyDown(theirs, { key: "Enter" });
+  expect(within(sheet).getByRole("button", { name: "Remove Beta" })).toBeInTheDocument();
   fireEvent.click(within(sheet).getByRole("button", { name: "Add the client" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "site_set_client" && c[1].id === 2 && c[1].client === 7)).toBe(true));
   expect(await screen.findByText("Added Studio North.")).toBeInTheDocument();
@@ -98,7 +103,7 @@ test("deleting a client asks first; site errors show in the sheet", async () => 
   render(<Clients sites={[A, B]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Rosa" }));
   const sheet = screen.getByRole("dialog", { name: "Edit Rosa" });
-  expect(within(sheet).getByRole("checkbox", { name: /Alpha/ })).toBeChecked();
+  expect(within(sheet).getByRole("list", { name: "Their sites: chosen" })).toHaveTextContent("Alpha");
   fireEvent.click(within(sheet).getByRole("button", { name: "Save changes" }));
   expect(await within(sheet).findByRole("alert")).toHaveTextContent("already a client");
   fireEvent.click(within(sheet).getByRole("button", { name: "Delete the client" }));

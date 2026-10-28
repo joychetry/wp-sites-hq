@@ -1,6 +1,6 @@
 // Clients, their sites, and what the sites cost you and earn (plan Phase 7).
 import { Skeleton } from "../components/feedback";
-import { Select, DateInput } from "../components/controls";
+import { DateInput, MultiSelect, Select } from "../components/controls";
 import { useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
 import { Button } from "../components/ui";
@@ -291,28 +291,20 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
         <span>Notes</span>
         <textarea className="input" rows={3} value={c.notes} onChange={(e) => setC({ ...c, notes: e.target.value })} />
       </label>
-      <fieldset className="field">
-        <legend>Their sites</legend>
-        {sites.length === 0 && <span className="dim">No sites yet.</span>}
-        {sites.map((s) => (
-          <label key={s.id} className="row check">
-            <input
-              type="checkbox"
-              checked={picked.has(s.id)}
-              onChange={(e) =>
-                setPicked((p) => {
-                  const next = new Set(p);
-                  if (e.target.checked) next.add(s.id);
-                  else next.delete(s.id);
-                  return next;
-                })
-              }
-            />
-            <span>{s.name}</span>
-            {s.client && s.client_id !== client.id && <span className="dim">now with {s.client}</span>}
-          </label>
-        ))}
-      </fieldset>
+      <div className="field">
+        <span>Their sites</span>
+        {sites.length === 0 ? (
+          <span className="dim">No sites yet.</span>
+        ) : (
+          <MultiSelect
+            label="Their sites"
+            placeholder="Type a site name, Enter to add it"
+            options={sites.map((s) => ({ value: s.id, label: s.client && s.client_id !== client.id ? `${s.name} (now with ${s.client})` : s.name }))}
+            value={[...picked]}
+            onChange={(ids) => setPicked(new Set(ids))}
+          />
+        )}
+      </div>
     </Sheet>
   );
 }
