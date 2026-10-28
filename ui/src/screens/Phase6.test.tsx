@@ -154,7 +154,7 @@ describe("Monitoring", () => {
     expect(within(gamma).getByText("since 10 min ago")).toBeInTheDocument();
     expect(within(gamma).getByText("The site didn't answer.")).toBeInTheDocument();
     expect(within(gamma).getByText("Couldn't load")).toBeInTheDocument();
-    fireEvent.click(within(gamma).getByRole("button", { name: "Check Gamma again" }));
+    fireEvent.click(within(gamma).getByRole("button", { name: "Check again: Gamma" }));
     expect(mockInvoke).toHaveBeenCalledWith("monitors_check");
     expect(within(beta).getByText("97.22%")).toBeInTheDocument();
     expect(within(beta).getByText("78 · Needs work")).toBeInTheDocument();

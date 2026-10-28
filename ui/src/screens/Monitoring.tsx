@@ -255,7 +255,7 @@ export function Monitoring({ sites, monitors }: Props) {
                     </td>
                     <td className="r">
                       {isDown ? (
-                        <Button small disabled={checking} aria-label={`Check ${s.name} again`} onClick={checkAll}>
+                        <Button small disabled={checking} aria-label={`${checking ? "Checking…" : "Check again"}: ${s.name}`} onClick={checkAll}>
                           <Glyph name="refresh" />
                           {checking ? "Checking…" : "Check again"}
                         </Button>
