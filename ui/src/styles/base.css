@@ -56,13 +56,6 @@ textarea.input { height: auto; min-height: 56px; padding: var(--sp-2) var(--sp-2
 
 /* Shell: rail on the left, top bar, body */
 .app { display: grid; grid-template-columns: var(--rail) 1fr; height: 100vh; }
-.rail {
-  --bg: var(--rail-field); --panel: var(--rail-bg); --raise: var(--rail-raise); --sel: var(--rail-raise);
-  --line: var(--rail-line); --line-2: var(--rail-line); --line-ui: var(--rail-line-ui);
-  --text: var(--rail-text); --text-2: var(--rail-text-2); --text-3: var(--rail-text-3); --focus: var(--rail-focus);
-  --ok: var(--rail-ok); --warn: var(--rail-warn); --danger: var(--rail-danger);
-  color: var(--text);
-}
 .rail { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-3); gap: var(--sp-1); overflow: auto; }
 .brand { display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: var(--fs); padding: var(--sp-1) var(--sp-2) var(--sp-3); letter-spacing: -0.01em; margin: 0; }
 .scope { width: 100%; font-weight: 500; }
@@ -86,7 +79,7 @@ textarea.input { height: auto; min-height: 56px; padding: var(--sp-2) var(--sp-2
 .body { flex: 1; min-height: 0; display: flex; }
 .scroll { flex: 1; min-width: 0; overflow: auto; position: relative; }
 .empty { padding: var(--sp-7) var(--pad); color: var(--text-2); max-width: 560px; }
-.empty h2 { font: 400 var(--fs-xl)/var(--lh-tight) var(--serif); color: var(--text); margin: 0 0 var(--sp-3); }
+.empty h2 { font: 400 var(--fs-xl)/var(--lh-tight) var(--display); color: var(--text); margin: 0 0 var(--sp-3); }
 
 /* Bars above tables */
 .bar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--pad); border-bottom: 1px solid var(--line); }
@@ -141,7 +134,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .tags { display: flex; gap: var(--sp-1); flex-wrap: wrap; margin-bottom: var(--sp-2); }
 
 /* Overview */
-.sentence { font: 400 var(--fs-sentence)/1.1 var(--serif); letter-spacing: -0.02em; margin: 0; padding: var(--sp-7) max(var(--pad), calc(100% - 1040px)) 40px var(--pad); border-bottom: 1px solid var(--line); text-wrap: balance; }
+.sentence { font: 400 var(--fs-xl)/1.1 var(--display); letter-spacing: -0.02em; margin: 0; padding: var(--sp-7) max(var(--pad), calc(100% - 1040px)) 40px var(--pad); border-bottom: 1px solid var(--line); text-wrap: balance; }
 .sentence .dim { color: var(--text-3); }
 .kpis { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); }
 .kpi { padding: var(--sp-5) var(--pad); border-right: 1px solid var(--line); }

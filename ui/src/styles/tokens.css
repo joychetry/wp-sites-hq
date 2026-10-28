@@ -1,65 +1,76 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * Monks Central design tokens: direction B "Console" (docs/design/b-console).
- * Monochrome; colour only for status. Light by default, dark on
- * [data-theme="dark"]. The serif comes from direction A for the Overview
- * sentence and (Phase 3) the post editor.
+ * Monks Central design tokens: Joy's redesign (docs/design/redesign/spec.md), built on the
+ * Classic Monks design system. Light by default, dark on [data-theme="dark"] (the design's
+ * "dark v2": neutral greys, green only for the main action, the current page, on states and dots).
+ * The sidebar uses the same tokens as the content in both themes.
  */
 :root {
-  /* Content: paper. Warm off-white with ink, colour only for status. */
-  --bg: #fbfaf7;
-  --panel: #f5f4f0;
-  --raise: #ebe9e3;
-  --sel: #f2f0eb;
-  --line: #e3e1da;
-  --line-2: #d2cfc6;
-  --line-ui: #858178; /* borders that show where a control is: 3:1 */
-  --text: #191816;
-  --text-2: #4b4943;
-  --text-3: #615e57; /* muted, still 4.5:1 on every content surface */
-  --focus: #191816;
-  /* Status (Classic Monks admin tokens, darkened for 4.5:1 on paper) */
-  --ok: #0b7343;
-  --warn: #8a5200;
-  --danger: #b42318;
-  --ok-bg: #e4f2e7;
-  --warn-bg: #faefd9;
-  --danger-bg: #fbe8e5;
-  --shadow: 0 16px 50px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--line-2);
-  --shadow-sm: 0 1px 2px rgba(25, 24, 22, 0.06);
-  --shadow-pop: 0 10px 30px rgba(25, 24, 22, 0.14), 0 2px 6px rgba(25, 24, 22, 0.06), 0 0 0 1px var(--line-2);
-  --scrim: rgba(0, 0, 0, 0.35);
-  /* The tick in a checkbox: drawn in --bg on --text. */
-  --tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5' fill='none' stroke='%23fbfaf7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8h8' stroke='%23fbfaf7' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  /* Surfaces: a soft green-grey ground, white cards, a well for heads and hover rows */
+  --ground: #f1f3f2;
+  --bg: #ffffff; /* cards, sidebar, top bar, fields */
+  --panel: #f6f8f7; /* the well: table heads, hover rows, counts */
+  --raise: #f1f3f2; /* hover on controls, tags */
+  --sel: #e8f4ee; /* selected rows, the current page */
+  --tint: #e8f4ee;
+  --tint-2: #d4ebde;
+  --highlight: #bde5cc; /* search matches */
+  --line: #e3e7e4;
+  --line-2: #c7cfca;
+  --line-ui: #7b877f; /* borders that show where a control is: 3:1 on every surface */
+  --text: #0d1411;
+  --text-2: #45524b;
+  --text-3: #56625b; /* muted, still 4.5:1 on every surface */
+  --focus: #01824c;
+  /* The one green: filled main actions, on states, dots */
+  --green: #01824c;
+  --green-hover: #016b3f;
+  --on-green: #ffffff;
+  --accent: #01824c; /* dots and icons */
+  --brand-text: #016b3f; /* green words: links, the current page */
+  /* Ink: the light primary button, bulk bar, toasts, AI avatar */
+  --btn-ink: #0d1411;
+  --btn-ink-hover: #1c2822;
+  --btn-on-ink: #ffffff;
+  /* Status (darkened for 4.5:1 on their tinted grounds) */
+  --ok: #016b3f;
+  --warn: #8a5a00;
+  --danger: #b3261e;
+  --ok-bg: #e8f4ee;
+  --warn-bg: #fbf1e0;
+  --danger-bg: #fbeae8;
+  --warn-paper: #fffcf5; /* a card or row that needs attention */
+  --warn-line: #f0ddb8;
+  --saffron: #e8a13a; /* bar segment: needs sign-in */
+  /* Update kinds in bars */
+  --k-core: #003d25;
+  --k-plugin: #01824c;
+  --k-theme: #6bbd92;
+  --k-off: #c7cfca;
+  --shadow-sm: 0 1px 2px rgba(15, 26, 20, 0.05);
+  --shadow-soft: 0 1px 2px rgba(15, 26, 20, 0.05), 0 6px 20px rgba(15, 26, 20, 0.06);
+  --shadow-pop: 0 2px 6px rgba(15, 26, 20, 0.06), 0 16px 40px rgba(15, 26, 20, 0.14), 0 0 0 1px var(--line);
+  --shadow: 0 2px 6px rgba(15, 26, 20, 0.06), 0 30px 80px rgba(15, 26, 20, 0.16), 0 0 0 1px var(--line);
+  --field-shadow: inset 0 1px 2px rgba(13, 20, 17, 0.06);
+  --scrim: rgba(10, 15, 13, 0.42);
+  /* The tick in a checkbox: white on the green box. */
+  --tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23ffffff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12h12' stroke='%23ffffff' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E");
 
-  /* Rail: ink. Dark in both themes; see docs/ux/README.md. */
-  --rail-bg: #1c1b19;
-  --rail-raise: #2e2c29;
-  --rail-field: #252421;
-  --rail-line: #353330;
-  --rail-line-ui: #79756d;
-  --rail-text: #f2f0eb;
-  --rail-text-2: #cbc7be;
-  --rail-text-3: #a9a59c;
-  --rail-focus: #f2f0eb;
-  --rail-ok: #5fcf97;
-  --rail-warn: #efb25a;
-  --rail-danger: #ff8f84;
-
-  /* Type: six sizes, in rem so the OS and browser text size scale them.
-     Nothing below 12px. 15px body at 1.5. */
-  --sans: "IBM Plex Sans", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
-  --serif: "Newsreader", Georgia, serif;
-  --fs-xs: 0.75rem; /* 12px: keys, captions */
-  --fs-sm: 0.8125rem; /* 13px: labels, column heads, versions */
-  --fs: 0.9375rem; /* 15px: body */
-  --fs-lg: 1.125rem; /* 18px: titles */
-  --fs-xl: 1.75rem; /* 28px: counts, empty states */
-  --fs-sentence: 2.75rem; /* 44px: the Overview sentence */
-  --lh: 1.5;
+  /* Type, in rem so the OS and browser text size scale it. Nothing below 12px. */
+  --sans: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Outfit", "Figtree", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --fs-xs: 0.75rem; /* 12px: labels, meta, keys, counts */
+  --fs-sm: 0.8125rem; /* 13px: details, small buttons, versions */
+  --fs: 0.875rem; /* 14px: body, buttons, nav */
+  --fs-md: 0.9375rem; /* 15px: card titles, page description */
+  --fs-lg: 1.25rem; /* 20px: sheet and section titles */
+  --fs-xl: 1.75rem; /* 28px: page title, empty states */
+  --fs-stat: 2.25rem; /* 36px: stat numbers */
+  --lh: 1.45;
   --lh-tight: 1.2;
+  --label-track: 0.06em; /* mono uppercase labels */
 
   /* Spacing: a 4px scale */
   --sp-1: 4px;
@@ -71,63 +82,74 @@
   --sp-7: 48px;
 
   /* Shape and rhythm. Rows are comfortable; [data-density="compact"] tightens them. */
-  --radius-sm: 4px;
-  --radius: 6px;
-  --radius-lg: 10px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px; /* cards */
+  --radius-xl: 18px; /* dialogs, sheets */
+  --radius-pill: 999px;
   /* Motion: short and calm; prefers-reduced-motion turns it off (base.css). */
-  --dur: 140ms;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --row: 40px;
-  --control: 32px;
-  --control-sm: 28px;
+  --dur: 150ms;
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --row: 48px;
+  --control: 36px;
+  --control-sm: 30px;
+  --field: 40px;
+  --field-sm: 34px;
   --rail: 248px;
-  --inspector: 320px;
+  --inspector: 340px;
   --sheet: 560px;
-  --pad: var(--sp-5);
+  --pad: 20px;
 
   color-scheme: light;
 }
 
 [data-density="compact"] {
-  --row: 32px;
+  --row: 36px;
   --pad: var(--sp-4);
 }
 
 [data-theme="dark"] {
-  --bg: #0d0d0d;
-  --panel: #111111;
-  --raise: #1c1c1c;
-  --sel: #171717;
-  --line: #1f1f1f;
-  --line-2: #2b2b2b;
-  --line-ui: #6e6e6e;
+  --ground: #0b0b0b;
+  --bg: #141414;
+  --panel: #1b1b1b;
+  --raise: #222222;
+  --sel: #222222;
+  --tint: #222222;
+  --tint-2: #2c2c2c;
+  --highlight: #3a3a3a;
+  --line: #262626;
+  --line-2: #343434;
+  --line-ui: #767676;
   --text: #ededed;
-  --text-2: #b0b0b0;
-  --text-3: #959595;
-  --focus: #ededed;
-  --ok: #3cc98a;
-  --warn: #f2a93b;
-  --danger: #ff6b62;
-  --ok-bg: #0f2519;
-  --warn-bg: #2a1f0b;
-  --danger-bg: #2c1110;
-  --shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line-2);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-2);
-  --scrim: rgba(0, 0, 0, 0.55);
-  --tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5' fill='none' stroke='%230d0d0d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8h8' stroke='%230d0d0d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
-  --rail-bg: var(--panel);
-  --rail-raise: var(--raise);
-  --rail-field: var(--bg);
-  --rail-line: var(--line);
-  --rail-line-ui: var(--line-ui);
-  --rail-text: var(--text);
-  --rail-text-2: var(--text-2);
-  --rail-text-3: var(--text-3);
-  --rail-focus: var(--focus);
-  --rail-ok: var(--ok);
-  --rail-warn: var(--warn);
-  --rail-danger: var(--danger);
+  --text-2: #ababab;
+  --text-3: #999999; /* the design's #929292, lifted for 4.5:1 on --tint-2 */
+  --focus: #3dbf82;
+  --green: #01824c;
+  --green-hover: #016b3f;
+  --on-green: #ffffff;
+  --accent: #3dbf82;
+  --brand-text: #ededed;
+  --btn-ink: #262626;
+  --btn-ink-hover: #2c2c2c;
+  --btn-on-ink: #ededed;
+  --ok: #3dbf82;
+  --warn: #e3ae52;
+  --danger: #f08a82;
+  --ok-bg: #1b231f;
+  --warn-bg: #241e14;
+  --danger-bg: #261716;
+  --warn-paper: #17140f;
+  --warn-line: #3b3020;
+  --saffron: #e8a13a;
+  --k-core: #e6e6e6;
+  --k-plugin: #9c9c9c;
+  --k-theme: #4f4f4f;
+  --k-off: #333333;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.6), 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-2);
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line-2);
+  --field-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  --scrim: rgba(0, 0, 0, 0.65);
   color-scheme: dark;
 }
