@@ -660,7 +660,7 @@ export function DateInput({ type, value, onChange, max, className, disabled, id,
   return (
     <span className={cx("dt", className?.includes("sm") && "sm")} id={id} role="group" aria-label={aria["aria-labelledby"] ? undefined : name} aria-labelledby={aria["aria-labelledby"]}>
       {type === "month" ? (
-        <button ref={btn} type="button" className="input dt-btn" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={`${name}: ${shown || "not set"}. Choose a month`} onClick={() => setOpen(!open)}>
+        <button ref={btn} type="button" className="input dt-btn" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={`${name}: ${shown || "not set"}. ${shown ? "Choose a month" : "Pick a month"}`} onClick={() => setOpen(!open)}>
           {calendar}
           <span className={shown ? "" : "dim"}>{shown || "Pick a month"}</span>
         </button>
@@ -1028,15 +1028,20 @@ export function ColorInput({ value, onChange, label }: { value: string; onChange
 
 /**
  * A file picker: a button that opens the system file dialog, a drop area, and the chosen file's
- * name. The native input is hidden and only used to open the dialog.
+ * name. The native input is hidden and only used to open the dialog. With `onFiles`, several at once.
  */
-export function FilePicker({ label, accept, disabled, busy, onFile }: { label: string; accept?: string; disabled?: boolean; busy?: string; onFile: (f: File | undefined) => unknown }) {
+export function FilePicker({ label, accept, disabled, busy, onFile, onFiles, hint = "or drop the file here" }: { label: string; accept?: string; disabled?: boolean; busy?: string; onFile?: (f: File | undefined) => unknown; onFiles?: (fs: File[]) => unknown; hint?: string }) {
   const ref = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [name, setName] = useState("");
-  const take = async (f: File | undefined) => {
-    setName(f?.name ?? "");
-    await onFile(f);
+  const take = async (list: FileList | null | undefined) => {
+    const fs = [...(list ?? [])];
+    if (onFiles) {
+      if (fs.length) await onFiles(fs);
+      return;
+    }
+    setName(fs[0]?.name ?? "");
+    await onFile?.(fs[0]);
   };
   return (
     <div
@@ -1049,7 +1054,7 @@ export function FilePicker({ label, accept, disabled, busy, onFile }: { label: s
       onDrop={(e) => {
         e.preventDefault();
         setOver(false);
-        if (!disabled) take(e.dataTransfer.files?.[0]);
+        if (!disabled) take(e.dataTransfer.files);
       }}
     >
       <button type="button" className="btn" disabled={disabled} onClick={() => ref.current?.click()}>
@@ -1058,7 +1063,7 @@ export function FilePicker({ label, accept, disabled, busy, onFile }: { label: s
         </svg>
         {busy ?? label}
       </button>
-      <span className="dim">{name ? `Chosen: ${name}` : "or drop the file here"}</span>
+      <span className="dim">{name ? `Chosen: ${name}` : hint}</span>
       <input
         ref={ref}
         type="file"
@@ -1066,8 +1071,9 @@ export function FilePicker({ label, accept, disabled, busy, onFile }: { label: s
         tabIndex={-1}
         aria-label={label}
         accept={accept}
+        multiple={!!onFiles}
         disabled={disabled}
-        onChange={(e) => take(e.target.files?.[0]).then(() => (e.target.value = ""))}
+        onChange={(e) => take(e.target.files).then(() => (e.target.value = ""))}
       />
     </div>
   );
