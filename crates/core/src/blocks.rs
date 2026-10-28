@@ -40,6 +40,8 @@ pub enum BlockError {
     Comment,
     #[error("The edit would change the blocks, so it was not saved.")]
     Changed,
+    #[error("A block can only be edited once in one save.")]
+    Twice,
 }
 
 /// A block comment: `<!-- wp:name {attrs} -->`, `<!-- /wp:name -->` or `<!-- wp:name /-->`.
@@ -293,7 +295,7 @@ pub fn apply(s: &str, edits: &[(usize, String)]) -> Result<String, BlockError> {
         }
         // Two edits to one block would cut the body at a place the first edit moved.
         if spans.iter().any(|(span, _)| *span == b.span) {
-            return Err(BlockError::NotEditable);
+            return Err(BlockError::Twice);
         }
         spans.push((b.span, html.as_str()));
     }
@@ -378,7 +380,7 @@ mod tests {
         );
         assert_eq!(
             apply(PAGE, &[(1, "ééé".into()), (1, "x".into())]),
-            Err(BlockError::NotEditable),
+            Err(BlockError::Twice),
             "one block, two edits"
         );
         assert_eq!(
