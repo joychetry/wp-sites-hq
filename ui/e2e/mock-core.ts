@@ -492,6 +492,7 @@ const monitor = (site_id: number, over: Partial<Monitor> = {}): Monitor => ({
   down_since: null,
   uptime_day: 100,
   uptime_month: 99.93,
+  day: dayOf(site_id, over),
   cert_expires: now + 86400 * 61,
   domain: null,
   domain_expires: null,
@@ -499,6 +500,14 @@ const monitor = (site_id: number, over: Partial<Monitor> = {}): Monitor => ({
   pagespeed: null,
   ...over,
 });
+// 24 hourly points around the site's response time, wobbling a little; a down site's last hours are down.
+function dayOf(id: number, over: Partial<Monitor>): Monitor["day"] {
+  if (over.uptime_day === null) return Array(24).fill(null);
+  const base = over.up === false ? 520 : (over.ms ?? 640);
+  const downFrom = over.up === false ? 22 : over.uptime_day != null && over.uptime_day < 100 ? 23 : 24;
+  return Array.from({ length: 24 }, (_, h) => (h >= downFrom ? { ms: null, up: false } : { ms: Math.round(base * (1 + 0.12 * Math.sin(h * 0.9 + id))), up: true }));
+}
+
 let MONITORS: Monitor[] =
   fixture === "empty"
     ? []

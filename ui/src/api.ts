@@ -233,6 +233,8 @@ export type Monitor = {
   down_since: number | null;
   uptime_day: number | null;
   uptime_month: number | null;
+  /** The last 24 hours, an hour each, oldest first: null where no check ran. */
+  day: ({ ms: number | null; up: boolean } | null)[];
   cert_expires: number | null;
   domain: string | null;
   domain_expires: number | null;

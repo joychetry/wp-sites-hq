@@ -4,7 +4,7 @@ import { render as draw, screen, fireEvent, within } from "@testing-library/reac
 import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Security, fixOf } from "./Security";
-import { Monitoring, expiry } from "./Monitoring";
+import { Day, Monitoring, expiry } from "./Monitoring";
 import { site } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import type { Monitor, SecurityReport, SiteInventory } from "../api";
@@ -112,6 +112,7 @@ const mon = (over: Partial<Monitor>): Monitor => ({
   down_since: null,
   uptime_day: 100,
   uptime_month: 99.8612,
+  day: [...Array(22).fill(null), { ms: 400, up: true }, { ms: null, up: false }],
   cert_expires: NOW + 86400 * 40 + 60,
   domain: null,
   domain_expires: null,
@@ -156,7 +157,7 @@ describe("Monitoring", () => {
     expect(within(gamma).getByText("Couldn't load")).toBeInTheDocument();
     fireEvent.click(within(gamma).getByRole("button", { name: "Check again: Gamma" }));
     expect(mockInvoke).toHaveBeenCalledWith("monitors_check");
-    expect(within(beta).getByText("97.22%")).toBeInTheDocument();
+    expect(within(beta).getByRole("img", { name: /^Up 97.22% of the last 24 hours/ })).toBeInTheDocument();
     expect(within(beta).getByText("78 · Needs work")).toBeInTheDocument();
     expect(within(beta).getByText(/^beta\.com, /)).toBeInTheDocument();
     expect(within(beta).getByText(/^5 days left/).closest(".st")).toHaveClass("danger");
@@ -166,4 +167,13 @@ describe("Monitoring", () => {
     expect(mockInvoke).toHaveBeenCalledWith("pagespeed_run", { id: 2 });
     expect(await within(beta).findByText(/^Google.s shared daily limit/)).toBeInTheDocument();
   });
+});
+
+test("the last 24 hours draw a line through each hour's time, a gap where none ran, and red dots where it was down", () => {
+  const day = [{ ms: 300, up: true }, { ms: 500, up: true }, null, { ms: 400, up: true }, { ms: null, up: false }, ...Array(19).fill(null)];
+  const { container } = draw(<Day day={day} label="Up 75% of the last 24 hours" />);
+  expect(screen.getByRole("img", { name: "Up 75% of the last 24 hours; 300 to 500 ms" })).toBeInTheDocument();
+  const d = container.querySelector("path")!.getAttribute("d")!;
+  expect(d.match(/[ML]/g)).toEqual(["M", "L", "M"]);
+  expect(container.querySelectorAll("circle")).toHaveLength(1);
 });

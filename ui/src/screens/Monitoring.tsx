@@ -200,19 +200,10 @@ export function Monitoring({ sites, monitors }: Props) {
                       )}
                     </td>
                     <td>
-                      {/* shortcut: the core keeps a day's uptime, not each check's response time, so this is a share bar, not the design's line */}
                       {m?.uptime_day == null ? (
                         <span className="dim">not yet</span>
                       ) : (
-                        <span className="day">
-                          <span className="mix" role="img" aria-label={`Up ${pct(m.uptime_day)} of the last 24 hours`}>
-                            {m.uptime_day > 0 && <i className="k-up" style={{ flex: m.uptime_day }} />}
-                            {m.uptime_day < 100 && <i className="k-down" style={{ flex: 100 - m.uptime_day }} />}
-                          </span>
-                          <span className="ms" aria-hidden="true">
-                            {pct(m.uptime_day)}
-                          </span>
-                        </span>
+                        <Day day={m.day ?? []} label={`Up ${pct(m.uptime_day)} of the last 24 hours`} />
                       )}
                     </td>
                     <td className="r ms">{pct(m?.uptime_month ?? null)}</td>
@@ -284,5 +275,21 @@ export function Monitoring({ sites, monitors }: Props) {
         </section>
       </div>
     </div>
+  );
+}
+
+/** The design's last-24-hours line: response time per hour in green, hours it was down as red dots on the floor. */
+export function Day({ day, label }: { day: Monitor["day"]; label: string }) {
+  const W = 112, H = 26, step = W / 23;
+  const ms = day.flatMap((h) => (h?.ms != null ? [h.ms] : []));
+  const top = Math.max(...ms, 1), low = Math.min(...ms, top);
+  const y = (v: number) => (top === low ? H / 2 : 3 + (H - 6) * (1 - (v - low) / (top - low)));
+  // A line through the hours with a time; a gap where none was taken.
+  const path = day.map((h, i) => (h?.ms != null ? `${i && day[i - 1]?.ms != null ? "L" : "M"}${(i * step).toFixed(1)} ${y(h.ms).toFixed(1)}` : "")).join("");
+  return (
+    <svg className="day-line" viewBox={`-2 0 ${W + 4} ${H}`} width={W + 4} height={H} role="img" aria-label={ms.length ? `${label}; ${Math.min(...ms)} to ${Math.max(...ms)} ms` : label}>
+      <path d={path} />
+      {day.map((h, i) => (h && !h.up ? <circle key={i} cx={i * step} cy={H - 3} r={1.6} /> : null))}
+    </svg>
   );
 }
