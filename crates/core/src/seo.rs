@@ -406,7 +406,7 @@ fn google_tokens(reply: &net::Reply, old_refresh: Option<&str>) -> Option<Tokens
     Some(Tokens {
         access_token: v["access_token"].as_str()?.to_string(),
         refresh_token: v["refresh_token"].as_str().or(old_refresh)?.to_string(),
-        expires_at: oauth::now() + v["expires_in"].as_i64().unwrap_or(3600),
+        expires_at: oauth::expires_at(&v),
     })
 }
 

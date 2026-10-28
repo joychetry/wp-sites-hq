@@ -350,6 +350,17 @@ pub fn now() -> i64 {
         .unwrap_or_default()
 }
 
+/// When a token from this reply expires. The site's number is held to a year, so a huge
+/// one can't overflow (which would make every call refresh).
+pub(crate) fn expires_at(reply: &Value) -> i64 {
+    now().saturating_add(
+        reply["expires_in"]
+            .as_i64()
+            .unwrap_or(3600)
+            .clamp(0, 365 * 86_400),
+    )
+}
+
 fn tokens(reply: &Reply) -> Option<Tokens> {
     let v: Value = reply.json()?;
     if reply.status != 200 {
@@ -358,7 +369,7 @@ fn tokens(reply: &Reply) -> Option<Tokens> {
     Some(Tokens {
         access_token: v["access_token"].as_str()?.to_string(),
         refresh_token: v["refresh_token"].as_str()?.to_string(),
-        expires_at: now() + v["expires_in"].as_i64().unwrap_or(3600),
+        expires_at: expires_at(&v),
     })
 }
 
@@ -686,6 +697,15 @@ mod tests {
             assert!(err.to_string().contains(expect), "{query}: {err}");
             assert!(browser.await.unwrap().contains(expect));
         }
+    }
+
+    #[test]
+    fn token_lifetimes_are_held_to_a_year() {
+        let at = |v| expires_at(&serde_json::json!({ "expires_in": v })) - now();
+        assert!((3599..=3600).contains(&at(serde_json::json!(3600))));
+        assert!(at(serde_json::json!(i64::MAX)) <= 365 * 86_400);
+        assert!(at(serde_json::json!(-5)) <= 0);
+        assert!((3599..=3600).contains(&(expires_at(&serde_json::json!({})) - now())));
     }
 
     #[tokio::test]
