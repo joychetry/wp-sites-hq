@@ -130,3 +130,15 @@ test("exports into Downloads and imports a file, saying what was left out", asyn
   expect(calls.find((c) => c[0] === "sites_import")?.[1]).toEqual({ text: '{"monks_central":1}' });
   expect(importNote({ sites: 0, clients: 0, costs: 1, not_connected: [] })).toBe("Imported: 0 sites updated, 0 clients added, 1 cost or charge added.");
 });
+
+test("text size is a slider that scales the whole app and is remembered", () => {
+  core();
+  render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
+  const slider = screen.getByRole("slider", { name: "Text size" });
+  expect(slider).toHaveAttribute("aria-valuetext", "100%");
+  fireEvent.change(slider, { target: { value: "120" } });
+  expect(document.documentElement.style.fontSize).toBe("120%");
+  expect(localStorage.getItem("mc-text-size")).toBe("120");
+  fireEvent.change(slider, { target: { value: "100" } });
+  expect(document.documentElement.style.fontSize).toBe("");
+});

@@ -919,6 +919,7 @@ export function ColorInput({ value, onChange, label }: { value: string; onChange
       <input
         className="input mono"
         aria-label={`${label} as a hex code`}
+        placeholder="#111111"
         aria-invalid={!ok || undefined}
         value={draft}
         maxLength={7}

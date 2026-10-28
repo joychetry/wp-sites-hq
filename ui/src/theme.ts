@@ -38,3 +38,12 @@ export function useDensity() {
   }, [density]);
   return { density, setDensity };
 }
+
+// Text size: a percentage of the browser's, remembered on this computer. Every size is in rem, so
+// the whole app scales with it, like the OS text size.
+const TEXT = "mc-text-size";
+export const textSize = () => Number(localStorage.getItem(TEXT)) || 100;
+export function setTextSize(pct: number) {
+  localStorage.setItem(TEXT, String(pct));
+  document.documentElement.style.fontSize = pct === 100 ? "" : `${pct}%`;
+}

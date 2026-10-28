@@ -1,10 +1,10 @@
 // Settings: how the app looks (remembered on this computer), how reports look,
 // Search Console and AgentedSEO, and your site list in and out.
-import { ColorInput, FilePicker, Menu } from "../components/controls";
+import { ColorInput, FilePicker, Menu, Slider } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, type AppSettings, type GscStatus, type Imported } from "../api";
 import { Button } from "../components/ui";
-import type { Density, ThemeChoice } from "../theme";
+import { setTextSize, textSize, type Density, type ThemeChoice } from "../theme";
 
 /** What an import did, in a sentence or two. */
 export function importNote(r: Imported): string {
@@ -210,6 +210,28 @@ function Choice<T extends string>({ label, value, options, onChange }: {
   );
 }
 
+function TextSize() {
+  const [pct, setPct] = useState(textSize);
+  return (
+    <section>
+      <h2>Text size</h2>
+      <p>Makes every word in Monks Central bigger or smaller. Your computer's own text size still applies.</p>
+      <Slider
+        label="Text size"
+        value={pct}
+        min={90}
+        max={130}
+        step={10}
+        format={(n) => `${n}%`}
+        onChange={(n) => {
+          setPct(n);
+          setTextSize(n);
+        }}
+      />
+    </section>
+  );
+}
+
 type Props = {
   theme: ThemeChoice;
   setTheme: (t: ThemeChoice) => void;
@@ -248,6 +270,7 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
             ]}
           />
         </section>
+        <TextSize />
         <Reports />
         <YourData />
       </div>
