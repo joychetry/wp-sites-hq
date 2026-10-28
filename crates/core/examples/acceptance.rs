@@ -106,6 +106,7 @@ async fn main() -> Res<()> {
         Options {
             headless: true,
             keychain,
+            ..Default::default()
         },
     )
     .await?;

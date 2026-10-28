@@ -13,6 +13,7 @@ use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
 use monks_core::people::{Comments, NewUser, User, Users};
+use monks_core::security::Report;
 use monks_core::sites::{Mode, Site};
 use monks_core::{Core, Options, paths, vault};
 use serde_json::Value;
@@ -536,12 +537,35 @@ fn activity_list(state: State<'_, AppCore>, before: Option<i64>) -> Res<Vec<Entr
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn security_list(state: State<'_, AppCore>) -> Res<Vec<Report>> {
+    core(&state)?.security_reports().map_err(|e| e.to_string())
+}
+
+/// Scan one site, or every site.
+#[tauri::command]
+async fn security_scan(state: State<'_, AppCore>, id: Option<i64>) -> Res<()> {
+    let core = core(&state)?;
+    match id {
+        Some(id) => core
+            .scan_security(id)
+            .await
+            .map(drop)
+            .map_err(|e| e.to_string()),
+        None => {
+            core.scan_all_security(false).await;
+            Ok(())
+        }
+    }
+}
+
 fn main() {
     let core = tauri::async_runtime::block_on(async {
         let home = paths::data_dir().map_err(|e| e.to_string())?;
         let opts = Options {
             headless: false,
             keychain: vault::os_keychain().map_err(|e| e.to_string()),
+            ..Default::default()
         };
         // A headless core (`monks core`, or one the CLI started) finishes and hands over.
         Core::start_or_take_over(&home, opts)
@@ -570,6 +594,7 @@ fn main() {
                                     Changed::Inventory,
                                     Changed::Jobs,
                                     Changed::Activity,
+                                    Changed::Security,
                                 ]
                             }
                             Err(RecvError::Closed) => break,
@@ -636,6 +661,8 @@ fn main() {
             plan_confirm,
             plan_decline,
             activity_list,
+            security_list,
+            security_scan,
         ])
         .run(tauri::generate_context!())
         .expect("Monks Central couldn't open its window");

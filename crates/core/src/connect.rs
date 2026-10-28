@@ -1078,7 +1078,8 @@ impl Core {
     }
 
     /// At start: close jobs a closed app left, renew every grant, check every
-    /// site (and read its plugins), then check again every 15 minutes.
+    /// site (and read its plugins), then check again every 15 minutes. Each
+    /// site's security scan runs once a day.
     pub fn start_background(self: &Arc<Self>) {
         let weak: Weak<Self> = Arc::downgrade(self);
         let _ = self.close_unfinished_jobs();
@@ -1089,6 +1090,8 @@ impl Core {
             loop {
                 let Some(core) = weak.upgrade() else { return };
                 core.check_all().await;
+                // Sites not scanned for a day.
+                core.scan_all_security(true).await;
                 drop(core);
                 tokio::time::sleep(CHECK_EVERY).await;
             }

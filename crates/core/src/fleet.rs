@@ -570,7 +570,7 @@ fn done_message(out: &Value) -> String {
 pub const NO_AGENT_ACCESS: &str = "AI agents can only read this site: it has no AI agent access. Propose the change as a plan, which a person confirms in the Monks Central app, or ask them to turn on AI agent access for this site there (AI), so the site asks them to approve each change.";
 
 impl Core {
-    fn inventory_of(&self, id: i64) -> Result<Option<Inventory>, SiteError> {
+    pub(crate) fn inventory_of(&self, id: i64) -> Result<Option<Inventory>, SiteError> {
         let json: Option<String> = self.db(|c| {
             c.query_row(
                 "SELECT snapshot FROM inventory WHERE site_id = ?1",

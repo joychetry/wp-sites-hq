@@ -119,6 +119,7 @@ async fn run_core(home: PathBuf) -> ExitCode {
     let opts = Options {
         headless: true,
         keychain: vault::os_keychain().map_err(|e| e.to_string()),
+        ..Default::default()
     };
     let core = match Core::start(&home, opts).await {
         Ok(c) => c,

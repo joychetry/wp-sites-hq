@@ -13,6 +13,7 @@ pub mod net;
 pub mod oauth;
 pub mod paths;
 pub mod people;
+pub mod security;
 pub mod sites;
 pub mod store;
 #[cfg(test)]
@@ -55,6 +56,8 @@ pub enum Changed {
     Jobs,
     /// A row was added to Monks Central's activity log.
     Activity,
+    /// A site's security scan finished.
+    Security,
 }
 
 impl Changed {
@@ -65,6 +68,7 @@ impl Changed {
             Changed::Inventory => "inventory-changed",
             Changed::Jobs => "jobs-changed",
             Changed::Activity => "activity-changed",
+            Changed::Security => "security-changed",
         }
     }
 }
@@ -77,6 +81,7 @@ pub struct Options {
     /// Where the master key lives, or why there is none. Read on first use,
     /// so a core that never touches a secret never touches the keychain.
     pub keychain: Result<Arc<CredentialStore>, String>,
+    pub feeds: security::Feeds,
 }
 
 impl Default for Options {
@@ -84,6 +89,7 @@ impl Default for Options {
         Self {
             headless: false,
             keychain: Err("no system keychain was given to the core".into()),
+            feeds: security::Feeds::default(),
         }
     }
 }
@@ -101,6 +107,7 @@ pub struct Core {
     keychain: Result<Arc<CredentialStore>, String>,
     vault: Mutex<Option<Arc<vault::Vault>>>,
     http: reqwest::Client,
+    feeds: security::Feeds,
     limits: net::Limits,
     refresh_locks: Mutex<HashMap<(i64, connect::Grant), RefreshLock>>,
     sign_in: Mutex<Option<oneshot::Sender<()>>>,
@@ -130,6 +137,7 @@ impl Core {
             keychain: opts.keychain.clone(),
             vault: Mutex::new(None),
             http,
+            feeds: opts.feeds.clone(),
             limits: net::Limits::default(),
             refresh_locks: Mutex::new(HashMap::new()),
             sign_in: Mutex::new(None),

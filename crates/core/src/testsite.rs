@@ -56,6 +56,8 @@ pub struct State {
     pub update_breaks_home: bool,
     /// The next update writes this to the error log.
     pub log_on_update: Option<String>,
+    /// Core files that differ from WordPress.org's.
+    pub modified_core: Vec<String>,
     /// The site's error log, a line each.
     pub error_log: Vec<String>,
     /// Every tool called, with its arguments.
@@ -135,6 +137,7 @@ impl Default for State {
             update_fatals: false,
             update_breaks_home: false,
             log_on_update: None,
+            modified_core: Vec::new(),
             error_log: Vec::new(),
             calls: Vec::new(),
             posts: Vec::new(),
@@ -685,9 +688,21 @@ const PLUGIN_TOOLS: &[(&str, bool)] = &[
 ];
 
 /// Classic Monks' safe update helpers (M10), all read-only.
-const SAFE_TOOLS: &[(&str, bool)] = &[("get-http-status", true), ("get-error-log-since", true)];
+/// Hidden with them: checksums, which Classic Monks Free lacks.
+const SAFE_TOOLS: &[(&str, bool)] = &[
+    ("get-http-status", true),
+    ("get-error-log-since", true),
+    ("verify-core-checksums", true),
+    ("verify-plugin-checksums", true),
+];
 
 fn safe_tool(s: &State, name: &str, args: &serde_json::Value) -> serde_json::Value {
+    if name == "verify-core-checksums" {
+        return json!({ "verifiable": true, "files_checked": 1000, "modified": s.modified_core, "missing": [], "added": [] });
+    }
+    if name == "verify-plugin-checksums" {
+        return json!({ "verifiable": args["plugin_file"] != "premium/premium.php", "modified": [], "missing": [], "added": [] });
+    }
     if name == "get-http-status" {
         let ok = s.home_status < 400;
         return json!({ "url": s.base, "status": s.home_status, "ok": ok, "ms": 40,
