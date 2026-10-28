@@ -964,6 +964,7 @@ impl Core {
     pub async fn check_site(&self, id: i64) {
         let _work = self.working().await;
         self.check_site_inner(id).await;
+        self.refresh_package_icons().await;
     }
 
     async fn check_site_inner(&self, id: i64) {
@@ -1094,6 +1095,8 @@ impl Core {
             set.spawn(async move { core.check_site(site.id).await });
         }
         while set.join_next().await.is_some() {}
+        // A site's own check may have skipped it while another site's ran.
+        self.refresh_package_icons().await;
     }
 
     /// At start: close jobs a closed app left, renew every grant, check every

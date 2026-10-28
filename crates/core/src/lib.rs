@@ -27,6 +27,7 @@ pub mod store;
 #[cfg(test)]
 mod testsite;
 pub mod vault;
+pub mod wporg;
 
 pub use keyring_core::CredentialStore;
 
@@ -131,6 +132,8 @@ pub struct Core {
     /// Site work holds a read guard; `finish` takes the write guard.
     work: RwLock<()>,
     socket: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    /// One WordPress.org icon lookup at a time.
+    wporg: tokio::sync::Mutex<()>,
     // Declared last so it is released after everything else.
     _lock: lock::CoreLock,
 }
@@ -163,6 +166,7 @@ impl Core {
             shutdown: Notify::new(),
             work: RwLock::new(()),
             socket: Mutex::new(None),
+            wporg: tokio::sync::Mutex::new(()),
             _lock: lock,
         });
         let socket = ipc::bind(&core.home, Arc::downgrade(&core)).await?;

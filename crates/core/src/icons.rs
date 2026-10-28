@@ -47,7 +47,7 @@ impl Core {
             if url.host_str() != home.host_str() || !matches!(url.scheme(), "http" | "https") {
                 continue;
             }
-            let Some((_, body)) = self.get_capped(&site.url, url).await else {
+            let Some((_, body)) = self.get_capped(&site.url, url, CAP).await else {
                 continue;
             };
             let Some(mime) = image_mime(&body) else {
@@ -79,7 +79,7 @@ impl Core {
     async fn icon_candidates(&self, site: &Site, home: &Url) -> Vec<Url> {
         // Relative links resolve against the home page, `/blog/` not `/`.
         let base = Url::parse(&format!("{}/", sites::url_string(home))).unwrap_or(home.clone());
-        let page = self.get_capped(&site.url, home.clone()).await;
+        let page = self.get_capped(&site.url, home.clone(), CAP).await;
         let root = page
             .as_ref()
             .and_then(|(h, _)| {
@@ -92,7 +92,7 @@ impl Core {
             index
                 .query_pairs_mut()
                 .append_pair("_fields", "site_icon_url");
-            if let Some((_, body)) = self.get_capped(&site.url, index).await
+            if let Some((_, body)) = self.get_capped(&site.url, index, CAP).await
                 && let Ok(json) = serde_json::from_slice::<Value>(&body)
                 && let Some(url) = site_icon_url(&json).and_then(|u| base.join(u).ok())
             {
@@ -106,9 +106,14 @@ impl Core {
         found
     }
 
-    /// GET with no credentials under the site's request limits. At most `CAP + 1`
+    /// GET with no credentials under `key`'s request limits. At most `cap + 1`
     /// bytes are read; None unless it answered 200.
-    async fn get_capped(&self, key: &str, url: Url) -> Option<(HeaderMap, Vec<u8>)> {
+    pub(crate) async fn get_capped(
+        &self,
+        key: &str,
+        url: Url,
+        cap: usize,
+    ) -> Option<(HeaderMap, Vec<u8>)> {
         let _permits = self.limits.acquire(key).await;
         let mut resp = self.http.get(url).timeout(WAIT).send().await.ok()?;
         if resp.status() != reqwest::StatusCode::OK {
@@ -116,7 +121,7 @@ impl Core {
         }
         let headers = std::mem::take(resp.headers_mut());
         let mut body = Vec::new();
-        while body.len() <= CAP
+        while body.len() <= cap
             && let Some(chunk) = resp.chunk().await.ok()?
         {
             body.extend_from_slice(&chunk);
@@ -126,7 +131,7 @@ impl Core {
 }
 
 /// Write through a temporary file, so a reader never sees half an icon.
-fn save(file: &Path, data_url: &str) -> std::io::Result<()> {
+pub(crate) fn save(file: &Path, data_url: &str) -> std::io::Result<()> {
     std::fs::create_dir_all(file.parent().expect("in icons/"))?;
     let tmp = file.with_extension("tmp");
     std::fs::write(&tmp, data_url)?;
@@ -196,7 +201,7 @@ fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
 }
 
 /// The image type the bytes start with. None: not an icon (or over the cap).
-fn image_mime(body: &[u8]) -> Option<&'static str> {
+pub(crate) fn image_mime(body: &[u8]) -> Option<&'static str> {
     if body.is_empty() || body.len() > CAP {
         return None;
     }
