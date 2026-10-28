@@ -161,6 +161,23 @@ fn severity(impact: &Value) -> Option<String> {
     Some(s.into())
 }
 
+/// A vulnerability in words: a source's own title, else the first sentence of
+/// a CVE's description with its number, else the feed's version range.
+fn title(v: &Value, named: Option<&Value>, sources: &[Value]) -> String {
+    if let Some(n) = named.and_then(|s| s["name"].as_str()) {
+        return n.to_string();
+    }
+    let described = sources.iter().find_map(|s| {
+        let d = s["description"].as_str()?.trim_start_matches("[en]").trim();
+        let first = d.split(". ").next().unwrap_or(d).trim_end_matches('.');
+        let first = first.split(".This").next().unwrap_or(first);
+        (!first.is_empty()).then(|| format!("{first} ({})", s["id"].as_str().unwrap_or("CVE")))
+    });
+    described
+        .or_else(|| v["name"].as_str().map(String::from))
+        .unwrap_or_else(|| "A known vulnerability".into())
+}
+
 /// The vulnerabilities in one feed answer that hit the installed version.
 fn vulnerabilities(kind: &str, item: &Item, data: &Value) -> Vec<Vulnerability> {
     let Some(list) = data["vulnerability"].as_array() else {
@@ -181,12 +198,7 @@ fn vulnerabilities(kind: &str, item: &Item, data: &Value) -> Vec<Vulnerability> 
                 id: item.id.clone(),
                 name: item.name.clone(),
                 installed: item.version.clone(),
-                title: crate::fleet::decode_entities(
-                    named
-                        .and_then(|s| s["name"].as_str())
-                        .or(v["name"].as_str())
-                        .unwrap_or("A known vulnerability"),
-                ),
+                title: crate::fleet::decode_entities(&title(v, named, &sources)),
                 severity: severity(&v["impact"]),
                 fixed_in,
                 link: named
@@ -495,6 +507,14 @@ mod tests {
         assert_eq!(old[2].fixed_in, None, "no fix out yet");
         let mid = vulnerabilities("plugin", &item("x", "5.9"), &cf7());
         assert_eq!(mid[0].severity.as_deref(), Some("medium"));
+        let cve = json!({ "name": "Woo [woocommerce] >= 9.8.0 - < 11.2.0", "source": [{ "id": "CVE-2026-1", "name": "CVE-2026-1",
+            "description": "[en] Incorrect Privilege Assignment vulnerability in WooCommerce allows Privilege Escalation.This issue affects WooCommerce: from 9.8.0." }] });
+        let sources = cve["source"].as_array().unwrap().clone();
+        assert_eq!(
+            title(&cve, None, &sources),
+            "Incorrect Privilege Assignment vulnerability in WooCommerce allows Privilege Escalation (CVE-2026-1)"
+        );
+        assert_eq!(title(&json!({ "name": "Range" }), None, &[]), "Range");
         assert_eq!(mid[0].fixed_in, None, "le: the fixed version isn't known");
         assert_eq!(
             vulnerabilities("plugin", &item("x", "6.1"), &cf7()).len(),
