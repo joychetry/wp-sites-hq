@@ -540,6 +540,13 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
     case "content_trash":
       return r(null);
+    case "content_search": {
+      await new Promise((ok) => setTimeout(ok, 200));
+      const q = (args.query as string).toLowerCase();
+      const own = POSTS.filter((p) => p.post_type !== "product" && p.status !== "trash" && p.title.toLowerCase().includes(q));
+      const hits = [1, 6].flatMap((site_id) => own.map((p) => ({ site_id, post_type: p.post_type, id: p.id, title: p.title, status: p.status, link: p.link })));
+      return r({ hits, failed: [[2, "The site didn't answer within 20 seconds."]] });
+    }
     case "bundles_list":
       return r(BUNDLES);
     case "bundle_save": {

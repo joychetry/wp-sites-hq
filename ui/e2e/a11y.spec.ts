@@ -213,6 +213,20 @@ test("the palette opens an agent's plan with focus on it, two Tabs from Confirm"
   await expect(page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" })).toBeFocused();
 });
 
+test("the palette searches everything, and a result opens its site from the keyboard", async ({ page }) => {
+  await show(page, SCREENS[0], "light");
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("bakery");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("table", { name: "Posts and pages found" }).or(page.getByText("No posts or pages match on any site."))).toBeVisible();
+  const open = page.getByRole("button", { name: "Open on Sites: Corner Bakery" });
+  for (let i = 0; i < 40 && !(await open.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await expect(open).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Sites/ })).toHaveAttribute("aria-current", "page");
+});
+
 test("AI agent access is turned on from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-access")!, "light");
   await page.getByRole("button", { name: "Turn on access for Portfolio" }).focus();
@@ -238,7 +252,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);

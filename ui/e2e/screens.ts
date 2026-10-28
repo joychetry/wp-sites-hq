@@ -364,6 +364,15 @@ export const SCREENS: Screen[] = [
       await page.getByRole("button", { name: "Install New shop" }).click();
     },
   },
+  {
+    name: "search",
+    open: async (page) => {
+      await page.keyboard.press("Control+k");
+      await page.getByRole("combobox", { name: "Command" }).fill("menu");
+      await page.getByRole("option", { name: /^Search everything for/ }).click();
+      await page.getByRole("table", { name: "Posts and pages found" }).waitFor();
+    },
+  },
   { name: "loading", fixture: "loading" },
   { name: "error", fixture: "error" },
 ];

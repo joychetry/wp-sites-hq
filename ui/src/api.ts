@@ -66,6 +66,8 @@ export type BundlePlugin = { source: string; name: string };
 export type Bundle = { id: number; name: string; plugins: BundlePlugin[] };
 /** A zip kept in Monks Central for an install job. */
 export type Staged = { file: string; name: string; size: number };
+export type ContentHit = { site_id: number; post_type: string; id: number; title: string; status: string; link: string };
+export type ContentFound = { hits: ContentHit[]; failed: [number, string][] };
 export type Imported = { sites: number; clients: number; costs: number; not_connected: string[] };
 
 export type Removed = { signed_out: boolean; message: string };
@@ -379,6 +381,7 @@ export const api = {
   deleteBundle: (id: number) => invoke<void>("bundle_delete", { id }),
   /** `data` is the file as base64. */
   stageZip: (name: string, data: string) => invoke<Staged>("zip_stage", { name, data }),
+  searchContent: (query: string) => invoke<ContentFound>("content_search", { query }),
 };
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */

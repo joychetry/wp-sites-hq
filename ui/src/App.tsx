@@ -20,6 +20,7 @@ import { Ai } from "./screens/Ai";
 import { Security } from "./screens/Security";
 import { Monitoring } from "./screens/Monitoring";
 import { Clients } from "./screens/Clients";
+import { Search } from "./screens/Search";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -34,7 +35,8 @@ const GROUPS = [
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
-type Section = (typeof SECTIONS)[number];
+// Search is reached from the palette, not the rail.
+type Section = (typeof SECTIONS)[number] | "Search";
 const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "Clients", "AI", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
@@ -59,6 +61,7 @@ export default function App() {
   const [jobError, setJobError] = useState<string | null>(null);
   const [scope, setScope] = useState("");
   const [focusId, setFocusId] = useState<number | null>(null);
+  const [searchFor, setSearchFor] = useState("");
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
   const [adding, setAdding] = useState<{ again?: Site } | null>(null);
@@ -243,6 +246,16 @@ export default function App() {
     body = <Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Clients") {
     body = <Clients sites={all} />;
+  } else if (section === "Search") {
+    body = (
+      <Search
+        key={searchFor}
+        sites={all}
+        inventory={inv}
+        query={searchFor}
+        onGo={(s, id) => (id ? openSite(id) : setSection(s))}
+      />
+    );
   } else if (section === "AI") {
     body = <Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
   } else if (section === "Settings") {
@@ -361,7 +374,16 @@ export default function App() {
           {body}
         </main>
       </div>
-      {palette && <Palette commands={commands} onClose={() => setPalette(false)} />}
+      {palette && (
+        <Palette
+          commands={commands}
+          onClose={() => setPalette(false)}
+          onSearch={(q) => {
+            setSearchFor(q);
+            setSection("Search");
+          }}
+        />
+      )}
       {sheet && <JobSheet key={"jobId" in sheet ? sheet.jobId : sheet.title} state={sheet} onClose={() => setSheet(null)} />}
       {installing && (
         <Install

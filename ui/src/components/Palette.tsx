@@ -23,18 +23,17 @@ function Marked({ text, term }: { text: string; term: string }) {
   );
 }
 
-export function Palette({ commands, onClose }: { commands: Command[]; onClose: () => void }) {
+export function Palette({ commands, onClose, onSearch }: { commands: Command[]; onClose: () => void; onSearch?: (query: string) => void }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const term = query.trim().toLowerCase();
-  const hits = useMemo(
-    () =>
-      commands.filter(
-        (c) => !term || c.label.toLowerCase().includes(term) || c.hint?.toLowerCase().includes(term),
-      ),
-    [commands, term],
-  );
+  const hits = useMemo(() => {
+    const found = commands.filter((c) => !term || c.label.toLowerCase().includes(term) || c.hint?.toLowerCase().includes(term));
+    const q = query.trim();
+    if (!onSearch || q.length < 2) return found;
+    return [...found, { id: "search-all", group: "Search", label: `Search everything for “${q}”`, hint: "posts, pages, plugins, clients", run: () => onSearch(q) }];
+  }, [commands, term, query, onSearch]);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     input.current?.focus();
