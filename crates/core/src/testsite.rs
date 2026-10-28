@@ -72,6 +72,8 @@ pub struct State {
     pub zip_kinds: Vec<String>,
     /// Classic Monks before M8: no install-zip.
     pub no_zip_tool: bool,
+    /// `overwrite` as the upload's first chunk sent it.
+    zip_overwrite: bool,
     /// No WooCommerce: no store tools.
     pub no_woo: bool,
     /// AgentedSEO is on the site, its abilities listed through Classic Monks.
@@ -160,6 +162,7 @@ impl Default for State {
             uploads: HashMap::new(),
             zip_kinds: Vec::new(),
             no_zip_tool: false,
+            zip_overwrite: false,
             no_woo: false,
             agentedseo: false,
             products: vec![
@@ -789,6 +792,9 @@ fn plugin_tool(
         let data = base64::engine::general_purpose::STANDARD
             .decode(args["data"].as_str().unwrap_or_default())
             .map_err(|_| "data is not valid base64.")?;
+        if args["upload_id"].is_null() {
+            s.zip_overwrite = args["overwrite"] == true;
+        }
         let id = args["upload_id"].as_str().unwrap_or("u1").to_string();
         let got = s.uploads.entry(id.clone()).or_default();
         if args["offset"].as_u64().unwrap_or(0) as usize != got.len() {
@@ -807,9 +813,17 @@ fn plugin_tool(
         s.zip_kinds
             .push(args["kind"].as_str().unwrap_or("plugin").to_string());
         let slug = "mc-hello";
+        let there = s
+            .plugins
+            .iter()
+            .any(|p| p["plugin"] == "mc-hello/mc-hello.php");
+        if there && !s.zip_overwrite {
+            return Err("A plugin with this folder is already installed. Send overwrite: true to replace it.".into());
+        }
+        s.plugins.retain(|p| p["plugin"] != "mc-hello/mc-hello.php");
         s.plugins.push(json!({ "plugin": format!("{slug}/{slug}.php"), "name": "MC Hello", "version": "1.0", "active": true, "auto_update": false, "update": null }));
         return Ok(
-            json!({ "kind": "plugin", "slug": slug, "name": "MC Hello", "version": "1.0", "plugin": format!("{slug}/{slug}.php"), "activated": true, "replaced": false }),
+            json!({ "kind": "plugin", "slug": slug, "name": "MC Hello", "version": "1.0", "plugin": format!("{slug}/{slug}.php"), "activated": true, "replaced": there }),
         );
     }
     if name == "install-plugin" {

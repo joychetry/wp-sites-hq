@@ -27,6 +27,7 @@ const KEEP_SECS: u64 = 7 * 86_400;
 
 pub const NEEDS_CM_ZIP: &str =
     "Installing from a zip needs Classic Monks on the site. This site is in Basic mode.";
+pub const ALREADY_THERE: &str = "It's already installed on this site. To put this copy in its place, install it again with \u{201c}Replace it where it's already installed\u{201d} ticked.";
 pub const OLD_CM_ZIP: &str = "This site's Classic Monks can't install from a zip yet. Update Classic Monks on the site, then check it again.";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -293,7 +294,13 @@ impl Core {
                     args["offset"] = offset.into();
                 }
             }
-            let out = self.call_ability_inner(id, "install-zip", args).await?;
+            let out = match self.call_ability_inner(id, "install-zip", args).await {
+                // The site words this for agents; a person ticks a box instead.
+                Err(e) if e.to_string().contains("overwrite: true") => {
+                    return Err(plain(ALREADY_THERE));
+                }
+                r => r?,
+            };
             offset += chunk.len();
             if last {
                 return Ok(installed_message(&out, name));
@@ -513,6 +520,21 @@ mod tests {
                 .plugins
                 .iter()
                 .any(|p| p["plugin"] == "mc-hello/mc-hello.php")
+        );
+
+        // Again: refused in plain words, then replaced when asked to.
+        let e = core
+            .install_zip(s.id, &staged.file, "mc-hello.zip", "plugin", false, false)
+            .await
+            .unwrap_err();
+        assert_eq!(e.to_string(), ALREADY_THERE);
+        let replaced = core
+            .install_zip(s.id, &staged.file, "mc-hello.zip", "plugin", false, true)
+            .await
+            .unwrap();
+        assert!(
+            replaced.starts_with("Replaced with MC Hello 1.0"),
+            "{replaced}"
         );
 
         // A file that isn't staged, or an older Classic Monks, is refused.
