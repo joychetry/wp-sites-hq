@@ -1064,6 +1064,21 @@ fn link_open(state: State<'_, AppCore>, url: String, site: Option<i64>) -> Res<(
     browser(&url).map_err(|e| e.to_string())
 }
 
+/// https, or http for a site's own address (a local test site the person added over http).
+fn link_scheme_ok(url: &str, site: Option<i64>) -> bool {
+    url.starts_with("https://") || (site.is_some() && url.starts_with("http://"))
+}
+
+/// The window only ever shows the app's own pages: a link in site content can't take it elsewhere.
+fn app_page(url: &tauri::Url) -> bool {
+    match (url.scheme(), url.host_str()) {
+        ("tauri", Some("localhost")) => true,
+        ("http" | "https", Some("tauri.localhost")) => true, // Windows
+        ("http", Some("localhost")) => cfg!(debug_assertions) && url.port() == Some(1420), // devUrl
+        _ => url.as_str() == "about:blank",
+    }
+}
+
 #[tauri::command]
 fn security_list(state: State<'_, AppCore>) -> Res<Vec<Report>> {
     core(&state)?.security_reports().map_err(|e| e.to_string())
@@ -1189,6 +1204,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(
+            tauri::plugin::Builder::<tauri::Wry>::new("stay-in-app")
+                .on_navigation(|_, url| app_page(url))
+                .build(),
+        )
         .manage(AppCore(core))
         .manage(Sending::default())
         .on_window_event(|window, event| {
@@ -1362,6 +1382,33 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_window_stays_on_the_apps_own_pages() {
+        let page = |u: &str| app_page(&u.parse().unwrap());
+        assert!(page("tauri://localhost/index.html") && page("http://tauri.localhost/"));
+        for away in [
+            "https://evil.example/",
+            "https://mc-a.local/wp-admin/",
+            "tauri://evil/",
+            "file:///etc/passwd",
+            "http://localhost:8787/",
+        ] {
+            assert!(!page(away), "{away}");
+        }
+        assert_eq!(page("http://localhost:1420/"), cfg!(debug_assertions));
+    }
+
+    #[test]
+    fn http_links_open_only_for_a_sites_own_address() {
+        assert!(link_scheme_ok("https://x.test/", None));
+        assert!(!link_scheme_ok("http://x.test/", None));
+        assert!(link_scheme_ok(
+            "http://mc-a.local/?p=1&preview=true",
+            Some(1)
+        ));
+        assert!(!link_scheme_ok("javascript:alert(1)", Some(1)));
+    }
 
     #[test]
     fn only_web_links_and_our_own_files_open() {
