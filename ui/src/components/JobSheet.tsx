@@ -250,7 +250,7 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
       >
         <span style={{ width: `${items.length ? (finished / items.length) * 100 : 0}%` }} />
       </div>
-      <ul className="plan-list progress">
+      <ul className="plan-list results">
         {items.map((i) => (
           <li key={i.id}>
             <span className={`tag state ${STATE_TONE[i.state]}`}>{STATE_WORD[i.state]}</span>

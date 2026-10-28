@@ -336,10 +336,12 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .plan-site .plan-list li { padding-left: var(--sp-5); }
 .plan-list .grow { flex: 1; min-width: 0; }
 .plan-list .box { margin-top: -2px; }
-.plan-list.confirm li, .plan-list.progress li { border-bottom: 1px solid var(--line); padding: 10px 0; }
+/* Not .progress: that is the bar (controls.css), 6px tall with overflow hidden. */
+.plan-list.confirm li, .plan-list.results li { border-bottom: 1px solid var(--line); padding: 10px 0; }
 .vers { white-space: nowrap; color: var(--text-2); font: 500 var(--fs-sm) var(--mono); }
 .box:disabled::before { border-style: dashed; }
-.tag.state { min-width: 72px; justify-content: center; }
+/* As wide as the longest state word ("Rolled back", in the tag's mono font), so every row's text lines up. */
+.tag.state { min-width: calc(11ch + 14px); justify-content: center; flex: none; }
 .why { display: block; color: var(--text-2); font-size: var(--fs-sm); white-space: normal; overflow-wrap: anywhere; }
 .why.danger { color: var(--danger); }
 .bar-progress { height: 6px; background: var(--panel); border-radius: 3px; margin: 0 0 var(--sp-3); overflow: hidden; }
