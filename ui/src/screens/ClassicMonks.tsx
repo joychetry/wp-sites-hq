@@ -1,5 +1,7 @@
 // Classic Monks on one site: its features, the settings it lets Monks Central change,
 // its activity log with undo, and changes waiting for approval (plan Phase 4).
+import { Skeleton } from "../components/feedback";
+import { Select, NumberInput, Tabs, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useState } from "react";
 import { api, cmBlocked, hasTool, type Activity, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
 import { Button, Status } from "../components/ui";
@@ -72,7 +74,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
       <div className="bar">
         <label className="row pick">
           <span>Site</span>
-          <select
+          <Select
             className="input sm"
             aria-label="Site"
             value={site?.id ?? ""}
@@ -87,24 +89,19 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
                 {cmBlocked(s) ? (s.mode === "basic" ? " (no Classic Monks)" : " (not available)") : ""}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         {!blocked && (
-          <div className="segmented types" role="group" aria-label="Show">
-            {tools.map(([t, l]) => (
-              <button
-                key={t}
-                type="button"
-                aria-pressed={t === current}
-                onClick={() => {
-                  setTab(t);
-                  setDone(null);
-                }}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            label="Show"
+            idBase="cm"
+            tabs={tools.map(([id, label]) => ({ id, label }))}
+            value={current}
+            onChange={(t) => {
+              setTab(t);
+              setDone(null);
+            }}
+          />
         )}
       </div>
       <div role="status" className="notice">
@@ -119,22 +116,24 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
           </p>
         )}
       </div>
-      {blocked || !site ? (
-        <div className="empty">
-          <h2>Classic Monks isn't available on {site?.name ?? "this site"}.</h2>
-          <p>{blocked}</p>
-        </div>
-      ) : current === "features" ? (
-        <Features key={site.id} site={site} onDone={setDone} round={round} />
-      ) : current === "settings" ? (
-        <Settings key={site.id} site={site} onDone={setDone} round={round} />
-      ) : current === "activity" ? (
-        <Log key={site.id} site={site} onDone={setDone} />
-      ) : current === "reports" ? (
-        <Reports key={site.id} site={site} />
-      ) : (
-        <Approvals key={site.id} site={site} onDone={setDone} />
-      )}
+      <div role={blocked || !site ? undefined : "tabpanel"} id="cm-panel" aria-labelledby={blocked || !site ? undefined : `cm-tab-${current}`}>
+        {blocked || !site ? (
+          <div className="empty">
+            <h2>Classic Monks isn't available on {site?.name ?? "this site"}.</h2>
+            <p>{blocked}</p>
+          </div>
+        ) : current === "features" ? (
+          <Features key={site.id} site={site} onDone={setDone} round={round} />
+        ) : current === "settings" ? (
+          <Settings key={site.id} site={site} onDone={setDone} round={round} />
+        ) : current === "activity" ? (
+          <Log key={site.id} site={site} onDone={setDone} />
+        ) : current === "reports" ? (
+          <Reports key={site.id} site={site} />
+        ) : (
+          <Approvals key={site.id} site={site} onDone={setDone} />
+        )}
+      </div>
     </div>
   );
 }
@@ -172,9 +171,7 @@ function Features({ site, onDone, round }: Part) {
   if (error) return <Failed what="Classic Monks' features" error={error} retry={load} />;
   if (!data)
     return (
-      <p className="empty" role="status">
-        Reading Classic Monks on {site.name}…
-      </p>
+      <Skeleton label={`Reading Classic Monks on ${site.name}…`} />
     );
   const shown = data.find((g) => g.key === group) ?? data[0];
   const words = typed.trim().toLowerCase();
@@ -198,15 +195,15 @@ function Features({ site, onDone, round }: Part) {
       <form className="bar" onSubmit={(e) => e.preventDefault()}>
         <label className="row pick">
           <span>Section</span>
-          <select className="input sm" aria-label="Section" value={shown?.key ?? ""} disabled={!!words} onChange={(e) => setGroup(e.target.value)}>
+          <Select className="input sm" aria-label="Section" value={shown?.key ?? ""} disabled={!!words} onChange={(e) => setGroup(e.target.value)}>
             {data.map((g) => (
               <option key={g.key} value={g.key}>
                 {g.label} ({g.toggles.length})
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <input className="input sm" aria-label="Find a feature" placeholder="Find a feature in every section" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <SearchInput className="sm" aria-label="Find a feature" placeholder="Find a feature in every section" value={typed} onChange={(e) => setTyped(e.target.value)} />
       </form>
       <p className="legend" id="features-legend">
         Each feature says On or Off. Locked ones (security and login) change only in WordPress, so a mistake here can't lock you out.
@@ -247,9 +244,7 @@ function Settings({ site, onDone, round }: Part) {
   if (error) return <Failed what="Classic Monks' settings" error={error} retry={load} />;
   if (!data)
     return (
-      <p className="empty" role="status">
-        Reading Classic Monks' settings on {site.name}…
-      </p>
+      <Skeleton label={`Reading Classic Monks' settings on ${site.name}…`} />
     );
   if (data.length === 0)
     return (
@@ -296,18 +291,17 @@ function Settings({ site, onDone, round }: Part) {
                 {(s.description || s.section) && <small>{s.description || s.section}</small>}
               </span>
               {s.control === "select" ? (
-                <select className="input sm" aria-labelledby={`set-${s.name}`} value={valueOf(s)} onChange={(e) => setEdits({ ...edits, [s.name]: e.target.value })}>
+                <Select className="input sm" aria-labelledby={`set-${s.name}`} value={valueOf(s)} onChange={(e) => setEdits({ ...edits, [s.name]: e.target.value })}>
                   {!s.options.includes(valueOf(s)) && <option value={valueOf(s)}>{valueOf(s) || "not set"}</option>}
                   {s.options.map((o) => (
                     <option key={o} value={o}>
                       {o}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : (
-                <input
+                <NumberInput
                   className="input sm"
-                  type="number"
                   aria-labelledby={`set-${s.name}`}
                   min={s.min ?? undefined}
                   max={s.max ?? undefined}
@@ -334,9 +328,7 @@ function Log({ site, onDone }: Part) {
   if (error) return <Failed what="The activity log" error={error} retry={load} />;
   if (!data)
     return (
-      <p className="empty" role="status">
-        Reading the activity log on {site.name}…
-      </p>
+      <Skeleton label={`Reading the activity log on ${site.name}…`} />
     );
   if (data.rows.length === 0)
     return (
@@ -417,9 +409,7 @@ function Approvals({ site, onDone }: Part) {
   if (error) return <Failed what="The changes waiting for approval" error={error} retry={load} />;
   if (!data)
     return (
-      <p className="empty" role="status">
-        Reading {site.name}…
-      </p>
+      <Skeleton label={`Reading ${site.name}…`} />
     );
   if (data.length === 0)
     return (
@@ -507,9 +497,7 @@ function Reports({ site }: { site: Site }) {
     return (
       <>
         {period}
-        <p className="empty" role="status">
-          Reading the reports on {site.name}…
-        </p>
+        <Skeleton label={`Reading the reports on ${site.name}…`} />
       </>
     );
   const { not_found: nf, searches: se, unused_media: um, logins: lo, two_factor: tf } = data;

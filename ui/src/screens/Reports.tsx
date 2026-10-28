@@ -1,4 +1,5 @@
 // Monthly reports for a client's sites, saved as HTML and PDF in Downloads (plan Phase 7).
+import { Select, DateInput } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, type Client, type SavedReport, type Site } from "../api";
 import { Button } from "../components/ui";
@@ -74,13 +75,13 @@ export function Reports({ sites }: { sites: Site[] }) {
           {who === "client" ? (
             <label className="field">
               <span>Client</span>
-              <select className="input" aria-label="Client" value={clientId ?? ""} onChange={(e) => setClientId(Number(e.target.value))}>
+              <Select className="input" aria-label="Client" value={clientId ?? ""} onChange={(e) => setClientId(Number(e.target.value))}>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({sites.filter((s) => s.client_id === c.id).length} sites)
                   </option>
                 ))}
-              </select>
+              </Select>
               {clientId != null && theirs.length === 0 && <small>This client has no sites yet. Give them some on Clients.</small>}
             </label>
           ) : (
@@ -107,10 +108,10 @@ export function Reports({ sites }: { sites: Site[] }) {
               </ul>
             </fieldset>
           )}
-          <label className="field">
+          <div className="field">
             <span>Month</span>
-            <input className="input sm" type="month" value={month} max={lastMonth(new Date(Date.now() + 31 * 86_400_000))} onChange={(e) => setMonth(e.target.value)} />
-          </label>
+            <DateInput type="month" aria-label="Month" value={month} max={lastMonth(new Date(Date.now() + 31 * 86_400_000))} onChange={(e) => setMonth(e.target.value)} />
+          </div>
           <Button kind="primary" disabled={!ready || busy} onClick={make}>
             {busy ? "Making the report…" : "Make the report"}
           </Button>

@@ -171,7 +171,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                   <tr>
                     <th scope="col">Site</th>
                     {cols.map((c) => (
-                      <th key={c.id} scope="col" title={`${c.name}: on ${c.sites} of ${read.length} sites`}>
+                      <th key={c.id} scope="col" data-tip={`${c.name}: on ${c.sites} of ${read.length} sites`}>
                         <span className="colname">{c.name}</span>
                       </th>
                     ))}
@@ -182,7 +182,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                     const items = new Map(itemsOf(kind, inventory.get(s.id)).map((i) => [i.id, i]));
                     return (
                       <tr key={s.id}>
-                        <th scope="row" className="name cut" title={s.name}>
+                        <th scope="row" className="name cut" data-tip={s.name}>
                           {s.name}
                         </th>
                         {cols.map((col, c) => {

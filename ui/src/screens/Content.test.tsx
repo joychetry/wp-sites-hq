@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Content } from "./Content";
 import { blockLabel, toBlocks } from "./Editor";
 import { Media } from "./Media";
-import { site } from "../test-fixtures";
+import { site, choose } from "../test-fixtures";
 import { contentBlocked, type Post, type PostType } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -98,11 +98,11 @@ test("lists a site's entries, pages through them, and says why an older site can
   fireEvent.click(screen.getByRole("button", { name: "Next page" }));
   await waitFor(() => expect(calls.at(-1)).toEqual(["content_list", { id: 1, query: { post_type: "page", page: 2 } }]));
   fireEvent.click(await screen.findByRole("button", { name: "Books" }));
-  fireEvent.change(screen.getByRole("combobox", { name: "Show" }), { target: { value: "trash" } });
+  choose(screen.getByRole("combobox", { name: "Show" }), "trash");
   fireEvent.change(screen.getByRole("textbox", { name: "Search books" }), { target: { value: " blue " } });
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
   await waitFor(() => expect(calls.at(-1)).toEqual(["content_list", { id: 1, query: { post_type: "cm_book", status: "trash", search: "blue", page: 1 } }]));
-  fireEvent.change(screen.getByRole("combobox", { name: "Site" }), { target: { value: "2" } });
+  choose(screen.getByRole("combobox", { name: "Site" }), "2");
   expect(await screen.findByText(/Classic Monks on this site is older/)).toBeInTheDocument();
 });
 
@@ -115,7 +115,7 @@ test("a slow site's list never shows under the site picked after it", async () =
   });
   render(<Content sites={[CM, GAMMA]} />);
   await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("content_list", expect.objectContaining({ id: 1 })));
-  fireEvent.change(screen.getByRole("combobox", { name: "Site" }), { target: { value: "3" } });
+  choose(screen.getByRole("combobox", { name: "Site" }), "3");
   expect(await screen.findByRole("button", { name: "Gamma page" })).toBeInTheDocument();
   slow(row("Alpha page"));
   await new Promise((r) => setTimeout(r, 20));
@@ -157,7 +157,7 @@ test("a builder page keeps its body; errors from the site are shown", async () =
   const sheet = await screen.findByRole("dialog");
   expect(await within(sheet).findByText(/built with Elementor/)).toBeInTheDocument();
   expect(within(sheet).queryByRole("list", { name: "Blocks" })).toBeNull();
-  fireEvent.change(within(sheet).getByRole("combobox", { name: "Status" }), { target: { value: "publish" } });
+  choose(within(sheet).getByRole("combobox", { name: "Status" }), "publish");
   fireEvent.click(within(sheet).getByRole("button", { name: "Save changes" }));
   expect(await within(sheet).findByRole("alert")).toHaveTextContent("changed on the site");
 });

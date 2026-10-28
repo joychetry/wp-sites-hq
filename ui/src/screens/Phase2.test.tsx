@@ -163,7 +163,7 @@ test("Install searches WordPress.org, skips sites that have it, then plans the i
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "plugin_search" ? [{ slug: "woocommerce", name: "WooCommerce", version: "10.3.0", active_installs: 7000000, summary: "Sell online." }] : []));
   const onPlan = vi.fn();
   render(<Install sites={[A, site({ id: 5, name: "Fresh", capabilities: { abilities: TOOLS } })]} inventory={new Map([...INV, [5, inv(5, { plugins: [] })]])} onClose={vi.fn()} onPlan={onPlan} />);
-  fireEvent.change(screen.getByRole("textbox", { name: "Search WordPress.org plugins" }), { target: { value: "woo" } });
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search WordPress.org plugins" }), { target: { value: "woo" } });
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
   expect(await screen.findByText("7M sites use it")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Choose WooCommerce" }));

@@ -1,6 +1,8 @@
 // AI apps and Monks Central (plan Phase 5): plans AI agents proposed, waiting
 // for you to confirm them; which sites agents may change; the activity log of
 // who did what; and how to connect an AI app with `monks mcp`.
+import { Skeleton } from "../components/feedback";
+import { Tabs } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { ago, api, type Entry, type Job, type Site } from "../api";
@@ -42,35 +44,30 @@ export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
   ];
   return (
     <div className="scroll">
-      <div className="bar">
-        <div className="segmented types" role="group" aria-label="Show">
-          {tabs.map(([t, label]) => (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={t === tab}
-              onClick={() => {
-                setTab(t);
-                setNote(null);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs
+        label="Show"
+        idBase="ai"
+        tabs={tabs.map(([id, label]) => ({ id, label }))}
+        value={tab}
+        onChange={(t) => {
+          setTab(t);
+          setNote(null);
+        }}
+      />
       <div role="status" className="notice">
         {note && <p className={`alert ${note.ok ? "ok" : "danger"}`}>{note.text}</p>}
       </div>
-      {tab === "plans" ? (
-        <Plans plans={plans} onNote={setNote} onWatch={onWatch} focusPlan={focusPlan} />
-      ) : tab === "access" ? (
-        <Access sites={sites} onNote={setNote} />
-      ) : tab === "activity" ? (
-        <Log />
-      ) : (
-        <Connect onNote={setNote} />
-      )}
+      <div role="tabpanel" id="ai-panel" aria-labelledby={`ai-tab-${tab}`}>
+        {tab === "plans" ? (
+          <Plans plans={plans} onNote={setNote} onWatch={onWatch} focusPlan={focusPlan} />
+        ) : tab === "access" ? (
+          <Access sites={sites} onNote={setNote} />
+        ) : tab === "activity" ? (
+          <Log />
+        ) : (
+          <Connect onNote={setNote} />
+        )}
+      </div>
     </div>
   );
 }
@@ -193,7 +190,7 @@ function Access({ sites, onNote }: { sites: Site[]; onNote: (n: Note) => void })
             const can = s.mode === "classic_monks" && !s.sign_in_again;
             return (
               <tr key={s.id}>
-                <td title={s.url}>{s.name}</td>
+                <td data-tip={s.url}>{s.name}</td>
                 <td>
                   <Status tone={tone}>{word}</Status>
                 </td>
@@ -261,9 +258,7 @@ function Log() {
     );
   if (!rows)
     return (
-      <p className="empty" role="status">
-        Reading the activity log…
-      </p>
+      <Skeleton label="Reading the activity log…" />
     );
   if (rows.length === 0)
     return (
@@ -292,7 +287,7 @@ function Log() {
             const [word, tone] = RESULT[r.outcome];
             return (
               <tr key={r.id}>
-                <td title={new Date(r.at * 1000).toLocaleString()}>{ago(r.at)}</td>
+                <td data-tip={new Date(r.at * 1000).toLocaleString()}>{ago(r.at)}</td>
                 <td>{WHO[r.actor]}</td>
                 <td>{r.site_name || "Several sites"}</td>
                 <td>

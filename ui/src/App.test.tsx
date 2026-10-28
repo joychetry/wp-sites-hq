@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import App, { SECTIONS } from "./App";
-import { site } from "./test-fixtures";
+import { site, choose } from "./test-fixtures";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -79,7 +79,7 @@ test("the scope switcher narrows to a group", async () => {
   serve([site({ group: "Clients" }), site({ id: 2, name: "Own", url: "https://own.local" })]);
   render(<App />);
   await screen.findByRole("heading", { name: "Both sites are healthy." });
-  fireEvent.change(screen.getByRole("combobox", { name: "Sites to show" }), { target: { value: "Clients" } });
+  choose(screen.getByRole("combobox", { name: "Sites to show" }), "Clients");
   expect(screen.getByRole("heading", { name: "Your one site is healthy." })).toBeInTheDocument();
 });
 

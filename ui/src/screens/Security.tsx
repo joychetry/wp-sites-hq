@@ -125,10 +125,10 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                 const fix = fixOf(x, site, inventory.get(site.id));
                 return (
                   <tr key={`${site.id}:${x.id}:${i}`}>
-                    <td className="name cut" title={site.name}>
+                    <td className="name cut" data-tip={site.name}>
                       {site.name}
                     </td>
-                    <td className="cut" title={x.name}>
+                    <td className="cut" data-tip={x.name}>
                       {x.name}
                       <span className="sr-only"> ({KIND[x.kind]})</span>
                     </td>
@@ -200,10 +200,10 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
             <tbody>
               {abandoned.map(({ site, x }) => (
                 <tr key={`${site.id}:${x.id}`}>
-                  <td className="name cut" title={site.name}>
+                  <td className="name cut" data-tip={site.name}>
                     {site.name}
                   </td>
-                  <td className="cut" title={x.name}>
+                  <td className="cut" data-tip={x.name}>
                     {x.name}
                   </td>
                   <td className="m">{x.version}</td>
@@ -246,7 +246,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                 ];
                 return (
                   <tr key={`${site.id}:${x.name}`}>
-                    <td className="name cut" title={site.name}>
+                    <td className="name cut" data-tip={site.name}>
                       {site.name}
                     </td>
                     <td>{x.name}</td>

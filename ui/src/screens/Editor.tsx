@@ -1,5 +1,6 @@
 // One entry in a side sheet: title, status, terms, featured image, and the body
 // through the block-safe editor (only text blocks change; every other block stays).
+import { Combobox, DateInput, Select } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, hasTool, type Block, type Draft, type Media, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
 import { Button } from "../components/ui";
@@ -169,7 +170,6 @@ function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy;
   const [known, setKnown] = useState<Pick[]>([]);
   const [typed, setTyped] = useState("");
   const [why, setWhy] = useState("");
-  const listId = `terms-${tax.name}`;
   useEffect(() => {
     api.terms(site.id, tax.name).then(setKnown, () => setKnown([]));
   }, [site.id, tax.name]);
@@ -202,9 +202,9 @@ function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy;
         ))}
       </div>
       <div className="row">
-        <input
+        <Combobox
           className="input sm"
-          list={listId}
+          suggestions={known.map((t) => t.name)}
           aria-label={`Add to ${tax.label}`}
           placeholder={tax.can_add ? "Type a name, new or existing" : "Type an existing name"}
           value={typed}
@@ -216,11 +216,6 @@ function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy;
             }
           }}
         />
-        <datalist id={listId}>
-          {known.map((t) => (
-            <option key={t.id} value={t.name} />
-          ))}
-        </datalist>
         <Button small onClick={add} disabled={!typed.trim()}>
           Add
         </Button>
@@ -267,7 +262,7 @@ function BlockRow({ b, value, onChange }: { b: Block; value: string; onChange: (
     return (
       <li className="blk locked" style={style}>
         <span className="blk-name">{label}</span>
-        <span className="dim cut" title={b.html}>
+        <span className="dim cut" data-tip={b.html}>
           {b.html || "No text"}
         </span>
         <span className="tag">Kept as is</span>
@@ -429,19 +424,19 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         </label>
         <label className="field">
           <span>Status</span>
-          <select className="input" aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Select className="input" aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
             {statuses.map((s) => (
               <option key={s} value={s} disabled={!STATUSES.includes(s) || (s === "publish" && !type.can_publish && post?.status !== "publish")}>
                 {STATUS_LABEL[s] ?? s}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <label className="field">
+        <div className="field">
           <span>Publish date (the site's time)</span>
-          <input className="input" type="datetime-local" step={1} value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateInput type="datetime-local" aria-label="Publish date" value={date} onChange={(e) => setDate(e.target.value)} />
           <small>{isNew ? "Empty means now. " : ""}Pick Published and a date after now to schedule it.</small>
-        </label>
+        </div>
         {type.taxonomies.map((t) => (
           <TermsField key={t.name} site={site} tax={t} value={terms[t.name] ?? []} onChange={(v) => setTerms({ ...terms, [t.name]: v })} />
         ))}

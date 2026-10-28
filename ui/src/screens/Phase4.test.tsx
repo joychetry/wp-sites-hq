@@ -1,10 +1,11 @@
 // Users, the comment inbox and Classic Monks (features, settings, activity, approvals).
+import { Toaster } from "../components/feedback";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
 import { ClassicMonks, toolLabel } from "./ClassicMonks";
-import { site } from "../test-fixtures";
+import { site, choose } from "../test-fixtures";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -81,7 +82,7 @@ describe("Users", () => {
     const calls = core();
     render(<Users sites={[CM]} />);
     await screen.findByRole("table", { name: "Users" });
-    fireEvent.change(screen.getByRole("textbox", { name: "Search users" }), { target: { value: "sam" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search users" }), { target: { value: "sam" } });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     await waitFor(() => expect(calls).toContainEqual(["users_list", { id: 1, search: "sam", page: 1 }]));
     fireEvent.click(await screen.findByRole("button", { name: "Send password reset to SAM on Alpha" }));
@@ -90,7 +91,7 @@ describe("Users", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change role for SAM on Alpha" }));
     const sheet = screen.getByRole("dialog", { name: "Change SAM's role" });
     expect(within(sheet).getByRole("button", { name: "Make them Editor" })).toBeDisabled();
-    fireEvent.change(within(sheet).getByRole("combobox", { name: "New role" }), { target: { value: "administrator" } });
+    choose(within(sheet).getByRole("combobox", { name: "New role" }), "administrator");
     expect(within(sheet).getByText(/An administrator can change everything/)).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole("button", { name: "Make them Administrator" }));
     expect(await screen.findByText("SAM is now Administrator on Alpha.")).toBeInTheDocument();
@@ -103,7 +104,9 @@ describe("Users", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Delete SAM from Alpha" }));
     const sheet = screen.getByRole("dialog", { name: "Delete SAM" });
     const to = await within(sheet).findByRole("combobox", { name: "Give their posts and pages to" });
-    expect(within(to).getAllByRole("option").map((o) => o.textContent)).toEqual(["JOY (joy)"]);
+    fireEvent.click(to);
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["JOY (joy)"]);
+    fireEvent.keyDown(to, { key: "Escape" });
     fireEvent.click(within(sheet).getByRole("button", { name: "Delete SAM" }));
     expect(await screen.findByText("Deleted SAM from Alpha. Their posts and pages now belong to JOY.")).toBeInTheDocument();
     expect(calls).toContainEqual(["user_delete", { id: 1, userId: 2, reassign: 1 }]);
@@ -115,13 +118,13 @@ describe("Users", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Add a user" }));
     const sheet = screen.getByRole("dialog", { name: "Add a user" });
     await within(sheet).findByRole("checkbox", { name: "Email them a link to set their password" });
-    fireEvent.change(within(sheet).getByRole("combobox", { name: "Site" }), { target: { value: "2" } });
+    choose(within(sheet).getByRole("combobox", { name: "Site" }), "2");
     expect(await within(sheet).findByText(/Lost your password/)).toBeInTheDocument();
-    fireEvent.change(within(sheet).getByRole("combobox", { name: "Site" }), { target: { value: "1" } });
+    choose(within(sheet).getByRole("combobox", { name: "Site" }), "1");
     await within(sheet).findByRole("checkbox", { name: "Email them a link to set their password" });
     fireEvent.change(within(sheet).getByRole("textbox", { name: /^Username/ }), { target: { value: "lee" } });
     fireEvent.change(within(sheet).getByRole("textbox", { name: "Email address" }), { target: { value: "lee@x.test" } });
-    fireEvent.change(within(sheet).getByRole("combobox", { name: "Role" }), { target: { value: "editor" } });
+    choose(within(sheet).getByRole("combobox", { name: "Role" }), "editor");
     fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
     expect(await screen.findByText("Added lee to Alpha as Editor. They were emailed a link to set their password.")).toBeInTheDocument();
     expect(calls).toContainEqual(["user_create", { id: 1, user: { username: "lee", email: "lee@x.test", role: "editor" } }]);
@@ -164,10 +167,18 @@ describe("Comments", () => {
 
   it("approves, replies and switches lists", async () => {
     const calls = core();
-    render(<Comments sites={[CM]} />);
+    render(
+      <>
+        <Comments sites={[CM]} />
+        <Toaster />
+      </>,
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Approve Ana's comment on Alpha" }));
+    expect(screen.queryByRole("button", { name: "Approve Ana's comment on Alpha" })).toBeNull();
     expect(await screen.findByText("Approved: Ana's comment on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["comment_moderate", { id: 1, commentId: 5, action: "approve" }]);
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(calls).toContainEqual(["comment_moderate", { id: 1, commentId: 5, action: "unapprove" }]));
 
     fireEvent.click(await screen.findByRole("button", { name: "Reply to Ana on Alpha" }));
     const box = screen.getByRole("textbox", { name: /^Your reply to Ana/ });
@@ -218,12 +229,12 @@ describe("Classic Monks", () => {
     core();
     render(<ClassicMonks sites={[CM]} />);
     await screen.findByRole("button", { name: "Turn on SVG Support" });
-    fireEvent.change(screen.getByRole("textbox", { name: "Find a feature" }), { target: { value: "bad logins" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "bad logins" } });
     const list = screen.getByRole("list", { name: "Matching features" });
     expect(within(list).getByText("Login Lockdown")).toBeInTheDocument();
     expect(within(list).getByText("Locked")).toBeInTheDocument();
     expect(within(list).queryByRole("button")).toBeNull();
-    fireEvent.change(screen.getByRole("textbox", { name: "Find a feature" }), { target: { value: "zzz" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "zzz" } });
     expect(screen.getByText("No feature matches.")).toBeInTheDocument();
   });
 
@@ -231,8 +242,8 @@ describe("Classic Monks", () => {
     const calls = core();
     render(<ClassicMonks sites={[CM]} />);
     await screen.findByRole("button", { name: "Turn on SVG Support" });
-    const tabs = screen.getByRole("group", { name: "Show" });
-    fireEvent.click(within(tabs).getByRole("button", { name: "Settings" }));
+    const tabs = screen.getByRole("tablist", { name: "Show" });
+    fireEvent.click(within(tabs).getByRole("tab", { name: "Settings" }));
     const q = await screen.findByRole("spinbutton", { name: "Image Quality" });
     expect(screen.getByRole("button", { name: "Save Image Quality" })).toBeDisabled();
     fireEvent.change(q, { target: { value: "70" } });
@@ -240,13 +251,13 @@ describe("Classic Monks", () => {
     expect(await screen.findByText("Set Image Quality to 70 on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_set_setting", { id: 1, name: "auto_q", value: 70 }]);
 
-    fireEvent.click(within(tabs).getByRole("button", { name: "Activity" }));
+    fireEvent.click(within(tabs).getByRole("tab", { name: "Activity" }));
     const table = await screen.findByRole("table", { name: "Activity" });
     expect(within(table).getByText("Update features")).toBeInTheDocument();
     fireEvent.click(within(table).getByRole("button", { name: /^Undo/ }));
     expect(await screen.findByText("Undone: Update features on Alpha.")).toBeInTheDocument();
 
-    fireEvent.click(within(tabs).getByRole("button", { name: "Waiting for approval" }));
+    fireEvent.click(within(tabs).getByRole("tab", { name: "Waiting for approval" }));
     fireEvent.click(await screen.findByRole("button", { name: /^Approve or decline on the site/ }));
     expect(await screen.findByText("Opened the approval page for Delete post on Alpha in your browser.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_approval_open", { id: 1, op: 31 }]);
@@ -257,8 +268,8 @@ describe("Classic Monks", () => {
     const released = site({ id: 4, name: "Released", capabilities: { abilities: ["get-features", "update-features"] } });
     render(<ClassicMonks sites={[BASIC, released]} />);
     expect(await screen.findByRole("button", { name: "Turn on SVG Support" })).toBeInTheDocument();
-    expect(within(screen.getByRole("group", { name: "Show" })).getAllByRole("button").map((b) => b.textContent)).toEqual(["Features"]);
-    fireEvent.change(screen.getByRole("combobox", { name: "Site" }), { target: { value: "2" } });
+    expect(within(screen.getByRole("tablist", { name: "Show" })).getAllByRole("tab").map((b) => b.textContent)).toEqual(["Features"]);
+    choose(screen.getByRole("combobox", { name: "Site" }), "2");
     expect(screen.getByText("This site doesn't have Classic Monks. It's connected in Basic mode.")).toBeInTheDocument();
   });
 

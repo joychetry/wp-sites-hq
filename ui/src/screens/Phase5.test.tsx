@@ -53,7 +53,7 @@ test("a plan shows every change and runs only when you confirm it", async () => 
   const calls = core();
   const onWatch = vi.fn();
   render(<Ai sites={[ALPHA, BETA]} plans={[PLAN]} onWatch={onWatch} />);
-  expect(screen.getByRole("button", { name: "Plans to confirm (1)" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("tab", { name: "Plans to confirm (1)" })).toHaveAttribute("aria-selected", "true");
   const card = screen.getByRole("region", { name: PLAN.title });
   expect(within(card).getByText(/Proposed by an AI agent 2 min ago\. 2 changes on 2 sites\./)).toBeInTheDocument();
   expect(within(card).getAllByRole("listitem")).toHaveLength(2);
@@ -87,7 +87,7 @@ test("no plans says nothing runs without you", () => {
 test("agent access per site: read only, on with approval, Basic mode needs Classic Monks", async () => {
   const calls = core();
   render(<Ai sites={[ALPHA, BETA, BASIC]} plans={[]} onWatch={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Agent access" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Agent access" }));
   const rows = within(screen.getByRole("table", { name: "Agent access" })).getAllByRole("row");
   expect(rows[1]).toHaveTextContent("AlphaCan read only");
   expect(rows[2]).toHaveTextContent("BetaCan change, with your approval on the site");
@@ -108,7 +108,7 @@ test("the activity log says who did what, and loads older entries", async () => 
   const first = [row(60, "human", "done"), row(59, "agent", "waiting"), row(58, "agent_confirmed", "failed", ""), ...Array.from({ length: 47 }, (_, i) => row(57 - i, "agent", "refused"))];
   const calls = core({ activity_list: (a) => (a.before ? [row(1, "human", "done")] : first) });
   render(<Ai sites={[]} plans={[]} onWatch={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Activity" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
   const table = await screen.findByRole("table", { name: "Activity" });
   const rows = within(table).getAllByRole("row");
   expect(rows[1]).toHaveTextContent("just nowYouAlphathing 60Done");
@@ -125,7 +125,7 @@ test("connect shows the command to add Monks Central to an AI app", async () => 
   const writeText = vi.fn(() => Promise.resolve());
   Object.assign(navigator, { clipboard: { writeText } });
   render(<Ai sites={[]} plans={[]} onWatch={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Connect an AI app" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Connect an AI app" }));
   expect(screen.getByText("claude mcp add monks-central -- monks mcp")).toBeInTheDocument();
   fireEvent.click(screen.getAllByRole("button", { name: "Copy" })[0]);
   expect(await screen.findByText("Copied the Claude Code command.")).toBeInTheDocument();

@@ -90,7 +90,7 @@ test("a site without the store tools says what it needs", () => {
 test("Classic Monks' reports show what the site has and name what failed", async () => {
   core();
   render(<ClassicMonks sites={[A]} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Reports" }));
+  fireEvent.click(await screen.findByRole("tab", { name: "Reports" }));
   expect(await screen.findByRole("table", { name: "Pages not found" })).toHaveTextContent("/old");
   expect(screen.getByText("75%")).toBeInTheDocument();
   expect(screen.getByText("Unused media: not scanned yet")).toBeInTheDocument();

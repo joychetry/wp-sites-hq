@@ -1,3 +1,4 @@
+import { fireEvent } from "@testing-library/react";
 import type { Site } from "./api";
 
 export function site(over: Partial<Site> = {}): Site {
@@ -25,4 +26,12 @@ export function site(over: Partial<Site> = {}): Site {
     client: null,
     ...over,
   };
+}
+
+/** Picks the option with this value in a custom Select (components/controls.tsx). */
+export function choose(select: HTMLElement, value: string) {
+  fireEvent.click(select);
+  const option = document.querySelector<HTMLElement>(`[role="option"][data-value="${CSS.escape(value)}"]`);
+  if (!option) throw new Error(`no option ${value} in ${select.getAttribute("aria-label")}`);
+  fireEvent.click(option);
 }

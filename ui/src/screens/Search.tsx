@@ -147,7 +147,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                 <tbody>
                   {found.hits.map((h) => (
                     <tr key={`${h.site_id}-${h.id}`}>
-                      <td className="name cut" title={h.title}>
+                      <td className="name cut" data-tip={h.title}>
                         {h.title || "(no title)"}
                       </td>
                       <td>{name(h.site_id)}</td>

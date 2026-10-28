@@ -1,5 +1,6 @@
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
+import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, connectionLabel, hasTool, NO_TOOLS, noTools, siteStatus, slow, type Site, type Tone } from "../api";
 import { Button, Kbd, Status } from "../components/ui";
@@ -130,9 +131,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             ["basic", "Basic mode"],
           ])}
           <span className="grow" />
-          <input
+          <SearchInput
             ref={filter}
-            className="input sm"
+            className="sm"
             placeholder="Filter by name, address, group or tag"
             aria-label="Filter sites"
             aria-keyshortcuts="/"
@@ -155,10 +156,10 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             <Button small kind="primary" keys="R" onClick={() => check(picked.map((s) => s.id))}>
               Check now
             </Button>
-            <input
+            <Combobox
               className="input sm"
-              style={{ width: 160 }}
-              list="groups"
+              style={{ width: 180 }}
+              suggestions={groups}
               placeholder="Put in a group"
               aria-label="Group for the selected sites"
               value={groupFor}
@@ -177,11 +178,6 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
         <div role="status" className="notice">
           {notice && <p className={`alert ${notice.tone}`}>{notice.text}</p>}
         </div>
-        <datalist id="groups">
-          {groups.map((g) => (
-            <option key={g} value={g} />
-          ))}
-        </datalist>
         {rows.length === 0 ? (
           <div className="empty">
             {sites.length === 0 ? (
@@ -270,7 +266,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                           }}
                         />
                       </td>
-                      <td className="name cut" title={`${s.name}, ${s.url.replace(/^https?:\/\//, "")}`}>
+                      <td className="name cut" data-tip={`${s.name}, ${s.url.replace(/^https?:\/\//, "")}`}>
                         {s.name}
                       </td>
                       <td>
@@ -281,7 +277,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       <td className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "not known"}</td>
                       <td className={s.php_version ? "m" : "dim"}>{s.php_version?.split(".").slice(0, 2).join(".") ?? "not known"}</td>
                       <td>{s.mode === "basic" ? "Basic mode" : "Classic Monks"}</td>
-                      <td title={s.tags.join(", ")}>
+                      <td data-tip={s.tags.join(", ")}>
                         {s.tags.length > 0 && <span className="tag">{s.tags[0]}</span>}
                         {s.tags.length > 1 && (
                           <span className="dim">
@@ -304,6 +300,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
         <Inspector
           key={focus.id}
           site={focus}
+          groups={groups}
+          allTags={[...new Set(sites.flatMap((x) => x.tags))].sort()}
           onCheck={() => check([focus.id])}
           onSignInAgain={() => onSignInAgain(focus)}
           onRemoved={(text, ok) => {
@@ -318,14 +316,15 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
 
 type InspectorProps = {
   site: Site;
+  groups: string[];
+  allTags: string[];
   onCheck: () => void;
   onSignInAgain: () => void;
   onRemoved: (message: string, signedOut: boolean) => void;
 };
 
-function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProps) {
+function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved }: InspectorProps) {
   const [group, setGroup] = useState(s.group ?? "");
-  const [tag, setTag] = useState("");
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -467,10 +466,10 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
         <h3>
           <label htmlFor="insp-group">Group</label>
         </h3>
-        <input
+        <Combobox
           id="insp-group"
           className="input sm"
-          list="groups"
+          suggestions={groups}
           placeholder="No group"
           value={group}
           onChange={(e) => setGroup(e.target.value)}
@@ -480,37 +479,9 @@ function Inspector({ site: s, onCheck, onSignInAgain, onRemoved }: InspectorProp
       </section>
       <section>
         <h3>
-          <label htmlFor="insp-tag">Tags</label>
+          Tags
         </h3>
-        {s.tags.length > 0 && (
-          <div className="tags">
-            {s.tags.map((t) => (
-              <span key={t} className="tag">
-                {t}
-                <button
-                  type="button"
-                  aria-label={`Remove tag ${t}`}
-                  onClick={() => run(() => api.setTags(s.id, s.tags.filter((x) => x !== t)))}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <input
-          id="insp-tag"
-          className="input sm"
-          placeholder="Add a tag, then Enter"
-          value={tag}
-          onChange={(e) => setTag(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && tag.trim()) {
-              run(() => api.setTags(s.id, [...s.tags, tag.trim()]));
-              setTag("");
-            }
-          }}
-        />
+        <TagInput label="Tags" value={s.tags} suggestions={allTags} onChange={(tags) => run(() => api.setTags(s.id, tags))} />
       </section>
       <section>
         <h3>

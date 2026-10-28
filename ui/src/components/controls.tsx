@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type InputHTMLAttributes,
+  type ComponentProps,
   type KeyboardEvent,
   type ReactElement,
   type ReactNode,
@@ -96,15 +96,17 @@ const Tick = () => (
   </svg>
 );
 
-type Opt = { value: string; label: ReactNode; text: string; disabled: boolean };
+type Opt = { value: string; label: ReactNode; text: string; disabled: boolean; group?: string };
 const textOf = (n: ReactNode): string =>
   typeof n === "string" || typeof n === "number" ? String(n) : Array.isArray(n) ? n.map(textOf).join("") : "";
-function optionsOf(children: ReactNode): Opt[] {
+function optionsOf(children: ReactNode, group?: string): Opt[] {
   return Children.toArray(children).flatMap((c) => {
-    if (!isValidElement(c) || c.type !== "option") return [];
-    const p = (c as ReactElement<{ value?: string | number; children?: ReactNode; disabled?: boolean }>).props;
+    if (!isValidElement(c)) return [];
+    const p = (c as ReactElement<{ value?: string | number; children?: ReactNode; disabled?: boolean; label?: string }>).props;
+    if (c.type === "optgroup") return optionsOf(p.children, p.label);
+    if (c.type !== "option") return [];
     const text = textOf(p.children);
-    return [{ value: String(p.value ?? text), label: p.children, text, disabled: !!p.disabled }];
+    return [{ value: String(p.value ?? text), label: p.children, text, disabled: !!p.disabled, group }];
   });
 }
 
@@ -221,7 +223,12 @@ export function Select({ value, onChange, children, className, disabled, placeho
       </button>
       <Popover anchor={btn} open={open} onClose={() => setOpen(false)}>
         <ul role="listbox" id={list} aria-label={aria["aria-label"]} aria-labelledby={aria["aria-labelledby"]} className="lb" tabIndex={-1}>
-          {opts.map((o, i) => (
+          {opts.map((o, i) => [
+            o.group && o.group !== opts[i - 1]?.group && (
+              <li key={`g-${o.group}`} role="presentation" className="lb-group">
+                {o.group}
+              </li>
+            ),
             <li
               key={o.value + i}
               id={`${list}-${i}`}
@@ -236,15 +243,15 @@ export function Select({ value, onChange, children, className, disabled, placeho
             >
               <span>{o.label}</span>
               {o.value === String(value) && <Tick />}
-            </li>
-          ))}
+            </li>,
+          ])}
         </ul>
       </Popover>
     </>
   );
 }
 
-type InputProps = InputHTMLAttributes<HTMLInputElement>;
+type InputProps = ComponentProps<"input">;
 
 /**
  * A text box with a list of suggestions (WAI-ARIA combobox with list autocomplete). It takes the
@@ -539,6 +546,11 @@ function Calendar({ value, max, onPick, onClose }: { value: string; max?: string
         <button type="button" className="btn sm" disabled={over(today)} onClick={() => onPick(iso(today))}>
           Today
         </button>
+        {value && (
+          <button type="button" className="btn sm" onClick={() => onPick("")}>
+            Clear
+          </button>
+        )}
         <button type="button" className="btn sm" onClick={onClose}>
           Close
         </button>
@@ -608,7 +620,7 @@ type DateProps = {
 export function DateInput({ type, value, onChange, max, className, disabled, id, ...aria }: DateProps) {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
-  const name = aria["aria-label"] ?? "Date";
+  const name = aria["aria-label"] ?? (type === "month" ? "Month" : "Date");
   const [day, time = ""] = value.split("T");
   const close = () => {
     setOpen(false);
@@ -616,24 +628,27 @@ export function DateInput({ type, value, onChange, max, className, disabled, id,
   };
   const set = (d: string, t = time) => onChange(changed(type === "datetime-local" ? (d ? `${d}T${t || "09:00"}` : "") : d));
   const shown = type === "month" ? monthLabel(value) : dayLabel(day);
+  const calendar = (
+    <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="2" y="3" width="12" height="11" rx="1.5" />
+      <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" />
+    </svg>
+  );
   return (
     <span className={cx("dt", className?.includes("sm") && "sm")} id={id} role="group" aria-label={aria["aria-labelledby"] ? undefined : name} aria-labelledby={aria["aria-labelledby"]}>
-      <button
-        ref={btn}
-        type="button"
-        className="input dt-btn"
-        disabled={disabled}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={`${type === "month" ? "Month" : "Date"}: ${shown || "not set"}. Choose`}
-        onClick={() => setOpen(!open)}
-      >
-        <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
-          <rect x="2" y="3" width="12" height="11" rx="1.5" />
-          <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" />
-        </svg>
-        <span className={shown ? "" : "dim"}>{shown || "Pick a date"}</span>
-      </button>
+      {type === "month" ? (
+        <button ref={btn} type="button" className="input dt-btn" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={`${name}: ${shown || "not set"}. Choose a month`} onClick={() => setOpen(!open)}>
+          {calendar}
+          <span className={shown ? "" : "dim"}>{shown || "Pick a month"}</span>
+        </button>
+      ) : (
+        <>
+          <DayField value={day} disabled={disabled} label={`${name}: date`} onChange={(d) => set(d)} />
+          <button ref={btn} type="button" className="icon-btn dt-cal" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={`Choose the ${name.toLowerCase()} from a calendar`} onClick={() => setOpen(!open)}>
+            {calendar}
+          </button>
+        </>
+      )}
       {type === "datetime-local" && (
         <TimeField value={time.slice(0, 5)} disabled={disabled || !day} label={`${name}: time`} onChange={(t) => set(day, t)} />
       )}
@@ -661,6 +676,58 @@ export function DateInput({ type, value, onChange, max, className, disabled, id,
         </div>
       </Popover>
     </span>
+  );
+}
+
+/** "2026-12-01", "1 Dec 2026" or "1 December 2026" become "2026-12-01"; anything else is null. */
+export function parseDate(s: string): string | null {
+  const t = s.trim();
+  const isoDay = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+  const words = /^(\d{1,2})\s+([a-z]+)\.?\s+(\d{4})$/i.exec(t);
+  const [y, m, d] = isoDay
+    ? [+isoDay[1], +isoDay[2], +isoDay[3]]
+    : words
+      ? [+words[3], MONTHS.findIndex((n) => words[2].length >= 3 && n.toLowerCase().startsWith(words[2].toLowerCase())) + 1, +words[1]]
+      : [0, 0, 0];
+  const date = new Date(y, m - 1, d);
+  return m > 0 && date.getMonth() === m - 1 && date.getDate() === d ? iso(date) : null;
+}
+
+function DayField({ value, onChange, label, disabled }: { value: string; onChange: (d: string) => void; label: string; disabled?: boolean }) {
+  const [draft, setDraft] = useState(dayLabel(value));
+  const [bad, setBad] = useState(false);
+  const err = useId();
+  useEffect(() => setDraft(dayLabel(value)), [value]);
+  const commit = () => {
+    if (!draft.trim()) return value && onChange("");
+    const d = parseDate(draft);
+    setBad(!d);
+    if (d && d !== value) onChange(d);
+    else if (d) setDraft(dayLabel(d));
+  };
+  return (
+    <>
+      <input
+        className="input dt-day"
+        aria-label={label}
+        aria-invalid={bad || undefined}
+        aria-describedby={bad ? err : undefined}
+        placeholder="1 Dec 2026"
+        disabled={disabled}
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          setBad(false);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), commit())}
+      />
+      {bad && (
+        <span id={err} className="err dt-err">
+          Write a date like 1 Dec 2026
+        </span>
+      )}
+    </>
   );
 }
 
@@ -753,19 +820,18 @@ export function NumberInput({ value, onChange, min, max, step: by, className, ty
 
 /** A filter box with a magnifier and a clear button; Escape clears it. */
 export function SearchInput({ value, onChange, className, ...rest }: InputProps) {
-  const ref = useRef<HTMLInputElement>(null);
+  const wrap = useRef<HTMLSpanElement>(null);
   const clear = () => {
     onChange?.(changed("") as never);
-    ref.current?.focus();
+    wrap.current?.querySelector("input")?.focus();
   };
   return (
-    <span className={cx("srch", className)}>
+    <span className={cx("srch", className)} ref={wrap}>
       <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
         <circle cx="7" cy="7" r="4.5" />
         <path d="m10.5 10.5 3 3" />
       </svg>
       <input
-        ref={ref}
         {...rest}
         type="search"
         className="input"
@@ -805,7 +871,7 @@ export function TagInput({ label, value, onChange, suggestions = [] }: { label: 
       {value.map((t) => (
         <span key={t} className="tag">
           {t}
-          <button type="button" aria-label={`Remove the tag ${t}`} onClick={() => onChange(value.filter((x) => x !== t))}>
+          <button type="button" aria-label={`Remove tag ${t}`} onClick={() => onChange(value.filter((x) => x !== t))}>
             ×
           </button>
         </span>
@@ -837,7 +903,7 @@ export function ColorInput({ value, onChange, label }: { value: string; onChange
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   useEffect(() => setDraft(value), [value]);
-  const ok = /^#[0-9a-f]{6}$/i.test(draft);
+  const ok = draft === "" || /^#[0-9a-f]{6}$/i.test(draft);
   return (
     <span className="color-in">
       <button
@@ -857,9 +923,10 @@ export function ColorInput({ value, onChange, label }: { value: string; onChange
         value={draft}
         maxLength={7}
         onChange={(e) => {
-          const v = e.target.value.startsWith("#") ? e.target.value : `#${e.target.value}`;
+          const raw = e.target.value.trim();
+          const v = raw === "" || raw === "#" ? "" : raw.startsWith("#") ? raw : `#${raw}`;
           setDraft(v);
-          if (/^#[0-9a-f]{6}$/i.test(v)) onChange(v.toLowerCase());
+          if (v === "" || /^#[0-9a-f]{6}$/i.test(v)) onChange(v.toLowerCase());
         }}
       />
       {!ok && <span className="err">Use six hex digits, like #111111</span>}
@@ -936,7 +1003,7 @@ export function FilePicker({ label, accept, disabled, busy, onFile }: { label: s
         type="file"
         className="file-native"
         tabIndex={-1}
-        aria-hidden="true"
+        aria-label={label}
         accept={accept}
         disabled={disabled}
         onChange={(e) => take(e.target.files?.[0]).then(() => (e.target.value = ""))}

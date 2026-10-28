@@ -1,7 +1,8 @@
 // Overview: one serif sentence about the fleet (from direction A), then the
 // dense Console panels.
 import { NO_TOOLS, noTools, siteStatus, slow, type Site } from "../api";
-import { Button, Status } from "../components/ui";
+import { useState } from "react";
+import { Button, Kbd, Status } from "../components/ui";
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 const word = (n: number) => WORDS[n] ?? String(n);
@@ -10,7 +11,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** "Two sites are down. One needs a look." and the quieter rest. */
 export function summary(sites: Site[]): { lead: string; rest: string } {
   const n = sites.length;
-  if (n === 0) return { lead: "No sites yet.", rest: "Add one to see how it is doing." };
+  if (n === 0) return { lead: "Welcome to Monks Central.", rest: "Add your first site to get started." };
   const tones = sites.map((s) => siteStatus(s).tone);
   const down = tones.filter((t) => t === "danger").length;
   const look = tones.filter((t) => t === "warning").length;
@@ -68,9 +69,88 @@ type Props = {
   onCheck: (id: number) => void;
   onSignInAgain: (id: number) => void;
   onAdd: () => void;
+  /** Opens another part of the app, for the getting started steps. */
+  onGo?: (section: "Updates" | "AI" | "Sites" | "palette") => void;
 };
 
-export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props) {
+const TIPS = "mc-tips-hidden";
+
+/** First run: what Monks Central does, in three steps, with the first one as the main button. */
+function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
+  return (
+    <section className="welcome" aria-label="Getting started">
+      <ol className="steps-cards">
+        <li>
+          <span className="n" aria-hidden="true">1</span>
+          <h3>Add your first site</h3>
+          <p>With Classic Monks on the site you get full control. Any WordPress 7.1 site also works in Basic mode, with fewer tools.</p>
+          <Button kind="primary" keys="A" onClick={onAdd}>
+            Add a site
+          </Button>
+        </li>
+        <li>
+          <span className="n" aria-hidden="true">2</span>
+          <h3>See how every site is doing</h3>
+          <p>Monks Central checks health, versions and updates every 15 minutes while it runs, also from the tray with the window closed.</p>
+        </li>
+        <li>
+          <span className="n" aria-hidden="true">3</span>
+          <h3>Work on all of them at once</h3>
+          <p>
+            Update, install and publish across sites with one plan you review first. Press <Kbd>Ctrl K</Kbd> to find any page, site or action.
+          </p>
+          {onGo && (
+            <Button onClick={() => onGo("palette")}>Open the command palette</Button>
+          )}
+        </li>
+      </ol>
+      <p className="dim">Your sign-ins stay on this computer, encrypted. Nothing goes to a Monks Central server.</p>
+    </section>
+  );
+}
+
+/** After the first site: a few next steps until they are done or hidden. */
+function NextSteps({ sites, onGo, onAdd }: { sites: Site[]; onGo: NonNullable<Props["onGo"]>; onAdd: () => void }) {
+  const [hidden, setHidden] = useState(() => localStorage.getItem(TIPS) === "1");
+  const steps: [string, boolean, string, () => void][] = [
+    ["Add more sites", sites.length > 1, "Add a site", onAdd],
+    ["Put sites in groups, so the rail can show one group at a time", sites.some((s) => s.group), "Open Sites", () => onGo("Sites")],
+    ["Review the updates waiting", false, "Open Updates", () => onGo("Updates")],
+    ["Let an AI app plan work for you, with your confirmation", false, "Connect an AI app", () => onGo("AI")],
+  ];
+  if (hidden || steps.every(([, done]) => done)) return null;
+  return (
+    <section className="next-steps" aria-label="Next steps">
+      <h2>Next steps</h2>
+      <ul>
+        {steps.map(([what, done, label, go]) => (
+          <li key={what} className={done ? "done" : ""}>
+            <Status tone={done ? "ok" : "unknown"}>
+              {what}
+              <span className="sr-only">{done ? ": done" : ": not done yet"}</span>
+            </Status>
+            {!done && (
+              <Button small onClick={go}>
+                {label}
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <Button
+        small
+        onClick={() => {
+          localStorage.setItem(TIPS, "1");
+          setHidden(true);
+        }}
+      >
+        Hide these steps
+      </Button>
+    </section>
+  );
+}
+
+export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd, onGo }: Props) {
   const { lead, rest } = summary(sites);
   const tone = (t: string) => sites.filter((s) => siteStatus(s).tone === t).length;
   const cm = sites.filter((s) => s.mode === "classic_monks").length;
@@ -83,14 +163,10 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props
         {lead} {rest && <span className="dim">{rest}</span>}
       </h2>
       {sites.length === 0 ? (
-        <div className="empty">
-          <p>Add a site with Classic Monks for full control, or any WordPress 7.1 site in Basic mode.</p>
-          <Button kind="primary" keys="A" onClick={onAdd}>
-            Add a site
-          </Button>
-        </div>
+        <Welcome onAdd={onAdd} onGo={onGo} />
       ) : (
         <>
+          {onGo && <NextSteps sites={sites} onGo={onGo} onAdd={onAdd} />}
           <div className="kpis">
             <div className="kpi">
               <div className="v">{sites.length}</div>
@@ -184,7 +260,7 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd }: Props
           </div>
         </>
       )}
-      <p className="note">Monks Central checks your sites while it is open. Sites cannot send alerts to it on their own.</p>
+      {sites.length > 0 && <p className="note">Monks Central checks your sites while it is open. Sites cannot send alerts to it on their own.</p>}
     </div>
   );
 }

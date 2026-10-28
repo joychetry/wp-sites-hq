@@ -1,4 +1,6 @@
 // Clients, their sites, and what the sites cost you and earn (plan Phase 7).
+import { Skeleton } from "../components/feedback";
+import { Select, DateInput } from "../components/controls";
 import { useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
 import { Button } from "../components/ui";
@@ -84,9 +86,7 @@ export function Clients({ sites }: { sites: Site[] }) {
   }
   if (!clients) {
     return (
-      <p className="empty" role="status">
-        Loading clients…
-      </p>
+      <Skeleton label="Loading clients…" />
     );
   }
 
@@ -379,7 +379,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
       </div>
       <label className="field">
         <span>On</span>
-        <select
+        <Select
           className="input"
           aria-label="On"
           value={on}
@@ -408,7 +408,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
               </option>
             ))}
           </optgroup>
-        </select>
+        </Select>
       </label>
       <label className="field">
         <span>What it is</span>
@@ -427,18 +427,18 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
       {amount.trim() !== "" && cents == null && <small className="why danger">Write the amount as a number, like 120 or 9.99.</small>}
       <label className="field">
         <span>How often</span>
-        <select className="input" aria-label="How often" value={k.every} onChange={(e) => setK({ ...k, every: e.target.value as Every })}>
+        <Select className="input" aria-label="How often" value={k.every} onChange={(e) => setK({ ...k, every: e.target.value as Every })}>
           {(Object.keys(EVERY) as Every[]).map((e) => (
             <option key={e} value={e}>
               {EVERY[e]}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
-      <label className="field">
+      <div className="field">
         <span>{k.every === "once" ? "Due on" : "Renews on"}</span>
-        <input className="input" type="date" value={k.renews_on ?? ""} onChange={(e) => setK({ ...k, renews_on: e.target.value || null })} />
-      </label>
+        <DateInput type="date" aria-label={k.every === "once" ? "Due on" : "Renews on"} value={k.renews_on ?? ""} onChange={(e) => setK({ ...k, renews_on: e.target.value || null })} />
+      </div>
     </Sheet>
   );
 }

@@ -106,7 +106,7 @@ export function Monitoring({ sites, monitors }: Props) {
             const ps = m?.pagespeed;
             return (
               <tr key={s.id}>
-                <td className="name cut" title={s.name}>
+                <td className="name cut" data-tip={s.name}>
                   {s.name}
                 </td>
                 <td className="wrap-s">

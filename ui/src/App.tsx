@@ -1,9 +1,11 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
+import { Empty, Skeleton, Toaster, Tooltips } from "./components/feedback";
 import { useEffect, useMemo, useState } from "react";
 import { ago, api, hasTool, siteStatus, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Kbd, Logo } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
+import { Select } from "./components/controls";
 import { Overview } from "./screens/Overview";
 import { Sites } from "./screens/Sites";
 import { AddSite } from "./screens/AddSite";
@@ -37,6 +39,27 @@ const GROUPS = [
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
+
+// One line drawing per rail item, 16px, so the rail can be scanned by shape as well as by word.
+const NAV_ICONS: Record<(typeof SECTIONS)[number], string> = {
+  Overview: "M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5H9z",
+  Sites: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM1.5 8h13M8 1.5c2.2 2.2 2.2 10.8 0 13M8 1.5c-2.2 2.2-2.2 10.8 0 13",
+  Updates: "M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3.5H10",
+  Plugins: "M6 1.5v3M10 1.5v3M4 4.5h8v3a4 4 0 0 1-8 0zM8 11.5v3",
+  Themes: "M2.5 2.5h11v11h-11zM2.5 6h11M6 6v7.5",
+  Content: "M4 1.5h5.5l3 3v10H4zM9.5 1.5v3h3M6 8h4.5M6 10.5h4.5",
+  Media: "M2 3h12v10H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 6.2v.1",
+  Users: "M8 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM2.5 14.5c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5",
+  Comments: "M2 3h12v8H6.5L3.5 14v-3H2z",
+  "Classic Monks": "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM5.5 9.5c1.4 1.4 3.6 1.4 5 0M8 5.4v.2",
+  Monitoring: "M1.5 8.5h3l1.5-4 3 7 1.5-3h4",
+  Security: "M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z",
+  Clients: "M2 5h12v8.5H2zM5.5 5V3h5v2M2 9h12",
+  Store: "M3 5h10l-.8 9.5H3.8zM5.5 5a2.5 2.5 0 0 1 5 0",
+  Reports: "M2.5 13.5h11M4.5 11V7.5M8 11V3.5M11.5 11V6",
+  AI: "M8 1.5l1.5 5 5 1.5-5 1.5-1.5 5-1.5-5-5-1.5 5-1.5z",
+  Settings: "M2.5 4.5h11M2.5 11.5h11M5.5 2.5v4M10.5 9.5v4",
+};
 // Search is reached from the palette, not the rail.
 type Section = (typeof SECTIONS)[number] | "Search";
 const CHECK_EVERY = 15 * 60;
@@ -192,9 +215,23 @@ export default function App() {
     );
   } else if (!sites) {
     body = (
-      <p className="empty" role="status">
-        Loading your sites…
-      </p>
+      <Skeleton label="Loading your sites…" />
+    );
+  } else if (all.length === 0 && !["Overview", "Sites", "Settings", "AI", "Clients"].includes(section)) {
+    body = (
+      <div className="scroll">
+        <Empty
+          picture="sites"
+          title={`${section} fills in once you add a site.`}
+          action={
+            <Button kind="primary" keys="A" onClick={() => setAdding({})}>
+              Add a site
+            </Button>
+          }
+        >
+          <p>Add a site with Classic Monks for full control, or any WordPress 7.1 site in Basic mode.</p>
+        </Empty>
+      </div>
     );
   } else if (section === "Overview") {
     body = (
@@ -204,6 +241,7 @@ export default function App() {
         onCheck={(id) => api.check(id)}
         onSignInAgain={signInAgain}
         onAdd={() => setAdding({})}
+        onGo={(s) => (s === "palette" ? setPalette(true) : setSection(s))}
       />
     );
   } else if (section === "Sites") {
@@ -277,20 +315,14 @@ export default function App() {
           <Logo />
           Monks Central
         </p>
-        <label className="scope">
-          <span className="sr-only">Show</span>
-          <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
-            <option value="">All sites ({all.length})</option>
-            {groups.map((g) => (
-              <option key={g} value={g}>
-                {g} ({all.filter((s) => s.group === g).length})
-              </option>
-            ))}
-          </select>
-          <span className="dim" aria-hidden="true">
-            ▾
-          </span>
-        </label>
+        <Select className="scope" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
+          <option value="">All sites ({all.length})</option>
+          {groups.map((g) => (
+            <option key={g} value={g}>
+              {g} ({all.filter((s) => s.group === g).length})
+            </option>
+          ))}
+        </Select>
         <button type="button" className="search" onClick={() => setPalette(true)}>
           Search or run
           <Kbd>Ctrl K</Kbd>
@@ -307,6 +339,9 @@ export default function App() {
                     aria-current={s === section ? "page" : undefined}
                     onClick={() => setSection(s)}
                   >
+                    <svg className="nav-ico" viewBox="0 0 16 16" aria-hidden="true">
+                      <path d={NAV_ICONS[s]} />
+                    </svg>
                     {s}
                     {s === "Sites" && down > 0 && <span className="n alert">{down} down</span>}
                     {s === "AI" && (plans?.length ?? 0) > 0 && (
@@ -338,8 +373,8 @@ export default function App() {
         ))}
         <div className="foot">
           <p>
-            Checks run while Monks Central runs, also from the tray with the window closed.
-            {nextCheck != null && ` Next check in ${nextCheck} min.`}
+            Checks every 15 min, also from the tray.
+            {nextCheck != null && ` Next in ${nextCheck} min.`}
           </p>
           {status && <p>Version {status.version}</p>}
           <button type="button" onClick={() => setChoice(THEME_NEXT[choice])}>
@@ -392,6 +427,8 @@ export default function App() {
           }}
         />
       )}
+      <Toaster />
+      <Tooltips />
       {adding && (
         <AddSite
           again={adding.again}

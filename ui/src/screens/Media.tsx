@@ -1,4 +1,6 @@
 // A site's media library: browse, search, and import an image from a link (plan Phase 3).
+import { SearchInput } from "../components/controls";
+import { Skeleton } from "../components/feedback";
 import { useCallback, useEffect, useState } from "react";
 import { api, contentBlocked, type Media as Item, type Site } from "../api";
 import { Button } from "../components/ui";
@@ -85,9 +87,7 @@ export function Media({ sites }: { sites: Site[] }) {
     );
   } else if (!items) {
     body = (
-      <p className="empty" role="status">
-        Reading {site?.name}'s media library…
-      </p>
+      <Skeleton label={`Reading ${site?.name}'s media library…`} />
     );
   } else if (items.length === 0) {
     body = (
@@ -106,7 +106,7 @@ export function Media({ sites }: { sites: Site[] }) {
           {items.map((m) => (
             <li key={m.id}>
               {m.mime.startsWith("image/") ? <img src={m.url} alt={m.alt} loading="lazy" /> : <span className="file mono">{m.mime}</span>}
-              <b className="cut" title={m.title}>
+              <b className="cut" data-tip={m.title}>
                 {m.title || "No title"}
               </b>
               <span className={m.alt ? "" : "dim"}>{m.alt || "No alt text"}</span>
@@ -136,7 +136,7 @@ export function Media({ sites }: { sites: Site[] }) {
               setSearch(typed.trim());
             }}
           >
-            <input className="input sm" aria-label="Search the media library" placeholder="Search the media library" value={typed} onChange={(e) => setTyped(e.target.value)} />
+            <SearchInput className="sm" aria-label="Search the media library" placeholder="Search the media library" value={typed} onChange={(e) => setTyped(e.target.value)} />
             <Button small type="submit">
               Search
             </Button>

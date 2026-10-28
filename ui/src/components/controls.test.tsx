@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
-import { Combobox, ColorInput, DateInput, Menu, MultiSelect, NumberInput, parseTime, SearchInput, Select, Slider, Tabs, TagInput } from "./controls";
+import { Combobox, ColorInput, DateInput, Menu, MultiSelect, NumberInput, parseDate, parseTime, SearchInput, Select, Slider, Tabs, TagInput } from "./controls";
 import { Toaster, Tooltips, toast } from "./feedback";
 
 function Pick({ start = "b", onChange = () => {} }: { start?: string; onChange?: (v: string) => void }) {
@@ -99,7 +99,8 @@ test("date: the calendar opens on the value, arrows move a day, Enter picks, Esc
     return <DateInput type="date" aria-label="Paid on" value={v} onChange={(e) => (setV(e.target.value), seen.push(e.target.value))} />;
   }
   render(<T />);
-  const open = screen.getByRole("button", { name: "Date: 28 Oct 2026. Choose" });
+  expect(screen.getByRole("textbox", { name: "Paid on: date" })).toHaveValue("28 Oct 2026");
+  const open = screen.getByRole("button", { name: "Choose the paid on from a calendar" });
   fireEvent.click(open);
   const dialog = screen.getByRole("dialog", { name: "October 2026" });
   expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "28 October 2026" }));
@@ -110,7 +111,8 @@ test("date: the calendar opens on the value, arrows move a day, Enter picks, Esc
   fireEvent.click(document.activeElement!);
   expect(seen).toEqual(["2026-11-29"]);
   expect(screen.queryByRole("dialog")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: /^Date: 29 Nov 2026/ }));
+  expect(screen.getByRole("textbox", { name: "Paid on: date" })).toHaveValue("29 Nov 2026");
+  fireEvent.click(open);
   fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   expect(screen.queryByRole("dialog")).toBeNull();
 });
@@ -122,9 +124,21 @@ test("date and time: the time box takes 9:30, keeps the date and refuses nonsens
   fireEvent.change(time, { target: { value: "9:30" } });
   fireEvent.blur(time);
   expect(seen).toEqual(["2026-10-28T09:30"]);
+  fireEvent.change(time, { target: { value: "08:00" } });
+  fireEvent.blur(time);
   fireEvent.change(time, { target: { value: "25:00" } });
   fireEvent.blur(time);
   expect(time).toHaveAttribute("aria-invalid", "true");
+  const day = screen.getByRole("textbox", { name: "Publish: date" });
+  fireEvent.change(day, { target: { value: "1 December 2026" } });
+  fireEvent.blur(day);
+  expect(seen.at(-1)).toBe("2026-12-01T08:00");
+  fireEvent.change(day, { target: { value: "31 Feb 2026" } });
+  fireEvent.blur(day);
+  expect(screen.getByText("Write a date like 1 Dec 2026")).toBeInTheDocument();
+  expect(parseDate("2026-2-3")).toBe("2026-02-03");
+  expect(parseDate("3 sept 2026")).toBe("2026-09-03");
+  expect(parseDate("3 ju 2026")).toBeNull();
   expect(parseTime("0930")).toBe("09:30");
   expect(parseTime("21:5")).toBe("21:05");
   expect(parseTime("noon")).toBeNull();
@@ -133,7 +147,7 @@ test("date and time: the time box takes 9:30, keeps the date and refuses nonsens
 test("month: a year of months, later ones off past the limit", () => {
   const seen: string[] = [];
   render(<DateInput type="month" aria-label="Month" value="2026-09" max="2026-10" onChange={(e) => seen.push(e.target.value)} />);
-  fireEvent.click(screen.getByRole("button", { name: "Month: September 2026. Choose" }));
+  fireEvent.click(screen.getByRole("button", { name: "Month: September 2026. Choose a month" }));
   expect(screen.getByRole("button", { name: "November 2026" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "October 2026" }));
   expect(seen).toEqual(["2026-10"]);
@@ -169,10 +183,10 @@ test("tags: Enter and comma add, Backspace and the chip remove, no doubles", () 
   fireEvent.keyDown(input, { key: "Enter" });
   fireEvent.change(input, { target: { value: "shop," } });
   fireEvent.change(input, { target: { value: "client," } });
-  expect(screen.getAllByRole("button", { name: /^Remove the tag/ }).map((b) => b.getAttribute("aria-label"))).toEqual(["Remove the tag shop", "Remove the tag static", "Remove the tag client"]);
+  expect(screen.getAllByRole("button", { name: /^Remove tag/ }).map((b) => b.getAttribute("aria-label"))).toEqual(["Remove tag shop", "Remove tag static", "Remove tag client"]);
   fireEvent.keyDown(input, { key: "Backspace" });
-  fireEvent.click(screen.getByRole("button", { name: "Remove the tag shop" }));
-  expect(screen.getAllByRole("button", { name: /^Remove the tag/ })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Remove tag shop" }));
+  expect(screen.getAllByRole("button", { name: /^Remove tag/ })).toHaveLength(1);
 });
 
 test("colour: a hex code is checked as you type; presets pick at once", () => {

@@ -3,7 +3,7 @@ import { Overview, summary } from "./Overview";
 import { site } from "../test-fixtures";
 
 test("the sentence counts down sites and sites that need a look", () => {
-  expect(summary([])).toEqual({ lead: "No sites yet.", rest: "Add one to see how it is doing." });
+  expect(summary([])).toEqual({ lead: "Welcome to Monks Central.", rest: "Add your first site to get started." });
   expect(summary([site()]).lead).toBe("Your one site is healthy.");
   const many = [
     site({ id: 1, health: "down" }),

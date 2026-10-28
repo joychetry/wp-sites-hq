@@ -1,4 +1,5 @@
 // One entry, written once, published on several sites as one plan (plan Phase 7).
+import { Select, DateInput } from "../components/controls";
 import { useState } from "react";
 import { contentBlocked, type Change, type Site } from "../api";
 import type { PlanRow } from "../components/JobSheet";
@@ -78,19 +79,19 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
       </label>
       <label className="field">
         <span>Status</span>
-        <select className="input" aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+        <Select className="input" aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
           {STATUSES.map(([v, l]) => (
             <option key={v} value={v}>
               {l}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
-      <label className="field">
+      <div className="field">
         <span>Publish date (each site's own time)</span>
-        <input className="input" type="datetime-local" step={1} value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateInput type="datetime-local" aria-label="Publish date" value={date} onChange={(e) => setDate(e.target.value)} />
         <small>Empty means now. With Published, a date after now schedules it.</small>
-      </label>
+      </div>
       {kind === "post" && (
         <label className="field">
           <span>Categories</span>

@@ -161,11 +161,11 @@ export function Updates({ sites, inventory, onPlan }: Props) {
                       onClick={() => toggle(r.key)}
                     />
                   </td>
-                  <td className="name cut" title={r.site}>
+                  <td className="name cut" data-tip={r.site}>
                     {r.site}
                   </td>
                   <td>{r.kind}</td>
-                  <td className="cut" title={r.name}>
+                  <td className="cut" data-tip={r.name}>
                     {r.name}
                   </td>
                   <td className={r.from ? "m" : "dim"}>{r.from ?? "not shown"}</td>

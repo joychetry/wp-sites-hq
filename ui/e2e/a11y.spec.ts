@@ -32,7 +32,7 @@ test("Tab reaches the skip link first, and it moves focus to the content", async
   await page.keyboard.press("Enter");
   await expect(page.locator("#content")).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Check again" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Open Updates" })).toBeFocused();
 });
 
 test("every focusable control shows a focus ring", async ({ page }) => {
@@ -64,7 +64,7 @@ test("the Sites table works from the keyboard", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
   await page.keyboard.press("Escape");
   await page.keyboard.press("/");
-  await expect(page.getByRole("textbox", { name: "Filter sites" })).toBeFocused();
+  await expect(page.getByRole("searchbox", { name: "Filter sites" })).toBeFocused();
 });
 
 test("the Plugins matrix is one Tab stop, arrow keys move and Enter opens a cell", async ({ page }) => {
@@ -143,13 +143,20 @@ test("entries are ticked and changed in bulk from the keyboard", async ({ page }
   await expect(page.getByRole("button", { name: "Make drafts (1)" })).toBeFocused();
 });
 
-test("the import picker is reached by Tab and shows its focus ring", async ({ page }) => {
+test("export is a menu from the keyboard; the import picker is the next Tab stop with a focus ring", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "settings")!, "light");
-  await page.getByRole("button", { name: "Export as CSV" }).focus();
+  const menu = page.getByRole("button", { name: "Export the sites" });
+  await menu.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: /^Export as JSON/ })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitem", { name: /^Export as CSV/ })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByLabel("Import a JSON or CSV file")).toBeFocused();
-  const ring = await page.locator(".btn.file").evaluate((el) => getComputedStyle(el).outlineStyle);
-  expect(ring).toBe("solid");
+  const pick = page.getByRole("button", { name: "Import a JSON or CSV file" });
+  await expect(pick).toBeFocused();
+  expect(await pick.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
 });
 
 test("a client is added from the keyboard", async ({ page }) => {

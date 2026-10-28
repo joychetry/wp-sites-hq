@@ -1,4 +1,6 @@
 // Posts, pages and every post type a site lets us edit: list, filter, open, create (plan Phase 3).
+import { Skeleton } from "../components/feedback";
+import { Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary } from "../api";
@@ -34,14 +36,14 @@ export function SitePick({ sites, value, onChange }: { sites: Site[]; value: num
   return (
     <label className="row pick">
       <span>Site</span>
-      <select className="input sm" aria-label="Site" value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))}>
+      <Select className="input sm" aria-label="Site" value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))}>
         {sites.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
             {contentBlocked(s) ? " (not available)" : ""}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }
@@ -188,9 +190,7 @@ export function Content({ sites, onPlan }: Props) {
     );
   } else if (!types || !list || !type) {
     body = (
-      <p className="empty" role="status">
-        Reading {site?.name}…
-      </p>
+      <Skeleton label={`Reading ${site?.name}…`} />
     );
   } else if (list.posts.length === 0) {
     body = (
@@ -277,7 +277,7 @@ export function Content({ sites, onPlan }: Props) {
                   </td>
                 )}
                 <td className="name">
-                  <button type="button" className="linkish" title={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
+                  <button type="button" className="linkish" data-tip={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
                     {p.title || "(no title)"}
                   </button>
                 </td>
@@ -338,7 +338,7 @@ export function Content({ sites, onPlan }: Props) {
         >
           <label className="row pick">
             <span>Show</span>
-            <select
+            <Select
               className="input sm"
               aria-label="Show"
               value={status}
@@ -352,7 +352,7 @@ export function Content({ sites, onPlan }: Props) {
                   {l}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <input className="input sm" aria-label={`Search ${type.label.toLowerCase()}`} placeholder={`Search ${type.label.toLowerCase()}`} value={typed} onChange={(e) => setTyped(e.target.value)} />
           <Button small type="submit">

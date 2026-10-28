@@ -1,5 +1,6 @@
 // Install a plugin from WordPress.org (search), a zip link, a zip on this computer
 // (plugin or theme, Classic Monks M8) or a bundle, on the sites you pick.
+import { FilePicker, SearchInput } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, blocked, can, count, hasTool, type Bundle, type Found, type Site, type SiteInventory, type Staged } from "../api";
 import { Button } from "../components/ui";
@@ -286,8 +287,8 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
               search();
             }}
           >
-            <input
-              className="input"
+            <SearchInput
+              className="grow"
               aria-label="Search WordPress.org plugins"
               placeholder="Search WordPress.org plugins"
               value={query}
@@ -345,12 +346,7 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
               <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
               <span>Replace it where it's already installed (for a new version of a paid plugin or theme)</span>
             </label>
-            <div className="row">
-              <label className="btn file">
-                {reading ? "Reading the zip…" : "Choose a zip file"}
-                <input type="file" accept=".zip,application/zip" disabled={reading} onChange={(e) => useZip(e.target.files?.[0]).then(() => (e.target.value = ""))} />
-              </label>
-            </div>
+            <FilePicker label="Choose a zip file" busy={reading ? "Reading the zip…" : undefined} accept=".zip,application/zip" disabled={reading} onFile={useZip} />
             <small>Needs Classic Monks on the site. Only use zips you trust: they run as code on the site.</small>
           </fieldset>
           <Bundles onPick={(b) => choose({ bundle: b, name: b.name })} />

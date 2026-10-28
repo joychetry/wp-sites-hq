@@ -38,8 +38,8 @@ test("keys: j moves, x selects, / filters, a adds", () => {
   fireEvent.keyDown(document, { key: "x" });
   expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("1 selected");
   fireEvent.keyDown(document, { key: "/" });
-  expect(screen.getByRole("textbox", { name: "Filter sites" })).toHaveFocus();
-  fireEvent.change(screen.getByRole("textbox", { name: "Filter sites" }), { target: { value: "gam" } });
+  expect(screen.getByRole("searchbox", { name: "Filter sites" })).toHaveFocus();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Filter sites" }), { target: { value: "gam" } });
   expect(screen.getAllByRole("row")).toHaveLength(2);
   (document.activeElement as HTMLElement).blur();
   fireEvent.keyDown(document, { key: "a" });
@@ -59,7 +59,7 @@ test("remove asks first, then reports what happened on the site", async () => {
 test("tags, notes and group go to the core", async () => {
   mockInvoke.mockResolvedValue(SITES[0]);
   render(<Harness />);
-  const tag = screen.getByRole("textbox", { name: "Tags" });
+  const tag = screen.getByRole("combobox", { name: "Tags" });
   fireEvent.change(tag, { target: { value: "woo" } });
   fireEvent.keyDown(tag, { key: "Enter" });
   expect(mockInvoke).toHaveBeenCalledWith("site_set_tags", { id: 1, tags: ["woo"] });

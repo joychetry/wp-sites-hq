@@ -59,11 +59,10 @@ test("last month is the one before today's, across a year", () => {
 test("a client's report is made, opened and its gaps named", async () => {
   const calls = core();
   render(<Reports sites={[A, B, C]} />);
-  expect(await screen.findByRole("option", { name: "Rosa (2 sites)" })).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("Month"), { target: { value: "2026-09" } });
+  expect(await screen.findByRole("combobox", { name: "Client" })).toHaveTextContent("Rosa (2 sites)");
   fireEvent.click(screen.getByRole("button", { name: "Make the report" }));
   fireEvent.click(await screen.findByRole("button", { name: "Open the PDF" }));
-  expect(calls).toContainEqual(["report_make", { ask: { client_id: 1, site_ids: [], month: "2026-09" } }]);
+  expect(calls).toContainEqual(["report_make", { ask: { client_id: 1, site_ids: [], month: lastMonth() } }]);
   expect(calls).toContainEqual(["file_open", { path: SAVED.pdf }]);
   expect(screen.getByText("Beta: store: Timed out.")).toBeInTheDocument();
   expect(screen.getByTitle("Report preview")).toHaveAttribute("sandbox", "allow-same-origin");
@@ -89,7 +88,7 @@ test("report branding saves, and Search Console asks for a client, then connects
   expect(await screen.findByText("Saved.")).toBeInTheDocument();
   expect(calls.find(([c]) => c === "app_settings_save")![1].settings).toMatchObject({ report_name: "Studio North", white_label: true, search_console: false });
 
-  fireEvent.click(screen.getByRole("checkbox", { name: /Google Search Console/ }));
+  fireEvent.click(screen.getByRole("switch", { name: /Google Search Console/ }));
   const id = await screen.findByRole("textbox", { name: "Client ID" });
   fireEvent.change(id, { target: { value: "1.apps.googleusercontent.com" } });
   fireEvent.change(screen.getByLabelText("Client secret"), { target: { value: "s" } });

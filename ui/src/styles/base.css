@@ -64,9 +64,7 @@ textarea.input { height: auto; min-height: 56px; padding: var(--sp-2) var(--sp-2
 }
 .rail { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-3); gap: var(--sp-1); overflow: auto; }
 .brand { display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; font-size: var(--fs); padding: var(--sp-1) var(--sp-2) var(--sp-3); letter-spacing: -0.01em; margin: 0; }
-.scope { display: flex; align-items: center; gap: var(--sp-2); height: 32px; padding: 0 var(--sp-2); border: 1px solid var(--line-ui); background: var(--bg); border-radius: var(--radius); }
-.scope select { flex: 1; border: 0; background: none; font-weight: 500; outline: none; appearance: none; cursor: pointer; }
-.scope:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.scope { width: 100%; font-weight: 500; }
 .search { display: flex; align-items: center; gap: var(--sp-2); height: 32px; padding: 0 var(--sp-2); border: 1px solid var(--line-2); background: var(--bg); border-radius: var(--radius); color: var(--text-3); margin: var(--sp-2) 0 var(--sp-3); text-align: left; }
 .search .kbd { margin-left: auto; }
 .navgroup { font: 500 var(--fs-sm) var(--sans); color: var(--text-3); padding: var(--sp-3) var(--sp-2) var(--sp-1); margin: 0; }

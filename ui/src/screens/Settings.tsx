@@ -1,5 +1,6 @@
 // Settings: how the app looks (remembered on this computer), how reports look,
 // Search Console and AgentedSEO, and your site list in and out.
+import { ColorInput, FilePicker, Menu } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, type AppSettings, type GscStatus, type Imported } from "../api";
 import { Button } from "../components/ui";
@@ -49,16 +50,17 @@ function YourData() {
         get the file's groups, tags, clients and notes, and costs are added once.
       </p>
       <div className="row" style={{ flexWrap: "wrap" }}>
-        <Button small disabled={busy} onClick={() => exportAs(false)}>
-          Export as JSON
-        </Button>
-        <Button small disabled={busy} onClick={() => exportAs(true)}>
-          Export as CSV
-        </Button>
-        <label className="btn sm file">
-          Import a JSON or CSV file
-          <input type="file" accept=".json,.csv,application/json,text/csv" disabled={busy} onChange={(e) => importFile(e.target.files?.[0]).then(() => (e.target.value = ""))} />
-        </label>
+        <Menu
+          small
+          label="Export the sites"
+          items={[
+            { label: "Export as JSON (for importing again)", run: () => exportAs(false), disabled: busy },
+            { label: "Export as CSV (for a spreadsheet)", run: () => exportAs(true), disabled: busy },
+          ]}
+        >
+          Export the sites
+        </Menu>
+        <FilePicker label="Import a JSON or CSV file" accept=".json,.csv,application/json,text/csv" disabled={busy} onFile={importFile} />
       </div>
       <div role="status" className="notice">
         {note && (
@@ -118,12 +120,10 @@ function Reports() {
           <span>Line at the bottom of each page</span>
           <input className="input" placeholder="hello@yourstudio.com, +44 20 7946 0000" value={s.report_footer} onChange={(e) => setS({ ...s, report_footer: e.target.value })} />
         </label>
-        <div className="row">
-          <label className="field">
-            <span>Accent colour</span>
-            <input className="input sm" placeholder="#1f6feb" value={s.report_accent} onChange={(e) => setS({ ...s, report_accent: e.target.value })} />
-          </label>
-          <input type="color" aria-label="Pick the accent colour" value={/^#[0-9a-f]{6}$/i.test(s.report_accent) ? s.report_accent : "#111111"} onChange={(e) => setS({ ...s, report_accent: e.target.value })} />
+        <div className="field">
+          <span>Accent colour</span>
+          <ColorInput label="Accent colour" value={s.report_accent} onChange={(c) => setS({ ...s, report_accent: c })} />
+          <small>Empty uses black.</small>
         </div>
         <label className="row check">
           <input type="checkbox" checked={s.white_label} onChange={(e) => setS({ ...s, white_label: e.target.checked })} />
@@ -137,11 +137,11 @@ function Reports() {
         <h2>Search numbers in reports</h2>
         <p>Both are off until you turn them on. Nothing is sent to Google while Search Console is off.</p>
         <label className="row check">
-          <input type="checkbox" checked={s.agentedseo} disabled={busy} onChange={(e) => save({ ...s, agentedseo: e.target.checked }, e.target.checked ? "AgentedSEO numbers go into reports for sites that have it." : "AgentedSEO is off.")} />
+          <input type="checkbox" role="switch" checked={s.agentedseo} disabled={busy} onChange={(e) => save({ ...s, agentedseo: e.target.checked }, e.target.checked ? "AgentedSEO numbers go into reports for sites that have it." : "AgentedSEO is off.")} />
           <span>Read SEO numbers from AgentedSEO on sites that have it</span>
         </label>
         <label className="row check">
-          <input type="checkbox" checked={s.search_console} disabled={busy} onChange={(e) => save({ ...s, search_console: e.target.checked }, e.target.checked ? "Search Console is on. Add your Google client next." : "Search Console is off.")} />
+          <input type="checkbox" role="switch" checked={s.search_console} disabled={busy} onChange={(e) => save({ ...s, search_console: e.target.checked }, e.target.checked ? "Search Console is on. Add your Google client next." : "Search Console is off.")} />
           <span>Add Google Search Console clicks and searches to reports</span>
         </label>
         {s.search_console && gsc && (

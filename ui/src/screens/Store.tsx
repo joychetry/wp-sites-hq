@@ -1,5 +1,7 @@
 // A WooCommerce store on one site: how it did over a period, what runs low, and
 // its products with their prices and stock, changed as a job (plan Phase 7).
+import { Skeleton } from "../components/feedback";
+import { Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, hasTool, type Action, type Product, type ProductQuery, type Products, type Site, type StoreOverview } from "../api";
@@ -99,7 +101,7 @@ export function Store({ sites, onPlan }: Props) {
       <div className="bar">
         <label className="row pick">
           <span>Site</span>
-          <select
+          <Select
             className="input sm"
             aria-label="Site"
             value={site?.id ?? ""}
@@ -115,7 +117,7 @@ export function Store({ sites, onPlan }: Props) {
                 {shop(s) ? "" : " (no store)"}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         {can && (
           <div className="segmented types" role="group" aria-label="Period">
@@ -170,9 +172,7 @@ export function Store({ sites, onPlan }: Props) {
             </section>
           ) : (
             !error && (
-              <p className="empty" role="status">
-                Reading the store…
-              </p>
+              <Skeleton label="Reading the store…" />
             )
           )}
           <h2 className="sect">Products</h2>
@@ -186,7 +186,7 @@ export function Store({ sites, onPlan }: Props) {
           >
             <input className="input" aria-label="Search products" placeholder="Name or SKU" value={typed} onChange={(e) => setTyped(e.target.value)} />
             <Button type="submit">Search</Button>
-            <select
+            <Select
               className="input sm"
               aria-label="Stock"
               value={query.stock_status ?? ""}
@@ -198,7 +198,7 @@ export function Store({ sites, onPlan }: Props) {
                   {l}
                 </option>
               ))}
-            </select>
+            </Select>
           </form>
           {list && list.products.length === 0 && <p className="dim">No products match.</p>}
           {list && list.products.length > 0 && (
@@ -225,7 +225,7 @@ export function Store({ sites, onPlan }: Props) {
               <tbody>
                 {list.products.map((p) => (
                   <tr key={p.id}>
-                    <td className="name cut" title={p.name}>
+                    <td className="name cut" data-tip={p.name}>
                       {p.name}
                     </td>
                     <td className="dim">{p.sku || "none"}</td>

@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { invoke } from "@tauri-apps/api/core";
 import { Content, bulkRows } from "./Content";
 import { siteDate } from "./Editor";
-import { site } from "../test-fixtures";
+import { site, choose } from "../test-fixtures";
 import type { Post, PostType } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -92,8 +92,13 @@ test("schedules an entry and changes its custom fields", async () => {
   fireEvent.change(within(fields).getByRole("textbox", { name: "New field name" }), { target: { value: "chef" } });
   fireEvent.change(within(fields).getByRole("textbox", { name: "New field value" }), { target: { value: "Ana" } });
   fireEvent.click(within(fields).getByRole("button", { name: "Add the field" }));
-  fireEvent.change(within(sheet).getByRole("combobox", { name: "Status" }), { target: { value: "publish" } });
-  fireEvent.change(within(sheet).getByLabelText(/^Publish date/), { target: { value: "2026-12-01T08:00" } });
+  choose(within(sheet).getByRole("combobox", { name: "Status" }), "publish");
+  const day = within(sheet).getByRole("textbox", { name: "Publish date: date" });
+  fireEvent.change(day, { target: { value: "1 Dec 2026" } });
+  fireEvent.blur(day);
+  const time = within(sheet).getByRole("textbox", { name: "Publish date: time" });
+  fireEvent.change(time, { target: { value: "8:00" } });
+  fireEvent.blur(time);
   fireEvent.click(within(sheet).getByRole("button", { name: "Save changes" }));
   await waitFor(() =>
     expect(calls.find((c) => c[0] === "content_edit")?.[1].draft).toEqual({

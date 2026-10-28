@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { invoke } from "@tauri-apps/api/core";
 import { Clients, money, perMonth, sums, toCents } from "./Clients";
 import { Settings, importNote } from "./Settings";
-import { site } from "../test-fixtures";
+import { site, choose } from "../test-fixtures";
 import type { Cost } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -79,13 +79,13 @@ test("adds a client with their sites, and a cost on a site", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Add a cost or charge" }));
   sheet = screen.getByRole("dialog", { name: "Add a cost or charge" });
-  fireEvent.change(within(sheet).getByRole("combobox", { name: "On" }), { target: { value: "s2" } });
+  choose(within(sheet).getByRole("combobox", { name: "On" }), "s2");
   fireEvent.change(within(sheet).getByRole("textbox", { name: "What it is" }), { target: { value: "Backups" } });
   fireEvent.change(within(sheet).getByRole("textbox", { name: "Amount" }), { target: { value: "abc" } });
   expect(within(sheet).getByText(/Write the amount as a number/)).toBeInTheDocument();
   expect(within(sheet).getByRole("button", { name: "Add it" })).toBeDisabled();
   fireEvent.change(within(sheet).getByRole("textbox", { name: "Amount" }), { target: { value: "5,50" } });
-  fireEvent.change(within(sheet).getByRole("combobox", { name: "How often" }), { target: { value: "month" } });
+  choose(within(sheet).getByRole("combobox", { name: "How often" }), "month");
   fireEvent.click(within(sheet).getByRole("button", { name: "A charge to the client" }));
   fireEvent.click(within(sheet).getByRole("button", { name: "Add it" }));
   await waitFor(() =>
@@ -119,7 +119,8 @@ test("exports into Downloads and imports a file, saying what was left out", asyn
     sites_import: () => ({ sites: 1, clients: 1, costs: 2, not_connected: ["https://gone.test"] }),
   });
   render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Export as CSV" }));
+  fireEvent.click(screen.getByRole("button", { name: "Export the sites" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: /^Export as CSV/ }));
   expect(await screen.findByText("Saved /home/you/Downloads/sites.csv")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "file_show")).toBe(true));

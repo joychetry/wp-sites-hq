@@ -1,5 +1,7 @@
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
+import { Skeleton } from "../components/feedback";
+import { Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Role, type Site, type User, type Users as SiteUsers } from "../api";
 import { Button } from "../components/ui";
@@ -65,9 +67,7 @@ export function Users({ sites }: { sites: Site[] }) {
   let body;
   if (!loaded) {
     body = (
-      <p className="empty" role="status">
-        Reading users on {usable.length} {usable.length === 1 ? "site" : "sites"}…
-      </p>
+      <Skeleton label={`Reading users on ${usable.length} ${usable.length === 1 ? "site" : "sites"}…`} />
     );
   } else if (rows.length === 0) {
     body = (
@@ -111,12 +111,12 @@ export function Users({ sites }: { sites: Site[] }) {
               return (
                 <tr key={`${l.site.id}-${u.id}`}>
                   <td className="name">
-                    <span className="cut" title={who}>
+                    <span className="cut" data-tip={who}>
                       {who}
                     </span>
                     {u.name && u.name !== u.username && <span className="dim"> {u.username}</span>}
                   </td>
-                  <td className="cut" title={u.email}>
+                  <td className="cut" data-tip={u.email}>
                     {u.email || "none"}
                   </td>
                   <td>{roleName(roles, u.role)}</td>
@@ -157,7 +157,7 @@ export function Users({ sites }: { sites: Site[] }) {
           setSearch(typed.trim());
         }}
       >
-        <input className="input sm" aria-label="Search users" placeholder="Search by name, username or email" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <SearchInput className="sm" aria-label="Search users" placeholder="Search by name, username or email" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <Button small type="submit">
           Search
         </Button>
@@ -253,13 +253,13 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
     >
       <label className="field">
         <span>Site</span>
-        <select className="input" aria-label="Site" value={siteId} onChange={(e) => setSiteId(Number(e.target.value))}>
+        <Select className="input" aria-label="Site" value={siteId} onChange={(e) => setSiteId(Number(e.target.value))}>
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="field">
         <span>Username</span>
@@ -272,13 +272,13 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
       </label>
       <label className="field">
         <span>Role</span>
-        <select className="input" aria-label="Role" value={role} disabled={!info} onChange={(e) => setRole(e.target.value)}>
+        <Select className="input" aria-label="Role" value={role} disabled={!info} onChange={(e) => setRole(e.target.value)}>
           {roles.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}
             </option>
           ))}
-        </select>
+        </Select>
         {admin && <small>An administrator can change everything on {site?.name}, including other users.</small>}
       </label>
       {info?.can_reset ? (
@@ -330,13 +330,13 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
     >
       <label className="field">
         <span>New role</span>
-        <select className="input" aria-label="New role" value={role} onChange={(e) => setRole(e.target.value)}>
+        <Select className="input" aria-label="New role" value={role} onChange={(e) => setRole(e.target.value)}>
           {roles.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}
             </option>
           ))}
-        </select>
+        </Select>
         {role === "administrator" && role !== user.role && <small>An administrator can change everything on {site.name}, including other users.</small>}
       </label>
       {error && (
@@ -398,13 +398,13 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
       ) : (
         <label className="field">
           <span>Give their posts and pages to</span>
-          <select className="input" aria-label="Give their posts and pages to" value={to} onChange={(e) => setTo(Number(e.target.value))}>
+          <Select className="input" aria-label="Give their posts and pages to" value={to} onChange={(e) => setTo(Number(e.target.value))}>
             {others.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name || o.username} ({o.username})
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {error && (

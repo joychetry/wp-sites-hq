@@ -1,4 +1,5 @@
 // One comment inbox for every site shown: approve, unapprove, spam, trash and reply (plan Phase 4).
+import { Skeleton, toast } from "../components/feedback";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Comment, type CommentState, type Moderation, type Site } from "../api";
 import { Button } from "../components/ui";
@@ -84,12 +85,19 @@ export function Comments({ sites }: { sites: Site[] }) {
   const act = async (r: Row, action: Moderation) => {
     setBusy(key(r));
     setNote(null);
+    // Optimistic: every action moves the comment out of this list, so it goes at once and comes back if the site says no.
+    setLoaded((l) => l && { ...l, rows: l.rows.filter((x) => key(x) !== key(r)) });
     try {
       await api.moderate(r.site.id, r.c.id, action);
-      setNote({ ok: true, text: `${DONE[action]}: ${r.c.author || "a visitor"}'s comment on ${r.site.name}.` });
+      // Undo puts it back where it was; WordPress has no "not spam" or "out of the trash" for comments here.
+      const back: Moderation | null = action === "trash" || action === "spam" ? null : r.c.status === "approved" ? "approve" : r.c.status === "pending" ? "unapprove" : null;
+      toast(`${DONE[action]}: ${r.c.author || "a visitor"}'s comment on ${r.site.name}.`, {
+        undo: back ? () => api.moderate(r.site.id, r.c.id, back).then(load, (e) => setNote({ ok: false, text: String(e) })) : undefined,
+      });
       load();
     } catch (e) {
       setNote({ ok: false, text: String(e) });
+      load();
     } finally {
       setBusy(null);
     }
@@ -114,9 +122,7 @@ export function Comments({ sites }: { sites: Site[] }) {
   let body;
   if (!loaded) {
     body = (
-      <p className="empty" role="status">
-        Reading comments on {usable.length} {usable.length === 1 ? "site" : "sites"}…
-      </p>
+      <Skeleton label={`Reading comments on ${usable.length} ${usable.length === 1 ? "site" : "sites"}…`} />
     );
   } else if (loaded.rows.length === 0) {
     body = (
@@ -141,7 +147,7 @@ export function Comments({ sites }: { sites: Site[] }) {
                   <b>{who}</b>
                   {r.c.email && <span className="dim">{r.c.email}</span>}
                   <span>
-                    on <span title={r.c.post_title}>{r.c.post_title || "a page with no title"}</span>
+                    on <span data-tip={r.c.post_title}>{r.c.post_title || "a page with no title"}</span>
                   </span>
                   <span className="dim">{r.site.name}</span>
                   <span className="num dim">{r.c.date}</span>
