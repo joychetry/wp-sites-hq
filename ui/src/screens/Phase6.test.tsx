@@ -10,6 +10,8 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 const mockInvoke = vi.mocked(invoke);
 beforeEach(() => {
   mockInvoke.mockReset();
+  // Every command answers, as Tauri does.
+  mockInvoke.mockResolvedValue(null);
 });
 
 const A = site({ id: 1, name: "Alpha" });
