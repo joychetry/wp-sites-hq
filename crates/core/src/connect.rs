@@ -139,6 +139,21 @@ pub fn at_least_7_1(version: &str) -> bool {
     }
 }
 
+/// The REST root a `Link` header names, kept only on the site's own address: the app
+/// password goes there. A site behind a proxy that hides HTTPS names http; that is moved
+/// back to https.
+fn rest_root_from_link<'a>(site: &Url, links: impl Iterator<Item = &'a str>) -> Option<String> {
+    let link = links
+        .flat_map(|v| v.split(','))
+        .find(|l| l.contains("rel=\"https://api.w.org/\""))?;
+    let (start, end) = (link.find('<')?, link.find('>')?);
+    let mut root = Url::parse(link.get(start + 1..end)?).ok()?;
+    if site.scheme() == "https" && root.scheme() == "http" && root.port().is_none() {
+        root.set_scheme("https").ok()?;
+    }
+    (root.origin() == site.origin()).then(|| root.to_string())
+}
+
 impl Core {
     pub(crate) fn db<T>(
         &self,
@@ -918,14 +933,8 @@ impl Core {
             self.http.get(&home)
         })
         .await?;
-        let from_link = reply
-            .headers
-            .get_all(reqwest::header::LINK)
-            .iter()
-            .filter_map(|v| v.to_str().ok())
-            .flat_map(|v| v.split(','))
-            .find(|l| l.contains("rel=\"https://api.w.org/\""))
-            .and_then(|l| Some(l[l.find('<')? + 1..l.find('>')?].to_string()));
+        let links = reply.headers.get_all(reqwest::header::LINK);
+        let from_link = rest_root_from_link(url, links.iter().filter_map(|v| v.to_str().ok()));
         Ok(from_link.unwrap_or_else(|| format!("{home}/wp-json/")))
     }
 
@@ -1566,6 +1575,33 @@ mod tests {
         assert_eq!(s.capabilities["degraded"], true);
         assert_eq!(s.wp_version.as_deref(), Some("7.1.3"), "from the feed");
         assert_eq!(s.health, Health::Ok, "{}", s.health_detail);
+    }
+
+    #[test]
+    fn the_rest_root_stays_on_the_site() {
+        let site = Url::parse("https://shop.example").unwrap();
+        let root = |l: &str| rest_root_from_link(&site, [l].into_iter());
+        let rel = "rel=\"https://api.w.org/\"";
+        assert_eq!(
+            root(&format!("<https://shop.example/?rest_route=/>; {rel}")).as_deref(),
+            Some("https://shop.example/?rest_route=/")
+        );
+        // A proxy that hides HTTPS: back to https, never the password over http.
+        assert_eq!(
+            root(&format!("<http://shop.example/wp-json/>; {rel}")).as_deref(),
+            Some("https://shop.example/wp-json/")
+        );
+        assert_eq!(
+            root(&format!("<https://other.example/wp-json/>; {rel}")),
+            None
+        );
+        assert_eq!(
+            root(&format!("<http://shop.example:8080/wp-json/>; {rel}")),
+            None
+        );
+        // Brackets the wrong way round don't panic.
+        assert_eq!(root(&format!("x>y<; {rel}")), None);
+        assert_eq!(root("<https://shop.example/wp-json/>; rel=\"next\""), None);
     }
 
     #[tokio::test]
