@@ -142,7 +142,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                             type="button"
                             className="link"
                             aria-label={`Read more about ${x.title}`}
-                            onClick={() => api.openLink(x.link!)}
+                            onClick={() => api.openLink(x.link!).catch((e) => setError(String(e)))}
                           >
                             Read more
                           </button>

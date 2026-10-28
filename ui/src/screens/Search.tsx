@@ -157,7 +157,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                       </td>
                       <td>
                         {h.link.startsWith("https://") && (
-                          <Button small aria-label={`View ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => api.openLink(h.link).catch(() => {})}>
+                          <Button small aria-label={`View ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
                             View
                           </Button>
                         )}

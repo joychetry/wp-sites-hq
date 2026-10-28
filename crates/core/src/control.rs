@@ -551,6 +551,11 @@ impl Core {
             })?;
         on_site(&site, &link)
     }
+
+    /// A link a site gave (a search result, say), opened only if it points at that site.
+    pub fn link_on_site(&self, id: i64, link: &str) -> Result<String, SiteError> {
+        on_site(&self.site(id)?, link)
+    }
 }
 
 #[cfg(test)]

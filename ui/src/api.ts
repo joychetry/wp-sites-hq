@@ -365,7 +365,8 @@ export const api = {
   checkMonitors: () => invoke<void>("monitors_check"),
   pageSpeed: (id: number) => invoke<PageSpeed>("pagespeed_run", { id }),
   /** Opens an https link from a feed in the browser. */
-  openLink: (url: string) => invoke<void>("link_open", { url }),
+  /** `site`: the link came from that site, so it must point at it. */
+  openLink: (url: string, site?: number) => invoke<void>("link_open", { url, site }),
   startJob: (title: string, changes: Change[]) => invoke<Job>("job_start", { title, changes }),
   job: (id: number) => invoke<Job>("job_get", { id }),
   postTypes: (id: number) => invoke<PostType[]>("content_types", { id }),

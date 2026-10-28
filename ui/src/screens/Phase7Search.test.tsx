@@ -41,7 +41,7 @@ test("search shows local results and posts from each site, and names sites it co
   expect(within(row).getByText("Page")).toBeInTheDocument();
   expect(within(row).getByText("Scheduled")).toBeInTheDocument();
   fireEvent.click(within(row).getByRole("button", { name: "View Beta launch on Alpha" }));
-  expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://alpha.test/beta" });
+  expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://alpha.test/beta", site: 1 });
   expect(screen.getByText("Not searched: Beta (No answer.)")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open on Sites: Beta" }));
   expect(go).toHaveBeenCalledWith("Sites", 2);

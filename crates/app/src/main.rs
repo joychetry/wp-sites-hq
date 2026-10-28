@@ -38,8 +38,22 @@ fn core(state: &State<'_, AppCore>) -> Res<Arc<Core>> {
     state.0.clone()
 }
 
+/// Only web pages open: a site's sign-in details or links can't start another app
+/// (smb:, file:, search-ms: and the like).
 fn browser(url: &str) -> std::io::Result<()> {
+    if !is_web(url) {
+        return Err(std::io::Error::other("Monks Central only opens web links."));
+    }
     open::that_detached(url)
+}
+
+fn is_web(url: &str) -> bool {
+    url.starts_with("https://") || url.starts_with("http://")
+}
+
+/// A report or export Monks Central saved: right in the Downloads folder.
+fn saved_by_us(p: &std::path::Path) -> bool {
+    paths::downloads().is_ok_and(|d| p.parent() == Some(d.as_path()))
 }
 
 /// Record a change the person made in the window (plan 5.8), and hand its result on.
@@ -690,7 +704,7 @@ async fn report_make(state: State<'_, AppCore>, ask: ReportAsk) -> Res<Saved> {
 fn file_open(path: String) -> Res<()> {
     let p = std::path::Path::new(&path);
     // Only the reports and exports Monks Central wrote.
-    let ours = paths::downloads().is_ok_and(|d| p.parent() == Some(d.as_path()));
+    let ours = saved_by_us(p);
     let kind = p.extension().and_then(|e| e.to_str());
     if !ours || !matches!(kind, Some("html" | "pdf")) {
         return Err("Monks Central only opens the reports it saved.".into());
@@ -738,6 +752,9 @@ fn sites_import(state: State<'_, AppCore>, text: String) -> Res<Imported> {
 #[tauri::command]
 fn file_show(path: String) -> Res<()> {
     let p = std::path::Path::new(&path);
+    if !saved_by_us(p) {
+        return Err("Monks Central only shows the files it saved.".into());
+    }
     let folder = p
         .parent()
         .filter(|_| p.is_file())
@@ -800,9 +817,15 @@ async fn pagespeed_run(state: State<'_, AppCore>, id: i64) -> Res<PageSpeed> {
 
 /// Open a link from an outside feed (a vulnerability report) in the browser.
 #[tauri::command]
-fn link_open(url: String) -> Res<()> {
+fn link_open(state: State<'_, AppCore>, url: String, site: Option<i64>) -> Res<()> {
     if !url.starts_with("https://") {
         return Err("Only https links open from Monks Central.".into());
+    }
+    // A site's own link must point at that site.
+    if let Some(id) = site {
+        core(&state)?
+            .link_on_site(id, &url)
+            .map_err(|e| e.to_string())?;
     }
     browser(&url).map_err(|e| e.to_string())
 }
@@ -1084,4 +1107,26 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("Monks Central couldn't open its window");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_web_links_and_our_own_files_open() {
+        for bad in [
+            "smb://host/x",
+            "file:///etc/passwd",
+            "search-ms:query=x",
+            "javascript:1",
+        ] {
+            assert!(browser(bad).is_err(), "{bad}");
+        }
+        assert!(is_web("https://mc-a.local/wp-admin/") && is_web("http://localhost:8881"));
+        let d = paths::downloads().unwrap();
+        assert!(saved_by_us(&d.join("report.pdf")));
+        assert!(!saved_by_us(&d.join("sub").join("report.pdf")));
+        assert!(!saved_by_us(std::path::Path::new("/etc/passwd")));
+    }
 }
