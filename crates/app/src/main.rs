@@ -537,6 +537,15 @@ fn activity_list(state: State<'_, AppCore>, before: Option<i64>) -> Res<Vec<Entr
         .map_err(|e| e.to_string())
 }
 
+/// Open a link from an outside feed (a vulnerability report) in the browser.
+#[tauri::command]
+fn link_open(url: String) -> Res<()> {
+    if !url.starts_with("https://") {
+        return Err("Only https links open from Monks Central.".into());
+    }
+    browser(&url).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn security_list(state: State<'_, AppCore>) -> Res<Vec<Report>> {
     core(&state)?.security_reports().map_err(|e| e.to_string())
@@ -663,6 +672,7 @@ fn main() {
             activity_list,
             security_list,
             security_scan,
+            link_open,
         ])
         .run(tauri::generate_context!())
         .expect("Monks Central couldn't open its window");

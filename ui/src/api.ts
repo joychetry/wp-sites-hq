@@ -116,6 +116,27 @@ export type Entry = {
   detail: string;
 };
 
+export type Vulnerability = {
+  kind: "plugin" | "theme" | "wordpress";
+  id: string;
+  name: string;
+  installed: string;
+  title: string;
+  severity: string | null;
+  fixed_in: string | null;
+  link: string | null;
+};
+export type Abandoned = { id: string; name: string; version: string; last_updated: number | null; closed: boolean; reason: string | null };
+export type Differs = { name: string; modified: string[]; missing: string[]; added: string[] };
+export type SecurityReport = {
+  site_id: number;
+  checked_at: number;
+  vulnerabilities: Vulnerability[];
+  abandoned: Abandoned[];
+  checksums: { checked: number; not_verifiable: string[]; changed: Differs[] } | null;
+  notes: string[];
+};
+
 export type Found = { slug: string; name: string; version: string; active_installs: number; summary: string };
 
 export type PluginVersions = { installed?: string; versions?: { version: string; current?: boolean }[]; notice?: string };
@@ -232,6 +253,10 @@ export const api = {
   refreshInventory: (id?: number) => invoke<void>("inventory_refresh", { id }),
   pluginVersions: (id: number, plugin: string) => invoke<PluginVersions>("plugin_versions", { id, plugin }),
   searchPlugins: (query: string) => invoke<Found[]>("plugin_search", { query }),
+  security: () => invoke<SecurityReport[]>("security_list"),
+  scanSecurity: (id?: number) => invoke<void>("security_scan", { id }),
+  /** Opens an https link from a feed in the browser. */
+  openLink: (url: string) => invoke<void>("link_open", { url }),
   startJob: (title: string, changes: Change[]) => invoke<Job>("job_start", { title, changes }),
   job: (id: number) => invoke<Job>("job_get", { id }),
   postTypes: (id: number) => invoke<PostType[]>("content_types", { id }),
@@ -323,6 +348,12 @@ function useLive<T>(load: () => Promise<T>, event: string) {
     };
   }, [reload, event]);
   return { data, error, reload };
+}
+
+/** Every site's last security scan. */
+export function useSecurity() {
+  const { data, error, reload } = useLive(api.security, "security-changed");
+  return { reports: data, error, reload };
 }
 
 /** What every site runs, by site id. */

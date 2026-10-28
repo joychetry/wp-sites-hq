@@ -204,13 +204,34 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
       expect(wide).toBeLessThanOrEqual(720);
     });
   }
+});
+
+test("a vulnerable plugin is fixed from the keyboard, through the plan", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "security")!, "light");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Security 2 known vulnerabilities" })).toBeVisible();
+  await page.getByRole("button", { name: "Read more about WooCommerce < 10.3.0 - Authenticated (Shop Manager+) Stored Cross-Site Scripting via product reviews" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Update to 10.3.0 on MC A" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  const sheet = page.getByRole("dialog", { name: /^Update WooCommerce on MC A/ });
+  await expect(sheet.getByRole("checkbox", { name: "Update WooCommerce on MC A" })).toBeChecked();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+});
+
+test("a rolled back update shows why, and only the failed change is offered again", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "updates-progress")!, "light");
+  const sheet = page.getByRole("dialog");
+  await expect(sheet.getByText("Rolled back", { exact: true })).toBeVisible();
+  await expect(sheet.getByText(/^Rolled back to 5\.3\. The home page answered 500/)).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Try the 1 failed change again" })).toBeVisible();
 });
 
 test("a long reason in the activity log wraps, so Result stays in view", async ({ page }) => {

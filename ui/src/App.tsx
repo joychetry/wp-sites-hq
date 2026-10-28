@@ -1,6 +1,6 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
 import { useEffect, useMemo, useState } from "react";
-import { ago, api, hasTool, siteStatus, useInventory, usePlans, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { ago, api, hasTool, siteStatus, useInventory, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Kbd, Logo } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
@@ -17,6 +17,7 @@ import { Users } from "./screens/Users";
 import { Comments } from "./screens/Comments";
 import { ClassicMonks } from "./screens/ClassicMonks";
 import { Ai } from "./screens/Ai";
+import { Security } from "./screens/Security";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -31,7 +32,7 @@ const GROUPS = [
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "AI", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Security", "AI", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -48,6 +49,7 @@ export default function App() {
   const { sites, error, reload } = useSites();
   const { inventory } = useInventory();
   const { plans } = usePlans();
+  const { reports } = useSecurity();
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [installing, setInstalling] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export default function App() {
   const down = all.filter((s) => siteStatus(s).tone === "danger").length;
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
+  const vulnerable = (reports ?? []).reduce((n, r) => n + r.vulnerabilities.length, 0);
 
   const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
     setSheet({ title, rows, start, danger });
@@ -122,6 +125,7 @@ export default function App() {
       run: () => (waiting.length ? plan(planTitle(waiting), waiting) : setSection("Updates")),
     },
     { id: "install", group: "Actions", label: "Install a plugin", run: () => setInstalling(true) },
+    { id: "scan", group: "Actions", label: "Scan all sites for security problems", run: () => api.scanSecurity().catch(() => {}) },
     { id: "read", group: "Actions", label: "Read every site's plugins and themes again", run: () => api.refreshInventory().catch(() => {}) },
     {
       id: "theme",
@@ -228,6 +232,8 @@ export default function App() {
     body = <Comments sites={scoped} />;
   } else if (section === "Classic Monks") {
     body = <ClassicMonks sites={scoped} />;
+  } else if (section === "Security") {
+    body = <Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "AI") {
     body = <Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
   } else if (section === "Settings") {
@@ -288,6 +294,12 @@ export default function App() {
                       <span className="n alert">
                         {plans!.length}
                         <span className="sr-only"> to confirm</span>
+                      </span>
+                    )}
+                    {s === "Security" && vulnerable > 0 && (
+                      <span className="n alert">
+                        {vulnerable}
+                        <span className="sr-only"> known vulnerabilities</span>
                       </span>
                     )}
                     {s === "Updates" && waiting.length > 0 && (

@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, ActivityRow, Change, Comment, Entry, FeatureGroup, Item, Job, Media, Post, PostType, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, Change, Comment, Entry, FeatureGroup, Item, Job, Media, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -178,8 +178,14 @@ function startJob(title: string, changes: Change[]): Job {
     }, 100 + i * 200);
     setTimeout(() => {
       const fail = i === 1;
-      it.state = fail ? "failed" : "done";
-      it.message = fail ? "The site took too long to answer. Nothing was changed." : "Updated.";
+      // A safe update that broke the site: put back, with the reason.
+      const back = !fail && it.action.do === "update_plugin" && it.action.plugin === "akismet/akismet.php";
+      it.state = fail ? "failed" : back ? "rolled_back" : "done";
+      it.message = fail
+        ? "The site took too long to answer. Nothing was changed."
+        : back
+          ? "Rolled back to 5.3. The home page answered 500 after the update: PHP Fatal error: Uncaught Error: Call to undefined function akismet_boot() in ABSPATH/wp-content/plugins/akismet/akismet.php on line 41"
+          : "Updated. The site works after the update.";
       if (i === job.items.length - 1) job.finished_at = now;
       changed();
     }, 250 + i * 200);
@@ -367,6 +373,33 @@ let ACTIVITY: ActivityRow[] = [
   { id: 38, time: "2026-10-27 20:10:02", who: "WP-CLI", tool: "update-settings", status: "undone", summary: "", can_undo: false },
 ];
 
+// Security: what each site's last scan found.
+const SECURITY: SecurityReport[] =
+  fixture === "empty"
+    ? []
+    : [
+        {
+          site_id: 1,
+          checked_at: now - 3 * 3600,
+          vulnerabilities: [
+            { kind: "plugin", id: WOO, name: "WooCommerce", installed: "10.2.0", title: "WooCommerce < 10.3.0 - Authenticated (Shop Manager+) Stored Cross-Site Scripting via product reviews", severity: "high", fixed_in: "10.3.0", link: "https://www.wordfence.com/threat-intel/vulnerabilities/" },
+            { kind: "plugin", id: "elementor/elementor.php", name: "Elementor", installed: "3.30.2", title: "Elementor <= 3.30.2 - Contributor+ DOM-Based Stored XSS", severity: "medium", fixed_in: null, link: null },
+          ],
+          abandoned: [{ id: "wp-postratings/wp-postratings.php", name: "WP-PostRatings", version: "1.91", last_updated: now - 86400 * 900, closed: false, reason: null }],
+          checksums: { checked: 5, not_verifiable: ["Classic Monks"], changed: [{ name: "WordPress", modified: ["wp-includes/version.php"], missing: [], added: ["wp-admin/x-shell.php"] }] },
+          notes: [],
+        },
+        {
+          site_id: 3,
+          checked_at: now - 3 * 3600,
+          vulnerabilities: [],
+          abandoned: [{ id: "hello-dolly/hello.php", name: "Hello Dolly", version: "1.7.2", last_updated: null, closed: true, reason: "author-request" }],
+          checksums: null,
+          notes: ["Checksums need Classic Monks on the site."],
+        },
+        { site_id: 6, checked_at: now - 2 * 3600, vulnerabilities: [], abandoned: [], checksums: { checked: 3, not_verifiable: [], changed: [] }, notes: [] },
+      ];
+
 const listeners: Array<() => void> = [];
 const changed = () => listeners.forEach((f) => f());
 const edit = (id: number, over: Partial<Site>) => {
@@ -507,6 +540,13 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(edit(id, { agent_access: false }));
     case "activity_list":
       return r(args.before ? [] : ENTRIES);
+    case "security_list":
+      return r(SECURITY);
+    case "security_scan":
+      await new Promise((ok) => setTimeout(ok, 300));
+      return r(null);
+    case "link_open":
+      return r(null);
     default:
       // Adding and signing in need a real site.
       return new Promise<T>(() => {});

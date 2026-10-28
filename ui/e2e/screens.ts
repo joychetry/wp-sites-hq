@@ -42,7 +42,9 @@ export const SCREENS: Screen[] = [
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
   { name: "settings", open: nav("Settings") },
-  { name: "later", open: nav("Security") },
+  { name: "later", open: nav("Reports") },
+  { name: "security", open: nav("Security") },
+  { name: "security-empty", fixture: "empty", open: nav("Security") },
   { name: "users", open: nav("Users") },
   {
     name: "users-add",
