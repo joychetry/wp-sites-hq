@@ -71,7 +71,10 @@ export function Comments({ sites }: { sites: Site[] }) {
     // `ids` stands for the usable sites.
   }, [ids, show]);
   useEffect(() => load(), [load]);
-  const refresh = () => load(true);
+  // Undo can run after a tab change, so it reads whichever list is showing then.
+  const latest = useRef(load);
+  latest.current = load;
+  const refresh = () => latest.current(true);
 
   if (sites.length === 0) {
     return (
@@ -85,6 +88,8 @@ export function Comments({ sites }: { sites: Site[] }) {
   const key = (r: Row) => `${r.site.id}-${r.c.id}`;
   const act = async (r: Row, action: Moderation) => {
     setBusy(key(r));
+    // A reload already on its way left before this change; its list would bring the comment back.
+    asked.current++;
     // Optimistic: every action moves the comment out of this list, so it goes at once and comes back if the site says no.
     setLoaded((l) => l && { ...l, rows: l.rows.filter((x) => key(x) !== key(r)) });
     try {

@@ -190,6 +190,32 @@ describe("Comments", () => {
     expect(screen.queryByRole("button", { name: /as spam$/ })).toBeNull();
   });
 
+  it("an action keeps the list on screen, and Undo after a tab change reads the tab that shows", async () => {
+    let status: Record<number, string> = { 5: "pending", 7: "pending" };
+    const calls = core({
+      comments_list: (a) => ({
+        comments: [comment(5, "Ana", "2026-10-27 10:00:00"), comment(7, "Cy", "2026-10-26 10:00:00")].filter((c) => status[c.id] === a.status).map((c) => ({ ...c, status: a.status as Comment["status"] })),
+        total: 2,
+      }),
+      comment_moderate: (a) => {
+        status = { ...status, [a.commentId as number]: a.action === "approve" ? "approved" : "pending" };
+        return null;
+      },
+    });
+    render(<Comments sites={[CM]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Approve Ana's comment on Alpha" }));
+    // No loading placeholder in place of the rows: the next comment stays where the pointer is.
+    expect(screen.queryByText(/Reading comments/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Approve Cy's comment on Alpha" })).toBeInTheDocument();
+    await screen.findByText("Approved: Ana's comment on Alpha.");
+    fireEvent.click(screen.getByRole("button", { name: "Approved" }));
+    expect(await screen.findByRole("button", { name: "Unapprove Ana's comment on Alpha" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(calls).toContainEqual(["comment_moderate", { id: 1, commentId: 5, action: "unapprove" }]));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Unapprove Ana's comment on Alpha" })).toBeNull());
+    expect(screen.queryByRole("button", { name: "Approve Cy's comment on Alpha" })).toBeNull();
+  });
+
   it("says when nothing waits, and when a change fails", async () => {
     core({ comments_list: () => ({ comments: [], total: 0 }) });
     const { unmount } = render(<Comments sites={[CM]} />);

@@ -84,7 +84,7 @@ export default function App() {
   const [installing, setInstalling] = useState(false);
   // Errors float as toasts, so the screen under them doesn't move.
   const setJobError = (text: string) => toast(text, { tone: "danger" });
-  const [scope, setScope] = useState("");
+  const [scopeChoice, setScope] = useState("");
   const [focusId, setFocusId] = useState<number | null>(null);
   const [searchFor, setSearchFor] = useState("");
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
@@ -111,6 +111,8 @@ export default function App() {
 
   const all = sites ?? [];
   const groups = useMemo(() => [...new Set(all.flatMap((s) => (s.group ? [s.group] : [])))].sort(), [all]);
+  // A group that no longer has sites falls back to all sites instead of an empty app.
+  const scope = groups.includes(scopeChoice) ? scopeChoice : "";
   const scoped = scope ? all.filter((s) => s.group === scope) : all;
   const lastCheck = Math.max(0, ...all.map((s) => s.checked_at ?? 0)) || null;
   const nextCheck = lastCheck ? Math.max(1, Math.ceil((lastCheck + CHECK_EVERY - Date.now() / 1000) / 60)) : null;

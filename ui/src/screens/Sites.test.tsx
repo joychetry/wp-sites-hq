@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Sites } from "./Sites";
+import { Select } from "../components/controls";
 import { site } from "../test-fixtures";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -131,4 +132,31 @@ test("deleting a note offers Undo, which writes it again", async () => {
   expect(mockInvoke).toHaveBeenCalledWith("site_delete_note", { id: 1, noteId: 7 });
   fireEvent.click(screen.getByRole("button", { name: "Undo" }));
   await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("site_add_note", { id: 1, body: "Renews in March" }));
+});
+
+test("keys typed in the kit's own controls are theirs, not the table's", () => {
+  const onAdd = vi.fn();
+  render(
+    <>
+      <Select aria-label="Sites to show" value="" onChange={vi.fn()}>
+        <option value="">All sites</option>
+        <option value="Acme">Acme</option>
+      </Select>
+      <Sites sites={SITES} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={onAdd} onSignInAgain={vi.fn()} />
+    </>,
+  );
+  fireEvent.keyDown(screen.getByRole("combobox", { name: "Sites to show" }), { key: "a" });
+  expect(onAdd).not.toHaveBeenCalled();
+});
+
+test("Enter in an empty group box leaves the selection's groups alone; a name moves them and says so", async () => {
+  mockInvoke.mockResolvedValue(null);
+  render(<Harness />);
+  fireEvent.keyDown(document, { key: "x" });
+  const box = screen.getByRole("combobox", { name: "Group for the selected sites" });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(mockInvoke).not.toHaveBeenCalledWith("site_set_group", expect.anything());
+  fireEvent.change(box, { target: { value: "Shops" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(await screen.findByText("Put 1 site in Shops.")).toBeInTheDocument();
 });

@@ -25,6 +25,8 @@ function busyKeys(e: KeyboardEvent) {
     e.ctrlKey ||
     e.metaKey ||
     e.altKey ||
+    // The kit's controls (Select, menus, lists) handle their own keys and mark them handled.
+    e.defaultPrevented ||
     ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) ||
     !!document.querySelector('[aria-modal="true"]')
   );
@@ -36,6 +38,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   const [mode, setMode] = useState<ModeFilter>("any");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [groupFor, setGroupFor] = useState("");
+  const [grouping, setGrouping] = useState(false);
   const filter = useRef<HTMLInputElement>(null);
   const table = useRef<HTMLTableElement>(null);
 
@@ -56,7 +59,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
 
   useEffect(() => {
     // Removed sites leave the selection.
-    setSelected((sel) => new Set([...sel].filter((id) => sites.some((s) => s.id === id))));
+    const ids = new Set(sites.map((s) => s.id));
+    setSelected((sel) => new Set([...sel].filter((id) => ids.has(id))));
   }, [sites]);
 
   const toggle = (id: number) =>
@@ -284,9 +288,15 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               value={groupFor}
               onChange={(e) => setGroupFor(e.target.value)}
               onKeyDown={async (e) => {
-                if (e.key !== "Enter") return;
-                await Promise.all(picked.map((s) => api.setGroup(s.id, groupFor.trim() || null)));
+                const g = groupFor.trim();
+                // An empty box never ungroups the whole selection; one Enter at a time.
+                if (e.key !== "Enter" || !g || grouping) return;
+                setGrouping(true);
+                const failed = (await Promise.all(picked.map((s) => api.setGroup(s.id, g).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
+                setGrouping(false);
                 setGroupFor("");
+                if (failed) toast(`${failed} of ${picked.length} sites didn't move to ${g}.`, { tone: "danger" });
+                else toast(`Put ${picked.length === 1 ? "1 site" : `${picked.length} sites`} in ${g}.`);
               }}
             />
             <Button small onClick={() => setSelected(new Set())} keys="Esc">
@@ -329,6 +339,11 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
   const [busy, setBusy] = useState(false);
   // Errors float as toasts, so the sections below don't move under the pointer.
   const setError = (text: string) => toast(text, { tone: "danger" });
+  // Kept here so two quick tag edits build on each other, not on the tags before the first save.
+  const [tags, setTags] = useState(s.tags);
+  const savedTags = s.tags.join("\n");
+  useEffect(() => setTags(s.tags), [savedTags]);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const st = siteStatus(s);
   const caps = s.capabilities;
   const abilities = Array.isArray(caps.abilities) ? caps.abilities.length : 0;
@@ -475,7 +490,15 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
         <h3>
           Tags
         </h3>
-        <TagInput label="Tags" value={s.tags} suggestions={allTags} onChange={(tags) => run(() => api.setTags(s.id, tags))} />
+        <TagInput
+          label="Tags"
+          value={tags}
+          suggestions={allTags}
+          onChange={(next) => {
+            setTags(next);
+            run(() => api.setTags(s.id, next));
+          }}
+        />
       </section>
       <section>
         <h3>
@@ -508,13 +531,16 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
                     type="button"
                     className="btn sm"
                     style={{ marginLeft: "auto" }}
-                    onClick={() =>
-                      run(async () => {
+                    disabled={deleting === n.id}
+                    onClick={async () => {
+                      setDeleting(n.id);
+                      await run(async () => {
                         await api.deleteNote(s.id, n.id);
                         // Undo writes the note again (with today's date).
                         toast(`Deleted the note on ${s.name}.`, { undo: () => run(() => api.addNote(s.id, n.body)) });
-                      })
-                    }
+                      });
+                      setDeleting(null);
+                    }}
                   >
                     Delete note
                   </button>
