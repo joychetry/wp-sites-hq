@@ -412,7 +412,6 @@ export const api = {
   plansWaiting: () => invoke<Job[]>("plans_waiting"),
   confirmPlan: (id: number) => invoke<Job>("plan_confirm", { id }),
   declinePlan: (id: number) => invoke<Job>("plan_decline", { id }),
-  siteIcon: (id: number) => invoke<string | null>("site_icon", { id }),
   activityLog: (before?: number) => invoke<Entry[]>("activity_list", { before }),
   clients: () => invoke<Client[]>("clients_list"),
   saveClient: (client: Client) => invoke<Client>("client_save", { client }),
