@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// A side sheet over the page (bulk actions, adding a site). Esc closes it.
+// A side sheet over the page (bulk actions, editing), or a centred dialog (adding a site). Esc closes it.
 import { useEffect, useRef, type ReactNode } from "react";
 import { Glyph } from "./ui";
 
@@ -10,12 +10,16 @@ type Props = {
   intro?: ReactNode;
   /** Under the title and intro, in the head: a stepper (components/JobSheet.tsx). */
   steps?: ReactNode;
+  /** A tile before the title, like the design's dialogs. */
+  icon?: ReactNode;
+  /** A centred dialog instead of the side sheet. */
+  dialog?: boolean;
   footer: ReactNode;
   onClose: () => void;
   children: ReactNode;
 };
 
-export function Sheet({ title, intro, steps, footer, onClose, children }: Props) {
+export function Sheet({ title, intro, steps, icon, dialog, footer, onClose, children }: Props) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -28,7 +32,7 @@ export function Sheet({ title, intro, steps, footer, onClose, children }: Props)
       <div className="scrim" onClick={onClose} />
       <aside
         ref={ref}
-        className="sheet"
+        className={dialog ? "sheet dialog" : "sheet"}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -51,6 +55,7 @@ export function Sheet({ title, intro, steps, footer, onClose, children }: Props)
         }}
       >
         <header>
+          {icon}
           <div>
             <h2>{title}</h2>
             {intro && <p>{intro}</p>}

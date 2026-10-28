@@ -29,7 +29,7 @@ const PAGES: [page: string, board: string, screens: string[]][] = [
   ["18-search", "18-search-everything", ["search"]],
   ["sidebar", "component-sidebar", ["overview"]],
   ["d01-empty-error", "d01-overview-empty-and-error", ["overview-empty", "error"]],
-  ["d02-add-site", "d02-sites-add-a-site-sign-in-again", ["add-site", "sites-sign-in-again"]],
+  ["d02-add-site", "d02-sites-add-a-site-sign-in-again", ["add-site", "add-site-basic", "sign-in-again"]],
   ["d03-updates-flow", "d03-updates-pick-review-run", ["updates-plan", "updates-confirm", "updates-progress"]],
   ["d04-plugins-install", "d04-plugins-install-bundles-roll-back", ["install", "install-bundle", "plugins-rollback"]],
   ["d05-content-flows", "d05-content-editors-history-bulk-trash-publish", ["content-editor", "content-history", "content-bulk", "content-trash", "publish-many"]],

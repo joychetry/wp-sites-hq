@@ -14,6 +14,8 @@ test("Basic mode sends the address, user and application password", async () => 
   render(<AddSite onClose={vi.fn()} onDone={onDone} />);
   fireEvent.change(screen.getByRole("textbox", { name: "Site address" }), { target: { value: "mc-c.local" } });
   fireEvent.click(screen.getByRole("radio", { name: /^Basic mode/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Next/ }));
+  expect(screen.getByRole("list", { name: "Steps" })).toHaveTextContent(/Address, done.*Sign in/);
   fireEvent.change(screen.getByRole("textbox", { name: "WordPress user name" }), { target: { value: "admin" } });
   fireEvent.change(screen.getByLabelText(/^Application password/), { target: { value: "abcd efgh" } });
   fireEvent.click(screen.getByRole("button", { name: /Add the site/ }));
@@ -66,4 +68,14 @@ test("the address is checked when you leave the box, in words, and blocks adding
   expect(addressProblem("ftp://example.com")).toBe("Use an address that starts with https://.");
   expect(addressProblem("intranet")).toBe("Write the whole address, like https://example.com.");
   expect(addressProblem("http://localhost:8881")).toBeNull();
+});
+
+test("signing in again names the site and keeps Later as the way out", () => {
+  const onClose = vi.fn();
+  render(<AddSite again={site({ name: "MC C", url: "https://mc-c.test", sign_in_again: true })} onClose={onClose} onDone={vi.fn()} />);
+  const dialog = screen.getByRole("dialog", { name: "MC C: the connection expired" });
+  expect(dialog).toHaveTextContent("mc-c.test · Classic Monks");
+  expect(dialog).toHaveTextContent("Until you sign in, MC C is left out of updates");
+  fireEvent.click(screen.getByRole("button", { name: "Later" }));
+  expect(onClose).toHaveBeenCalled();
 });

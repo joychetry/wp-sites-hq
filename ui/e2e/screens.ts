@@ -46,7 +46,18 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Sites")(page);
       await page.keyboard.press("a");
-      await page.getByRole("radio", { name: /^Basic mode/ }).check();
+      await page.getByRole("textbox", { name: "Site address" }).fill("https://mc-e.test");
+      // The radio sits inside its card; the card is what you click.
+      await page.locator("label.choice", { hasText: "Basic mode" }).click();
+      await page.getByRole("button", { name: /^Next/ }).click();
+    },
+  },
+  {
+    name: "sign-in-again",
+    open: async (page) => {
+      await nav("Sites")(page);
+      await page.getByRole("gridcell", { name: /^Monks Central Test / }).click();
+      await page.getByRole("complementary").getByRole("button", { name: "Sign in again" }).click();
     },
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },

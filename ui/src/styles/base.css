@@ -337,6 +337,12 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .sheet footer .btn:not(.primary):not(.danger) { background: transparent; border-color: transparent; color: var(--text-2); }
 .sheet footer .btn:not(.primary):not(.danger):hover:not(:disabled) { background: var(--bg); color: var(--text); }
 .sheet footer .sum { margin-right: auto; color: var(--text-2); }
+/* The design's centred dialog (Add a site, Sign in again): no head line, the body flows from the head. */
+.sheet.dialog { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-float); }
+.sheet.dialog > header { padding: 20px var(--sp-5) var(--sp-4) 24px; border-bottom: 0; }
+.sheet.dialog > header > .tile { margin-top: 2px; }
+.sheet.dialog .content { padding: var(--sp-1) 24px 20px; }
+.sheet.dialog footer { padding: 14px 24px; }
 /* Segmented: a pill track in the well, the chosen one lifted */
 .segmented { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); padding: 3px; margin: 0 0 var(--sp-4); }
 .segmented button { flex: 1; height: var(--control-sm); padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--text-2); font-weight: 500; }
