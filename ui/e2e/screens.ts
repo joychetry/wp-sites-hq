@@ -184,6 +184,62 @@ export const SCREENS: Screen[] = [
     },
   },
   {
+    name: "content-history",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Pages", exact: true }).click();
+      await page.getByRole("button", { name: "Our menu" }).click();
+      await page.getByRole("button", { name: "Show earlier versions" }).click();
+      await page.getByRole("button", { name: "Put this version back, from 2026-10-20 09:10:00" }).click();
+    },
+  },
+  {
+    name: "content-bulk",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).check();
+      await page.getByRole("checkbox", { name: "Tick Hiring a morning baker" }).check();
+    },
+  },
+  {
+    name: "content-bulk-plan",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).check();
+      await page.getByRole("checkbox", { name: "Tick Hiring a morning baker" }).check();
+      await page.getByRole("button", { name: "Make drafts (2)" }).click();
+    },
+  },
+  {
+    name: "content-trashed",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("combobox", { name: "Show", exact: true }).selectOption("trash");
+      await page.getByRole("button", { name: "Summer menu" }).click();
+      await page.getByRole("button", { name: "Bring it back from the trash" }).waitFor();
+    },
+  },
+  {
+    name: "publish-many",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Publish on several sites" }).click();
+      await page.getByRole("textbox", { name: "Title" }).fill("Open on Sunday");
+      await page.getByRole("textbox", { name: /^Text/ }).fill("We open at 9 on Sundays from November.");
+      await page.getByRole("checkbox", { name: /mc-c/ }).check();
+    },
+  },
+  {
+    name: "publish-many-plan",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Publish on several sites" }).click();
+      await page.getByRole("textbox", { name: "Title" }).fill("Open on Sunday");
+      await page.getByRole("checkbox", { name: /mc-c/ }).check();
+      await page.getByRole("button", { name: "Review the plan" }).click();
+    },
+  },
+  {
     name: "content-unavailable",
     open: async (page) => {
       await nav("Content")(page);

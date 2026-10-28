@@ -21,6 +21,10 @@ const TOOLS = [
   "update-core",
   "update-translations",
   "list-post-types",
+  "get-post-meta",
+  "list-revisions",
+  "restore-revision",
+  "untrash-post",
   "get-users",
   "create-user",
   "update-user",
@@ -277,6 +281,7 @@ const post = (id: number, post_type: string, title: string, status: string, over
   featured_image: 0,
   featured_url: null,
   terms: {},
+  meta: {},
   builder: null,
   blocks: [],
   locked: null,
@@ -284,6 +289,7 @@ const post = (id: number, post_type: string, title: string, status: string, over
 });
 const POSTS: Post[] = [
   post(11, "page", "Our menu", "publish", {
+    meta: { opening_hours: "7:00 to 18:00", menu_pdf: "menu-autumn.pdf", gallery: ["31", "32"] },
     featured_image: 31,
     featured_url: MEDIA[0].url,
     blocks: [
@@ -300,6 +306,7 @@ const POSTS: Post[] = [
   post(21, "post", "Autumn opening hours", "publish", { terms: { category: [{ id: 2, name: "News" }], post_tag: [] } }),
   post(22, "post", "Pumpkin loaf is back", "future"),
   post(23, "post", "Hiring a morning baker", "pending"),
+  post(24, "post", "Summer menu", "trash"),
   post(31, "cm_book", "Kind of Blue", "publish", { terms: { cm_genre: [{ id: 5, name: "Jazz" }] } }),
 ];
 const TERMS: Record<string, { id: number; name: string }[]> = {
@@ -507,6 +514,15 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
     case "content_trash":
       return r(null);
+    case "content_revisions":
+      return r([
+        { id: 81, date: "2026-10-27 15:42:00", author: "Joy", title: "Our menu" },
+        { id: 80, date: "2026-10-20 09:10:00", author: "Sam Okafor", title: "Menu" },
+      ]);
+    case "content_restore_revision":
+      return r("Restored the revision.");
+    case "content_untrash":
+      return r("draft");
     case "media_list":
       return r(args.images ? MEDIA.filter((m) => m.mime.startsWith("image/")) : MEDIA);
     case "media_import":

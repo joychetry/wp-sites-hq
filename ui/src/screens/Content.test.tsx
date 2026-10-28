@@ -39,6 +39,7 @@ const POST: Post = {
   featured_image: 0,
   featured_url: null,
   terms: {},
+  meta: {},
   builder: null,
   blocks: [
     { index: 0, name: "core/heading", depth: 0, editable: true, html: "Menu" },

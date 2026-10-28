@@ -1,8 +1,11 @@
 // Posts, pages and every post type a site lets us edit: list, filter, open, create (plan Phase 3).
 import { useCallback, useEffect, useState } from "react";
-import { api, contentBlocked, type Listing, type PostType, type Site } from "../api";
+import { listen } from "@tauri-apps/api/event";
+import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary } from "../api";
+import type { PlanRow } from "../components/JobSheet";
 import { Button } from "../components/ui";
 import { Editor } from "./Editor";
+import { PublishMany } from "./PublishMany";
 
 export const STATUS_LABEL: Record<string, string> = {
   publish: "Published",
@@ -45,7 +48,39 @@ export function SitePick({ sites, value, onChange }: { sites: Site[]; value: num
 
 type Open = { postId?: number };
 
-export function Content({ sites }: { sites: Site[] }) {
+type Bulk = "publish" | "draft" | "trash" | "untrash";
+const BULK: Record<Bulk, { button: string; title: string; danger?: boolean }> = {
+  publish: { button: "Publish", title: "Publish" },
+  draft: { button: "Make drafts", title: "Make drafts of" },
+  trash: { button: "Move to the trash", title: "Move to the trash", danger: true },
+  untrash: { button: "Bring back from the trash", title: "Bring back from the trash" },
+};
+
+/** One change per picked entry, as a plan for one site. */
+export function bulkRows(site: Site, type: PostType, posts: Summary[], what: Bulk): PlanRow[] {
+  return posts.map((p) => {
+    const base = { post_type: type.name, post_id: p.id, title: p.title || "(no title)" };
+    const action: Action =
+      what === "trash"
+        ? { do: "trash_post", ...base }
+        : what === "untrash"
+          ? { do: "untrash_post", ...base }
+          : { do: "set_post_status", ...base, status: what };
+    const label =
+      what === "trash"
+        ? `Move \u201c${base.title}\u201d to the trash`
+        : what === "untrash"
+          ? `Bring \u201c${base.title}\u201d back from the trash`
+          : what === "publish"
+            ? `Publish \u201c${base.title}\u201d`
+            : `Make \u201c${base.title}\u201d a draft`;
+    return { change: { site_id: site.id, action }, site: site.name, label };
+  });
+}
+
+type Props = { sites: Site[]; onPlan?: (title: string, rows: PlanRow[], start?: "plan" | "confirm", danger?: boolean) => void };
+
+export function Content({ sites, onPlan }: Props) {
   const [siteId, setSiteId] = useState<number | null>(() => firstUsable(sites));
   // The group filter can hide the picked site: fall back to the first one shown.
   const site = sites.find((s) => s.id === siteId) ?? sites.find((s) => s.id === firstUsable(sites)) ?? null;
@@ -61,6 +96,8 @@ export function Content({ sites }: { sites: Site[] }) {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Open | null>(null);
   const [note, setNote] = useState("");
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [many, setMany] = useState(false);
 
   useEffect(() => {
     setTypes(null);
@@ -91,6 +128,17 @@ export function Content({ sites }: { sites: Site[] }) {
     );
   }, [current, typeKey, status, search, page]);
   useEffect(load, [load]);
+  useEffect(() => setPicked(new Set()), [list]);
+  // A bulk job changed entries: read the page again, quietly.
+  useEffect(() => {
+    if (current == null || !typeKey) return;
+    const off = listen("jobs-changed", () =>
+      api.posts(current, { post_type: typeKey, status: status || undefined, search: search || undefined, page }).then(setList, () => {}),
+    );
+    return () => {
+      off.then((f) => f()).catch(() => {});
+    };
+  }, [current, typeKey, status, search, page]);
 
   if (sites.length === 0) {
     return (
@@ -149,14 +197,45 @@ export function Content({ sites }: { sites: Site[] }) {
       </div>
     );
   } else {
+    const rows = list.posts;
+    const chosen = rows.filter((p) => picked.has(p.id));
+    const inTrash = status === "trash";
+    const canBack = site!.mode === "classic_monks" && hasTool(site!, "untrash-post");
+    const actions: Bulk[] = inTrash ? (canBack ? ["untrash"] : []) : (["publish", "draft", ...(type.can_delete ? (["trash"] as Bulk[]) : [])] as Bulk[]);
+    const bulk = (what: Bulk) => {
+      const n = chosen.length;
+      onPlan?.(`${BULK[what].title} ${n === 1 ? "1 entry" : `${n} entries`} on ${site!.name}`, bulkRows(site!, type, chosen, what), "confirm", BULK[what].danger);
+    };
     body = (
       <>
         <p className="legend" id="content-legend">
-          Select a title to open it. Dates are in the site's own time zone.
+          Select a title to open it, or tick entries to change several at once. Dates are in the site's own time zone.
+          {inTrash && !canBack && " Bringing entries back from the trash needs Classic Monks on the site."}
         </p>
+        {onPlan && actions.length > 0 && (
+          <div className="bar" role="group" aria-label="Change the ticked entries">
+            <span className="dim">{chosen.length === 0 ? "None ticked" : `${chosen.length} ticked`}</span>
+            {actions.map((a) => (
+              <Button key={a} small kind={BULK[a].danger ? "danger" : undefined} disabled={chosen.length === 0} onClick={() => bulk(a)}>
+                {BULK[a].button}
+                {chosen.length > 0 && ` (${chosen.length})`}
+              </Button>
+            ))}
+          </div>
+        )}
         <table className="t" aria-label={type.label} aria-describedby="content-legend">
           <thead>
             <tr>
+              {onPlan && actions.length > 0 && (
+                <th scope="col" className="tick">
+                  <input
+                    type="checkbox"
+                    aria-label="Tick every entry on this page"
+                    checked={chosen.length === rows.length}
+                    onChange={(e) => setPicked(new Set(e.target.checked ? rows.map((p) => p.id) : []))}
+                  />
+                </th>
+              )}
               <th scope="col">Title</th>
               <th scope="col">Status</th>
               <th scope="col">Author</th>
@@ -166,6 +245,23 @@ export function Content({ sites }: { sites: Site[] }) {
           <tbody>
             {list.posts.map((p) => (
               <tr key={p.id}>
+                {onPlan && actions.length > 0 && (
+                  <td className="tick">
+                    <input
+                      type="checkbox"
+                      aria-label={`Tick ${p.title || "(no title)"}`}
+                      checked={picked.has(p.id)}
+                      onChange={(e) =>
+                        setPicked((was) => {
+                          const next = new Set(was);
+                          if (e.target.checked) next.add(p.id);
+                          else next.delete(p.id);
+                          return next;
+                        })
+                      }
+                    />
+                  </td>
+                )}
                 <td className="name">
                   <button type="button" className="linkish" title={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
                     {p.title || "(no title)"}
@@ -249,6 +345,11 @@ export function Content({ sites }: { sites: Site[] }) {
             Search
           </Button>
           <span className="grow" />
+          {onPlan && (
+            <Button small onClick={() => setMany(true)}>
+              Publish on several sites
+            </Button>
+          )}
           <Button kind="primary" small onClick={() => setOpen({})}>
             New {type.singular.toLowerCase()}
           </Button>
@@ -258,6 +359,17 @@ export function Content({ sites }: { sites: Site[] }) {
         {note && <p className="alert ok">{note}</p>}
       </div>
       {body}
+      {many && onPlan && (
+        <PublishMany
+          sites={sites}
+          first={current}
+          onClose={() => setMany(false)}
+          onPlan={(t, r) => {
+            setMany(false);
+            onPlan(t, r, "confirm");
+          }}
+        />
+      )}
       {open && site && type && (
         <Editor
           key={open.postId ?? "new"}

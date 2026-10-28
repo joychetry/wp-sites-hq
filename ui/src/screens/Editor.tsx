@@ -1,7 +1,7 @@
 // One entry in a side sheet: title, status, terms, featured image, and the body
 // through the block-safe editor (only text blocks change; every other block stays).
 import { useEffect, useState } from "react";
-import { api, type Block, type Draft, type Media, type Post, type PostType, type Site, type Taxonomy, type TermRef } from "../api";
+import { api, hasTool, type Block, type Draft, type Media, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
 import { Button } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { STATUS_LABEL } from "./Content";
@@ -30,6 +30,140 @@ export function toBlocks(text: string): string {
 }
 
 type Pick = { id?: number; name: string };
+
+/** A datetime-local value ("2026-11-02T09:30" or with seconds) as the site takes it. */
+export function siteDate(local: string): string {
+  const [day, time = ""] = local.split("T");
+  return `${day} ${time.length === 5 ? `${time}:00` : time}`;
+}
+
+/** Custom fields: text values can change; lists and other values stay as they are. */
+function FieldsEdit({ meta, value, onChange }: { meta: Record<string, unknown>; value: Record<string, string | null>; onChange: (v: Record<string, string | null>) => void }) {
+  const [key, setKey] = useState("");
+  const [val, setVal] = useState("");
+  const keys = [...new Set([...Object.keys(meta), ...Object.keys(value)])].sort();
+  const add = () => {
+    const k = key.trim();
+    if (!k || k.startsWith("_")) return;
+    onChange({ ...value, [k]: val });
+    setKey("");
+    setVal("");
+  };
+  return (
+    <fieldset className="field">
+      <legend>Custom fields</legend>
+      {keys.length === 0 && <span className="dim">None</span>}
+      {keys.map((k) => {
+        const was = meta[k];
+        const now = k in value ? value[k] : was;
+        if (now === null) {
+          return (
+            <div key={k} className="row">
+              <span className="mono cut">{k}</span>
+              <span className="dim">Removed when you save</span>
+              <Button small onClick={() => onChange(Object.fromEntries(Object.entries(value).filter(([x]) => x !== k)))}>
+                Keep {k}
+              </Button>
+            </div>
+          );
+        }
+        return (
+          <div key={k} className="row">
+            {typeof now === "string" ? (
+              <label className="field grow">
+                <span className="mono">{k}</span>
+                <input className="input sm" value={now} onChange={(e) => onChange({ ...value, [k]: e.target.value })} />
+              </label>
+            ) : (
+              <span className="grow">
+                <span className="mono">{k}</span> <span className="dim">kept as is (not plain text)</span>
+              </span>
+            )}
+            <Button small aria-label={`Remove the field ${k}`} onClick={() => onChange({ ...value, [k]: null })}>
+              Remove
+            </Button>
+          </div>
+        );
+      })}
+      <div className="row">
+        <input className="input sm" aria-label="New field name" placeholder="Field name" value={key} onChange={(e) => setKey(e.target.value)} />
+        <input className="input sm" aria-label="New field value" placeholder="Value" value={val} onChange={(e) => setVal(e.target.value)} />
+        <Button small onClick={add} disabled={!key.trim() || key.trim().startsWith("_")}>
+          Add the field
+        </Button>
+      </div>
+      {key.trim().startsWith("_") && <small className="why danger">Names starting with an underscore belong to plugins and can't be set here.</small>}
+    </fieldset>
+  );
+}
+
+/** Earlier saved versions, each one can be put back (the site keeps the current one too). */
+function History({ site, post, onRestored }: { site: Site; post: Post; onRestored: (p: Post, message: string) => void }) {
+  const [list, setList] = useState<Revision[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState<Revision | null>(null);
+  const [busy, setBusy] = useState(false);
+  const show = () => {
+    setOpen(true);
+    api.revisions(site.id, post.id).then(setList, (e) => setError(String(e)));
+  };
+  const restore = async (r: Revision) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const msg = await api.restoreRevision(site.id, post.id, r.id);
+      const p = await api.post(site.id, post.post_type, post.id);
+      onRestored(p, `${msg} "${p.title}" on ${site.name} is back to the version from ${r.date}.`);
+      setAsking(null);
+      setList(await api.revisions(site.id, post.id));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!open) {
+    return (
+      <Button small onClick={show}>
+        Show earlier versions
+      </Button>
+    );
+  }
+  return (
+    <div>
+      {error && <p className="alert danger">{error}</p>}
+      {!list && !error && <p role="status">Reading earlier versions…</p>}
+      {list?.length === 0 && <p className="dim">No earlier versions are saved.</p>}
+      {list && list.length > 0 && (
+        <ul className="plain" aria-label="Earlier versions">
+          {list.map((r) => (
+            <li key={r.id} className="row">
+              <span className="grow">
+                <b>{r.date}</b> by {r.author || "someone"}: {r.title || "(no title)"}
+              </span>
+              {asking?.id === r.id ? (
+                <>
+                  <Button small onClick={() => setAsking(null)}>
+                    Keep the current one
+                  </Button>
+                  <Button small kind="primary" disabled={busy} onClick={() => restore(r)}>
+                    {busy ? "Putting it back…" : "Put it back"}
+                  </Button>
+                </>
+              ) : (
+                <Button small aria-label={`Put this version back, from ${r.date}`} onClick={() => setAsking(r)}>
+                  Put this version back
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {asking && <p className="help-text">The title and body go back to that version. The current one is kept as a version too, so you can undo this.</p>}
+    </div>
+  );
+}
 
 function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy; value: Pick[]; onChange: (v: Pick[]) => void }) {
   const [known, setKnown] = useState<Pick[]>([]);
@@ -166,6 +300,11 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [trashing, setTrashing] = useState(false);
+  const [date, setDate] = useState("");
+  const [fields, setFields] = useState<Record<string, string | null>>({});
+  const cm = site.mode === "classic_monks";
+  const canFields = cm && hasTool(site, "get-post-meta");
+  const canHistory = cm && hasTool(site, "list-revisions");
 
   const fill = (p: Post) => {
     setPost(p);
@@ -174,6 +313,8 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
     setTerms(Object.fromEntries(type.taxonomies.map((t) => [t.name, (p.terms[t.name] ?? []).map((x) => ({ id: x.id, name: x.name }))])));
     setImage({ id: p.featured_image, url: p.featured_url });
     setEdits({});
+    setDate(p.date ? p.date.replace(" ", "T") : "");
+    setFields({});
   };
 
   useEffect(() => {
@@ -192,13 +333,17 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
     const refs = (name: string): TermRef[] => (terms[name] ?? []).map((t) => t.id ?? t.name);
     const changedTerms = type.taxonomies.filter((t) => (isNew ? (terms[t.name] ?? []).length > 0 : termsChanged(t.name)));
     if (changedTerms.length) d.terms = Object.fromEntries(changedTerms.map((t) => [t.name, refs(t.name)]));
+    const meta = Object.entries(fields).filter(([k, v]) => post?.meta[k] !== v);
+    if (meta.length) d.meta = Object.fromEntries(meta);
     if (isNew) {
       d.title = title;
       d.status = status;
       d.body = toBlocks(body);
       if (image.id) d.featured_image = image.id;
+      if (date) d.date = siteDate(date);
       return d;
     }
+    if (date && siteDate(date) !== post!.date) d.date = siteDate(date);
     if (title !== post!.title) d.title = title;
     if (status !== post!.status) d.status = status;
     if (image.id !== post!.featured_image) d.featured_image = image.id;
@@ -221,6 +366,20 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         fill(p);
         onSaved(`Saved "${p.title}" on ${site.name}.`);
       }
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const untrash = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const now = await api.untrash(site.id, postId!);
+      fill(await api.post(site.id, type.name, postId!));
+      onSaved(`Brought "${post?.title}" back from the trash on ${site.name}, as ${(STATUS_LABEL[now] ?? now).toLowerCase()}.`);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -278,6 +437,11 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
             ))}
           </select>
         </label>
+        <label className="field">
+          <span>Publish date (the site's time)</span>
+          <input className="input" type="datetime-local" step={1} value={date} onChange={(e) => setDate(e.target.value)} />
+          <small>{isNew ? "Empty means now. " : ""}Pick Published and a date after now to schedule it.</small>
+        </label>
         {type.taxonomies.map((t) => (
           <TermsField key={t.name} site={site} tax={t} value={terms[t.name] ?? []} onChange={(v) => setTerms({ ...terms, [t.name]: v })} />
         ))}
@@ -310,6 +474,20 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
                 )}
               </div>
             )}
+          </fieldset>
+        )}
+        {canFields && <FieldsEdit meta={post?.meta ?? {}} value={fields} onChange={setFields} />}
+        {!isNew && canHistory && post && (
+          <fieldset className="field">
+            <legend>Earlier versions</legend>
+            <History
+              site={site}
+              post={post}
+              onRestored={(p, msg) => {
+                fill(p);
+                onSaved(msg);
+              }}
+            />
           </fieldset>
         )}
         <h3 className="sect">Body</h3>
@@ -349,6 +527,11 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
     </>
   ) : (
     <>
+      {!isNew && post?.status === "trash" && canHistory && (
+        <Button className="push" disabled={saving} onClick={untrash}>
+          {saving ? "Bringing it back…" : "Bring it back from the trash"}
+        </Button>
+      )}
       {!isNew && post && post.status !== "trash" && type.can_delete && (
         <Button kind="danger" className="push" onClick={() => setTrashing(true)}>
           Move to the trash

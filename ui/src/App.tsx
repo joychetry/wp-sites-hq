@@ -226,7 +226,7 @@ export default function App() {
       />
     );
   } else if (section === "Content") {
-    body = <Content sites={scoped} />;
+    body = <Content sites={scoped} onPlan={plan} />;
   } else if (section === "Media") {
     body = <Media sites={scoped} />;
   } else if (section === "Users") {

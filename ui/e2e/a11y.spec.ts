@@ -129,6 +129,18 @@ test("the content editor works from the keyboard and gives focus back", async ({
   await expect(open).toBeFocused();
 });
 
+test("entries are ticked and changed in bulk from the keyboard", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "content")!, "light");
+  await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).focus();
+  await page.keyboard.press("Space");
+  await page.getByRole("button", { name: "Make drafts (1)" }).focus();
+  await page.keyboard.press("Enter");
+  const sheet = page.getByRole("dialog", { name: "Make drafts of 1 entry on MC A" });
+  await expect(sheet.getByText("Make \u201cAutumn opening hours\u201d a draft").first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Make drafts (1)" })).toBeFocused();
+});
+
 test("a comment is answered from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "comments")!, "light");
   const reply = page.getByRole("button", { name: "Reply to Mira Patel on MC A" });
@@ -204,7 +216,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);

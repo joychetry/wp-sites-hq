@@ -75,7 +75,11 @@ export type Action =
   | { do: "activate_theme"; theme: string }
   | { do: "delete_theme"; theme: string }
   | { do: "update_core" }
-  | { do: "update_translations" };
+  | { do: "update_translations" }
+  | { do: "publish_post"; post_type: string; title: string; body: string; status: string; date?: string; terms?: Record<string, string[]> }
+  | { do: "set_post_status"; post_type: string; post_id: number; title: string; status: string }
+  | { do: "trash_post"; post_type: string; post_id: number; title: string }
+  | { do: "untrash_post"; post_type: string; post_id: number; title: string };
 
 export type Change = { site_id: number; action: Action };
 
@@ -193,6 +197,8 @@ export type Post = {
   featured_image: number;
   featured_url: string | null;
   terms: Record<string, Term[]>;
+  /** Custom fields without an underscore (Classic Monks only). */
+  meta: Record<string, unknown>;
   builder: string | null;
   blocks: Block[];
   locked: string | null;
@@ -209,7 +215,13 @@ export type Draft = {
   body?: string;
   edits?: { index: number; html: string }[];
   seen_modified?: string;
+  /** "2026-11-02 09:30:00" in the site's time zone; a future date with publish schedules it. */
+  date?: string;
+  /** Custom fields to set; null removes one. */
+  meta?: Record<string, unknown>;
 };
+
+export type Revision = { id: number; date: string; author: string; title: string };
 
 export type Media = { id: number; title: string; url: string; mime: string; alt: string; date: string };
 
@@ -289,6 +301,10 @@ export const api = {
   editPost: (id: number, postType: string, postId: number, draft: Draft) =>
     invoke<Post>("content_edit", { id, postType, postId, draft }),
   trashPost: (id: number, postType: string, postId: number) => invoke<void>("content_trash", { id, postType, postId }),
+  revisions: (id: number, postId: number) => invoke<Revision[]>("content_revisions", { id, postId }),
+  restoreRevision: (id: number, postId: number, revisionId: number) =>
+    invoke<string>("content_restore_revision", { id, postId, revisionId }),
+  untrash: (id: number, postId: number) => invoke<string>("content_untrash", { id, postId }),
   media: (id: number, page: number, search: string, images: boolean) => invoke<Media[]>("media_list", { id, page, search, images }),
   importMedia: (id: number, url: string, alt: string) => invoke<Media>("media_import", { id, url, alt }),
   users: (id: number, search: string, page = 1) => invoke<Users>("users_list", { id, search, page }),
@@ -425,8 +441,12 @@ const TOOL: Record<Action["do"], string> = {
   delete_theme: "delete-theme",
   update_core: "update-core",
   update_translations: "update-translations",
+  publish_post: "create-post",
+  set_post_status: "update-post",
+  trash_post: "delete-post",
+  untrash_post: "untrash-post",
 };
-const BASIC: Action["do"][] = ["activate_plugin", "deactivate_plugin", "delete_plugin", "install_plugin"];
+const BASIC: Action["do"][] = ["activate_plugin", "deactivate_plugin", "delete_plugin", "install_plugin", "publish_post", "set_post_status", "trash_post"];
 
 /** Whether this site's connection can make this kind of change (the core checks again). */
 export function can(s: Site, what: Action["do"], tool = TOOL[what]): boolean {
