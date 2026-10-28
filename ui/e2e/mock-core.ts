@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, ActivityRow, Change, Comment, FeatureGroup, Item, Job, Media, Post, PostType, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, Change, Comment, Entry, FeatureGroup, Item, Job, Media, Post, PostType, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -62,6 +62,7 @@ function site(over: Partial<Site>): Site {
     tags: [],
     notes: [],
     added_at: 0,
+    agent_access: false,
     ...over,
   };
 }
@@ -80,6 +81,7 @@ const FLEET: Site[] = [
       modules: { ai: true, woocommerce: true, security: false },
     },
     notes: [{ id: 1, body: "Client renews hosting in March.", added_at: now - 86400 * 3 }],
+    agent_access: true,
   }),
   site({ id: 2, name: "Corner Bakery", url: "https://corner-bakery-and-cafe-downtown.local", group: "Clients", health: "down", health_detail: "The site didn't answer within 20 seconds.", checked_at: now - 60 }),
   site({ id: 3, name: "mc-c", url: "https://mc-c.local", mode: "basic", username: "admin", cm_version: null, capabilities: {}, health_detail: "Answered in 0.7 s." }),
@@ -153,6 +155,9 @@ function startJob(title: string, changes: Change[]): Job {
     title,
     created_at: now,
     finished_at: null,
+    proposed_by: "human",
+    confirmed_at: now,
+    declined_at: null,
     items: changes.map((c, i) => ({
       id: i + 1,
       site_id: c.site_id,
@@ -181,6 +186,55 @@ function startJob(title: string, changes: Change[]): Job {
   });
   return job;
 }
+// AI: a plan an agent proposed, waiting for you, and who did what.
+const planItem = (id: number, site_id: number, site_name: string, from: string) => ({
+  id,
+  site_id,
+  site_name,
+  action: { do: "update_plugin", plugin: WOO } as Action,
+  label: "Update WooCommerce",
+  from_version: from,
+  to_version: "10.3.0",
+  state: "waiting" as const,
+  message: "",
+});
+let PLANS: Job[] =
+  fixture === "empty"
+    ? []
+    : [
+        {
+          id: 50,
+          title: "Update WooCommerce on 3 sites",
+          created_at: now - 240,
+          finished_at: null,
+          proposed_by: "agent",
+          confirmed_at: null,
+          declined_at: null,
+          items: [planItem(1, 1, "MC A", "10.2.0"), planItem(2, 2, "Corner Bakery", "10.1.0"), planItem(3, 6, "Portfolio", "10.2.0")],
+        },
+      ];
+const entry = (id: number, ago: number, actor: Entry["actor"], site_name: string, what: string, outcome: Entry["outcome"], detail = ""): Entry => ({
+  id,
+  at: now - ago,
+  actor,
+  site_id: site_name ? 1 : null,
+  site_name,
+  what,
+  outcome,
+  detail,
+});
+const ENTRIES: Entry[] =
+  fixture === "empty"
+    ? []
+    : [
+        entry(6, 240, "agent", "", "Proposed a plan: Update WooCommerce on 3 sites", "waiting", "3 changes on 3 sites. Waiting for you to confirm it under AI."),
+        entry(5, 600, "agent", "MC A", "update-post", "done"),
+        entry(4, 660, "agent", "MC A", "update-post", "waiting", "This change needs approval. Ask the user to open https://mc-a.local/wp-admin/admin.php?page=cm-ai-approve&op=44 and approve it."),
+        entry(3, 900, "agent", "Portfolio", "activate-plugin", "refused", "AI agents can only read this site: it has no AI agent access."),
+        entry(2, 3600, "agent_confirmed", "Corner Bakery", "Update Yoast SEO", "failed", "The site took too long to answer."),
+        entry(1, 7200, "human", "MC A", "Turned on AI agent access", "done"),
+      ];
+
 // Content: posts, pages and a custom post type, one page built with blocks and one with Elementor.
 const tax = (name: string, label: string, hierarchical: boolean) => ({ name, label, hierarchical, can_add: true, rest_base: "" });
 const ptype = (name: string, label: string, singular: string, taxonomies: PostType["taxonomies"] = []): PostType => ({
@@ -435,6 +489,24 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(startJob(args.title as string, args.changes as Change[]));
     case "job_get":
       return r(structuredClone(jobs[(args.id as number) - 1]));
+    case "plans_waiting":
+      return r(PLANS);
+    case "plan_confirm": {
+      const plan = PLANS.find((p) => p.id === id)!;
+      PLANS = PLANS.filter((p) => p.id !== id);
+      return r(startJob(plan.title, plan.items.map((i) => ({ site_id: i.site_id!, action: i.action }))));
+    }
+    case "plan_decline":
+      PLANS = PLANS.filter((p) => p.id !== id);
+      changed();
+      return r(null);
+    case "agent_access_on":
+      await new Promise((ok) => setTimeout(ok, 300));
+      return r(edit(id, { agent_access: true }));
+    case "agent_access_off":
+      return r(edit(id, { agent_access: false }));
+    case "activity_list":
+      return r(args.before ? [] : ENTRIES);
     default:
       // Adding and signing in need a real site.
       return new Promise<T>(() => {});

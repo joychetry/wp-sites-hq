@@ -109,6 +109,39 @@ export const SCREENS: Screen[] = [
       await page.getByRole("combobox", { name: "Site", exact: true }).selectOption({ label: "mc-c (no Classic Monks)" });
     },
   },
+  { name: "ai", open: nav("AI") },
+  { name: "ai-none", fixture: "empty", open: nav("AI") },
+  {
+    name: "ai-access",
+    open: async (page) => {
+      await nav("AI")(page);
+      await page.getByRole("button", { name: "Agent access", exact: true }).click();
+      await page.getByRole("table", { name: "Agent access" }).waitFor();
+    },
+  },
+  {
+    name: "ai-activity",
+    open: async (page) => {
+      await nav("AI")(page);
+      await page.getByRole("group", { name: "Show" }).getByRole("button", { name: "Activity", exact: true }).click();
+      await page.getByRole("table", { name: "Activity" }).waitFor();
+    },
+  },
+  {
+    name: "ai-connect",
+    open: async (page) => {
+      await nav("AI")(page);
+      await page.getByRole("button", { name: "Connect an AI app", exact: true }).click();
+    },
+  },
+  {
+    name: "ai-confirmed",
+    open: async (page) => {
+      await nav("AI")(page);
+      await page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" }).click();
+      await page.getByText(/^Finished\./).waitFor();
+    },
+  },
   { name: "content", open: nav("Content") },
   {
     name: "content-editor",

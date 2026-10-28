@@ -154,6 +154,29 @@ test("a feature is turned on and undone from the keyboard", async ({ page }) => 
   await expect(page.getByText(/^Undone: Turned on SVG Support/)).toBeVisible();
 });
 
+test("an AI agent's plan is confirmed from the keyboard and its progress shows", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "ai")!, "light");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "AI 1 to confirm" })).toBeVisible();
+  await page.getByRole("button", { name: "Decline Update WooCommerce on 3 sites" }).focus();
+  await page.keyboard.press("Tab");
+  const confirm = page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" });
+  await expect(confirm).toBeFocused();
+  await page.keyboard.press("Enter");
+  const sheet = page.getByRole("dialog", { name: /^Update WooCommerce on 3 sites/ });
+  await expect(sheet.getByText(/^Finished\./)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "No plans are waiting." })).toBeVisible();
+});
+
+test("AI agent access is turned on from the keyboard", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "ai-access")!, "light");
+  await page.getByRole("button", { name: "Turn on access for Portfolio" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/leave "This is my Monks Central app \(operator\)" unticked/)).toBeVisible();
+  await expect(page.getByText("AI agents can change Portfolio now. The site asks you to approve each change.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Turn off access for Portfolio" })).toBeVisible();
+});
+
 test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "users")!, "light");
   const add = page.getByRole("button", { name: "Add a user" });
@@ -170,7 +193,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
