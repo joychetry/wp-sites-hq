@@ -95,6 +95,17 @@ pub enum Action {
     },
     UpdateCore,
     UpdateTranslations,
+    /// A plugin or theme from a zip staged with `stage_zip` (Classic Monks M8).
+    InstallZip {
+        /// `<sha256>.zip` in the data folder.
+        file: String,
+        /// The name it had on this computer.
+        name: String,
+        /// plugin or theme.
+        kind: String,
+        activate: bool,
+        overwrite: bool,
+    },
     /// Add one entry, the same on every site it's sent to. Terms by name.
     PublishPost {
         post_type: String,
@@ -164,6 +175,8 @@ impl Action {
             DeleteTheme { theme } => ("delete-theme", json!({ "stylesheet": theme })),
             UpdateCore => ("update-core", json!({})),
             UpdateTranslations => ("update-translations", json!({})),
+            // Sent in chunks by `install_zip`.
+            InstallZip { .. } => ("install-zip", json!({})),
             // Run through the content code, which also speaks core REST.
             PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. } => {
                 ("", json!({}))
@@ -210,7 +223,7 @@ impl Action {
             UpdateTheme { theme } | ActivateTheme { theme } | DeleteTheme { theme } => {
                 *theme = find(&inv.themes, theme).ok_or(format!("theme {theme}"))?;
             }
-            InstallPlugin { .. } | UpdateCore | UpdateTranslations => {}
+            InstallPlugin { .. } | InstallZip { .. } | UpdateCore | UpdateTranslations => {}
             PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. } => {}
         }
         Ok(())
@@ -287,6 +300,21 @@ impl Action {
                 inv.wordpress_update.clone(),
             ),
             UpdateTranslations => ("Update translations".into(), None, None),
+            InstallZip {
+                name,
+                kind,
+                overwrite,
+                ..
+            } => (
+                match (kind.as_str(), overwrite) {
+                    ("theme", true) => format!("Install the theme from {name}, replacing it"),
+                    ("theme", false) => format!("Install the theme from {name}"),
+                    (_, true) => format!("Install {name}, replacing the plugin"),
+                    _ => format!("Install {name}"),
+                },
+                None,
+                None,
+            ),
             PublishPost {
                 title,
                 status,
@@ -649,6 +677,8 @@ fn done_message(out: &Value) -> String {
         .unwrap_or("Done.")
         .to_string()
 }
+
+const FTP_NEEDED: &str = "WordPress on this site needs FTP details to change files, so Monks Central can't install or update here. Set FS_METHOD to direct in wp-config.php, or do it in wp-admin.";
 
 /// Agents get this for any change on a site they have no grant on (plan 5.6).
 pub const NO_AGENT_ACCESS: &str = "AI agents can only read this site: it has no AI agent access. Propose the change as a plan, which a person confirms in the Monks Central app, or ask them to turn on AI agent access for this site there (AI), so the site asks them to approve each change.";
@@ -1061,11 +1091,24 @@ impl Core {
         if action.is_content() {
             return self.run_content(id, action).await;
         }
+        if let Action::InstallZip {
+            file,
+            name,
+            kind,
+            activate,
+            overwrite,
+        } = action
+        {
+            if self.inventory_of(id)?.is_some_and(|i| i.needs_credentials) {
+                return Err(plain(FTP_NEEDED));
+            }
+            return self
+                .install_zip(id, file, name, kind, *activate, *overwrite)
+                .await;
+        }
         let site = self.site(id)?;
         if action.writes_files() && self.inventory_of(id)?.is_some_and(|i| i.needs_credentials) {
-            return Err(plain(
-                "WordPress on this site needs FTP details to change files, so Monks Central can't install or update here. Set FS_METHOD to direct in wp-config.php, or do it in wp-admin.",
-            ));
+            return Err(plain(FTP_NEEDED));
         }
         match site.mode {
             Mode::ClassicMonks => {

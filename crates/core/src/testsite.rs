@@ -67,6 +67,11 @@ pub struct State {
     /// `{ id, taxonomy, name }`.
     pub terms: Vec<serde_json::Value>,
     pub media: Vec<serde_json::Value>,
+    /// install-zip uploads under way, by upload id.
+    pub uploads: HashMap<String, Vec<u8>>,
+    pub zip_kinds: Vec<String>,
+    /// Classic Monks before M8: no install-zip.
+    pub no_zip_tool: bool,
     /// `{ id, post_id, date, title, content }`, oldest first.
     pub revisions: Vec<serde_json::Value>,
     next_id: i64,
@@ -146,6 +151,9 @@ impl Default for State {
             terms: vec![json!({ "id": 1, "taxonomy": "category", "name": "Uncategorized" })],
             media: Vec::new(),
             revisions: Vec::new(),
+            uploads: HashMap::new(),
+            zip_kinds: Vec::new(),
+            no_zip_tool: false,
             next_id: 100,
             saves: 0,
             mangle_blocks: false,
@@ -546,6 +554,9 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 .filter(|(n, _)| !s.released || RELEASED_PEOPLE_TOOLS.contains(n));
             let safe = SAFE_TOOLS.iter().filter(|_| !s.no_safe_tools);
             for (name, read_only) in PLUGIN_TOOLS.iter().chain(safe).chain(content).chain(people) {
+                if s.no_zip_tool && *name == "install-zip" {
+                    continue;
+                }
                 tools.push(json!({ "name": name, "annotations": { "readOnlyHint": read_only } }));
             }
             if !s.no_hq {
@@ -688,6 +699,7 @@ const PLUGIN_TOOLS: &[(&str, bool)] = &[
     ("uninstall-plugin", false),
     ("set-plugin-auto-update", false),
     ("install-plugin", false),
+    ("install-zip", false),
 ];
 
 /// Classic Monks' safe update helpers (M10), all read-only.
@@ -738,6 +750,34 @@ fn plugin_tool(
             "updates": { "translations": [] },
             "filesystem": { "needs_credentials": s.needs_credentials },
         }));
+    }
+    if name == "install-zip" {
+        // Chunks add up under an upload id; the last one "installs" a plugin named after the file.
+        let data = base64::engine::general_purpose::STANDARD
+            .decode(args["data"].as_str().unwrap_or_default())
+            .map_err(|_| "data is not valid base64.")?;
+        let id = args["upload_id"].as_str().unwrap_or("u1").to_string();
+        let got = s.uploads.entry(id.clone()).or_default();
+        if args["offset"].as_u64().unwrap_or(0) as usize != got.len() {
+            return Err(
+                "The site has a different number of bytes; send the chunk at that offset.".into(),
+            );
+        }
+        got.extend(data);
+        if args["done"] != true {
+            return Ok(json!({ "upload_id": id, "received": got.len() }));
+        }
+        let bytes = s.uploads.remove(&id).unwrap_or_default();
+        if !bytes.starts_with(b"PK") {
+            return Err("This file is not a zip.".into());
+        }
+        s.zip_kinds
+            .push(args["kind"].as_str().unwrap_or("plugin").to_string());
+        let slug = "mc-hello";
+        s.plugins.push(json!({ "plugin": format!("{slug}/{slug}.php"), "name": "MC Hello", "version": "1.0", "active": true, "auto_update": false, "update": null }));
+        return Ok(
+            json!({ "kind": "plugin", "slug": slug, "name": "MC Hello", "version": "1.0", "plugin": format!("{slug}/{slug}.php"), "activated": true, "replaced": false }),
+        );
     }
     if name == "install-plugin" {
         let slug = args["slug"]

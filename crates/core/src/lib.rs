@@ -13,6 +13,7 @@ pub mod lock;
 pub mod monitor;
 pub mod net;
 pub mod oauth;
+pub mod packages;
 pub mod paths;
 pub mod people;
 pub mod security;

@@ -14,6 +14,7 @@ use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
 use monks_core::monitor::{Monitor, PageSpeed};
+use monks_core::packages::{Bundle, Staged};
 use monks_core::people::{Comments, NewUser, User, Users};
 use monks_core::security::Report;
 use monks_core::sites::{Mode, Site};
@@ -667,6 +668,31 @@ fn file_show(path: String) -> Res<()> {
 }
 
 #[tauri::command]
+fn bundles_list(state: State<'_, AppCore>) -> Res<Vec<Bundle>> {
+    core(&state)?.bundles().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn bundle_save(state: State<'_, AppCore>, bundle: Bundle) -> Res<Bundle> {
+    core(&state)?
+        .save_bundle(&bundle)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn bundle_delete(state: State<'_, AppCore>, id: i64) -> Res<()> {
+    core(&state)?.delete_bundle(id).map_err(|e| e.to_string())
+}
+
+/// A zip the person picked, kept for an install job.
+#[tauri::command]
+fn zip_stage(state: State<'_, AppCore>, name: String, data: String) -> Res<Staged> {
+    core(&state)?
+        .stage_zip_base64(&name, &data)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn monitors_list(state: State<'_, AppCore>) -> Res<Vec<Monitor>> {
     core(&state)?.monitors().map_err(|e| e.to_string())
 }
@@ -926,6 +952,10 @@ fn main() {
             sites_export,
             sites_import,
             file_show,
+            bundles_list,
+            bundle_save,
+            bundle_delete,
+            zip_stage,
             users_list,
             user_create,
             user_set_role,
