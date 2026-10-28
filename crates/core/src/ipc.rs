@@ -308,8 +308,14 @@ mod sys {
         }
         let listener = UnixListener::bind(&path)?;
         Ok(tokio::spawn(async move {
-            while let Ok((stream, _)) = listener.accept().await {
-                tokio::spawn(serve_conn(stream, core.clone()));
+            loop {
+                match listener.accept().await {
+                    Ok((stream, _)) => {
+                        tokio::spawn(serve_conn(stream, core.clone()));
+                    }
+                    // Out of file handles, say: wait and keep serving, never stop for good.
+                    Err(_) => tokio::time::sleep(std::time::Duration::from_millis(100)).await,
+                }
             }
         }))
     }
@@ -438,8 +444,12 @@ mod sys {
                 let connected = server.connect().await.is_ok();
                 // Make the next instance before releasing this one, so the name
                 // always has a live instance and can't be taken over.
-                let Ok(next) = create(&name, &sa, false) else {
-                    return;
+                let next = loop {
+                    match create(&name, &sa, false) {
+                        Ok(next) => break next,
+                        // Out of handles, say: wait and keep serving, never stop for good.
+                        Err(_) => tokio::time::sleep(std::time::Duration::from_millis(100)).await,
+                    }
                 };
                 let done = std::mem::replace(&mut server, next);
                 if connected {
