@@ -636,7 +636,8 @@ impl Core {
                     .header(reqwest::header::CONTENT_TYPE, mime)
                     .header(
                         reqwest::header::CONTENT_DISPOSITION,
-                        format!("attachment; filename=\"{}\"", name.replace('"', "")),
+                        // WordPress splits this header at ';' before it reads the quotes.
+                        format!("attachment; filename=\"{}\"", name.replace(['"', ';'], "_")),
                     )
                     .body(bytes.clone()),
             }

@@ -184,7 +184,8 @@ pub fn decode_file(data: &str) -> Result<Vec<u8>, SiteError> {
     Ok(bytes)
 }
 
-/// A file name as the site should see it: the last part, no control characters.
+/// A file name as the site should see it: the last part, no control characters, at most 200
+/// characters with its type kept.
 fn clean_name(name: &str) -> Result<String, SiteError> {
     let name: String = name
         .rsplit(['/', '\\'])
@@ -192,12 +193,21 @@ fn clean_name(name: &str) -> Result<String, SiteError> {
         .unwrap_or_default()
         .chars()
         .filter(|c| !c.is_control())
-        .take(200)
         .collect();
-    if name.trim().is_empty() || !name.contains('.') {
+    let Some((stem, ext)) = name
+        .rsplit_once('.')
+        .filter(|(s, e)| !s.trim().is_empty() && !e.is_empty())
+    else {
         return Err(plain("The file needs a name with a type, like photo.jpg."));
-    }
-    Ok(name)
+    };
+    let ext: String = ext.chars().take(20).collect();
+    let stem: String = stem.chars().take(200 - 1 - ext.chars().count()).collect();
+    Ok(format!("{stem}.{ext}"))
+}
+
+/// "2026-1" -> "2026-01": the month as the site's get-media takes it.
+fn month_param(m: &str) -> Option<String> {
+    month_range(m).map(|(from, _)| from[..7].to_string())
 }
 
 impl Core {
@@ -224,25 +234,20 @@ impl Core {
         let search = q.search.as_deref().unwrap_or_default().trim();
         let kind = q.kind.as_deref().filter(|k| KINDS.contains(k));
         let month = match q.month.as_deref().filter(|m| !m.is_empty()) {
-            Some(m) => Some(
-                month_range(m)
-                    .map(|_| m)
-                    .ok_or_else(|| plain("Pick a month."))?,
-            ),
+            Some(m) => Some(month_param(m).ok_or_else(|| plain("Pick a month."))?),
             None => None,
         };
         match site.mode {
             Mode::ClassicMonks => {
-                let mut args =
-                    json!({ "limit": PAGE, "offset": (page - 1) * PAGE, "usage": q.usage });
+                let mut args = json!({ "limit": PAGE, "offset": (page - 1).saturating_mul(PAGE), "usage": q.usage });
                 if let Some(k) = kind {
                     args["mime_type"] = k.into();
                 }
                 if !search.is_empty() {
                     args["search"] = search.into();
                 }
-                if let Some(m) = month {
-                    args["month"] = m.into();
+                if let Some(m) = &month {
+                    args["month"] = m.as_str().into();
                 }
                 if let Some(i) = q.id {
                     args["id"] = i.into();
@@ -277,7 +282,7 @@ impl Core {
                 if !search.is_empty() {
                     query.push(("search", search.into()));
                 }
-                if let Some((after, before)) = month.and_then(month_range) {
+                if let Some((after, before)) = month.as_deref().and_then(month_range) {
                     query.push(("after", after));
                     query.push(("before", before));
                 }
@@ -287,8 +292,9 @@ impl Core {
                 let reply = self
                     .rest(&site, Method::GET, "/wp/v2/media", &query, Body::None)
                     .await?;
-                // Past the last page core REST answers 400; that is an empty page.
-                if reply.status == 400 {
+                // Past the last page core REST answers 400; that is an empty page. A 400 on the
+                // first page is the site's own refusal and is shown.
+                if reply.status == 400 && page > 1 {
                     return Ok(Library::default());
                 }
                 let (v, reply) = self.answer(&site, reply)?;
@@ -404,15 +410,17 @@ impl Core {
                 let out = self
                     .send_chunks(id, "upload-media", bytes, first, every, progress, stop)
                     .await?;
-                let new_id = out["attachment_id"].as_i64().unwrap_or_default();
+                let new_id = added(&out["attachment_id"])?;
                 // upload-media takes no caption or description: set them after.
                 let rest = Details {
                     caption: details.caption.clone().filter(|c| !c.trim().is_empty()),
                     description: details.description.clone().filter(|c| !c.trim().is_empty()),
                     ..Default::default()
                 };
+                // The file is in the library now: a failed detail must not read as a failed upload,
+                // or trying again adds it twice. The details panel shows what was kept.
                 if !rest.is_empty() && has_tool(&site, "update-media") {
-                    self.details_inner(&site, new_id, &rest).await?;
+                    self.details_inner(&site, new_id, &rest).await.ok();
                 }
                 new_id
             }
@@ -431,9 +439,9 @@ impl Core {
                     .rest_json(&site, Method::POST, "/wp/v2/media", &[], file)
                     .await?;
                 progress(bytes.len() as u64, bytes.len() as u64);
-                let new_id = m["id"].as_i64().unwrap_or_default();
+                let new_id = added(&m["id"])?;
                 if !details.is_empty() {
-                    self.details_inner(&site, new_id, details).await?;
+                    self.details_inner(&site, new_id, details).await.ok();
                 }
                 new_id
             }
@@ -531,10 +539,22 @@ impl Core {
         let tool = if back { "restore-media" } else { "trash-media" };
         self.media_site(id, tool)?;
         let mut moved = Moved::default();
-        for part in ids.chunks(50) {
-            let v = self
+        for (n, part) in ids.chunks(50).enumerate() {
+            let v = match self
                 .call_ability_inner(id, tool, json!({ "ids": part }))
-                .await?;
+                .await
+            {
+                Ok(v) => v,
+                Err(e) if n == 0 => return Err(e),
+                // Earlier parts already moved: keep them (and their Undo), say why the rest didn't.
+                Err(e) => {
+                    let why = e.to_string();
+                    moved
+                        .skipped
+                        .extend(ids[n * 50..].iter().map(|&i| (i, why.clone())));
+                    break;
+                }
+            };
             let key = if back { "restored" } else { "trashed" };
             moved.done.extend(
                 v[key]
@@ -554,6 +574,13 @@ impl Core {
         }
         Ok(moved)
     }
+}
+
+/// The new item's id from an upload's answer; without one the upload can't be shown or undone.
+fn added(v: &Value) -> Result<i64, SiteError> {
+    v.as_i64().filter(|&i| i > 0).ok_or_else(|| {
+        plain("The site didn't say which item it added. Look in the media library before trying again.")
+    })
 }
 
 /// The site's skip codes in words.
@@ -759,6 +786,23 @@ mod tests {
         let b = core.trash_media(s.id, &[m.id], true).await.unwrap();
         assert_eq!(b.done, [m.id]);
         assert_eq!(core.media_item(s.id, m.id).await.unwrap().id, m.id);
+
+        // A later part that fails keeps what the first part moved, with the rest said why.
+        let mut ids = vec![m.id];
+        ids.extend(1000..1049);
+        ids.extend([1049, 0]);
+        let t = core.trash_media(s.id, &ids, false).await.unwrap();
+        assert_eq!(t.done, [m.id]);
+        assert_eq!(t.skipped.len(), 49 + 2);
+        assert_eq!(
+            t.skipped[49..],
+            [
+                (1049, "The site broke on this part.".to_string()),
+                (0, "The site broke on this part.".to_string())
+            ]
+        );
+        // A first part that fails is the error itself.
+        assert!(core.trash_media(s.id, &[0], true).await.is_err());
     }
 
     #[tokio::test]
@@ -812,8 +856,21 @@ mod tests {
             Some(("2026-12-01T00:00:00".into(), "2027-01-01T00:00:00".into()))
         );
         assert!(month_range("2026-00").is_none() && month_range("x").is_none());
+        assert_eq!(month_param("2026-1").as_deref(), Some("2026-01"));
+        assert_eq!(month_param("2026-+3").as_deref(), Some("2026-03"));
         assert_eq!(clean_name("/home/me/../a/b.jpg").unwrap(), "b.jpg");
-        assert!(clean_name("folder/").is_err());
+        assert!(
+            clean_name("folder/").is_err()
+                && clean_name(".jpg").is_err()
+                && clean_name("x.").is_err()
+        );
+        let long = clean_name(&format!("{}.jpeg", "a".repeat(300))).unwrap();
+        assert!(
+            long.ends_with(".jpeg") && long.chars().count() == 200,
+            "{long}"
+        );
+        assert!(added(&json!(0)).is_err() && added(&json!(null)).is_err());
+        assert_eq!(added(&json!(42)).unwrap(), 42);
         assert!(decode_file("").is_err() && decode_file("%%").is_err());
         assert_eq!(decode_file("YWJj").unwrap(), b"abc");
         assert!(decode_file(&"A".repeat(MAX_FILE / 3 * 4 + 8)).is_err());

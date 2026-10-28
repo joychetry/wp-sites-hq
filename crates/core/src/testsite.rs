@@ -1528,6 +1528,12 @@ fn content_tool(
             json!({ "id": a["id"], "has_backup": true })
         }
         "trash-media" | "restore-media" => {
+            if a["ids"]
+                .as_array()
+                .is_some_and(|ids| ids.contains(&json!(0)))
+            {
+                return Err("The site broke on this part.".into());
+            }
             let back = name == "restore-media";
             let (mut done, mut skipped) = (Vec::new(), Vec::new());
             for id in a["ids"].as_array().into_iter().flatten() {
