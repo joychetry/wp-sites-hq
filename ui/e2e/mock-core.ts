@@ -1,5 +1,5 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
-// browser (vite --mode mock). Pick the data with ?fixture=fleet|first|empty|loading|error
+// browser (vite --mode mock). Pick the data with ?fixture=fleet|fleet300|first|empty|loading|error
 // (first: one site, as just after adding it).
 import type { Action, ActivityRow, AppSettings, ReportAsk, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
@@ -492,6 +492,14 @@ let MONITORS: Monitor[] =
           pagespeed: { score: 72, lcp: "3.1 s", cls: "0.04", tbt: "180 ms", at: now - 86400 },
         }),
       ];
+
+// ?fixture=fleet300: the fleet repeated to 300 sites, to check every list stays quick at that size.
+if (fixture === "fleet300") {
+  const n = FLEET.length;
+  sites = Array.from({ length: 300 }, (_, i) => ({ ...FLEET[i % n], id: i + 1, name: `${FLEET[i % n].name} ${i + 1}`, url: `https://site-${i + 1}.local`, group: `Group ${i % 12}` }));
+  inventory = sites.map((s, i) => ({ ...inventory[i % inventory.length], site_id: s.id }));
+  MONITORS = sites.map((s, i) => ({ ...MONITORS[i % MONITORS.length], site_id: s.id }));
+}
 
 const listeners: Array<() => void> = [];
 const changed = () => listeners.forEach((f) => f());
