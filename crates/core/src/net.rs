@@ -487,18 +487,16 @@ mod tests {
         assert_eq!(seen.load(Ordering::SeqCst), 0);
     }
 
-    /// A port that refuses connections. Bound but never listening, so it stays ours and no
-    /// other test can take it while the socket lives (a dropped listener could be reused).
-    fn closed_port() -> (tokio::net::TcpSocket, u16) {
-        let socket = tokio::net::TcpSocket::new_v4().unwrap();
-        socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
-        let port = socket.local_addr().unwrap().port();
-        (socket, port)
+    /// A port that refuses connections: one the OS just gave out and freed. A bound but
+    /// never-listening socket would be safer from reuse, but macOS drops its SYNs (a timeout).
+    fn closed_port() -> u16 {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.local_addr().unwrap().port()
     }
 
     #[tokio::test]
     async fn a_write_that_never_left_is_marked_so() {
-        let (_socket, port) = closed_port();
+        let port = closed_port();
         let http = client().unwrap();
         let err = send(&Limits::default(), "a", Retry::Write, || {
             http.post(format!("http://127.0.0.1:{port}/"))
@@ -535,7 +533,7 @@ mod tests {
 
     #[tokio::test]
     async fn closed_port_says_could_not_reach() {
-        let (_socket, port) = closed_port();
+        let port = closed_port();
         let err = get_status(&client().unwrap(), &format!("http://127.0.0.1:{port}/"))
             .await
             .unwrap_err();
