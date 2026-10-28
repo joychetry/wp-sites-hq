@@ -121,3 +121,25 @@ test("a repeater row's editors move with the row, and Remove takes that row's te
   expect(words()).toEqual(["First"]);
   await waitFor(() => expect(screen.getByRole("button", { name: "Add a row" })).toHaveFocus());
 });
+
+test("an ACF field changed on the site since it opened is not overwritten", async () => {
+  const calls: string[] = [];
+  let reads = 0;
+  const changed: Acf = { ...ACF, groups: [{ ...ACF.groups[0], fields: FIELDS.map((f) => (f.type === "email" ? { ...f, value: "someone@else.co" } : f)) }] };
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    calls.push(cmd);
+    if (cmd === "content_types") return [POSTS];
+    if (cmd === "content_list") return { posts: [{ id: 7, title: "Fields", status: "publish", date: "", modified: "", author: "", link: "" }], total: 1, page: 1, pages: 1 };
+    if (cmd === "content_get") return POST;
+    if (cmd === "content_acf") return reads++ ? changed : ACF;
+    return lookups(cmd);
+  });
+  render(<Content sites={[CM]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Fields" }));
+  fireEvent.change(await screen.findByRole("textbox", { name: "Email" }), { target: { value: "me@here.co" } });
+  fireEvent.click(screen.getByRole("button", { name: "Update" }));
+  expect(await screen.findByText("An ACF field was changed on the site after you opened it, so the ACF fields were not saved.")).toBeInTheDocument();
+  expect(calls).not.toContain("content_acf_save");
+  fireEvent.click(screen.getByRole("button", { name: "Open the site's version" }));
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "Email" })).toHaveValue("someone@else.co"));
+});

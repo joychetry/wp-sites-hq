@@ -502,6 +502,13 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
       }
       if (acf && acfDirty) {
         try {
+          // As the body's check: a field changed on the site since it opened is not overwritten.
+          const value = (a: Acf | null, k: string) => JSON.stringify(a?.groups.flatMap((g) => g.fields).find((f) => f.key === k)?.value ?? null);
+          const fresh = (await api.acf(site.id, postId)) as Acf | null;
+          if (Object.keys(acfValues).some((k) => value(fresh, k) !== value(acf, k))) {
+            toast("An ACF field was changed on the site after you opened it, so the ACF fields were not saved.", { tone: "danger", action: { label: "Open the site's version", run: () => loadAcf(postId) } });
+            return;
+          }
           const done = await api.saveAcf(site.id, postId, acfValues);
           const n = Object.keys(acfValues).length;
           const back = done.undo;
