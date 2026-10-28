@@ -34,6 +34,7 @@ Documentation: [docs/site](docs/site) (build it with `mdbook serve docs/site`).
 - `ui/`: the app's web UI (React + TypeScript)
 
 ```sh
+scripts/sidecar.sh               # once after cloning: the app needs the monks command beside it
 cargo test --workspace
 cd ui && npm ci && npm test
 cargo run -p monks-cli -- doctor https://example.com

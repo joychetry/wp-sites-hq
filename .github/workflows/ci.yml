@@ -42,6 +42,9 @@ jobs:
       - name: Format
         if: runner.os == 'Linux'
         run: cargo fmt --all --check
+      - name: Sidecar (the app bundles the monks command)
+        shell: bash
+        run: scripts/sidecar.sh
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test

@@ -18,19 +18,7 @@ cd "$(dirname "$0")/.."
 # The release workflow's tauri-action calls "<this script> build <args>".
 [[ ${1:-} == build ]] && shift
 
-triple=${TARGET:-$(rustc -vV | sed -n 's/^host: //p')}
-ext=""
-[[ $triple == *windows* ]] && ext=".exe"
-
-if [[ -n ${TARGET:-} ]]; then
-  cargo build --release --locked -p monks-cli --target "$TARGET"
-  out=target/$TARGET/release
-else
-  cargo build --release --locked -p monks-cli
-  out=target/release
-fi
-mkdir -p crates/app/binaries
-cp "$out/monks$ext" "crates/app/binaries/monks-$triple$ext"
+scripts/sidecar.sh --release
 
 [[ -d ui/node_modules ]] || (cd ui && npm ci)
 # From the repo root: Tauri runs beforeBuildCommand (npm run build) in ui/.
