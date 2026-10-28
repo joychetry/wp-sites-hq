@@ -250,12 +250,16 @@ impl Loopback {
             })?;
             let mut buf = vec![0u8; 8192];
             let mut len = 0;
-            while len < buf.len() && !buf[..len].windows(4).any(|w| w == b"\r\n\r\n") {
-                match conn.read(&mut buf[len..]).await {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => len += n,
+            // A connection that sends nothing (a browser's preconnect) can't hold up the real one.
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                while len < buf.len() && !buf[..len].windows(4).any(|w| w == b"\r\n\r\n") {
+                    match conn.read(&mut buf[len..]).await {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => len += n,
+                    }
                 }
-            }
+            })
+            .await;
             let head = String::from_utf8_lossy(&buf[..len]);
             let target = head.split_whitespace().nth(1).unwrap_or("");
             let Ok(url) = Url::parse(&format!("http://127.0.0.1{target}")) else {
@@ -270,9 +274,12 @@ impl Loopback {
                 continue;
             }
             let q: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
-            let result = if q.get("state").map(String::as_str) != Some(state) {
-                Err("This sign-in didn't come from the request Monks Central made. Try again.")
-            } else if q
+            if q.get("state").map(String::as_str) != Some(state) {
+                // Not ours (an old tab, or another program): say so, and keep waiting.
+                let _ = conn.write_all(&page(STRANGER)).await;
+                continue;
+            }
+            let result = if q
                 .get("iss")
                 .is_some_and(|i| i.trim_end_matches('/') != issuer)
             {
@@ -288,21 +295,28 @@ impl Loopback {
             } else {
                 Err("The site didn't complete the sign-in.")
             };
-            let page = match &result {
+            let said = match &result {
                 Ok(_) => "Monks Central is connected. You can close this tab.",
                 Err(msg) => msg,
             };
-            let html = format!(
-                "<!doctype html><meta charset=utf-8><title>Monks Central</title><p style=\"font:16px system-ui;margin:3em\">{page}</p>"
-            );
-            let resp = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n{html}",
-                html.len()
-            );
-            let _ = conn.write_all(resp.as_bytes()).await;
+            let _ = conn.write_all(&page(said)).await;
             return result.map_err(site_err);
         }
     }
+}
+
+const STRANGER: &str = "This sign-in didn't come from the request Monks Central made. Try again.";
+
+/// The page the browser shows after coming back.
+fn page(said: &str) -> Vec<u8> {
+    let html = format!(
+        "<!doctype html><meta charset=utf-8><title>Monks Central</title><p style=\"font:16px system-ui;margin:3em\">{said}</p>"
+    );
+    format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n{html}",
+        html.len()
+    )
+    .into_bytes()
 }
 
 /// A grant's tokens, sealed in the vault as JSON.
@@ -625,8 +639,32 @@ mod tests {
 
     #[tokio::test]
     async fn loopback_checks_state_issuer_and_denial() {
+        // A return that isn't ours, and a connection that sends nothing, are passed over.
+        let lb = Loopback::bind().await.unwrap();
+        let base = lb.redirect_uri.clone();
+        let browser = tokio::spawn(async move {
+            let port = base.split(':').nth(2).unwrap().split('/').next().unwrap();
+            let _idle = tokio::net::TcpStream::connect(format!("127.0.0.1:{port}"))
+                .await
+                .unwrap();
+            let stranger = reqwest::get(format!("{base}?code=x&state=other"))
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+            assert!(stranger.contains("didn't come from the request"));
+            reqwest::get(format!("{base}?code=c&state=s"))
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap()
+        });
+        assert_eq!(lb.wait("s", "https://site.local").await.unwrap(), "c");
+        assert!(browser.await.unwrap().contains("connected"));
+
         for (query, expect) in [
-            ("code=c&state=other", "didn't come from the request"),
             (
                 "code=c&state=s&iss=https%3A%2F%2Fevil.example",
                 "different server",
