@@ -227,6 +227,22 @@ test("the palette searches everything, and a result opens its site from the keyb
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Sites/ })).toHaveAttribute("aria-current", "page");
 });
 
+test("a product's stock is changed from the keyboard, ending at the confirm step", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "store")!, "light");
+  await page.getByRole("button", { name: "Change price or stock of Sourdough loaf" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Change Sourdough loaf" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Price", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  // Tab selects the field's text, so typing replaces it.
+  await page.keyboard.type("30");
+  await expect(page.getByText("Change \u201cSourdough loaf\u201d: stock 30")).toBeVisible();
+  for (let i = 0; i < 4 && !(await page.getByRole("button", { name: "Review the change" }).evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Change \u201cSourdough loaf\u201d: stock 30" })).toBeVisible();
+});
+
 test("AI agent access is turned on from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-access")!, "light");
   await page.getByRole("button", { name: "Turn on access for Portfolio" }).focus();
@@ -252,7 +268,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search", "store", "store-change", "classic-monks-reports"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);

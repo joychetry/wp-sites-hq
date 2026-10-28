@@ -42,7 +42,34 @@ export const SCREENS: Screen[] = [
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
   { name: "settings", open: nav("Settings") },
-  { name: "later", open: nav("Store") },
+  { name: "later", open: nav("Reports") },
+  { name: "store", open: (page) => nav("Store")(page).then(() => page.getByRole("table", { name: "Products" }).waitFor()) },
+  {
+    name: "store-change",
+    open: async (page) => {
+      await nav("Store")(page);
+      await page.getByRole("button", { name: "Change price or stock of Rye loaf" }).click();
+      await page.getByRole("textbox", { name: "Sale price" }).fill("");
+      await page.getByRole("textbox", { name: "Stock" }).fill("30");
+    },
+  },
+  {
+    name: "store-confirm",
+    open: async (page) => {
+      await nav("Store")(page);
+      await page.getByRole("button", { name: "Change price or stock of Rye loaf" }).click();
+      await page.getByRole("textbox", { name: "Stock" }).fill("30");
+      await page.getByRole("button", { name: "Review the change" }).click();
+    },
+  },
+  {
+    name: "classic-monks-reports",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("group", { name: "Show" }).getByRole("button", { name: "Reports", exact: true }).click();
+      await page.getByRole("table", { name: "Pages not found" }).waitFor();
+    },
+  },
   { name: "clients", open: nav("Clients") },
   { name: "clients-empty", fixture: "empty", open: nav("Clients") },
   {

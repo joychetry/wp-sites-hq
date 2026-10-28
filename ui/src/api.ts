@@ -68,6 +68,44 @@ export type Bundle = { id: number; name: string; plugins: BundlePlugin[] };
 export type Staged = { file: string; name: string; size: number };
 export type ContentHit = { site_id: number; post_type: string; id: number; title: string; status: string; link: string };
 export type ContentFound = { hits: ContentHit[]; failed: [number, string][] };
+export type Product = {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  sku: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  stock_status: string;
+  manage_stock: boolean;
+  stock_quantity: number | null;
+  permalink: string;
+};
+export type Products = { products: Product[]; total: number; pages: number; currency: string };
+export type ProductQuery = { search?: string; status?: string; stock_status?: string; page?: number };
+export type StoreOverview = {
+  currency: string;
+  from: string;
+  to: string;
+  orders: number;
+  revenue: string;
+  average_order: string;
+  by_status: Record<string, number>;
+  low_stock: { id: number; name: string; stock_quantity: number }[];
+  out_of_stock: number;
+  processing: number;
+};
+type Count = { value: string; attempts: number };
+/** Classic Monks' own reports, as the site gives them; null when it hasn't that report. */
+export type CmReports = {
+  not_found: { count: number; urls: { id: number; url: string; hits: number; last_seen: string; status: string; referrer: string }[] } | null;
+  searches: { total_searches: number; zero_result_searches: number; top_searches: { query: string; searches: number }[]; zero_result_queries: { query: string; searches: number }[] } | null;
+  unused_media: { has_results: boolean; scanned_at: string; counts: Record<string, number>; listed_size: number; items: { id: number; title: string; filename: string; size: number }[] } | null;
+  logins: { lockdown_enabled: boolean; period: Record<string, number>; top_ips: Count[]; top_usernames: Count[] } | null;
+  two_factor: { stats: { total_users: number; users_with_2fa: number }; enforcement: { enabled: boolean; roles: string[] }; roles: { role: string; users: number; with_2fa: number; enforced: boolean }[] } | null;
+  failed: [string, string][];
+};
 export type Imported = { sites: number; clients: number; costs: number; not_connected: string[] };
 
 export type Removed = { signed_out: boolean; message: string };
@@ -112,7 +150,8 @@ export type Action =
   | { do: "publish_post"; post_type: string; title: string; body: string; status: string; date?: string; terms?: Record<string, string[]> }
   | { do: "set_post_status"; post_type: string; post_id: number; title: string; status: string }
   | { do: "trash_post"; post_type: string; post_id: number; title: string }
-  | { do: "untrash_post"; post_type: string; post_id: number; title: string };
+  | { do: "untrash_post"; post_type: string; post_id: number; title: string }
+  | { do: "update_product"; product_id: number; name: string; regular_price?: string; sale_price?: string; stock_quantity?: number };
 
 export type Change = { site_id: number; action: Action };
 
@@ -382,6 +421,9 @@ export const api = {
   /** `data` is the file as base64. */
   stageZip: (name: string, data: string) => invoke<Staged>("zip_stage", { name, data }),
   searchContent: (query: string) => invoke<ContentFound>("content_search", { query }),
+  products: (id: number, query: ProductQuery) => invoke<Products>("store_products", { id, query }),
+  storeOverview: (id: number, days: number) => invoke<StoreOverview>("store_overview", { id, days }),
+  cmReports: (id: number, days: number) => invoke<CmReports>("cm_reports", { id, days }),
 };
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */
@@ -498,6 +540,7 @@ const TOOL: Record<Action["do"], string> = {
   set_post_status: "update-post",
   trash_post: "delete-post",
   untrash_post: "untrash-post",
+  update_product: "update-products",
 };
 const BASIC: Action["do"][] = ["activate_plugin", "deactivate_plugin", "delete_plugin", "install_plugin", "publish_post", "set_post_status", "trash_post"];
 

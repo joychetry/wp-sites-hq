@@ -21,6 +21,7 @@ import { Security } from "./screens/Security";
 import { Monitoring } from "./screens/Monitoring";
 import { Clients } from "./screens/Clients";
 import { Search } from "./screens/Search";
+import { Store } from "./screens/Store";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -37,7 +38,7 @@ const GROUPS = [
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 // Search is reached from the palette, not the rail.
 type Section = (typeof SECTIONS)[number] | "Search";
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "Clients", "AI", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "Clients", "Store", "AI", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -246,6 +247,8 @@ export default function App() {
     body = <Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Clients") {
     body = <Clients sites={all} />;
+  } else if (section === "Store") {
+    body = <Store sites={scoped} onPlan={plan} />;
   } else if (section === "Search") {
     body = (
       <Search

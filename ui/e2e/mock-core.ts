@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, ActivityRow, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -43,6 +43,14 @@ const TOOLS = [
   "list-ai-activity",
   "undo-operation",
   "list-pending-approvals",
+  "get-404-report",
+  "get-search-report",
+  "get-unused-media-report",
+  "get-login-security-report",
+  "get-2fa-report",
+  "list-products",
+  "get-store-overview",
+  "update-products",
 ];
 const ABILITIES = [...TOOLS, ...Array(184 - TOOLS.length).fill("x")];
 const fixture = new URLSearchParams(location.search).get("fixture") ?? "fleet";
@@ -313,6 +321,15 @@ const post = (id: number, post_type: string, title: string, status: string, over
   locked: null,
   ...over,
 });
+const product = (id: number, name: string, regular_price: string, sale_price: string, stock_status: string, stock_quantity: number | null, sku = "", type = "simple"): Product => ({
+  id, name, type, status: "publish", sku, price: sale_price || regular_price, regular_price, sale_price, stock_status, manage_stock: stock_quantity != null, stock_quantity, permalink: `https://mc-a.local/product/${id}`,
+});
+const PRODUCTS: Product[] = [
+  product(61, "Sourdough loaf", "6.50", "", "instock", 24, "SD-01"),
+  product(62, "Rye loaf", "5.80", "4.90", "instock", 2, "RY-01"),
+  product(63, "Cinnamon buns, box of 4", "9.00", "", "outofstock", 0, "CB-04"),
+  product(64, "Gift card", "25.00", "", "instock", null, "", "variable"),
+];
 const POSTS: Post[] = [
   post(11, "page", "Our menu", "publish", {
     meta: { opening_hours: "7:00 to 18:00", menu_pdf: "menu-autumn.pdf", gallery: ["31", "32"] },
@@ -540,6 +557,29 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
     case "content_trash":
       return r(null);
+    case "store_overview":
+      return r({
+        currency: "EUR", from: "2026-09-28", to: "2026-10-28", orders: 214, revenue: "6420.50", average_order: "30.00",
+        by_status: { completed: 205, processing: 6, refunded: 3 }, low_stock: [{ id: 62, name: "Rye loaf", stock_quantity: 2 }], out_of_stock: 1, processing: 6,
+      });
+    case "store_products": {
+      const q = args.query as { search?: string; stock_status?: string };
+      const list = PRODUCTS.filter((p) => (!q.search || p.name.toLowerCase().includes(q.search.toLowerCase())) && (!q.stock_status || p.stock_status === q.stock_status));
+      return r({ products: list, total: list.length, pages: 1, currency: "EUR" });
+    }
+    case "cm_reports":
+      await new Promise((ok) => setTimeout(ok, 150));
+      return r({
+        not_found: { count: 3, urls: [
+          { id: 1, url: "/old-menu", hits: 41, last_seen: "2026-10-27 18:02", status: "new", referrer: "https://www.google.com/" },
+          { id: 2, url: "/wp-content/uploads/2023/05/cake.jpg", hits: 9, last_seen: "2026-10-26 08:15", status: "new", referrer: "" },
+        ] },
+        searches: { total_searches: 182, zero_result_searches: 14, top_searches: [{ query: "gluten free", searches: 38 }, { query: "opening hours", searches: 22 }], zero_result_queries: [{ query: "vegan cake", searches: 6 }] },
+        unused_media: { has_results: true, scanned_at: "2026-10-20 09:00", counts: { unused: 27, used: 340 }, listed_size: 48_200_000, items: [] },
+        logins: { lockdown_enabled: true, period: { attempts: 96, lockouts: 4 }, top_ips: [{ value: "203.0.113.9", attempts: 61 }], top_usernames: [{ value: "admin", attempts: 70 }] },
+        two_factor: { stats: { total_users: 6, users_with_2fa: 4 }, enforcement: { enabled: true, roles: ["administrator"] }, roles: [{ role: "administrator", users: 2, with_2fa: 2, enforced: true }, { role: "editor", users: 4, with_2fa: 2, enforced: false }] },
+        failed: [],
+      });
     case "content_search": {
       await new Promise((ok) => setTimeout(ok, 200));
       const q = (args.query as string).toLowerCase();

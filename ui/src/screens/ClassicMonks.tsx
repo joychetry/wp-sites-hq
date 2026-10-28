@@ -1,15 +1,16 @@
 // Classic Monks on one site: its features, the settings it lets Monks Central change,
 // its activity log with undo, and changes waiting for approval (plan Phase 4).
 import { useCallback, useEffect, useState } from "react";
-import { api, cmBlocked, hasTool, type Activity, type Approval, type FeatureGroup, type Setting, type Site } from "../api";
+import { api, cmBlocked, hasTool, type Activity, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
 import { Button, Status } from "../components/ui";
 
-type Tab = "features" | "settings" | "activity" | "approvals";
+type Tab = "features" | "settings" | "activity" | "approvals" | "reports";
 const TABS: [Tab, string, string][] = [
   ["features", "Features", "get-features"],
   ["settings", "Settings", "get-settings-schema"],
   ["activity", "Activity", "list-ai-activity"],
   ["approvals", "Waiting for approval", "list-pending-approvals"],
+  ["reports", "Reports", "get-404-report"],
 ];
 
 /** A change on the site, with the activity row that reverses it. */
@@ -129,6 +130,8 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
         <Settings key={site.id} site={site} onDone={setDone} round={round} />
       ) : current === "activity" ? (
         <Log key={site.id} site={site} onDone={setDone} />
+      ) : current === "reports" ? (
+        <Reports key={site.id} site={site} />
       ) : (
         <Approvals key={site.id} site={site} onDone={setDone} />
       )}
@@ -464,6 +467,155 @@ function Approvals({ site, onDone }: Part) {
           ))}
         </tbody>
       </table>
+    </>
+  );
+}
+
+const pct = (part: number, all: number) => (all ? `${Math.round((part / all) * 100)}%` : "–");
+const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`;
+const REPORT_NAME: Record<string, string> = {
+  "get-404-report": "Pages not found",
+  "get-search-report": "Searches",
+  "get-unused-media-report": "Unused media",
+  "get-login-security-report": "Logins",
+  "get-2fa-report": "Two-factor sign-in",
+};
+
+/** Classic Monks' own reports on one site, over a period. */
+function Reports({ site }: { site: Site }) {
+  const [days, setDays] = useState(30);
+  const { data, error, load } = useRead<CmReports>(() => api.cmReports(site.id, days), [site.id, days]);
+  const period = (
+    <div className="bar">
+      <div className="segmented types" role="group" aria-label="Period">
+        {[7, 30, 90].map((d) => (
+          <button key={d} type="button" aria-pressed={d === days} onClick={() => setDays(d)}>
+            {d} days
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  if (error)
+    return (
+      <>
+        {period}
+        <Failed what="The reports" error={error} retry={load} />
+      </>
+    );
+  if (!data)
+    return (
+      <>
+        {period}
+        <p className="empty" role="status">
+          Reading the reports on {site.name}…
+        </p>
+      </>
+    );
+  const { not_found: nf, searches: se, unused_media: um, logins: lo, two_factor: tf } = data;
+  const failed = data.failed;
+  return (
+    <>
+      {period}
+      <div className="kpis">
+        {nf && (
+          <div className="kpi">
+            <div className={`v ${nf.count ? "warning" : ""}`}>{nf.count}</div>
+            <div className="l">Addresses not found</div>
+          </div>
+        )}
+        {se && (
+          <div className="kpi">
+            <div className="v">{se.total_searches}</div>
+            <div className="l">Searches, {se.zero_result_searches} found nothing</div>
+          </div>
+        )}
+        {um && (
+          <div className="kpi">
+            <div className="v">{um.has_results ? (um.counts.unused ?? 0) : "–"}</div>
+            <div className="l">{um.has_results ? `Unused media files, ${mb(um.listed_size)} listed` : "Unused media: not scanned yet"}</div>
+          </div>
+        )}
+        {lo && (
+          <div className="kpi">
+            <div className={`v ${lo.period.lockouts ? "warning" : ""}`}>{lo.period.attempts ?? 0}</div>
+            <div className="l">Failed logins, {lo.period.lockouts ?? 0} lockouts</div>
+          </div>
+        )}
+        {tf && (
+          <div className="kpi">
+            <div className="v">{pct(tf.stats.users_with_2fa, tf.stats.total_users)}</div>
+            <div className="l">
+              Users with two-factor, {tf.stats.users_with_2fa} of {tf.stats.total_users}
+            </div>
+          </div>
+        )}
+      </div>
+      {failed.length > 0 && <p className="alert">Not read: {failed.map(([t, why]) => `${REPORT_NAME[t] ?? t} (${why})`).join("; ")}</p>}
+      {nf && nf.urls.length > 0 && (
+        <section aria-label="Pages not found">
+          <h2 className="sect">Pages not found, most visited</h2>
+          <table className="t" aria-label="Pages not found">
+            <thead>
+              <tr>
+                <th scope="col">Address</th>
+                <th scope="col" className="r">
+                  Visits
+                </th>
+                <th scope="col">Last time</th>
+                <th scope="col">Came from</th>
+              </tr>
+            </thead>
+            <tbody>
+              {nf.urls.map((u) => (
+                <tr key={u.id}>
+                  <td className="m cut">{u.url}</td>
+                  <td className="r">{u.hits}</td>
+                  <td className="dim">{u.last_seen}</td>
+                  <td className="dim cut">{u.referrer || "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+      {se && (se.top_searches.length > 0 || se.zero_result_queries.length > 0) && (
+        <section aria-label="Searches">
+          <h2 className="sect">What visitors search for</h2>
+          <ul className="plain">
+            {se.top_searches.map((q) => (
+              <li key={q.query} className="row">
+                <span className="grow">{q.query}</span>
+                <span className="dim">{q.searches} times</span>
+              </li>
+            ))}
+            {se.zero_result_queries.map((q) => (
+              <li key={`0${q.query}`} className="row">
+                <span className="grow">{q.query}</span>
+                <span className="tag warning">Found nothing, {q.searches} times</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {lo && lo.top_ips.length > 0 && (
+        <section aria-label="Logins">
+          <h2 className="sect">Failed logins</h2>
+          <p className="dim">
+            Most tried names: {lo.top_usernames.map((u) => `${u.value} (${u.attempts})`).join(", ") || "none"}. Most active addresses:{" "}
+            {lo.top_ips.map((u) => `${u.value} (${u.attempts})`).join(", ")}. Lockdown is {lo.lockdown_enabled ? "on" : "off"}.
+          </p>
+        </section>
+      )}
+      {tf && (
+        <section aria-label="Two-factor sign-in">
+          <h2 className="sect">Two-factor sign-in</h2>
+          <p className="dim">
+            {tf.enforcement.enabled ? `Required for ${tf.enforcement.roles.join(", ") || "no roles"}.` : "Not required for anyone."}{" "}
+            {tf.roles.map((r) => `${r.role}: ${r.with_2fa} of ${r.users}`).join(", ")}
+          </p>
+        </section>
+      )}
     </>
   );
 }
