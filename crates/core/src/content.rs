@@ -8,6 +8,7 @@
 //! with Elementor or Bricks keep their body in the builder: it is never edited here.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
@@ -175,6 +176,24 @@ pub struct Media {
     pub mime: String,
     pub alt: String,
     pub date: String,
+}
+
+/// A post or page that matched a search on every site.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Hit {
+    pub site_id: i64,
+    pub post_type: String,
+    pub id: i64,
+    pub title: String,
+    pub status: String,
+    pub link: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct Found {
+    pub hits: Vec<Hit>,
+    /// Sites that couldn't be searched, and why.
+    pub failed: Vec<(i64, String)>,
 }
 
 /// A saved version of an entry (Classic Monks M6).
@@ -1087,6 +1106,59 @@ impl Core {
         Ok(())
     }
 
+    /// Posts and pages matching `q` on every site that can be searched, side by side.
+    pub async fn search_content(self: &Arc<Self>, q: &str) -> Result<Found, SiteError> {
+        let q = q.trim();
+        if q.chars().count() < 2 {
+            return Err(plain("Type at least two letters."));
+        }
+        let mut set = tokio::task::JoinSet::new();
+        for site in self.sites()? {
+            let ready = !site.sign_in_again
+                && (site.mode == Mode::Basic || has_tool(&site, "list-post-types"));
+            if !ready {
+                continue;
+            }
+            let (core, q) = (self.clone(), q.to_string());
+            set.spawn(async move {
+                let mut hits = Vec::new();
+                for ty in ["post", "page"] {
+                    let query = Query {
+                        post_type: ty.into(),
+                        search: Some(q.clone()),
+                        ..Default::default()
+                    };
+                    let list = core
+                        .posts(site.id, &query)
+                        .await
+                        .map_err(|e| (site.id, e.to_string()))?;
+                    hits.extend(list.posts.into_iter().take(10).map(|p| Hit {
+                        site_id: site.id,
+                        post_type: ty.into(),
+                        id: p.id,
+                        title: p.title,
+                        status: p.status,
+                        link: p.link,
+                    }));
+                }
+                Ok::<_, (i64, String)>(hits)
+            });
+        }
+        let mut found = Found::default();
+        while let Some(r) = set.join_next().await {
+            match r {
+                Ok(Ok(h)) => found.hits.extend(h),
+                Ok(Err(f)) => found.failed.push(f),
+                Err(_) => {}
+            }
+        }
+        found
+            .hits
+            .sort_by(|a, b| (a.site_id, &a.post_type, a.id).cmp(&(b.site_id, &b.post_type, b.id)));
+        found.failed.sort();
+        Ok(found)
+    }
+
     /// One content change from a job (bulk changes, publishing to many sites).
     pub(crate) async fn run_content(&self, id: i64, action: &Action) -> Result<String, SiteError> {
         match action {
@@ -1616,6 +1688,54 @@ mod tests {
         assert_eq!(core.untrash_post(s.id, p.id).await.unwrap(), "draft");
         let err = core.untrash_post(s.id, p.id).await.unwrap_err();
         assert!(err.to_string().contains("not in the trash"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn posts_and_pages_are_searched_on_every_site() {
+        let (_h, core) = core().await;
+        let (a, b, c) = (
+            TestSite::start().await,
+            TestSite::start().await,
+            TestSite::start().await,
+        );
+        let sa = core.add_site_oauth(&a.url, browser).await.unwrap();
+        let sb = core
+            .add_site_basic(&b.url, "admin", "abcd efgh ijkl mnop qrst uvwx")
+            .await
+            .unwrap();
+        let sc = core.add_site_oauth(&c.url, browser).await.unwrap();
+        for (s, ty, title) in [
+            (sa.id, "post", "Bread week"),
+            (sa.id, "page", "Bread menu"),
+            (sb.id, "post", "More bread"),
+            (sb.id, "post", "Cakes"),
+        ] {
+            core.create_post(s, ty, draft(title)).await.unwrap();
+        }
+        c.state().fail_tool = Some("get-posts".into());
+        let found = core.search_content("read").await.unwrap();
+        let titles: Vec<_> = found
+            .hits
+            .iter()
+            .map(|h| (h.site_id, h.post_type.as_str(), h.title.as_str()))
+            .collect();
+        assert_eq!(
+            titles,
+            [
+                (sa.id, "page", "Bread menu"),
+                (sa.id, "post", "Bread week"),
+                (sb.id, "post", "More bread")
+            ]
+        );
+        assert_eq!(found.failed.len(), 1);
+        assert_eq!(found.failed[0].0, sc.id);
+        assert!(
+            core.search_content(" a ")
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("two letters")
+        );
     }
 
     #[tokio::test]

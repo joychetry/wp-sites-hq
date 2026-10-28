@@ -9,7 +9,9 @@ use std::sync::Arc;
 use monks_core::activity::{Actor, Entry};
 use monks_core::business::{AppSettings, Client, Cost, Imported};
 use monks_core::connect::{Removed, SiteError};
-use monks_core::content::{Draft, Listing, Media, Post, PostType, Query, Revision, Term};
+use monks_core::content::{
+    Draft, Found as ContentFound, Listing, Media, Post, PostType, Query, Revision, Term,
+};
 use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
@@ -668,6 +670,14 @@ fn file_show(path: String) -> Res<()> {
 }
 
 #[tauri::command]
+async fn content_search(state: State<'_, AppCore>, query: String) -> Res<ContentFound> {
+    core(&state)?
+        .search_content(&query)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn bundles_list(state: State<'_, AppCore>) -> Res<Vec<Bundle>> {
     core(&state)?.bundles().map_err(|e| e.to_string())
 }
@@ -952,6 +962,7 @@ fn main() {
             sites_export,
             sites_import,
             file_show,
+            content_search,
             bundles_list,
             bundle_save,
             bundle_delete,
