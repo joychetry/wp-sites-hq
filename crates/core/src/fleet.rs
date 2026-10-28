@@ -489,6 +489,10 @@ pub struct Job {
     pub items: Vec<JobItem>,
 }
 
+/// A site whose Classic Monks doesn't treat this app as its operator asks a person first.
+pub const NEEDS_APPROVAL: &str =
+    "The site asks you to approve this change first. Approve it on the site at";
+
 /// Most changes one plan may hold.
 pub const PLAN_MAX: usize = 200;
 
@@ -906,6 +910,11 @@ impl Core {
                     core.mark(item.id, ItemState::Running, "");
                     let (state, msg) = match core.run_action(site, &item.action).await {
                         Ok(m) => (ItemState::Done, m),
+                        // The site's words are for an agent; a person reads these.
+                        Err(SiteError::NeedsApproval { approve_url, .. }) => (
+                            ItemState::Failed,
+                            format!("{NEEDS_APPROVAL} {approve_url}, then try this change again."),
+                        ),
                         Err(e) => (ItemState::Failed, e.to_string()),
                     };
                     core.mark(item.id, state, &msg);
@@ -1474,6 +1483,30 @@ mod tests {
             core.agent_call(&s.url, "no-such-tool", json!({}))
                 .await
                 .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_site_that_asks_for_approval_says_so_to_a_person() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+        core.refresh_inventory(s.id).await.unwrap();
+        // An older Classic Monks with no operator grants gates the app too.
+        site.state().operator = false;
+        let change = Change {
+            site_id: s.id,
+            action: Action::UpdatePlugin { plugin: woo() },
+        };
+        let job = core.start_job("Update", vec![change]).await.unwrap();
+        let job = wait(&core, job.id).await;
+        assert_eq!(job.items[0].state, ItemState::Failed);
+        assert_eq!(
+            job.items[0].message,
+            format!(
+                "{NEEDS_APPROVAL} {}/wp-admin/admin.php?page=cm-ai-approve&op=40, then try this change again.",
+                site.url
+            )
         );
     }
 

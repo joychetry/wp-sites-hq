@@ -555,7 +555,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 .any(|(n, r)| *n == name && *r)
                 || name == "get-posts";
             // Classic Monks' approval gate: a change by a grant that isn't the operator waits.
-            if agent && !operator && !read_only {
+            if !operator && !read_only {
                 let call = (name.clone(), args.clone());
                 if let Some(i) = s.approved.iter().position(|a| *a == call) {
                     s.approved.remove(i);
