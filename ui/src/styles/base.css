@@ -335,6 +335,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .plan-list li { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-1) 0; }
 .plan-site .plan-list li { padding-left: var(--sp-5); }
 .plan-list .grow { flex: 1; min-width: 0; }
+/* Why a site can't be picked: at most half the row, so the site's name never wraps word by word. */
+.plan-list li > .dim { flex: 0 1 50%; text-align: right; }
 .plan-list .box { margin-top: -2px; }
 /* Not .progress: that is the bar (controls.css), 6px tall with overflow hidden. */
 .plan-list.confirm li, .plan-list.results li { border-bottom: 1px solid var(--line); padding: 10px 0; }
@@ -497,6 +499,8 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 /* Phase 7: ticks for bulk changes, site lists in sheets, custom fields. */
 .t .tick { width: 2.5rem; }
 .row.check { padding: var(--sp-1) 0; flex-wrap: wrap; }
+/* A label that is the only words beside its box stays beside it and wraps there; a reason after a name still drops below. */
+.row.check > input + span:last-child { flex: 1 1 12em; }
 .row .grow, .row.grow { flex: 1; min-width: 0; }
 /* Custom fields: every box is full height, and Remove lines up with its box, not its name. */
 .fields { gap: var(--sp-3); }
