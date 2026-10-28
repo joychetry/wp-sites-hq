@@ -1,22 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // A side sheet over the page (bulk actions, adding a site). Esc closes it.
 import { useEffect, useRef, type ReactNode } from "react";
+import { Glyph } from "./ui";
 
 const FOCUSABLE = "input:not([disabled]), textarea:not([disabled]), select, button:not([disabled]), [href]";
 
 type Props = {
   title: string;
   intro?: ReactNode;
+  /** Under the title and intro, in the head: a stepper (components/JobSheet.tsx). */
+  steps?: ReactNode;
   footer: ReactNode;
   onClose: () => void;
   children: ReactNode;
 };
 
-export function Sheet({ title, intro, footer, onClose, children }: Props) {
+export function Sheet({ title, intro, steps, footer, onClose, children }: Props) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLElement>("input, textarea, select, button")?.focus();
+    // The head's close button is last in line, so focus lands on the sheet's first real control.
+    ref.current?.querySelector<HTMLElement>("input, textarea, select, button:not(.sheet-x)")?.focus();
     return () => opener?.focus?.();
   }, []);
   return (
@@ -47,8 +51,14 @@ export function Sheet({ title, intro, footer, onClose, children }: Props) {
         }}
       >
         <header>
-          <h2>{title}</h2>
-          {intro && <p>{intro}</p>}
+          <div>
+            <h2>{title}</h2>
+            {intro && <p>{intro}</p>}
+            {steps}
+          </div>
+          <button type="button" className="icon-btn sheet-x" aria-label="Close" data-tip="Close (Esc)" onClick={onClose}>
+            <Glyph name="x" />
+          </button>
         </header>
         <div className="content">{children}</div>
         <footer>{footer}</footer>

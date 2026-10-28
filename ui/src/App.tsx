@@ -357,7 +357,7 @@ export default function App() {
       />
     );
   } else if (section === "Updates") {
-    body = <Updates sites={scoped} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
+    body = <Updates sites={scoped} inventory={inv} reports={reports ?? []} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Plugins" || section === "Themes") {
     body = (
       <Matrix

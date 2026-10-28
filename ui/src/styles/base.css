@@ -323,12 +323,19 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 
 /* Side sheet over the page: the design's drawer and dialog */
 .scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 20; }
-.sheet { position: fixed; top: 12px; right: 12px; bottom: 12px; width: var(--sheet); max-width: calc(100vw - 24px); background: var(--bg); border-radius: var(--radius-xl); box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 21; overflow: hidden; }
-.sheet > header { padding: 20px var(--sp-5) var(--sp-4); border-bottom: 1px solid var(--line); }
+.sheet { position: fixed; top: 12px; right: 12px; bottom: 12px; width: var(--sheet); max-width: calc(100vw - 24px); background: var(--bg); border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 21; overflow: hidden; }
+/* Head: title, a quiet line, an optional stepper, and Close at the top right */
+.sheet > header { display: flex; align-items: flex-start; gap: var(--sp-3); padding: 20px var(--sp-4) var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line); }
+.sheet > header > div { flex: 1; min-width: 0; display: grid; gap: var(--sp-1); }
 .sheet h2 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; }
-.sheet > header p { margin: var(--sp-1) 0 0; color: var(--text-2); }
+.sheet > header p { margin: 0; color: var(--text-2); }
+.sheet-x { width: 32px; height: 32px; margin-top: -3px; color: var(--text-3); }
+.sheet-x .glyph { width: 16px; height: 16px; }
 .sheet .content { flex: 1; overflow: auto; padding: 20px var(--sp-5); }
 .sheet footer { padding: 14px var(--sp-5); border-top: 1px solid var(--line); background: var(--panel); display: flex; gap: var(--sp-2); align-items: center; justify-content: flex-end; }
+/* The foot's other buttons are quiet (the design's ghost buttons); only the main one is filled. */
+.sheet footer .btn:not(.primary):not(.danger) { background: transparent; border-color: transparent; color: var(--text-2); }
+.sheet footer .btn:not(.primary):not(.danger):hover:not(:disabled) { background: var(--bg); color: var(--text); }
 .sheet footer .sum { margin-right: auto; color: var(--text-2); }
 /* Segmented: a pill track in the well, the chosen one lifted */
 .segmented { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); padding: 3px; margin: 0 0 var(--sp-4); }
@@ -343,18 +350,49 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 
 /* Jobs: plan, confirm, progress (components/JobSheet.tsx). Steps are numbered rings joined by hairlines. */
 .sheet footer .grow { flex: 1; color: var(--text-2); }
-.jobsteps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; list-style: none; margin: 0 0 var(--sp-4); padding: 0; counter-reset: step; font-size: var(--fs-sm); color: var(--text-3); }
-.jobsteps li { display: inline-flex; align-items: center; gap: 6px; counter-increment: step; }
-.jobsteps li::before { content: counter(step); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); font: 600 var(--fs-xs)/1 var(--mono); }
-.jobsteps li + li { padding-left: 24px; background: linear-gradient(var(--line-2), var(--line-2)) left center / 18px 1px no-repeat; }
-.jobsteps li[aria-current] { color: var(--text); font-weight: 600; }
-.jobsteps li[aria-current]::before { background: var(--btn-ink); border-color: var(--btn-ink); color: var(--btn-on-ink); }
-[data-theme="dark"] .jobsteps li[aria-current]::before { background: var(--green); border-color: var(--green); color: var(--on-green); }
-.plan-site { border-top: 1px solid var(--line); padding: var(--sp-3) 0; }
-.plan-site h3 { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-1); font-size: var(--fs); font-weight: 600; }
+.jobsteps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; list-style: none; margin: var(--sp-1) 0 0; padding: 0; font-size: var(--fs-sm); color: var(--text-3); }
+.jobsteps li { display: inline-flex; align-items: center; gap: 6px; }
+.jobsteps li + li::before { content: ""; width: 18px; height: 1px; background: var(--line-2); margin-right: 2px; }
+.jobsteps i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line-2); font: 600 var(--fs-xs)/1 var(--mono); font-style: normal; }
+.jobsteps i .glyph { width: 12px; height: 12px; }
+.jobsteps [aria-current] { color: var(--text); font-weight: 600; }
+.jobsteps [aria-current] i { background: var(--btn-ink); border-color: var(--btn-ink); color: var(--btn-on-ink); }
+[data-theme="dark"] .jobsteps [aria-current] i { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.jobsteps .done i { background: var(--tint); border-color: var(--tint); color: var(--brand-text); }
+/* Pick: a line per site (tile, every change on it, how many), its changes indented under a hairline */
+.jobpick { display: grid; gap: var(--sp-2); }
+.jobpick-site, .jobpick li { display: flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer; }
+.jobpick-site b { font-weight: 600; }
+.jobpick small { color: var(--text-3); font-size: var(--fs-sm); }
+.jobpick ul { list-style: none; margin: 0 0 0 11px; padding: 0 0 0 22px; border-left: 2px solid var(--line); display: grid; }
+/* Review: what changes, under a mono label per site, versions at the right */
+.jobreview { display: grid; gap: var(--sp-4); }
+.jobreview h3 { margin: 0 0 var(--sp-2); }
+.jobreview ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.jobreview li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); }
+.jobreview .vers { color: var(--text); }
+/* Run: a 6px meter, then a row per change with a state icon, what it did, and the state word */
+.jobmeter-head { display: flex; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.jobmeter-head b { font-weight: 600; }
+.jobmeter-head span { color: var(--text-3); font-size: var(--fs-sm); }
+.jobmeter { height: 6px; border-radius: 3px; background: var(--panel); overflow: hidden; margin-bottom: var(--sp-4); }
+.jobmeter i { display: block; height: 100%; border-radius: 3px; background: var(--green); transition: width 300ms var(--ease); }
+.jobprog { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.jobprog li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px; border-radius: 10px; }
+.jobprog li:nth-child(odd) { background: var(--panel); }
+.jobprog li > .glyph { width: 18px; height: 18px; color: var(--text-3); }
+.jobprog .done > .glyph { color: var(--brand-text); }
+.jobprog .failed > .glyph { color: var(--danger); }
+.jobprog .rolled_back > .glyph { color: var(--warn); }
+.jobprog .running > .glyph { color: var(--green); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.jobprog b { font-weight: 600; }
+.jobprog small { display: block; font-size: var(--fs-sm); color: var(--text-3); overflow-wrap: anywhere; }
+.jobprog small span + span::before { content: " · "; }
+.jobprog .failed small { color: var(--danger); }
+.jobprog .meta { font: 400 var(--fs-xs)/1.3 var(--mono); color: var(--text-3); }
 .plan-list { list-style: none; margin: 0; padding: 0; }
 .plan-list li { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-1) 0; }
-.plan-site .plan-list li { padding-left: var(--sp-5); }
 .plan-list .grow { flex: 1; min-width: 0; }
 /* Why a site can't be picked: at most half the row, so the site's name never wraps word by word. */
 .plan-list li > .dim { flex: 0 1 50%; text-align: right; }
@@ -367,8 +405,6 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .tag.state { min-width: calc(11ch + 14px); justify-content: center; flex: none; }
 .why { display: block; color: var(--text-2); font-size: var(--fs-sm); white-space: normal; overflow-wrap: anywhere; }
 .why.danger { color: var(--danger); }
-.bar-progress { height: 6px; background: var(--panel); border-radius: 3px; margin: 0 0 var(--sp-3); overflow: hidden; }
-.bar-progress span { display: block; height: 100%; background: var(--green); }
 
 /* Sites a list can't show (Updates, Security) */
 .unseen { padding: var(--sp-4) var(--pad); border-top: 1px solid var(--line); }
