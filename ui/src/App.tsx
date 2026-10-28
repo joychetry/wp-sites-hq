@@ -277,6 +277,10 @@ export default function App() {
     body = (
       <Overview
         sites={scoped}
+        waiting={waiting}
+        plans={plans ?? []}
+        reports={reports ?? []}
+        monitors={monitors ?? []}
         onOpen={openSite}
         onCheck={(id) => api.check(id)}
         onSignInAgain={signInAgain}

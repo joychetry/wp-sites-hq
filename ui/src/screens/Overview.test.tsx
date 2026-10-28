@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { invoke } from "@tauri-apps/api/core";
 import { Overview, summary } from "./Overview";
 import { site } from "../test-fixtures";
+import type { Entry, Job } from "../api";
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
+const mockInvoke = vi.mocked(invoke);
+beforeEach(() => mockInvoke.mockResolvedValue([]));
+afterEach(() => mockInvoke.mockReset());
 
 test("the sentence counts down sites and sites that need a look", () => {
   expect(summary([])).toEqual({ lead: "Welcome to Monks Central.", rest: "Add your first site to get started." });
@@ -70,4 +78,25 @@ test("a new user gets three steps, then next steps that can be hidden for good",
   localStorage.removeItem("mc-tips-hidden");
   rerender(<Overview sites={[site(), site({ id: 2 }), site({ id: 3 })]} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={onAdd} onGo={onGo} />);
   expect(screen.queryByRole("region", { name: "Next steps" })).toBeNull();
+});
+
+test("updates, plans and vulnerabilities each get one fix, and the latest changes split by who", async () => {
+  const entry = (id: number, actor: Entry["actor"], what: string): Entry => ({ id, at: 1, actor, site_id: 1, site_name: "Alpha", what, outcome: "done", detail: "" });
+  mockInvoke.mockImplementation(async (cmd: string) => (cmd === "activity_list" ? [entry(2, "agent", "update-post"), entry(1, "human", "Turned on AI agent access")] : null));
+  const onGo = vi.fn();
+  const plan = { id: 9, title: "Update WooCommerce on 3 sites", created_at: 1, expired: false } as Job;
+  const waiting = [{ kind: "Plugin", site: "Alpha", label: "Update Akismet", change: { site_id: 1, action: { do: "update_translations" } } }] as never;
+  const reports = [{ site_id: 1, checked_at: 1, vulnerabilities: [{ kind: "plugin", id: "f", name: "Forms", installed: "2.3.1", title: "XSS", severity: null, fixed_in: "2.3.2", link: null }], abandoned: [], checksums: null, notes: [] }] as never;
+  render(<Overview sites={[site({ name: "Alpha" })]} waiting={waiting} plans={[plan]} reports={reports} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={vi.fn()} onGo={onGo} />);
+  const fixes = screen.getByRole("region", { name: "Needs attention" });
+  expect(fixes).toHaveTextContent("Forms 2.3.1 has a known vulnerability");
+  expect(fixes).toHaveTextContent("On Alpha. Fixed in 2.3.2.");
+  fireEvent.click(within(fixes).getByRole("button", { name: "Review the plan" }));
+  fireEvent.click(within(fixes).getByRole("button", { name: "Review updates" }));
+  expect(onGo.mock.calls).toEqual([["AI"], ["Updates"]]);
+  const feed = screen.getByRole("region", { name: "Latest changes" });
+  expect(await within(feed).findByText("Update post")).toBeInTheDocument();
+  fireEvent.click(within(feed).getByRole("button", { name: "You" }));
+  expect(within(feed).queryByText("Update post")).toBeNull();
+  expect(within(feed).getByText("Turned on AI agent access")).toBeInTheDocument();
 });
