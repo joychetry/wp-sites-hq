@@ -312,6 +312,20 @@ test.describe("200% zoom", () => {
   }
 });
 
+test("the Sites table fits beside the site panel without scrolling sideways", async ({ page }) => {
+  for (const [width, density] of [[1440, "comfortable"], [1301, "comfortable"], [1200, "comfortable"], [1200, "compact"]] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await show(page, SCREENS.find((s) => s.name === "sites-selected")!, "light", density);
+    const [scroll, client] = await page.locator(".scroll").evaluate((e) => [e.scrollWidth, e.clientWidth]);
+    expect(scroll, `${width}px, ${density}`).toBeLessThanOrEqual(client);
+  }
+});
+
+test("a finished job lists every change under the progress bar", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "updates-progress")!, "light");
+  for (const row of await page.getByRole("dialog").getByRole("listitem").all()) await expect(row).toBeInViewport();
+});
+
 test("a vulnerable plugin is fixed from the keyboard, through the plan", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "security")!, "light");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Security 2 known vulnerabilities" })).toBeVisible();
