@@ -66,6 +66,10 @@ impl Kind {
 
 /// A plugin's directory slug from its file: `akismet/akismet.php` is `akismet`.
 pub fn plugin_slug(file: &str) -> &str {
+    // WordPress ships Hello Dolly as a lone file.
+    if file == "hello.php" {
+        return "hello-dolly";
+    }
     let folder = file.split('/').next().unwrap_or_default();
     folder.strip_suffix(".php").unwrap_or(folder)
 }
@@ -315,7 +319,8 @@ mod tests {
     #[test]
     fn slugs() {
         assert_eq!(plugin_slug("akismet/akismet.php"), "akismet");
-        assert_eq!(plugin_slug("hello.php"), "hello");
+        assert_eq!(plugin_slug("hello.php"), "hello-dolly");
+        assert_eq!(plugin_slug("single.php"), "single");
         assert!(valid("classic-editor") && valid("wp_mail") && valid("twentytwentyfive"));
         for bad in ["", "../x", "a/b", "Bricks", "a.b", "a b", &"a".repeat(101)] {
             assert!(!valid(bad), "{bad}");
