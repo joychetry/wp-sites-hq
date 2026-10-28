@@ -33,13 +33,16 @@ const INTERNAL: &[&str] = &[
     "wp_font_face",
 ];
 
-/// The statuses Monks Central sets. Scheduling (future) arrives with dates in v0.2.
-const STATUSES: &[&str] = &["publish", "draft", "pending", "private"];
+/// The statuses Monks Central sets. A future `date` with publish schedules an entry.
+const STATUSES: &[&str] = &["publish", "draft", "pending", "private", "future"];
 /// "All" in the list: everything but the trash.
 const ALL: &str = "publish,draft,pending,private,future";
 const PER_PAGE: u32 = 20;
 /// The largest file "import from a link" downloads in Basic mode.
 const MAX_IMPORT: usize = 25 * 1024 * 1024;
+
+pub const NEEDS_CM_FIELDS: &str =
+    "Custom fields need Classic Monks on the site. This site is in Basic mode.";
 
 pub const OLD_CLASSIC_MONKS: &str = "This site's Classic Monks is older and has no content tools for Monks Central. Update Classic Monks on the site, then check it again.";
 
@@ -116,6 +119,8 @@ pub struct Post {
     pub featured_image: i64,
     pub featured_url: Option<String>,
     pub terms: BTreeMap<String, Vec<Term>>,
+    /// Custom fields not hidden by an underscore (Classic Monks only).
+    pub meta: BTreeMap<String, Value>,
     /// `elementor` or `bricks` when a page builder renders the body.
     pub builder: Option<String>,
     pub blocks: Vec<Block>,
@@ -155,6 +160,11 @@ pub struct Draft {
     pub edits: Vec<BlockEdit>,
     /// `modified` as the editor read it: refuse if the entry changed since.
     pub seen_modified: Option<String>,
+    /// Publish date in the site's time zone, "2026-11-02 09:30:00". A future
+    /// date with status publish schedules the entry.
+    pub date: Option<String>,
+    /// Custom fields to set; null removes one. Classic Monks only.
+    pub meta: Option<BTreeMap<String, Value>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -166,6 +176,18 @@ pub struct Media {
     pub alt: String,
     pub date: String,
 }
+
+/// A saved version of an entry (Classic Monks M6).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Revision {
+    pub id: i64,
+    pub date: String,
+    pub author: String,
+    pub title: String,
+}
+
+pub const NEEDS_CM_HISTORY: &str =
+    "Revisions and the trash need Classic Monks on the site. This site is in Basic mode.";
 
 pub(crate) fn text(v: &Value) -> String {
     match v {
@@ -251,6 +273,7 @@ pub fn post_from_cm(v: &Value) -> Post {
         featured_image: v["featured_image_id"].as_i64().unwrap_or_default(),
         featured_url: v["featured_image"].as_str().map(String::from),
         terms,
+        meta: BTreeMap::new(),
         builder: v["builder"].as_str().map(String::from),
         blocks: Vec::new(),
         locked: None,
@@ -286,6 +309,7 @@ pub fn post_from_rest(v: &Value, ty: &PostType) -> Post {
         featured_image: v["featured_media"].as_i64().unwrap_or_default(),
         featured_url: None,
         terms,
+        meta: BTreeMap::new(),
         builder: builder_in(v["content"]["rendered"].as_str().unwrap_or_default()),
         blocks: Vec::new(),
         locked: None,
@@ -423,13 +447,46 @@ fn media_from(m: &Value, rest: bool) -> Media {
     }
 }
 
-fn check_status(status: &Option<String>) -> Result<(), SiteError> {
-    match status {
-        Some(s) if !STATUSES.contains(&s.as_str()) => Err(plain(format!(
+/// The site's own message, or `fallback`.
+fn done(out: &Value, fallback: &str) -> String {
+    out["message"]
+        .as_str()
+        .filter(|m| !m.is_empty())
+        .unwrap_or(fallback)
+        .to_string()
+}
+
+fn check_draft(d: &Draft) -> Result<(), SiteError> {
+    if let Some(s) = d.status.as_deref().filter(|s| !STATUSES.contains(s)) {
+        return Err(plain(format!(
             "Monks Central can't set the status {s}. Use publish, draft, pending or private."
-        ))),
-        _ => Ok(()),
+        )));
     }
+    if let Some(date) = &d.date
+        && !is_date(date)
+    {
+        return Err(plain(format!(
+            "The date {date} isn't one Monks Central can send. Use 2026-11-02 09:30:00."
+        )));
+    }
+    Ok(())
+}
+
+/// "YYYY-MM-DD HH:MM:SS" with plausible numbers; the site checks the calendar.
+fn is_date(s: &str) -> bool {
+    let b = s.as_bytes();
+    let digits = [0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18];
+    let n = |r: std::ops::Range<usize>| s[r].parse::<u32>().unwrap_or(99);
+    b.len() == 19
+        && digits.iter().all(|&i| b[i].is_ascii_digit())
+        && [(4, b'-'), (7, b'-'), (10, b' '), (13, b':'), (16, b':')]
+            .iter()
+            .all(|&(i, c)| b[i] == c)
+        && (1..=12).contains(&n(5..7))
+        && (1..=31).contains(&n(8..10))
+        && n(11..13) < 24
+        && n(14..16) < 60
+        && n(17..19) < 60
 }
 
 /// A file name for an imported link: the last part of its path.
@@ -648,11 +705,21 @@ impl Core {
     async fn read_post(&self, id: i64, post_type: &str, post_id: i64) -> Result<Post, SiteError> {
         let site = self.content_site(id)?;
         match site.mode {
-            Mode::ClassicMonks => Ok(post_from_cm(
-                &self
-                    .call_ability_inner(id, "get-post-by-id", json!({ "post_id": post_id }))
-                    .await?,
-            )),
+            Mode::ClassicMonks => {
+                let mut post = post_from_cm(
+                    &self
+                        .call_ability_inner(id, "get-post-by-id", json!({ "post_id": post_id }))
+                        .await?,
+                );
+                if has_tool(&site, "get-post-meta") {
+                    let args = json!({ "post_id": post_id, "exclude_private": true });
+                    let v = self.call_ability_inner(id, "get-post-meta", args).await?;
+                    if let Some(m) = v["meta"].as_object() {
+                        post.meta = m.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                    }
+                }
+                Ok(post)
+            }
             Mode::Basic => {
                 let ty = self.rest_type(&site, post_type).await?;
                 let route = format!("/wp/v2/{}/{post_id}", ty.rest_base);
@@ -839,6 +906,12 @@ impl Core {
         if let Some(f) = d.featured_image {
             body["featured_media"] = f.into();
         }
+        if let Some(date) = &d.date {
+            body["date"] = date.replacen(' ', "T", 1).into();
+        }
+        if d.meta.as_ref().is_some_and(|m| !m.is_empty()) {
+            return Err(plain(NEEDS_CM_FIELDS));
+        }
         Ok(body)
     }
 
@@ -860,6 +933,12 @@ impl Core {
         if let Some(f) = d.featured_image {
             args["featured_image"] = f.into();
         }
+        if let Some(date) = &d.date {
+            args["date"] = date.as_str().into();
+        }
+        if let Some(m) = &d.meta {
+            args["meta"] = json!(m);
+        }
         args
     }
 
@@ -867,7 +946,7 @@ impl Core {
     pub async fn create_post(&self, id: i64, post_type: &str, d: Draft) -> Result<Post, SiteError> {
         let _work = self.working().await;
         let site = self.content_site(id)?;
-        check_status(&d.status)?;
+        check_draft(&d)?;
         if d.title.as_deref().is_none_or(|t| t.trim().is_empty()) {
             return Err(plain("Give it a title."));
         }
@@ -908,7 +987,7 @@ impl Core {
     ) -> Result<Post, SiteError> {
         let _work = self.working().await;
         let site = self.content_site(id)?;
-        check_status(&d.status)?;
+        check_draft(&d)?;
         if d.title.as_deref().is_some_and(|t| t.trim().is_empty()) {
             return Err(plain("The title can't be empty."));
         }
@@ -975,6 +1054,65 @@ impl Core {
             }
         }
         Ok(())
+    }
+
+    /// The saved versions of an entry, newest first.
+    pub async fn revisions(&self, id: i64, post_id: i64) -> Result<Vec<Revision>, SiteError> {
+        let _work = self.working().await;
+        self.history_site(id)?;
+        let v = self
+            .call_ability_inner(id, "list-revisions", json!({ "post_id": post_id }))
+            .await?;
+        Ok(v["revisions"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|r| Revision {
+                id: r["id"].as_i64().unwrap_or_default(),
+                date: text(&r["date"]),
+                author: text(&r["author"]),
+                title: text(&r["title"]),
+            })
+            .collect())
+    }
+
+    /// Put a saved version back. The site keeps the current one as a revision first.
+    pub async fn restore_revision(&self, id: i64, revision_id: i64) -> Result<String, SiteError> {
+        let _work = self.working().await;
+        self.history_site(id)?;
+        let out = self
+            .call_ability_inner(
+                id,
+                "restore-revision",
+                json!({ "revision_id": revision_id }),
+            )
+            .await?;
+        Ok(done(&out, "Restored that version."))
+    }
+
+    /// Bring an entry back from the trash. Returns the status the site gave it.
+    pub async fn untrash_post(&self, id: i64, post_id: i64) -> Result<String, SiteError> {
+        let _work = self.working().await;
+        self.untrash_inner(id, post_id).await
+    }
+
+    pub(crate) async fn untrash_inner(&self, id: i64, post_id: i64) -> Result<String, SiteError> {
+        self.history_site(id)?;
+        let out = self
+            .call_ability_inner(id, "untrash-post", json!({ "post_id": post_id }))
+            .await?;
+        Ok(text(&out["status"]))
+    }
+
+    fn history_site(&self, id: i64) -> Result<Site, SiteError> {
+        let site = self.content_site(id)?;
+        match site.mode {
+            Mode::Basic => Err(plain(NEEDS_CM_HISTORY)),
+            Mode::ClassicMonks if !has_tool(&site, "list-revisions") => {
+                Err(plain(OLD_CLASSIC_MONKS))
+            }
+            Mode::ClassicMonks => Ok(site),
+        }
     }
 
     /// One page of the media library, newest first. `images` keeps only images.
@@ -1235,7 +1373,7 @@ mod tests {
                 "page",
                 page.id,
                 Draft {
-                    status: Some("future".into()),
+                    status: Some("trash".into()),
                     ..Default::default()
                 },
             )
@@ -1342,6 +1480,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn entries_are_scheduled_get_fields_and_come_back() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+
+        // A future date with publish schedules it; custom fields are set and read back.
+        let mut d = draft("Winter menu");
+        d.status = Some("publish".into());
+        d.date = Some("2026-12-01 08:00:00".into());
+        d.meta = Some(BTreeMap::from([
+            ("price".into(), json!("12")),
+            ("chef".into(), json!("Ana")),
+        ]));
+        let p = core.create_post(s.id, "post", d).await.unwrap();
+        assert_eq!(
+            (p.status.as_str(), p.date.as_str()),
+            ("future", "2026-12-01 08:00:00")
+        );
+        assert_eq!(p.meta["price"], "12");
+        let edit = Draft {
+            title: Some("Winter menu 2026".into()),
+            meta: Some(BTreeMap::from([("chef".into(), Value::Null)])),
+            ..Default::default()
+        };
+        let p = core.edit_post(s.id, "post", p.id, edit).await.unwrap();
+        assert!(!p.meta.contains_key("chef"));
+
+        // The version before the edit can be put back.
+        let revs = core.revisions(s.id, p.id).await.unwrap();
+        assert_eq!(revs[0].title, "Winter menu");
+        let msg = core.restore_revision(s.id, revs[0].id).await.unwrap();
+        assert_eq!(msg, "Restored the revision.");
+        assert_eq!(
+            core.post(s.id, "post", p.id).await.unwrap().title,
+            "Winter menu"
+        );
+
+        // Out of the trash, as a draft.
+        core.trash_post(s.id, "post", p.id).await.unwrap();
+        assert_eq!(core.untrash_post(s.id, p.id).await.unwrap(), "draft");
+        let err = core.untrash_post(s.id, p.id).await.unwrap_err();
+        assert!(err.to_string().contains("not in the trash"), "{err}");
+    }
+
+    #[tokio::test]
     async fn a_site_that_changes_blocks_while_saving_is_reported() {
         let (_h, core) = core().await;
         let site = TestSite::start().await;
@@ -1411,6 +1594,28 @@ mod tests {
             core.media(s.id, 2, "dot", false).await.unwrap().is_empty(),
             "past the last page"
         );
+
+        // Scheduling works over REST; custom fields and history need Classic Monks.
+        let mut d = draft("Later");
+        d.status = Some("publish".into());
+        d.date = Some("2027-01-05 07:00:00".into());
+        let later = core.create_post(s.id, "post", d).await.unwrap();
+        assert_eq!(
+            (later.status.as_str(), later.date.as_str()),
+            ("future", "2027-01-05 07:00:00")
+        );
+        let fields = Draft {
+            meta: Some(BTreeMap::from([("price".into(), json!("1"))])),
+            ..Default::default()
+        };
+        let e = core
+            .edit_post(s.id, "post", later.id, fields)
+            .await
+            .unwrap_err();
+        assert_eq!(e.to_string(), NEEDS_CM_FIELDS);
+        let e = core.revisions(s.id, later.id).await.unwrap_err();
+        assert_eq!(e.to_string(), NEEDS_CM_HISTORY);
+        core.trash_post(s.id, "post", later.id).await.unwrap();
 
         let mut d = draft("Hello");
         d.body = Some("<p>Hi</p>".into());
@@ -1509,7 +1714,11 @@ mod tests {
         );
 
         // A Bricks page shows as locked in Basic mode too.
-        site.state().posts[0]["builder"] = "bricks".into();
+        site.state()
+            .posts
+            .iter_mut()
+            .find(|x| x["id"] == p.id)
+            .unwrap()["builder"] = "bricks".into();
         assert!(
             core.post(s.id, "post", p.id)
                 .await
@@ -1651,8 +1860,22 @@ mod tests {
             (m.url.as_str(), m.alt.as_str()),
             ("https://c/s.jpg", "The shop")
         );
-        assert!(check_status(&Some("future".into())).is_err());
-        assert!(check_status(&Some("draft".into())).is_ok() && check_status(&None).is_ok());
+        let with = |status: &str, date: &str| Draft {
+            status: Some(status.into()),
+            date: (!date.is_empty()).then(|| date.into()),
+            ..Default::default()
+        };
+        assert!(check_draft(&with("trash", "")).is_err());
+        assert!(check_draft(&with("future", "2026-11-02 09:30:00")).is_ok());
+        for bad in [
+            "2026-11-02",
+            "2026-13-02 09:30:00",
+            "2026-11-02T09:30:00",
+            "2026-11-02 24:00:00",
+        ] {
+            assert!(check_draft(&with("publish", bad)).is_err(), "{bad}");
+        }
+        assert!(check_draft(&Draft::default()).is_ok());
         let u = reqwest::Url::parse("https://x.test/a/photo.jpg?w=2").unwrap();
         assert_eq!(file_name(&u, "image/jpeg"), "photo.jpg");
         let u = reqwest::Url::parse("https://x.test/render").unwrap();

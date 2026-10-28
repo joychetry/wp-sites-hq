@@ -67,6 +67,8 @@ pub struct State {
     /// `{ id, taxonomy, name }`.
     pub terms: Vec<serde_json::Value>,
     pub media: Vec<serde_json::Value>,
+    /// `{ id, post_id, date, title, content }`, oldest first.
+    pub revisions: Vec<serde_json::Value>,
     next_id: i64,
     saves: u32,
     /// Saving rewrites block comments, as a filter on a site might.
@@ -143,6 +145,7 @@ impl Default for State {
             posts: Vec::new(),
             terms: vec![json!({ "id": 1, "taxonomy": "category", "name": "Uncategorized" })],
             media: Vec::new(),
+            revisions: Vec::new(),
             next_id: 100,
             saves: 0,
             mangle_blocks: false,
@@ -901,6 +904,10 @@ const CONTENT_TOOLS: &[(&str, bool)] = &[
     ("create-post", false),
     ("delete-post", false),
     ("import-media-from-url", false),
+    ("get-post-meta", true),
+    ("list-revisions", true),
+    ("restore-revision", false),
+    ("untrash-post", false),
 ];
 
 /// (name, plural, singular, REST base, taxonomies)
@@ -981,17 +988,23 @@ impl State {
                 let id = self.new_id();
                 self.posts.push(json!({
                     "id": id, "type": ty, "title": "", "status": "draft", "content": "",
-                    "date": modified, "terms": {}, "featured": 0, "builder": null,
+                    "date": modified, "terms": {}, "featured": 0, "builder": null, "meta": {},
                 }));
                 id
             }
         };
         let mangle = self.mangle_blocks;
+        let rev = self.new_id();
         let p = self
             .posts
             .iter_mut()
             .find(|p| p["id"] == id)
             .ok_or("Post not found.")?;
+        if !p["title"].as_str().unwrap_or_default().is_empty() {
+            self.revisions.push(json!({
+                "id": rev, "post_id": id, "date": p["modified"], "title": p["title"], "content": p["content"],
+            }));
+        }
         if !f["content"].is_null() && !p["builder"].is_null() {
             return Err(
                 "This page is built with Elementor, which keeps the body in its own data.".into(),
@@ -1012,6 +1025,20 @@ impl State {
         }
         for (tax, ids) in terms {
             p["terms"][tax] = ids;
+        }
+        if let Some(date) = f["date"].as_str() {
+            p["date"] = date.into();
+        }
+        // WordPress schedules a published entry with a date after now.
+        if p["status"] == "publish" && p["date"].as_str().unwrap_or_default() > modified.as_str() {
+            p["status"] = "future".into();
+        }
+        for (k, v) in f["meta"].as_object().into_iter().flatten() {
+            if v.is_null() {
+                p["meta"].as_object_mut().map(|m| m.remove(k));
+            } else {
+                p["meta"][k] = v.clone();
+            }
         }
         p["modified"] = modified.into();
         Ok(id)
@@ -1147,6 +1174,42 @@ fn content_tool(
         "delete-post" => {
             s.save(a["post_id"].as_i64(), "", &json!({ "status": "trash" }))?;
             json!({ "deleted": true, "message": "Post moved to trash." })
+        }
+        "get-post-meta" => json!({ "post_id": a["post_id"], "meta": post(s)?["meta"] }),
+        "list-revisions" => {
+            let list: Vec<_> = s.revisions.iter().rev().filter(|r| r["post_id"] == a["post_id"])
+                .map(|r| json!({ "id": r["id"], "date": r["date"], "author": "Joy", "title": r["title"] }))
+                .collect();
+            json!({ "post_id": a["post_id"], "revisions": list })
+        }
+        "restore-revision" => {
+            let r = s
+                .revisions
+                .iter()
+                .find(|r| r["id"] == a["revision_id"])
+                .cloned()
+                .ok_or("Revision not found.")?;
+            let ty = s
+                .posts
+                .iter()
+                .find(|p| p["id"] == r["post_id"])
+                .ok_or("Post not found.")?["type"]
+                .as_str()
+                .unwrap()
+                .to_string();
+            s.save(
+                r["post_id"].as_i64(),
+                &ty,
+                &json!({ "title": r["title"], "content": r["content"] }),
+            )?;
+            json!({ "post_id": r["post_id"], "revision_id": r["id"], "message": "Restored the revision." })
+        }
+        "untrash-post" => {
+            if post(s)?["status"] != "trash" {
+                return Err("This post is not in the trash.".into());
+            }
+            s.save(a["post_id"].as_i64(), "", &json!({ "status": "draft" }))?;
+            json!({ "post_id": a["post_id"], "status": "draft", "message": "Restored from the trash as a draft." })
         }
         "get-media" => {
             let images = a["mime_type"] == "image";
@@ -1289,7 +1352,8 @@ async fn rest_content(
         (b, id, m) if type_of_base(b).is_some() => {
             let ty = type_of_base(b).unwrap();
             // Core REST fields to Classic Monks' (the store speaks those).
-            let mut f = json!({ "title": json_body["title"], "status": json_body["status"], "content": json_body["content"], "featured_image": json_body["featured_media"], "terms": {} });
+            let mut f = json!({ "title": json_body["title"], "status": json_body["status"], "content": json_body["content"], "featured_image": json_body["featured_media"], "terms": {},
+                "date": json_body["date"].as_str().map(|d| d.replacen('T', " ", 1)) });
             for tax in TYPES.iter().find(|t| t.0 == ty).unwrap().4 {
                 let base = TAXES.iter().find(|t| t.0 == *tax).unwrap().2;
                 if json_body[base].is_array() {

@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use monks_core::activity::{Actor, Entry};
 use monks_core::connect::{Removed, SiteError};
-use monks_core::content::{Draft, Listing, Media, Post, PostType, Query, Term};
+use monks_core::content::{Draft, Listing, Media, Post, PostType, Query, Revision, Term};
 use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
@@ -303,6 +303,44 @@ async fn content_trash(
         &core,
         Some(id),
         &format!("Moved {post_type} {post_id} to the trash"),
+        r,
+    )
+}
+
+#[tauri::command]
+async fn content_revisions(state: State<'_, AppCore>, id: i64, post_id: i64) -> Res<Vec<Revision>> {
+    core(&state)?
+        .revisions(id, post_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The human picked a saved version to put back.
+#[tauri::command]
+async fn content_restore_revision(
+    state: State<'_, AppCore>,
+    id: i64,
+    post_id: i64,
+    revision_id: i64,
+) -> Res<String> {
+    let core = core(&state)?;
+    let r = core.restore_revision(id, revision_id).await;
+    done(
+        &core,
+        Some(id),
+        &format!("Restored an earlier version of entry {post_id}"),
+        r,
+    )
+}
+
+#[tauri::command]
+async fn content_untrash(state: State<'_, AppCore>, id: i64, post_id: i64) -> Res<String> {
+    let core = core(&state)?;
+    let r = core.untrash_post(id, post_id).await;
+    done(
+        &core,
+        Some(id),
+        &format!("Brought entry {post_id} back from the trash"),
         r,
     )
 }
@@ -783,6 +821,9 @@ fn main() {
             content_create,
             content_edit,
             content_trash,
+            content_revisions,
+            content_restore_revision,
+            content_untrash,
             media_list,
             media_import,
             users_list,
