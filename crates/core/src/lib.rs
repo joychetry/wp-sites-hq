@@ -121,6 +121,8 @@ pub struct Core {
     feeds: security::Feeds,
     limits: net::Limits,
     refresh_locks: Mutex<HashMap<(i64, connect::Grant), RefreshLock>>,
+    /// One job at a time changes a site, so one job's safe-update check never sees another's.
+    site_locks: Mutex<HashMap<i64, RefreshLock>>,
     sign_in: Mutex<Option<oneshot::Sender<()>>>,
     changed: broadcast::Sender<Changed>,
     shutdown: Notify,
@@ -153,6 +155,7 @@ impl Core {
             feeds: opts.feeds.clone(),
             limits: net::Limits::default(),
             refresh_locks: Mutex::new(HashMap::new()),
+            site_locks: Mutex::new(HashMap::new()),
             sign_in: Mutex::new(None),
             changed: broadcast::channel(16).0,
             shutdown: Notify::new(),

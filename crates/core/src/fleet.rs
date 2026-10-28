@@ -431,6 +431,7 @@ fn status_word(status: &str) -> &str {
     match status {
         "pending" => "pending review entry",
         "private" => "private entry",
+        "future" => "scheduled entry",
         _ => "draft",
     }
 }
@@ -692,6 +693,10 @@ pub const AGENT_PLAN_ONLY: &str = "An AI agent's plan can only update, roll back
      delete or install (by WordPress.org slug) plugins and themes, and update WordPress or \
      translations. Changes to posts, products and zips are made by a person in the app.";
 
+const UNREADABLE: &str =
+    "This change couldn't be read (another version of Monks Central saved it). Nothing was sent.";
+const STOPPED: &str = "This change stopped unexpectedly. Check the site before trying again.";
+
 fn job_items(conn: &Connection, job: i64) -> rusqlite::Result<Vec<JobItem>> {
     let mut stmt = conn.prepare_cached(
         "SELECT id, site_id, site_name, action, label, from_version, to_version, state, message
@@ -700,16 +705,25 @@ fn job_items(conn: &Connection, job: i64) -> rusqlite::Result<Vec<JobItem>> {
     stmt.query_map([job], |r| {
         let action: String = r.get(3)?;
         let state: String = r.get(7)?;
+        let (action, state, message) = match serde_json::from_str(&action) {
+            Ok(a) => (a, ItemState::parse(&state), r.get(8)?),
+            // Saved by another version, or damaged: it fails, it never runs as something else.
+            Err(_) => (
+                Action::UpdateTranslations,
+                ItemState::Failed,
+                UNREADABLE.to_string(),
+            ),
+        };
         Ok(JobItem {
             id: r.get(0)?,
             site_id: r.get(1)?,
             site_name: r.get(2)?,
-            action: serde_json::from_str(&action).unwrap_or(Action::UpdateTranslations),
+            action,
             label: r.get(4)?,
             from_version: r.get(5)?,
             to_version: r.get(6)?,
-            state: ItemState::parse(&state),
-            message: r.get(8)?,
+            state,
+            message,
         })
     })?
     .collect()
@@ -1108,7 +1122,13 @@ impl Core {
             let core = self.clone();
             let content = items.iter().all(|i| i.action.is_content());
             set.spawn(async move {
+                let lock = core.site_lock(site);
+                let _one_job_per_site = lock.lock().await;
                 for item in items {
+                    if item.state == ItemState::Failed {
+                        core.mark(item.id, ItemState::Failed, &item.message);
+                        continue;
+                    }
                     core.mark(item.id, ItemState::Running, "");
                     let (state, msg) = match core.run_action(site, &item.action).await {
                         Ok(m) => (ItemState::Done, m),
@@ -1136,12 +1156,27 @@ impl Core {
         }
         while set.join_next().await.is_some() {}
         let _ = self.db(|c| {
+            // A site's task that panicked left its changes waiting or running.
+            c.execute(
+                "UPDATE job_items SET state = 'failed', message = ?2
+                 WHERE job_id = ?1 AND state IN ('waiting', 'running')",
+                params![job, STOPPED],
+            )?;
             c.execute(
                 "UPDATE jobs SET finished_at = unixepoch() WHERE id = ?1",
                 [job],
             )
         });
         let _ = self.changed.send(Changed::Jobs);
+    }
+
+    pub(crate) fn site_lock(&self, id: i64) -> Arc<tokio::sync::Mutex<()>> {
+        self.site_locks
+            .lock()
+            .unwrap()
+            .entry(id)
+            .or_default()
+            .clone()
     }
 
     fn mark(&self, item: i64, state: ItemState, message: &str) {
@@ -1972,6 +2007,53 @@ mod tests {
         );
         assert!(!core.inventory_of(s.id).unwrap().unwrap().plugins[0].active);
         assert!(core.start_job("none", vec![]).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn one_job_at_a_time_per_site_and_unreadable_changes_never_run() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+        core.refresh_inventory(s.id).await.unwrap();
+        let deactivate = Change {
+            site_id: s.id,
+            action: Action::DeactivatePlugin { plugin: woo() },
+        };
+        // Another job holds the site: this one waits for it.
+        let lock = core.site_lock(s.id);
+        let held = lock.lock().await;
+        let job = core
+            .start_job("Wait", vec![deactivate.clone()])
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert_eq!(core.job(job.id).unwrap().items[0].state, ItemState::Waiting);
+        drop(held);
+        assert_eq!(wait(&core, job.id).await.items[0].state, ItemState::Done);
+
+        // An agent's plan whose saved change no longer reads fails; nothing is sent.
+        let plan = core.propose_plan("x", vec![deactivate]).unwrap();
+        core.db(|c| {
+            c.execute(
+                "UPDATE job_items SET action = '{\"do\":\"renamed\"}' WHERE job_id = ?1",
+                [plan.id],
+            )
+        })
+        .unwrap();
+        let called = || {
+            site.state()
+                .calls
+                .iter()
+                .filter(|(t, _)| t == "deactivate-plugin")
+                .count()
+        };
+        let calls = called();
+        core.confirm_plan(plan.id).await.unwrap();
+        let done = wait(&core, plan.id).await;
+        assert_eq!(done.items[0].state, ItemState::Failed);
+        assert_eq!(done.items[0].message, UNREADABLE);
+        assert_eq!(called(), calls);
+        assert_eq!(status_word("future"), "scheduled entry");
     }
 
     #[tokio::test]
