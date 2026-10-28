@@ -234,9 +234,12 @@ function Repeater({ f, label, value, error, ctx, onChange }: { f: AcfField; labe
     [ids.current[i], ids.current[i + by]] = [ids.current[i + by], ids.current[i]];
     onChange(moved);
   };
+  const add = useRef<HTMLButtonElement>(null);
   const remove = (i: number) => {
     ids.current.splice(i, 1);
     onChange(rows.filter((_, j) => j !== i));
+    // The pressed button is gone with its row: focus goes to Add a row, not the page.
+    requestAnimationFrame(() => add.current?.focus());
   };
   return (
     <fieldset className="field acf-rows">
@@ -265,7 +268,7 @@ function Repeater({ f, label, value, error, ctx, onChange }: { f: AcfField; labe
         </fieldset>
       ))}
       {error && <small className="err">{error}</small>}
-      <Button small disabled={max > 0 && rows.length >= max} onClick={() => onChange([...rows, Object.fromEntries((f.sub_fields ?? []).map((sf) => [sf.key, sf.settings.default_value ?? ""]))])}>
+      <Button ref={add} small disabled={max > 0 && rows.length >= max} onClick={() => onChange([...rows, Object.fromEntries((f.sub_fields ?? []).map((sf) => [sf.key, sf.settings.default_value ?? ""]))])}>
         <Glyph name="plus" />
         {str(f.settings.button_label) || "Add a row"}
       </Button>

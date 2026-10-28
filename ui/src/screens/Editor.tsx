@@ -342,6 +342,9 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
   const [round, setRound] = useState(0);
   // The same for the ACF fields: after an Undo or a reload their editors show the site's values.
   const [acfRound, setAcfRound] = useState(0);
+  // Opening the page puts focus on its heading, so a screen reader says which entry this is.
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus(), []);
   const cm = site.mode === "classic_monks";
   const canFields = cm && hasTool(site, "get-post-meta");
   const canHistory = cm && hasTool(site, "list-revisions");
@@ -643,7 +646,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
           <Glyph name="arrow" />
           Back to {type.label.toLowerCase()}
         </Button>
-        <h2>
+        <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>
         </h2>
         {dirty && <span className="tag warning">Unsaved changes</span>}

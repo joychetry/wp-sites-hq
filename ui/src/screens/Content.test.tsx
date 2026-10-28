@@ -143,7 +143,7 @@ test("the editor changes only edited text blocks and keeps the others", async ()
   const calls = core();
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
-  expect(await screen.findByRole("heading", { name: "Edit page on Alpha" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Edit page on Alpha" })).toHaveFocus();
   expect(screen.queryByRole("dialog")).toBeNull();
   const blocks = await screen.findByRole("list", { name: "Blocks" });
   expect(within(blocks).getByText("Kept as is")).toBeInTheDocument();

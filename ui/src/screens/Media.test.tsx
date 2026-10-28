@@ -237,3 +237,9 @@ test("the picker uses a library image, or uploads a new one and uses it", async 
   fireEvent.click(screen.getByRole("button", { name: "Upload and use it" }));
   await waitFor(() => expect(pick).toHaveBeenLastCalledWith(expect.objectContaining({ title: "cake", alt: "A cake" })));
 });
+
+test("the picker says out loud when the library can't be read", async () => {
+  core({ media_list: () => Promise.reject("The site didn't answer.") });
+  render(<MediaPicker site={CM} onPick={() => {}} onCancel={() => {}} />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("The site didn't answer.");
+});

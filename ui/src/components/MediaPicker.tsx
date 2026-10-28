@@ -132,7 +132,7 @@ export function MediaPicker({ site, kind = "image", use = "Use", cancel = "Cance
           Search
         </Button>
       </form>
-      {error && <p className="alert danger">{error}</p>}
+      {error && <p className="alert danger" role="alert">{error}</p>}
       {!items && !error && <p role="status">Reading the media library…</p>}
       {items?.length === 0 && <p>{search ? "Nothing matches. Try other words." : "The media library has no images yet. Upload one below."}</p>}
       {items && items.length > 0 && (

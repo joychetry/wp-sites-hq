@@ -101,7 +101,7 @@ test("the editor checks ACF's rules first, saves the fields, and Undo puts them 
   await waitFor(() => expect(screen.getByRole("textbox", { name: "Wysiwyg" })).toHaveValue(String(field("wysiwyg").value)));
 });
 
-test("a repeater row's editors move with the row, and Remove takes that row's text away", () => {
+test("a repeater row's editors move with the row, and Remove takes that row's text away", async () => {
   const sub = (key: string, type: string, label: string): AcfField => ({ key, name: key, label, type, instructions: "", required: false, editable: true, settings: {} });
   const rep: AcfField = { ...sub("field_r", "repeater", "Notes"), sub_fields: [sub("field_w", "wysiwyg", "Words")] };
   const acf: Acf = { post_id: 7, groups: [{ key: "g", title: "Rows", fields: [{ ...rep, value: [{ field_w: "First" }, { field_w: "Second" }] }] }], refs: { media: {}, posts: {}, terms: {}, users: {} } };
@@ -119,4 +119,5 @@ test("a repeater row's editors move with the row, and Remove takes that row's te
   expect(last).toEqual([{ field_w: "Second, edited" }, { field_w: "First" }]);
   fireEvent.click(screen.getByRole("button", { name: "Remove row 1" }));
   expect(words()).toEqual(["First"]);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Add a row" })).toHaveFocus());
 });

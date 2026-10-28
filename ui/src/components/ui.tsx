@@ -83,6 +83,7 @@ type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   kind?: "primary" | "danger" | "soft";
   small?: boolean;
   keys?: string;
+  ref?: React.Ref<HTMLButtonElement>;
 };
 
 export function Button({ kind, small, keys, className, children, ...rest }: BtnProps) {
