@@ -29,6 +29,8 @@ pub struct State {
     pub revoked: usize,
     pub refresh: Refresh,
     pub mcp_off: bool,
+    /// Where the sign-in server says its token endpoint is, if not its own.
+    pub token_endpoint: Option<String>,
     /// What `get-hq-status` and core REST report.
     pub wp_version: String,
     /// What the feed's generator says; `None` hides it, as many sites do.
@@ -133,6 +135,7 @@ impl Default for State {
             revoked: 0,
             refresh: Refresh::Normal,
             mcp_off: false,
+            token_endpoint: None,
             wp_version: "7.1.3".into(),
             feed_version: Some("7.1.3".into()),
             no_hq: false,
@@ -371,12 +374,15 @@ async fn protected_resource(Ax(s): Ax<Shared>) -> Response {
 }
 
 async fn server_metadata(Ax(s): Ax<Shared>) -> Response {
-    let base = s.lock().unwrap().base.clone();
+    let (base, token) = {
+        let s = s.lock().unwrap();
+        (s.base.clone(), s.token_endpoint.clone())
+    };
     let o = format!("{base}/wp-json/classic-monks/v1/oauth");
     Json(json!({
         "issuer": base,
         "authorization_endpoint": format!("{o}/authorize"),
-        "token_endpoint": format!("{o}/token"),
+        "token_endpoint": token.unwrap_or(format!("{o}/token")),
         "registration_endpoint": format!("{o}/register"),
         "revocation_endpoint": format!("{o}/revoke"),
         "code_challenge_methods_supported": ["S256"],

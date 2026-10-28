@@ -89,6 +89,7 @@ pub async fn discover(
         .ok_or_else(|| site_err("The site's sign-in details name no sign-in server."))?
         .trim_end_matches('/')
         .to_string();
+    on_site(site, &issuer)?;
     let meta_url = format!("{issuer}/.well-known/oauth-authorization-server");
     let reply = net::send(limits, key, Retry::ReadOnly, || http.get(&meta_url)).await?;
     let meta: ServerMetadata = reply
@@ -109,6 +110,18 @@ pub async fn discover(
             "The site's sign-in server doesn't support PKCE (S256). Update Classic Monks.",
         ));
     }
+    for addr in [
+        Some(&pr.resource),
+        Some(&meta.authorization_endpoint),
+        Some(&meta.token_endpoint),
+        meta.registration_endpoint.as_ref(),
+        meta.revocation_endpoint.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        on_site(site, addr)?;
+    }
     Ok(Some(Discovery {
         resource: pr.resource,
         resource_name: pr.resource_name,
@@ -118,6 +131,22 @@ pub async fn discover(
         registration_endpoint: meta.registration_endpoint,
         revocation_endpoint: meta.revocation_endpoint,
     }))
+}
+
+/// Every sign-in and MCP address stays on the site's own host (https may stand in for
+/// http), so a site's details can't send codes, tokens or the browser anywhere else.
+fn on_site(site: &Url, addr: &str) -> Result<(), OAuthError> {
+    let ok = Url::parse(addr).is_ok_and(|u| {
+        u.host_str() == site.host_str() && (u.origin() == site.origin() || u.scheme() == "https")
+    });
+    if ok {
+        Ok(())
+    } else {
+        Err(site_err(
+            "The site's sign-in details point to another address. Check the site's address, \
+             and that WordPress knows it runs on HTTPS.",
+        ))
+    }
 }
 
 /// RFC 7591. Classic Monks registration is stateless, so a retry is harmless.
@@ -576,11 +605,10 @@ mod tests {
             "a timeout may have rotated: {err}"
         );
 
-        let closed = TcpListener::bind("127.0.0.1:0")
-            .await
-            .unwrap()
-            .local_addr()
-            .unwrap();
+        // Bound but never listening, so the port stays closed and no other test takes it.
+        let socket = tokio::net::TcpSocket::new_v4().unwrap();
+        socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+        let closed = socket.local_addr().unwrap();
         let err = refresh(
             &http,
             &limits,
@@ -631,6 +659,25 @@ mod tests {
             .await
             .unwrap();
         assert!(d.is_none());
+    }
+
+    #[tokio::test]
+    async fn sign_in_addresses_stay_on_the_site() {
+        let site = TestSite::start().await;
+        let url = Url::parse(&site.url).unwrap();
+        let http = crate::net::client().unwrap();
+        for addr in [
+            "http://192.168.1.1/token",
+            "smb://127.0.0.1/x",
+            "file:///etc/passwd",
+        ] {
+            site.state().token_endpoint = Some(addr.into());
+            let err = discover(&http, &Limits::default(), &url).await.unwrap_err();
+            assert!(err.to_string().contains("another address"), "{addr}: {err}");
+        }
+        let host = url.host_str().unwrap();
+        site.state().token_endpoint = Some(format!("https://{host}/token"));
+        assert!(discover(&http, &Limits::default(), &url).await.is_ok());
     }
 
     #[test]
