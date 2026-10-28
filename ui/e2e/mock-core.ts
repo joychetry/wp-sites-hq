@@ -505,7 +505,7 @@ function dayOf(id: number, over: Partial<Monitor>): Monitor["day"] {
   if (over.uptime_day === null) return Array(24).fill(null);
   const base = over.up === false ? 520 : (over.ms ?? 640);
   const downFrom = over.up === false ? 22 : over.uptime_day != null && over.uptime_day < 100 ? 23 : 24;
-  return Array.from({ length: 24 }, (_, h) => (h >= downFrom ? { ms: null, up: false } : { ms: Math.round(base * (1 + 0.12 * Math.sin(h * 0.9 + id))), up: true }));
+  return Array.from({ length: 24 }, (_, h) => (h >= downFrom ? { ms: null, up: false } : { ms: Math.round(base * (1 + 0.05 * Math.sin(h * 0.6 + id) + 0.03 * Math.sin(h * 2.1 + id * 3))), up: true }));
 }
 
 let MONITORS: Monitor[] =

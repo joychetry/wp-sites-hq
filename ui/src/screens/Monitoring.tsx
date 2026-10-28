@@ -282,8 +282,9 @@ export function Monitoring({ sites, monitors }: Props) {
 export function Day({ day, label }: { day: Monitor["day"]; label: string }) {
   const W = 112, H = 26, step = W / 23;
   const ms = day.flatMap((h) => (h?.ms != null ? [h.ms] : []));
-  const top = Math.max(...ms, 1), low = Math.min(...ms, top);
-  const y = (v: number) => (top === low ? H / 2 : 3 + (H - 6) * (1 - (v - low) / (top - low)));
+  // Padded around the day's range, so an ordinary day reads as the design's calm line, not a zigzag.
+  const top = Math.max(...ms, 1) * 1.3, low = Math.min(...ms, top) * 0.7;
+  const y = (v: number) => 3 + (H - 6) * (1 - (v - low) / (top - low || 1));
   // A line through the hours with a time; a gap where none was taken.
   const path = day.map((h, i) => (h?.ms != null ? `${i && day[i - 1]?.ms != null ? "L" : "M"}${(i * step).toFixed(1)} ${y(h.ms).toFixed(1)}` : "")).join("");
   return (

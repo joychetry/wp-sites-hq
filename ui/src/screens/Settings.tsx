@@ -370,9 +370,9 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
               />
             </div>
             <div className="field">
-              <span>Row height</span>
+              <span>Density</span>
               <Choice
-                label="Row height"
+                label="Density"
                 value={density}
                 onChange={setDensity}
                 options={[

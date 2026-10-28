@@ -1,5 +1,5 @@
 /* Settings (board 17, D09): two columns of cards, each with an icon in its head. */
-.setpage > .g2 { max-width: 1120px; align-items: start; }
+.setpage > .g2 { max-width: 1040px; align-items: start; }
 .setpage .card-head h2 .glyph { width: 16px; height: 16px; color: var(--text-2); }
 .setpage .card-body .field { margin: 0; }
 .setpage .segmented .glyph { width: 14px; height: 14px; }
