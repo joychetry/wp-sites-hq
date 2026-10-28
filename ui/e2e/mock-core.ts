@@ -1,6 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
-import type { Action, ActivityRow, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, AppSettings, ReportAsk, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -321,6 +321,8 @@ const post = (id: number, post_type: string, title: string, status: string, over
   locked: null,
   ...over,
 });
+let APP: AppSettings = { report_name: "Studio North", report_footer: "hello@studio-north.test", report_accent: "#1f6feb", white_label: false, search_console: false, agentedseo: false };
+let GSC = { on: false, client: false, connected: false };
 const product = (id: number, name: string, regular_price: string, sale_price: string, stock_status: string, stock_quantity: number | null, sku = "", type = "simple"): Product => ({
   id, name, type, status: "publish", sku, price: sale_price || regular_price, regular_price, sale_price, stock_status, manage_stock: stock_quantity != null, stock_quantity, permalink: `https://mc-a.local/product/${id}`,
 });
@@ -556,6 +558,37 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       await new Promise((ok) => setTimeout(ok, 300));
       return r(POSTS.find((p) => p.id === args.postId) ?? post(99, args.postType as string, "New entry", "draft"));
     case "content_trash":
+      return r(null);
+    case "app_settings_get":
+      return r(APP);
+    case "app_settings_save":
+      APP = args.settings as AppSettings;
+      GSC = { ...GSC, on: APP.search_console };
+      return r(APP);
+    case "gsc_status":
+      return r(GSC);
+    case "gsc_set_client":
+      GSC = { ...GSC, client: true };
+      return r(GSC);
+    case "gsc_connect":
+      await new Promise((ok) => setTimeout(ok, 300));
+      GSC = { ...GSC, connected: true };
+      return r(GSC);
+    case "gsc_forget":
+      GSC = { ...GSC, client: false, connected: false };
+      return r(GSC);
+    case "report_make": {
+      await new Promise((ok) => setTimeout(ok, 400));
+      const ask = args.ask as ReportAsk;
+      const own = ask.site_ids.length ? sites.filter((s) => ask.site_ids.includes(s.id)) : sites.filter((s) => s.client_id === ask.client_id);
+      const who = CLIENTS.find((c) => c.id === ask.client_id)?.name ?? "Website report";
+      const preview = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${who}</title><style>body{font:15px/1.5 system-ui;max-width:760px;margin:40px auto;padding:0 24px;color:#1b1b1b}h2{color:#1f6feb;border-top:2px solid #1f6feb;padding-top:16px}dl{display:grid;grid-template-columns:200px 1fr}dt{color:#555}dd{margin:0}</style></head><body><p style="color:#1f6feb;font-weight:600">Studio North</p><h1>${who}: ${ask.month}</h1>${own
+        .map((s) => `<h2>${s.name}</h2><p>${s.url}</p><dl><dt>Uptime</dt><dd>99.95% (2,880 checks)</dd><dt>Changes made</dt><dd>6</dd><dt>Security</dt><dd>No known problems</dd></dl><h3>Work done</h3><ul><li>Update WooCommerce to 10.3.0</li><li>Publish “Autumn menu”</li></ul>`)
+        .join("")}<footer>hello@studio-north.test. Made with Monks Central</footer></body></html>`;
+      const stem = who.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      return r({ html: `/home/you/Downloads/${stem}-report-${ask.month}.html`, pdf: `/home/you/Downloads/${stem}-report-${ask.month}.pdf`, preview, sites: own.length, notes: ["Corner Bakery: store: The site didn't answer within 20 seconds."] });
+    }
+    case "file_open":
       return r(null);
     case "store_overview":
       return r({

@@ -1,6 +1,7 @@
-// Settings: how the app looks (remembered on this computer), and your site list in and out.
-import { useState } from "react";
-import { api, type Imported } from "../api";
+// Settings: how the app looks (remembered on this computer), how reports look,
+// Search Console and AgentedSEO, and your site list in and out.
+import { useEffect, useState } from "react";
+import { api, type AppSettings, type GscStatus, type Imported } from "../api";
 import { Button } from "../components/ui";
 import type { Density, ThemeChoice } from "../theme";
 
@@ -75,6 +76,123 @@ function YourData() {
   );
 }
 
+/** Report branding, and the search numbers reports may add. Both integrations start off. */
+function Reports() {
+  const [s, setS] = useState<AppSettings | null>(null);
+  const [gsc, setGsc] = useState<GscStatus | null>(null);
+  const [client, setClient] = useState({ id: "", secret: "" });
+  const [note, setNote] = useState<{ tone: "ok" | "danger"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.appSettings().then(setS, (e) => setNote({ tone: "danger", text: String(e) }));
+    api.gscStatus().then(setGsc, () => {});
+  }, []);
+  if (!s) return null;
+  const run = async (what: () => Promise<unknown>, done: string) => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await what();
+      setNote({ tone: "ok", text: done });
+    } catch (e) {
+      setNote({ tone: "danger", text: String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const save = (next: AppSettings, done = "Saved.") =>
+    run(async () => {
+      setS(await api.saveAppSettings(next));
+      setGsc(await api.gscStatus());
+    }, done);
+  return (
+    <>
+      <section>
+        <h2>Reports</h2>
+        <p>How monthly reports for your clients look. Leave the name empty to show none.</p>
+        <label className="field">
+          <span>Your business name</span>
+          <input className="input" value={s.report_name} onChange={(e) => setS({ ...s, report_name: e.target.value })} />
+        </label>
+        <label className="field">
+          <span>Line at the bottom of each page</span>
+          <input className="input" placeholder="hello@yourstudio.com, +44 20 7946 0000" value={s.report_footer} onChange={(e) => setS({ ...s, report_footer: e.target.value })} />
+        </label>
+        <div className="row">
+          <label className="field">
+            <span>Accent colour</span>
+            <input className="input sm" placeholder="#1f6feb" value={s.report_accent} onChange={(e) => setS({ ...s, report_accent: e.target.value })} />
+          </label>
+          <input type="color" aria-label="Pick the accent colour" value={/^#[0-9a-f]{6}$/i.test(s.report_accent) ? s.report_accent : "#111111"} onChange={(e) => setS({ ...s, report_accent: e.target.value })} />
+        </div>
+        <label className="row check">
+          <input type="checkbox" checked={s.white_label} onChange={(e) => setS({ ...s, white_label: e.target.checked })} />
+          <span>White label: leave out &ldquo;Made with Monks Central&rdquo;</span>
+        </label>
+        <Button small kind="primary" disabled={busy} onClick={() => save(s)}>
+          Save report settings
+        </Button>
+      </section>
+      <section>
+        <h2>Search numbers in reports</h2>
+        <p>Both are off until you turn them on. Nothing is sent to Google while Search Console is off.</p>
+        <label className="row check">
+          <input type="checkbox" checked={s.agentedseo} disabled={busy} onChange={(e) => save({ ...s, agentedseo: e.target.checked }, e.target.checked ? "AgentedSEO numbers go into reports for sites that have it." : "AgentedSEO is off.")} />
+          <span>Read SEO numbers from AgentedSEO on sites that have it</span>
+        </label>
+        <label className="row check">
+          <input type="checkbox" checked={s.search_console} disabled={busy} onChange={(e) => save({ ...s, search_console: e.target.checked }, e.target.checked ? "Search Console is on. Add your Google client next." : "Search Console is off.")} />
+          <span>Add Google Search Console clicks and searches to reports</span>
+        </label>
+        {s.search_console && gsc && (
+          <div className="indent">
+            <p className="dim">
+              {gsc.connected
+                ? "Your Google account is connected, read only."
+                : gsc.client
+                  ? "Your Google client is saved. Connect your Google account next."
+                  : "Make an OAuth client of the Desktop app type in Google Cloud, with the Search Console API turned on, then paste its ID and secret here. They stay in this computer's keychain."}
+            </p>
+            {!gsc.client && (
+              <>
+                <label className="field">
+                  <span>Client ID</span>
+                  <input className="input" autoComplete="off" value={client.id} onChange={(e) => setClient({ ...client, id: e.target.value })} />
+                </label>
+                <label className="field">
+                  <span>Client secret</span>
+                  <input className="input" type="password" autoComplete="off" value={client.secret} onChange={(e) => setClient({ ...client, secret: e.target.value })} />
+                </label>
+              </>
+            )}
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              {!gsc.client && (
+                <Button small disabled={busy || !client.id.trim() || !client.secret.trim()} onClick={() => run(async () => setGsc(await api.gscSetClient(client.id, client.secret)), "Saved your Google client.")}>
+                  Save the client
+                </Button>
+              )}
+              {gsc.client && !gsc.connected && (
+                <Button small kind="primary" disabled={busy} onClick={() => run(async () => setGsc(await api.gscConnect()), "Connected to Search Console.")}>
+                  Connect your Google account
+                </Button>
+              )}
+              {gsc.client && (
+                <Button small disabled={busy} onClick={() => run(async () => setGsc(await api.gscForget()), "Removed the Google client and sign-in from this computer.")}>
+                  Remove the Google client
+                </Button>
+              )}
+            </div>
+            {busy && !gsc.connected && gsc.client && <p className="dim">Finish signing in to Google in your browser.</p>}
+          </div>
+        )}
+        <div role="status" className="notice">
+          {note && <p className={`alert ${note.tone}`}>{note.text}</p>}
+        </div>
+      </section>
+    </>
+  );
+}
+
 function Choice<T extends string>({ label, value, options, onChange }: {
   label: string;
   value: T;
@@ -130,6 +248,7 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
             ]}
           />
         </section>
+        <Reports />
         <YourData />
       </div>
     </div>

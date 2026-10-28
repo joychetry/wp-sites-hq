@@ -22,6 +22,7 @@ import { Monitoring } from "./screens/Monitoring";
 import { Clients } from "./screens/Clients";
 import { Search } from "./screens/Search";
 import { Store } from "./screens/Store";
+import { Reports } from "./screens/Reports";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -38,7 +39,6 @@ const GROUPS = [
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 // Search is reached from the palette, not the rail.
 type Section = (typeof SECTIONS)[number] | "Search";
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "Clients", "Store", "AI", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -124,7 +124,7 @@ export default function App() {
   };
 
   const commands: Command[] = [
-    ...BUILT.map((s) => ({ id: `go-${s}`, group: "Go to", label: s, run: () => setSection(s) })),
+    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Go to", label: s, run: () => setSection(s) })),
     { id: "add", group: "Actions", label: "Add a site", keys: "A", run: () => setAdding({}) },
     { id: "check", group: "Actions", label: "Check all sites now", run: checkAll },
     {
@@ -249,6 +249,8 @@ export default function App() {
     body = <Clients sites={all} />;
   } else if (section === "Store") {
     body = <Store sites={scoped} onPlan={plan} />;
+  } else if (section === "Reports") {
+    body = <Reports sites={scoped} />;
   } else if (section === "Search") {
     body = (
       <Search
@@ -261,16 +263,8 @@ export default function App() {
     );
   } else if (section === "AI") {
     body = <Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
-  } else if (section === "Settings") {
-    body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   } else {
-    body = (
-      <div className="empty">
-        <h2>{section} is coming soon.</h2>
-        <p>It arrives in a later version of Monks Central. Your sites, their health and their versions are on Sites.</p>
-        <Button onClick={() => setSection("Sites")}>Go to Sites</Button>
-      </div>
-    );
+    body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   }
 
   return (
@@ -309,7 +303,7 @@ export default function App() {
                 <li key={s}>
                   <button
                     type="button"
-                    className={`navitem ${BUILT.includes(s) ? "" : "later"}`}
+                    className="navitem"
                     aria-current={s === section ? "page" : undefined}
                     onClick={() => setSection(s)}
                   >
@@ -336,7 +330,6 @@ export default function App() {
                         <span className="sr-only"> waiting</span>
                       </span>
                     )}
-                    {!BUILT.includes(s) && <span className="n">Soon</span>}
                   </button>
                 </li>
               ))}

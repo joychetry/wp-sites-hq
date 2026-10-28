@@ -10,6 +10,8 @@ for (const s of SCREENS) {
       test(`axe: ${s.name}, ${theme}, ${density}`, async ({ page }) => {
         await show(page, s, theme, density);
         const { violations } = await new AxeBuilder({ page })
+          // The report preview runs no scripts, so axe can't go inside it.
+          .exclude("iframe.preview")
           .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
           .analyze();
         const bad = violations
@@ -243,6 +245,17 @@ test("a product's stock is changed from the keyboard, ending at the confirm step
   await expect(page.getByRole("button", { name: "Change \u201cSourdough loaf\u201d: stock 30" })).toBeVisible();
 });
 
+test("a monthly report is made and opened from the keyboard", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "reports")!, "light");
+  await page.getByRole("button", { name: "Make the report" }).focus();
+  await page.keyboard.press("Enter");
+  const pdf = page.getByRole("button", { name: "Open the PDF" });
+  await expect(pdf).toBeVisible();
+  await pdf.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTitle("Report preview")).toBeVisible();
+});
+
 test("AI agent access is turned on from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-access")!, "light");
   await page.getByRole("button", { name: "Turn on access for Portfolio" }).focus();
@@ -268,7 +281,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search", "store", "store-change", "classic-monks-reports"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search", "store", "store-change", "classic-monks-reports", "reports", "reports-made", "settings-search-console"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);

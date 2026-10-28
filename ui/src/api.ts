@@ -106,6 +106,9 @@ export type CmReports = {
   two_factor: { stats: { total_users: number; users_with_2fa: number }; enforcement: { enabled: boolean; roles: string[] }; roles: { role: string; users: number; with_2fa: number; enforced: boolean }[] } | null;
   failed: [string, string][];
 };
+export type ReportAsk = { client_id: number | null; site_ids: number[]; month: string };
+export type SavedReport = { html: string; pdf: string; preview: string; sites: number; notes: string[] };
+export type GscStatus = { on: boolean; client: boolean; connected: boolean };
 export type Imported = { sites: number; clients: number; costs: number; not_connected: string[] };
 
 export type Removed = { signed_out: boolean; message: string };
@@ -424,6 +427,12 @@ export const api = {
   products: (id: number, query: ProductQuery) => invoke<Products>("store_products", { id, query }),
   storeOverview: (id: number, days: number) => invoke<StoreOverview>("store_overview", { id, days }),
   cmReports: (id: number, days: number) => invoke<CmReports>("cm_reports", { id, days }),
+  makeReport: (ask: ReportAsk) => invoke<SavedReport>("report_make", { ask }),
+  openFile: (path: string) => invoke<void>("file_open", { path }),
+  gscStatus: () => invoke<GscStatus>("gsc_status"),
+  gscSetClient: (id: string, secret: string) => invoke<GscStatus>("gsc_set_client", { id, secret }),
+  gscConnect: () => invoke<GscStatus>("gsc_connect"),
+  gscForget: () => invoke<GscStatus>("gsc_forget"),
 };
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */

@@ -42,8 +42,23 @@ export const SCREENS: Screen[] = [
   },
   { name: "palette", open: (page) => page.keyboard.press("Control+k") },
   { name: "settings", open: nav("Settings") },
-  { name: "later", open: nav("Reports") },
-  { name: "store", open: (page) => nav("Store")(page).then(() => page.getByRole("table", { name: "Products" }).waitFor()) },
+  { name: "reports", open: nav("Reports") },
+  {
+    name: "reports-made",
+    open: async (page) => {
+      await nav("Reports")(page);
+      await page.getByRole("button", { name: "Make the report" }).click();
+      await page.getByRole("button", { name: "Open the PDF" }).waitFor();
+    },
+  },
+  {
+    name: "settings-search-console",
+    open: async (page) => {
+      await nav("Settings")(page);
+      await page.getByRole("checkbox", { name: /Google Search Console/ }).check();
+      await page.getByRole("textbox", { name: "Client ID" }).waitFor();
+    },
+  },  { name: "store", open: (page) => nav("Store")(page).then(() => page.getByRole("table", { name: "Products" }).waitFor()) },
   {
     name: "store-change",
     open: async (page) => {
