@@ -48,3 +48,11 @@ Updates for Monks Central), so staying current is one click.
 - The installers are not code-signed yet (see [the install guide](https://github.com/joychetry/monks-central/blob/main/docs/install.md)).
   Download them only from the GitHub releases page.
 - The Windows named-pipe owner check is written but not yet tested on Windows.
+- Dependabot alert 1 (GHSA-wrw7-89jp-8q8g, glib before 0.20: unsound
+  `VariantStrIter` iterators) stays open. glib 0.18 comes in through Tauri's
+  Linux stack (gtk 0.18, webkit2gtk 2.0, wry, tao, muda, tray-icon), and Tauri
+  2.12.5, the newest Tauri 2, requires `gtk ^0.18`, which requires `glib ^0.18`;
+  `cargo update -p glib --precise 0.20.0` fails on that. It is Linux only (the
+  macOS and Windows builds don't contain glib), and neither our code nor
+  Tauri's crates call `VariantStrIter` (grep over `crates/` and the Tauri, wry,
+  tao, gtk and webkit2gtk sources). It moves when Tauri moves off gtk 0.18.
