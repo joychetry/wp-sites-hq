@@ -42,6 +42,8 @@
 //!                       the consent form with "operator" left unticked
 //!   agent-access-off <url>
 //!   plans | log        agents' plans waiting for a person; Monks Central's activity log
+//!   confirm-plan <id> | decline-plan <id>  the person's Confirm or Decline, as the window
+//!                       does; confirm waits for the job
 //!   security [url]     scan one site (or all) for vulnerabilities, abandoned plugins
 //!                      and changed files, and print what each scan found
 //!   monitors           load every home page, look up domains, print each site's monitors
@@ -393,6 +395,16 @@ async fn main() -> Res<()> {
             Ok(())
         }
         "plans" => show(&core.waiting_plans()?),
+        "confirm-plan" => {
+            let job = core.confirm_plan(arg(1)?.parse()?).await?;
+            print_job(&wait(&core, job.id).await?);
+            Ok(())
+        }
+        "decline-plan" => {
+            let job = core.decline_plan(arg(1)?.parse()?)?;
+            println!("declined \"{}\"", job.title);
+            Ok(())
+        }
         "security" => {
             match args.get(1) {
                 Some(url) => drop(core.scan_security(site_id(&core, url)?).await?),
