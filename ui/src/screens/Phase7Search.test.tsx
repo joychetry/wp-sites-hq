@@ -98,4 +98,7 @@ test("a post found opens in the editor from the results", async () => {
   expect(await screen.findByRole("heading", { name: "Edit post on Alpha" })).toBeInTheDocument();
   expect(screen.getByText("Opening it…")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("content_types", { id: 1 });
+  // Back goes to the results it came from, and says so.
+  fireEvent.click(screen.getByRole("button", { name: "Back to the results" }));
+  expect(await screen.findByRole("button", { name: "Edit Menu news on Alpha" })).toBeInTheDocument();
 });

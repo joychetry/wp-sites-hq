@@ -309,9 +309,10 @@ function Box({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-type Props = { site: Site; type: PostType; postId?: number; onClose: () => void; onSaved: (message: string, undo?: () => Promise<unknown>) => void };
+// `back` names where the back button goes, when that isn't the list of this type.
+type Props = { site: Site; type: PostType; postId?: number; back?: string; onClose: () => void; onSaved: (message: string, undo?: () => Promise<unknown>) => void };
 
-export function Editor({ site, type, postId, onClose, onSaved }: Props) {
+export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
   const isNew = postId == null;
   const [post, setPost] = useState<Post | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -595,7 +596,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         <div className="ed-top">
           <Button onClick={onClose}>
             <Glyph name="arrow" />
-            Back to {type.label.toLowerCase()}
+            {back ?? `Back to ${type.label.toLowerCase()}`}
           </Button>
         </div>
         <div className="empty" role="alert">
@@ -651,7 +652,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
       <div className="ed-top">
         <Button onClick={leave}>
           <Glyph name="arrow" />
-          Back to {type.label.toLowerCase()}
+          {back ?? `Back to ${type.label.toLowerCase()}`}
         </Button>
         <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>

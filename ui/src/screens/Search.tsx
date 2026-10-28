@@ -126,6 +126,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
         site={editing.site}
         type={editing.type}
         postId={editing.id}
+        back="Back to the results"
         onClose={() => setEditing(null)}
         onSaved={(msg, undo) =>
           toast(msg, undo ? { undo: () => undo().then(() => toast(`Brought it back from the trash on ${editing.site.name}.`), (e) => toast(String(e), { tone: "danger" })) } : undefined)
