@@ -30,7 +30,7 @@ test("Classic Monks waits for the browser and can be cancelled", async () => {
   expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("This is my Monks Central app (operator)");
   fireEvent.change(screen.getByRole("textbox", { name: "Site address" }), { target: { value: "https://mc-a.local" } });
   fireEvent.click(screen.getByRole("button", { name: /Open the sign-in page/ }));
-  expect(await screen.findByRole("status")).toHaveTextContent("Waiting for you in the browser");
+  expect(await screen.findByText("Waiting for you in the browser")).toHaveAttribute("role", "status");
   fireEvent.click(screen.getByRole("button", { name: "Cancel the sign-in" }));
   expect(mockInvoke).toHaveBeenCalledWith("sign_in_cancel");
   expect(onClose).toHaveBeenCalled();

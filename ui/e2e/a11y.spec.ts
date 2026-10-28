@@ -359,3 +359,27 @@ test("text grows with the browser's text size", async ({ page }) => {
   expect(await at(16)).toBe(13);
   expect(await at(24)).toBe(19.5);
 });
+
+test("results never move the rows: ticking sites, a check, a feature and its Undo", async ({ page }) => {
+  const y = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!.y;
+  await show(page, SCREENS.find((s) => s.name === "sites")!, "light");
+  const portfolio = page.getByRole("checkbox", { name: "Select Portfolio" });
+  const before = await y(portfolio);
+  await page.getByRole("checkbox", { name: "Select MC A" }).click();
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
+  expect(await y(portfolio)).toBe(before);
+  await portfolio.click();
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 selected");
+  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /Check now/ }).click();
+  expect(await y(portfolio)).toBe(before);
+
+  await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
+  const first = page.getByRole("button", { name: /^Turn (on|off) / }).first();
+  const top = await y(first);
+  await page.getByRole("button", { name: "Turn on SVG Support" }).click();
+  await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
+  expect(await y(first)).toBe(top);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.getByText(/^Undone: Turned on SVG Support/)).toBeVisible();
+  expect(await y(first)).toBe(top);
+});

@@ -99,7 +99,7 @@ textarea.input { height: auto; min-height: 56px; padding: var(--sp-2) var(--sp-2
 .legend { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin: 0; padding: var(--sp-2) var(--pad); font-size: var(--fs-sm); color: var(--text-2); border-bottom: 1px solid var(--line); }
 .legend .ico { width: 12px; height: 12px; }
 .t .cut { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-.selbar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--pad); background: var(--sel); border-bottom: 1px solid var(--line); }
+.selbar { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--pad); background: var(--sel); border-top: 1px solid var(--line-ui); box-shadow: var(--shadow-pop); }
 .selbar b { font-weight: 600; margin-right: var(--sp-2); }
 
 /* Dense tables */

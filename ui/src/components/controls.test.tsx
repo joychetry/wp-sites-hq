@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { Combobox, ColorInput, DateInput, Menu, MultiSelect, NumberInput, parseDate, parseTime, SearchInput, Select, Slider, Tabs, TagInput } from "./controls";
-import { Toaster, Tooltips, toast } from "./feedback";
+import { Tooltips, toast } from "./feedback";
 
 function Pick({ start = "b", onChange = () => {} }: { start?: string; onChange?: (v: string) => void }) {
   const [v, setV] = useState(start);
@@ -243,7 +243,6 @@ test("tabs: one Tab stop, arrows choose", () => {
 
 test("toast: says it in a live region, Undo runs once and closes it", () => {
   let undone = 0;
-  render(<Toaster />);
   act(() => {
     toast("Moved to the trash.", { undo: () => undone++ });
   });

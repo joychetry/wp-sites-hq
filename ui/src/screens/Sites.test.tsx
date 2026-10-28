@@ -1,7 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Sites } from "./Sites";
-import { Toaster } from "../components/feedback";
 import { site } from "../test-fixtures";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -125,10 +124,7 @@ test("deleting a note offers Undo, which writes it again", async () => {
   mockInvoke.mockResolvedValue(undefined);
   const noted = [{ ...SITES[0], notes: [{ id: 7, body: "Renews in March", added_at: 0 }] }, ...SITES.slice(1)];
   render(
-    <>
-      <Sites sites={noted} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />
-      <Toaster />
-    </>,
+    <Sites sites={noted} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />,
   );
   fireEvent.click(screen.getByRole("button", { name: "Delete note" }));
   expect(await screen.findByText("Deleted the note on Alpha.")).toBeInTheDocument();

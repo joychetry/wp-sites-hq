@@ -1,7 +1,7 @@
 // AI apps and Monks Central (plan Phase 5): plans AI agents proposed, waiting
 // for you to confirm them; which sites agents may change; the activity log of
 // who did what; and how to connect an AI app with `monks mcp`.
-import { Skeleton } from "../components/feedback";
+import { Skeleton, toast } from "../components/feedback";
 import { Tabs } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -35,7 +35,8 @@ type Props = { sites: Site[]; plans: Job[]; onWatch: (job: Job) => void; focusPl
 
 export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
   const [tab, setTab] = useState<Tab>("plans");
-  const [note, setNote] = useState<Note | null>(null);
+  // Results float as toasts, so nothing above the plans moves under the pointer.
+  const setNote = (n: Note) => toast(n.text, { tone: n.ok ? "ok" : "danger" });
   const tabs: [Tab, string][] = [
     ["plans", plans.length ? `Plans to confirm (${plans.length})` : "Plans to confirm"],
     ["access", "Agent access"],
@@ -51,12 +52,8 @@ export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
         value={tab}
         onChange={(t) => {
           setTab(t);
-          setNote(null);
         }}
       />
-      <div role="status" className="notice">
-        {note && <p className={`alert ${note.ok ? "ok" : "danger"}`}>{note.text}</p>}
-      </div>
       <div role="tabpanel" id="ai-panel" aria-labelledby={`ai-tab-${tab}`}>
         {tab === "plans" ? (
           <Plans plans={plans} onNote={setNote} onWatch={onWatch} focusPlan={focusPlan} />

@@ -4,6 +4,7 @@ import { Combobox, DateInput, Select } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, hasTool, type Block, type Draft, type Media, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
 import { Button } from "../components/ui";
+import { toast } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import { STATUS_LABEL } from "./Content";
 
@@ -111,7 +112,6 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
   };
   const restore = async (r: Revision) => {
     setBusy(true);
-    setError(null);
     try {
       const msg = await api.restoreRevision(site.id, post.id, r.id);
       const p = await api.post(site.id, post.post_type, post.id);
@@ -119,7 +119,7 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
       setAsking(null);
       setList(await api.revisions(site.id, post.id));
     } catch (e) {
-      setError(String(e));
+      toast(String(e), { tone: "danger" });
     } finally {
       setBusy(false);
     }

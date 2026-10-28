@@ -1,5 +1,5 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
-import { Empty, Skeleton, Toaster, Tooltips } from "./components/feedback";
+import { Empty, Skeleton, Toaster, Tooltips, toast } from "./components/feedback";
 import { useEffect, useMemo, useState } from "react";
 import { ago, api, hasTool, siteStatus, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
@@ -82,7 +82,8 @@ export default function App() {
   const monitors = useMonitors();
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [installing, setInstalling] = useState(false);
-  const [jobError, setJobError] = useState<string | null>(null);
+  // Errors float as toasts, so the screen under them doesn't move.
+  const setJobError = (text: string) => toast(text, { tone: "danger" });
   const [scope, setScope] = useState("");
   const [focusId, setFocusId] = useState<number | null>(null);
   const [searchFor, setSearchFor] = useState("");
@@ -122,7 +123,6 @@ export default function App() {
   const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
     setSheet({ title, rows, start, danger });
   const runNow = async (title: string, changes: Change[]) => {
-    setJobError(null);
     try {
       const job = await api.startJob(title, changes);
       setSheet({ title, jobId: job.id });
@@ -398,9 +398,6 @@ export default function App() {
             </div>
           )}
         </header>
-        <div role="status" className="notice">
-          {jobError && <p className="alert danger">{jobError}</p>}
-        </div>
         <main className="body" id="content" tabIndex={-1}>
           {body}
         </main>

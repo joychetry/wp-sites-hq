@@ -26,6 +26,7 @@ input[type="checkbox"], input[type="radio"], .t td, .linkish, .link, .search, .s
 .input:disabled { background: var(--panel); color: var(--text-3); cursor: not-allowed; }
 .input[aria-invalid="true"] { border-color: var(--danger); }
 .err { display: block; color: var(--danger); font-size: var(--fs-sm); margin-top: var(--sp-1); }
+.err.reserve { min-height: 1.5em; }
 textarea.input { line-height: var(--lh); }
 
 /* Checkbox and radio: drawn boxes, 18px inside a 24px target */
@@ -148,6 +149,8 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 
 /* Toasts */
 .toasts { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: 60; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+/* A sheet's buttons are at its bottom right; messages go to the other corner while it is open. */
+body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 .toasts ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); min-height: 48px; background: var(--bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); animation: toast-in 220ms var(--ease); }
 .toast .grow { flex: 1; min-width: 0; }

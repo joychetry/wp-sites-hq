@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { ago, api, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
 import { Button, Status } from "../components/ui";
+import { toast } from "../components/feedback";
 import type { PlanRow } from "../components/JobSheet";
 
 const SEVERITY_TONE: Record<string, "danger" | "warning"> = { critical: "danger", high: "danger" };
@@ -33,7 +34,8 @@ type Props = {
 
 export function Security({ sites, reports, inventory, onPlan }: Props) {
   const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Errors float as toasts, so the rows don't move under the pointer.
+  const setError = (text: string) => toast(text, { tone: "danger" });
   const byId = new Map(reports.map((r) => [r.site_id, r]));
   const named = [...sites].sort((a, b) => a.name.localeCompare(b.name));
   const scanned = named.filter((s) => byId.has(s.id));
@@ -53,7 +55,6 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
 
   const scan = async () => {
     setScanning(true);
-    setError(null);
     await api.scanSecurity().catch((e) => setError(String(e)));
     setScanning(false);
   };
@@ -83,13 +84,6 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
           {scanning ? "Scanning…" : "Scan all sites now"}
         </Button>
       </div>
-      {error && (
-        <div className="notice">
-          <p className="alert danger" role="alert">
-            {error}
-          </p>
-        </div>
-      )}
       <p className="legend" id="security-legend">
         <span>
           {scanned.length === 0

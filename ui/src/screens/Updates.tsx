@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { ago, api, blocked, type Action, type Site, type SiteInventory } from "../api";
 import { Button } from "../components/ui";
+import { toast } from "../components/feedback";
 import type { PlanRow } from "../components/JobSheet";
 
 type Kind = "WordPress" | "Plugin" | "Theme" | "Translations";
@@ -68,7 +69,8 @@ export function Updates({ sites, inventory, onPlan }: Props) {
   );
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [reading, setReading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Errors float as toasts, so the rows don't move under the pointer.
+  const setError = (text: string) => toast(text, { tone: "danger" });
   const chosen = rows.filter((r) => picked.has(r.key));
   const notes = unseen(sites, inventory);
   const oldest = Math.min(...sites.map((s) => inventory.get(s.id)?.fetched_at ?? Infinity));
@@ -84,7 +86,6 @@ export function Updates({ sites, inventory, onPlan }: Props) {
 
   const readAgain = async () => {
     setReading(true);
-    setError(null);
     await api.refreshInventory().catch((e) => setError(String(e)));
     setReading(false);
   };
@@ -99,22 +100,14 @@ export function Updates({ sites, inventory, onPlan }: Props) {
         <Button small disabled={reading} onClick={readAgain}>
           Read every site again
         </Button>
-        {chosen.length > 0 && (
-          <Button small onClick={() => onPlan(planTitle(chosen), chosen)}>
-            Update {chosen.length} selected
-          </Button>
-        )}
+        {/* Always there, so ticking a row doesn't slide the buttons beside it. */}
+        <Button small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
+          {chosen.length ? `Update ${chosen.length} selected` : "Update selected"}
+        </Button>
         <Button small kind="primary" disabled={rows.length === 0} onClick={() => onPlan(planTitle(rows), rows)}>
           Update all {rows.length}
         </Button>
       </div>
-      {error && (
-        <div className="notice">
-          <p className="alert danger" role="alert">
-            {error}
-          </p>
-        </div>
-      )}
       {rows.length === 0 ? (
         <div className="empty">
           <h2>No updates waiting.</h2>

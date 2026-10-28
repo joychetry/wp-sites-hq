@@ -113,11 +113,10 @@ export function AddSite({ again, onClose, onDone }: Props) {
             autoComplete="url"
             spellCheck={false}
           />
-          {touched && problem && (
-            <span id="address-problem" className="err">
-              {problem}
-            </span>
-          )}
+          {/* The line is always there, so the cards below don't move when you click one and the box checks itself. */}
+          <span id="address-problem" className="err reserve">
+            {touched && problem}
+          </span>
         </label>
         {!again && (
           <fieldset className="radios cards">

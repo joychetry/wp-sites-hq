@@ -1,6 +1,6 @@
 // A WooCommerce store on one site: how it did over a period, what runs low, and
 // its products with their prices and stock, changed as a job (plan Phase 7).
-import { Skeleton } from "../components/feedback";
+import { Skeleton, toast } from "../components/feedback";
 import { Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -62,6 +62,8 @@ export function Store({ sites, onPlan }: Props) {
   // Only the newest request's answer is shown: a slow site's products must never appear
   // under another site, where a change would go to that site's product with the same id.
   const asked = useRef(0);
+  const shown = useRef(false);
+  shown.current = !!overview;
   const load = useCallback(async () => {
     const n = ++asked.current;
     if (!site || !can) return;
@@ -72,7 +74,8 @@ export function Store({ sites, onPlan }: Props) {
       setOverview(o);
       setList(p);
     } catch (e) {
-      if (n === asked.current) setError(String(e));
+      // With numbers on screen, a failed refresh floats as a toast so the table doesn't move.
+      if (n === asked.current) shown.current ? toast(String(e), { tone: "danger" }) : setError(String(e));
     }
   }, [site?.id, can, days, query, round]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

@@ -4,6 +4,7 @@ import { FilePicker, SearchInput } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, blocked, can, count, hasTool, type Bundle, type Found, type Site, type SiteInventory, type Staged } from "../api";
 import { Button } from "../components/ui";
+import { toast } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import type { PlanRow } from "../components/JobSheet";
 import { slugOf } from "./Matrix";
@@ -89,7 +90,7 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
       setEditing(null);
       load();
     } catch (e) {
-      setError(String(e));
+      toast(String(e), { tone: "danger" });
     }
   };
   const remove = async () => {
@@ -98,7 +99,7 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
       setEditing(null);
       load();
     } catch (e) {
-      setError(String(e));
+      toast(String(e), { tone: "danger" });
     }
     setDeleting(false);
   };

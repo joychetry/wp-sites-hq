@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { api, blocked, can, type Action, type Change, type Item, type PluginVersions, type Site, type SiteInventory } from "../api";
 import { Button, Status } from "../components/ui";
+import { toast } from "../components/feedback";
 import type { PlanRow } from "../components/JobSheet";
 
 export type Kind = "plugins" | "themes";
@@ -277,7 +278,6 @@ type InspectorProps = {
 
 function Inspector({ kind, site: s, col, item, everywhere, onPlan, onRun, onClose }: InspectorProps) {
   const [versions, setVersions] = useState<PluginVersions | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const plugin = kind === "plugins";
   const name = item?.name || col.name;
@@ -289,11 +289,10 @@ function Inspector({ kind, site: s, col, item, everywhere, onPlan, onRun, onClos
 
   const loadVersions = async () => {
     setLoading(true);
-    setError(null);
     try {
       setVersions(await api.pluginVersions(s.id, id));
     } catch (e) {
-      setError(String(e));
+      toast(String(e), { tone: "danger" });
     } finally {
       setLoading(false);
     }
@@ -380,11 +379,6 @@ function Inspector({ kind, site: s, col, item, everywhere, onPlan, onRun, onClos
           </p>
         )}
       </header>
-      {error && (
-        <p className="alert danger" role="alert" style={{ margin: "12px 16px 0" }}>
-          {error}
-        </p>
-      )}
       <section>
         <h3>On this site</h3>
         {item ? (

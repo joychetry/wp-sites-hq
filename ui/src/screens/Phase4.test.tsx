@@ -1,5 +1,4 @@
 // Users, the comment inbox and Classic Monks (features, settings, activity, approvals).
-import { Toaster } from "../components/feedback";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
@@ -168,10 +167,7 @@ describe("Comments", () => {
   it("approves, replies and switches lists", async () => {
     const calls = core();
     render(
-      <>
-        <Comments sites={[CM]} />
-        <Toaster />
-      </>,
+      <Comments sites={[CM]} />,
     );
     fireEvent.click(await screen.findByRole("button", { name: "Approve Ana's comment on Alpha" }));
     expect(screen.queryByRole("button", { name: "Approve Ana's comment on Alpha" })).toBeNull();

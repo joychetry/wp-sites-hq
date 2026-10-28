@@ -133,6 +133,6 @@ test("deleting a bundle asks first, and a failed delete keeps it open", async ()
   fireEvent.click(within(box).getByRole("button", { name: "Keep it" }));
   fireEvent.click(within(box).getByRole("button", { name: "Delete the bundle" }));
   fireEvent.click(within(box).getByRole("button", { name: "Delete the bundle" }));
-  expect(await within(box).findByText(/The database is busy/)).toBeInTheDocument();
+  expect(await screen.findByText(/The database is busy/)).toBeInTheDocument();
   expect(within(box).getByRole("textbox", { name: "Bundle name" })).toHaveValue("New shop");
 });

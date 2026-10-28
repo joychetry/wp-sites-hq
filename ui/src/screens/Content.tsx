@@ -1,5 +1,5 @@
 // Posts, pages and every post type a site lets us edit: list, filter, open, create (plan Phase 3).
-import { Skeleton } from "../components/feedback";
+import { Skeleton, toast } from "../components/feedback";
 import { Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -97,7 +97,6 @@ export function Content({ sites, onPlan }: Props) {
   const [list, setList] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Open | null>(null);
-  const [note, setNote] = useState("");
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [many, setMany] = useState(false);
 
@@ -126,10 +125,11 @@ export function Content({ sites, onPlan }: Props) {
   // Only the newest request's answer is shown: a slow site's list must never appear under
   // another site, where ticking its entries would change that site's posts with the same ids.
   const asked = useRef(0);
-  const load = useCallback(() => {
+  // A refresh after a save keeps the rows on screen, so nothing jumps under the pointer.
+  const load = useCallback((keep = false) => {
     const n = ++asked.current;
     if (current == null || !typeKey) return;
-    setList(null);
+    if (!keep) setList(null);
     api.posts(current, { post_type: typeKey, status: status || undefined, search: search || undefined, page }).then(
       (l) => {
         if (n !== asked.current) return;
@@ -139,7 +139,7 @@ export function Content({ sites, onPlan }: Props) {
       (e) => n === asked.current && setError(String(e)),
     );
   }, [current, typeKey, status, search, page]);
-  useEffect(load, [load]);
+  useEffect(() => load(), [load]);
   useEffect(() => setPicked(new Set()), [list]);
   // A bulk job changed entries: read the page again, quietly.
   useEffect(() => {
@@ -369,9 +369,6 @@ export function Content({ sites, onPlan }: Props) {
           </Button>
         </form>
       )}
-      <div role="status" className="notice">
-        {note && <p className="alert ok">{note}</p>}
-      </div>
       {body}
       {many && onPlan && (
         <PublishMany
@@ -392,8 +389,8 @@ export function Content({ sites, onPlan }: Props) {
           postId={open.postId}
           onClose={() => setOpen(null)}
           onSaved={(msg) => {
-            setNote(msg);
-            load();
+            toast(msg);
+            load(true);
           }}
         />
       )}

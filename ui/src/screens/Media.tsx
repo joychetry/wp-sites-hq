@@ -1,6 +1,6 @@
 // A site's media library: browse, search, and import an image from a link (plan Phase 3).
 import { SearchInput } from "../components/controls";
-import { Skeleton } from "../components/feedback";
+import { Skeleton, toast } from "../components/feedback";
 import { useCallback, useEffect, useState } from "react";
 import { api, contentBlocked, type Media as Item, type Site } from "../api";
 import { Button } from "../components/ui";
@@ -23,12 +23,11 @@ export function Media({ sites }: { sites: Site[] }) {
   const [link, setLink] = useState("");
   const [alt, setAlt] = useState("");
   const [importing, setImporting] = useState(false);
-  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(
-    (p: number) => {
+    (p: number, keep = false) => {
       if (current == null || blocked) return;
-      if (p === 1) setItems(null);
+      if (p === 1 && !keep) setItems(null);
       api.media(current, p, search, false).then(
         (m) => {
           setItems((old) => (p === 1 ? m : [...(old ?? []), ...m]));
@@ -55,15 +54,14 @@ export function Media({ sites }: { sites: Site[] }) {
   const add = async () => {
     if (!site) return;
     setImporting(true);
-    setNote(null);
     try {
       const m = await api.importMedia(site.id, link, alt);
-      setNote({ ok: true, text: `Added ${m.title || "the image"} to ${site.name}'s media library.` });
+      toast(`Added ${m.title || "the image"} to ${site.name}'s media library.`);
       setLink("");
       setAlt("");
-      load(1);
+      load(1, true);
     } catch (e) {
-      setNote({ ok: false, text: String(e) });
+      toast(String(e), { tone: "danger" });
     } finally {
       setImporting(false);
     }
@@ -164,9 +162,6 @@ export function Media({ sites }: { sites: Site[] }) {
           </Button>
         </form>
       )}
-      <div role="status" className="notice">
-        {note && <p className={`alert ${note.ok ? "ok" : "danger"}`}>{note.text}</p>}
-      </div>
       {body}
     </div>
   );

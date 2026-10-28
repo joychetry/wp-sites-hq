@@ -1,6 +1,6 @@
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
-import { Skeleton } from "../components/feedback";
+import { Skeleton, toast } from "../components/feedback";
 import { Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Role, type Site, type User, type Users as SiteUsers } from "../api";
@@ -18,14 +18,14 @@ export function Users({ sites }: { sites: Site[] }) {
   const [typed, setTyped] = useState("");
   const [search, setSearch] = useState("");
   const [action, setAction] = useState<Action | null>(null);
-  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const ids = usable.map((s) => s.id).join(",");
 
   // Only the newest request's answer is shown, so a slow older search or tab can't replace it.
   const asked = useRef(0);
-  const load = useCallback(() => {
+  // A refresh after an action keeps the rows on screen, so nothing jumps under the pointer.
+  const load = useCallback((keep = false) => {
     const n = ++asked.current;
-    setLoaded(null);
+    if (!keep) setLoaded(null);
     Promise.all(
       usable.map((site) =>
         api.users(site.id, search).then(
@@ -36,7 +36,7 @@ export function Users({ sites }: { sites: Site[] }) {
     ).then((l) => n === asked.current && setLoaded(l));
     // `ids` stands for the usable sites.
   }, [ids, search]);
-  useEffect(load, [load]);
+  useEffect(() => load(), [load]);
 
   if (sites.length === 0) {
     return (
@@ -49,16 +49,15 @@ export function Users({ sites }: { sites: Site[] }) {
 
   const done = (text: string, ok = true) => {
     setAction(null);
-    setNote({ ok, text });
-    load();
+    toast(text, { tone: ok ? "ok" : "danger" });
+    load(true);
   };
   const reset = async (site: Site, user: User) => {
-    setNote(null);
     try {
       const to = await api.sendReset(site.id, user.id);
-      setNote({ ok: true, text: `Sent ${user.username} a link to set a new password (${to}).` });
+      toast(`Sent ${user.username} a link to set a new password (${to}).`);
     } catch (e) {
-      setNote({ ok: false, text: String(e) });
+      toast(String(e), { tone: "danger" });
     }
   };
 
@@ -166,9 +165,6 @@ export function Users({ sites }: { sites: Site[] }) {
           Add a user
         </Button>
       </form>
-      <div role="status" className="notice">
-        {note && <p className={`alert ${note.ok ? "ok" : "danger"}`}>{note.text}</p>}
-      </div>
       {body}
       {(partial.length > 0 || failed.length > 0 || blocked.length > 0) && (
         <ul className="notes" aria-label="Sites not fully shown">

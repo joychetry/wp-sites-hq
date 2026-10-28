@@ -1,6 +1,6 @@
 // Classic Monks on one site: its features, the settings it lets Monks Central change,
 // its activity log with undo, and changes waiting for approval (plan Phase 4).
-import { Skeleton } from "../components/feedback";
+import { Skeleton, toast } from "../components/feedback";
 import { Select, NumberInput, Tabs, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useState } from "react";
 import { api, cmBlocked, hasTool, type Activity, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
@@ -43,7 +43,6 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
   const site = sites.find((s) => s.id === siteId) ?? sites.find((s) => s.id === firstCm(sites)) ?? null;
   const blocked = site ? cmBlocked(site) : null;
   const [tab, setTab] = useState<Tab>("features");
-  const [done, setDone] = useState<Done | null>(null);
   // Bumped after an undo so the open tab reads the site again.
   const [round, setRound] = useState(0);
 
@@ -58,15 +57,19 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
 
   const tools = TABS.filter(([, , tool]) => site && hasTool(site, tool));
   const current = tools.some(([t]) => t === tab) ? tab : "features";
-  const undo = async () => {
-    if (!site || done?.undo == null) return;
-    try {
-      await api.undo(site.id, done.undo);
-      setDone({ text: `Undone: ${done.text}`, undo: null, ok: true });
-      setRound((r) => r + 1);
-    } catch (e) {
-      setDone({ text: String(e), undo: null, ok: false });
-    }
+  // Results float as toasts, so nothing above the list moves under the pointer.
+  const setDone = (done: Done) => {
+    const on = site;
+    const undo = async () => {
+      try {
+        await api.undo(on!.id, done.undo!);
+        toast(`Undone: ${done.text}`);
+        setRound((r) => r + 1);
+      } catch (e) {
+        toast(String(e), { tone: "danger" });
+      }
+    };
+    toast(done.text, { tone: done.ok ? "ok" : "danger", undo: on && done.undo != null ? undo : undefined });
   };
 
   return (
@@ -80,7 +83,6 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
             value={site?.id ?? ""}
             onChange={(e) => {
               setSiteId(Number(e.target.value));
-              setDone(null);
             }}
           >
             {sites.map((s) => (
@@ -99,21 +101,8 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
             value={current}
             onChange={(t) => {
               setTab(t);
-              setDone(null);
             }}
           />
-        )}
-      </div>
-      <div role="status" className="notice">
-        {done && (
-          <p className={`alert row ${done.ok ? "ok" : "danger"}`}>
-            <span className="grow">{done.text}</span>
-            {done.undo != null && (
-              <Button small onClick={undo}>
-                Undo
-              </Button>
-            )}
-          </p>
         )}
       </div>
       <div role={blocked || !site ? undefined : "tabpanel"} id="cm-panel" aria-labelledby={blocked || !site ? undefined : `cm-tab-${current}`}>

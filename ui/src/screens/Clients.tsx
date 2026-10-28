@@ -1,5 +1,5 @@
 // Clients, their sites, and what the sites cost you and earn (plan Phase 7).
-import { Skeleton } from "../components/feedback";
+import { Skeleton, toast } from "../components/feedback";
 import { DateInput, MultiSelect, Select } from "../components/controls";
 import { useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
@@ -61,7 +61,6 @@ export function Clients({ sites }: { sites: Site[] }) {
   const [costs, setCosts] = useState<Cost[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
-  const [note, setNote] = useState("");
 
   const load = useCallback(() => {
     Promise.all([api.clients(), api.costs()]).then(
@@ -101,7 +100,7 @@ export function Clients({ sites }: { sites: Site[] }) {
   const currency = costs.at(-1)?.currency ?? "EUR";
   const blankCost = (): Cost => ({ id: 0, site_id: null, client_id: clients[0]?.id ?? null, kind: "cost", label: "", cents: 0, currency, every: "year", renews_on: null });
   const done = (msg: string) => {
-    setNote(msg);
+    toast(msg);
     setEditing(null);
     load();
   };
@@ -118,9 +117,6 @@ export function Clients({ sites }: { sites: Site[] }) {
         <Button small kind="primary" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
           Add a client
         </Button>
-      </div>
-      <div role="status" className="notice">
-        {note && <p className="alert ok">{note}</p>}
       </div>
       {clients.length === 0 && costs.length === 0 ? (
         <div className="empty">

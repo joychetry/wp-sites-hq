@@ -41,14 +41,14 @@ export function Comments({ sites }: { sites: Site[] }) {
   const [replying, setReplying] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const ids = usable.map((s) => s.id).join(",");
 
   // Only the newest request's answer is shown, so a slow older search or tab can't replace it.
   const asked = useRef(0);
-  const load = useCallback(() => {
+  // A refresh after an action keeps the rows on screen, so nothing jumps under the pointer.
+  const load = useCallback((keep = false) => {
     const n = ++asked.current;
-    setLoaded(null);
+    if (!keep) setLoaded(null);
     Promise.all(
       usable.map((site) =>
         api.comments(site.id, show).then(
@@ -70,7 +70,8 @@ export function Comments({ sites }: { sites: Site[] }) {
     });
     // `ids` stands for the usable sites.
   }, [ids, show]);
-  useEffect(load, [load]);
+  useEffect(() => load(), [load]);
+  const refresh = () => load(true);
 
   if (sites.length === 0) {
     return (
@@ -84,7 +85,6 @@ export function Comments({ sites }: { sites: Site[] }) {
   const key = (r: Row) => `${r.site.id}-${r.c.id}`;
   const act = async (r: Row, action: Moderation) => {
     setBusy(key(r));
-    setNote(null);
     // Optimistic: every action moves the comment out of this list, so it goes at once and comes back if the site says no.
     setLoaded((l) => l && { ...l, rows: l.rows.filter((x) => key(x) !== key(r)) });
     try {
@@ -92,27 +92,26 @@ export function Comments({ sites }: { sites: Site[] }) {
       // Undo puts it back where it was; WordPress has no "not spam" or "out of the trash" for comments here.
       const back: Moderation | null = action === "trash" || action === "spam" ? null : r.c.status === "approved" ? "approve" : r.c.status === "pending" ? "unapprove" : null;
       toast(`${DONE[action]}: ${r.c.author || "a visitor"}'s comment on ${r.site.name}.`, {
-        undo: back ? () => api.moderate(r.site.id, r.c.id, back).then(load, (e) => setNote({ ok: false, text: String(e) })) : undefined,
+        undo: back ? () => api.moderate(r.site.id, r.c.id, back).then(refresh, (e) => toast(String(e), { tone: "danger" })) : undefined,
       });
-      load();
+      refresh();
     } catch (e) {
-      setNote({ ok: false, text: String(e) });
-      load();
+      toast(String(e), { tone: "danger" });
+      refresh();
     } finally {
       setBusy(null);
     }
   };
   const send = async (r: Row) => {
     setBusy(key(r));
-    setNote(null);
     try {
       await api.reply(r.site.id, r.c.id, r.c.post_id, reply);
-      setNote({ ok: true, text: `Replied to ${r.c.author || "the comment"} on ${r.site.name}.` });
+      toast(`Replied to ${r.c.author || "the comment"} on ${r.site.name}.`);
       setReplying(null);
       setReply("");
-      load();
+      refresh();
     } catch (e) {
-      setNote({ ok: false, text: String(e) });
+      toast(String(e), { tone: "danger" });
     } finally {
       setBusy(null);
     }
@@ -233,9 +232,6 @@ export function Comments({ sites }: { sites: Site[] }) {
             </button>
           ))}
         </div>
-      </div>
-      <div role="status" className="notice">
-        {note && <p className={`alert ${note.ok ? "ok" : "danger"}`}>{note.text}</p>}
       </div>
       {body}
       {loaded && (loaded.partial.length > 0 || loaded.failed.length > 0 || blocked.length > 0) && (

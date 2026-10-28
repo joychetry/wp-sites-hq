@@ -1,6 +1,6 @@
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
-import { toast } from "../components/feedback";
+import { dismiss, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, connectionLabel, hasTool, NO_TOOLS, noTools, siteStatus, slow, type Site, type Tone } from "../api";
@@ -35,7 +35,6 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   const [status, setStatus] = useState<StatusFilter>("any");
   const [mode, setMode] = useState<ModeFilter>("any");
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [notice, setNotice] = useState<{ tone: "ok" | "warning" | "danger"; text: string } | null>(null);
   const [groupFor, setGroupFor] = useState("");
   const filter = useRef<HTMLInputElement>(null);
   const table = useRef<HTMLTableElement>(null);
@@ -77,9 +76,10 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   };
 
   const check = async (ids: number[]) => {
-    setNotice({ tone: "ok", text: `Checking ${ids.length === 1 ? "the site" : `${ids.length} sites`}…` });
+    // A toast, not a line above the table, so the rows stay where they are.
+    const t = toast(`Checking ${ids.length === 1 ? "the site" : `${ids.length} sites`}…`, { tone: "info" });
     await Promise.all(ids.map((id) => api.check(id).catch(() => {})));
-    setNotice(null);
+    dismiss(t);
   };
 
   useEffect(() => {
@@ -150,34 +150,6 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           <Button small onClick={onAdd} keys="A">
             Add a site
           </Button>
-        </div>
-        {picked.length > 0 && (
-          <div className="selbar" role="region" aria-label="Selection">
-            <b>{picked.length} selected</b>
-            <Button small kind="primary" keys="R" onClick={() => check(picked.map((s) => s.id))}>
-              Check now
-            </Button>
-            <Combobox
-              className="input sm"
-              style={{ width: 180 }}
-              suggestions={groups}
-              placeholder="Put in a group"
-              aria-label="Group for the selected sites"
-              value={groupFor}
-              onChange={(e) => setGroupFor(e.target.value)}
-              onKeyDown={async (e) => {
-                if (e.key !== "Enter") return;
-                await Promise.all(picked.map((s) => api.setGroup(s.id, groupFor.trim() || null)));
-                setGroupFor("");
-              }}
-            />
-            <Button small onClick={() => setSelected(new Set())} keys="Esc">
-              Clear selection
-            </Button>
-          </div>
-        )}
-        <div role="status" className="notice">
-          {notice && <p className={`alert ${notice.tone}`}>{notice.text}</p>}
         </div>
         {rows.length === 0 ? (
           <div className="empty">
@@ -296,6 +268,32 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             </table>
           </>
         )}
+        {/* Under the table and stuck to the bottom: ticking a row never moves the rows. */}
+        {picked.length > 0 && (
+          <div className="selbar" role="region" aria-label="Selection">
+            <b>{picked.length} selected</b>
+            <Button small kind="primary" keys="R" onClick={() => check(picked.map((s) => s.id))}>
+              Check now
+            </Button>
+            <Combobox
+              className="input sm"
+              style={{ width: 180 }}
+              suggestions={groups}
+              placeholder="Put in a group"
+              aria-label="Group for the selected sites"
+              value={groupFor}
+              onChange={(e) => setGroupFor(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key !== "Enter") return;
+                await Promise.all(picked.map((s) => api.setGroup(s.id, groupFor.trim() || null)));
+                setGroupFor("");
+              }}
+            />
+            <Button small onClick={() => setSelected(new Set())} keys="Esc">
+              Clear selection
+            </Button>
+          </div>
+        )}
       </div>
       {focus && (
         <Inspector
@@ -306,7 +304,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           onCheck={() => check([focus.id])}
           onSignInAgain={() => onSignInAgain(focus)}
           onRemoved={(text, ok) => {
-            setNotice({ tone: ok ? "ok" : "warning", text });
+            toast(text, { tone: ok ? "ok" : "warning" });
             setFocusId(null);
           }}
         />
@@ -329,14 +327,14 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Errors float as toasts, so the sections below don't move under the pointer.
+  const setError = (text: string) => toast(text, { tone: "danger" });
   const st = siteStatus(s);
   const caps = s.capabilities;
   const abilities = Array.isArray(caps.abilities) ? caps.abilities.length : 0;
   const modules = caps.modules && typeof caps.modules === "object" ? (caps.modules as Record<string, boolean>) : null;
 
   const run = async (f: () => Promise<unknown>) => {
-    setError(null);
     try {
       await f();
     } catch (e) {
@@ -372,11 +370,6 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
           </Button>
         </div>
       </header>
-      {error && (
-        <p className="alert danger" role="alert" style={{ margin: "12px 16px 0" }}>
-          {error}
-        </p>
-      )}
       <section>
         <h3>Health</h3>
         <dl className="kv">

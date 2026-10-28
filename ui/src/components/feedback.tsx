@@ -9,8 +9,14 @@ let toasts: Toast[] = [];
 let nextId = 1;
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
-const dismiss = (id: number) => {
+export const dismiss = (id: number) => {
   toasts = toasts.filter((t) => t.id !== id);
+  emit();
+};
+
+/** Closes every message (tests start clean with it). */
+export const dismissAll = () => {
+  toasts = [];
   emit();
 };
 
