@@ -20,6 +20,7 @@
 //!   versions <url> <plugin file>           versions the site can roll back to
 //!   rollback <url> <plugin file> <version> a job that rolls the plugin back
 //!   types <url>                            post types and their taxonomies (JSON)
+//!   ability <url> <tool> [json]            call any Classic Monks ability as the operator (prints its output)
 //!   get <url> <post type> <id>             one entry with its blocks (JSON)
 //!   create <url> <post type> <draft JSON>  add an entry (JSON back)
 //!   edit <url> <post type> <id> <draft JSON>
@@ -533,6 +534,15 @@ async fn main() -> Res<()> {
             Ok(())
         }
         "activity" => show(&core.activity(site_id(&core, arg(1)?)?, 1).await?),
+        "ability" => {
+            let args: serde_json::Value =
+                serde_json::from_str(args.get(3).map_or("{}", String::as_str))?;
+            show(
+                &core
+                    .call_ability(site_id(&core, arg(1)?)?, arg(2)?, args)
+                    .await?,
+            )
+        }
         "approvals" => show(&core.approvals(site_id(&core, arg(1)?)?).await?),
         "settings" => show(&core.settings(site_id(&core, arg(1)?)?).await?),
         "publish" => {
