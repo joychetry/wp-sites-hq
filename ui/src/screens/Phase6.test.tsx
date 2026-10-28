@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Phase 6: security scan results, monitoring and safe updates.
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render as draw, screen, fireEvent, within } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Security, fixOf } from "./Security";
 import { Monitoring, expiry } from "./Monitoring";
 import { site } from "../test-fixtures";
+import { HeadSlot } from "../components/ui";
 import type { Monitor, SecurityReport, SiteInventory } from "../api";
+
+// The page head's action slot, as App gives it: the screen's main actions render there.
+const head = document.body.appendChild(document.createElement("div"));
+const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider value={head}>{children}</HeadSlot.Provider>;
+const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 const mockInvoke = vi.mocked(invoke);
@@ -51,7 +58,9 @@ describe("Security", () => {
     const onPlan = vi.fn();
     render(<Security sites={[A, B]} reports={[report]} inventory={new Map([[1, inv("10.3.0")]])} onPlan={onPlan} />);
     expect(screen.getByText("2 known vulnerabilities, 2 abandoned plugins and 1 changed install on 1 site.", { exact: false })).toBeInTheDocument();
-    const vulns = screen.getByRole("table", { name: "Known vulnerabilities" });
+    const vulns = screen.getByRole("list", { name: "Known vulnerabilities" });
+    expect(within(vulns).getByText("Alpha, on 10.2.0")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Security at a glance" })).toHaveTextContent("Sites clear0 of 2");
     expect(within(vulns).getByText("High")).toBeInTheDocument();
     expect(within(vulns).getByText("Not rated")).toBeInTheDocument();
     expect(within(vulns).getByText("No fix yet")).toBeInTheDocument();
@@ -83,6 +92,7 @@ describe("Security", () => {
     const clean = { ...report, vulnerabilities: [], abandoned: [], checksums: null, notes: ["Checksums need Classic Monks on the site."] };
     render(<Security sites={[A]} reports={[clean]} inventory={new Map()} onPlan={vi.fn()} />);
     expect(screen.getByText("No known problems on 1 site.", { exact: false })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Sites with nothing known" })).getByText("Clear")).toBeInTheDocument();
     expect(screen.getByText("Checksums need Classic Monks on the site.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Scan all sites now" }));
     expect(mockInvoke).toHaveBeenCalledWith("security_scan", { id: undefined });
@@ -120,22 +130,34 @@ describe("Monitoring", () => {
   });
 
   test("shows up and down sites, expiry, and runs PageSpeed only where it can", async () => {
+    const C = site({ id: 3, name: "Gamma" });
     const monitors = [
       mon({}),
-      mon({ site_id: 2, public: true, up: false, status: 0, error: "The site didn't answer.", down_since: NOW - 600, uptime_day: 97.2222, domain: "beta.com", domain_expires: NOW + 86400 * 5 + 60, pagespeed: { score: 91, lcp: "1.8 s", cls: "0", tbt: "40 ms", at: NOW - 3600 } }),
+      mon({ site_id: 2, public: true, ms: 538, uptime_day: 97.2222, domain: "beta.com", domain_expires: NOW + 86400 * 5 + 60, pagespeed: { score: 78, lcp: "1.8 s", cls: "0", tbt: "40 ms", at: NOW - 3600 } }),
+      mon({ site_id: 3, public: true, up: false, status: 0, error: "The site didn't answer.", down_since: NOW - 600 }),
     ];
-    render(<Monitoring sites={[A, B]} monitors={monitors} />);
-    expect(screen.getByText(/^1 site is down: Beta\./)).toBeInTheDocument();
+    render(<Monitoring sites={[A, B, C]} monitors={monitors} />);
+    expect(screen.getByText(/^1 site is down: Gamma\./)).toBeInTheDocument();
+    const stats = screen.getByRole("region", { name: "Fleet health" });
+    expect(stats).toHaveTextContent("Home pages up2 of 3");
+    expect(stats).toHaveTextContent("Average response475 ms");
+    expect(stats).toHaveTextContent("Lowest: Beta at 78.");
     const table = screen.getByRole("table", { name: "Monitoring" });
-    const [, alpha, beta] = within(table).getAllByRole("row");
-    expect(within(alpha).getByText("Up")).toBeInTheDocument();
-    expect(within(alpha).getByText("0.4 s")).toBeInTheDocument();
-    expect(within(alpha).getByText("99.9%")).toBeInTheDocument();
+    const [, alpha, beta, gamma] = within(table).getAllByRole("row");
+    expect(within(alpha).getByText("200 OK")).toBeInTheDocument();
+    expect(within(alpha).getByText("412 ms")).toBeInTheDocument();
+    expect(within(alpha).getByText("99.86%")).toBeInTheDocument();
     expect(within(alpha).getByText(/^40 days left/)).toBeInTheDocument();
     expect(within(alpha).getByText("Public sites only")).toBeInTheDocument();
-    expect(within(beta).getByText("Down since 10 min ago")).toBeInTheDocument();
-    expect(within(beta).getByText("The site didn't answer.")).toBeInTheDocument();
-    expect(within(beta).getByText("97.2%")).toBeInTheDocument();
+    expect(within(alpha).queryByRole("button")).toBeNull();
+    expect(within(gamma).getByText("Down")).toBeInTheDocument();
+    expect(within(gamma).getByText("since 10 min ago")).toBeInTheDocument();
+    expect(within(gamma).getByText("The site didn't answer.")).toBeInTheDocument();
+    expect(within(gamma).getByText("Couldn't load")).toBeInTheDocument();
+    fireEvent.click(within(gamma).getByRole("button", { name: "Check Gamma again" }));
+    expect(mockInvoke).toHaveBeenCalledWith("monitors_check");
+    expect(within(beta).getByText("97.22%")).toBeInTheDocument();
+    expect(within(beta).getByText("78 · Needs work")).toBeInTheDocument();
     expect(within(beta).getByText(/^beta\.com, /)).toBeInTheDocument();
     expect(within(beta).getByText(/^5 days left/).closest(".st")).toHaveClass("danger");
     expect(within(beta).getByText("LCP 1.8 s, CLS 0, TBT 40 ms. Tested 1 hr ago.")).toBeInTheDocument();

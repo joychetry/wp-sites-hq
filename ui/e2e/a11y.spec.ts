@@ -144,16 +144,11 @@ test("entries are ticked and changed in bulk from the keyboard", async ({ page }
   await expect(page.getByRole("button", { name: "Make drafts (1)" })).toBeFocused();
 });
 
-test("export is a menu from the keyboard; the import picker is the next Tab stop with a focus ring", async ({ page }) => {
+test("export is two buttons from the keyboard; the import picker is the next Tab stop with a focus ring", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "settings")!, "light");
-  const menu = page.getByRole("button", { name: "Export the sites" });
-  await menu.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("menuitem", { name: /^Export as JSON/ })).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("menuitem", { name: /^Export as CSV/ })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(menu).toBeFocused();
+  await page.getByRole("button", { name: "Export as JSON" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Export as CSV" })).toBeFocused();
   await page.keyboard.press("Tab");
   const pick = page.getByRole("button", { name: "Import a JSON or CSV file" });
   await expect(pick).toBeFocused();
@@ -201,8 +196,8 @@ test("a comment is answered from the keyboard", async ({ page }) => {
 
 test("a feature is turned on and undone from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
-  await page.getByRole("button", { name: "Turn on SVG Support" }).focus();
-  await page.keyboard.press("Enter");
+  await page.getByRole("switch", { name: "SVG Support" }).focus();
+  await page.keyboard.press("Space");
   const undo = page.getByRole("button", { name: "Undo", exact: true });
   await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
   await undo.focus();
@@ -333,7 +328,8 @@ test("a vulnerable plugin is fixed from the keyboard, through the plan", async (
   await show(page, SCREENS.find((s) => s.name === "security")!, "light");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Security 2 known vulnerabilities" })).toBeVisible();
   await page.getByRole("button", { name: "Read more about WooCommerce < 10.3.0 - Authenticated (Shop Manager+) Stored Cross-Site Scripting via product reviews" }).focus();
-  await page.keyboard.press("Tab");
+  // The update comes first in the card, Read more after it.
+  await page.keyboard.press("Shift+Tab");
   await expect(page.getByRole("button", { name: "Update to 10.3.0 on MC A" })).toBeFocused();
   await page.keyboard.press("Enter");
   const sheet = page.getByRole("dialog", { name: /^Update WooCommerce on MC A/ });
@@ -350,7 +346,7 @@ test("PageSpeed runs from the keyboard and the result shows in its row", async (
   await run.focus();
   await page.keyboard.press("Enter");
   const row = page.getByRole("row").filter({ hasText: "Portfolio" });
-  await expect(row.getByText("81")).toBeVisible();
+  await expect(row.getByText(/^81 · /)).toBeVisible();
   await expect(run).toBeFocused();
 });
 
@@ -397,9 +393,9 @@ test("results never move the rows: ticking sites, a check, a feature and its Und
   expect(await y(portfolio)).toBe(before);
 
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
-  const first = page.getByRole("button", { name: /^Turn (on|off) / }).first();
+  const first = page.getByRole("switch").first();
   const top = await y(first);
-  await page.getByRole("button", { name: "Turn on SVG Support" }).click();
+  await page.getByRole("switch", { name: "SVG Support" }).click();
   await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
   expect(await y(first)).toBe(top);
   await page.getByRole("button", { name: "Undo", exact: true }).click();

@@ -528,7 +528,8 @@ export default function App() {
         </header>
         <main className="body" id="content" tabIndex={-1}>
           <header className="phead">
-            <div>
+            <div className={section === "Classic Monks" ? "marked" : undefined}>
+              {section === "Classic Monks" && <Logo />}
               <h1>{LABEL[section] ?? section}</h1>
               <p>{section === "Overview" && all.length > 0 ? sentence : ABOUT[section]}</p>
             </div>

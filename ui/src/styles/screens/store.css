@@ -1,0 +1,53 @@
+/* Store (board 14, D09): the site and period in the page head, a sales card, then the products card. */
+
+/* Site picker in the head: a mono label beside the box; the site shows its tile. */
+.phead-acts .store-pick { gap: var(--sp-2); }
+.phead-acts .store-pick > span { font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.phead-acts .store-pick .input { width: 160px; min-width: 0; }
+.store .card-head .pick > span { font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.store .card-head .pick .input { width: 140px; min-width: 0; }
+.store .card-head .srch { flex: 0 1 240px; }
+.store .card-head .srch .input { width: 100%; }
+
+/* Sales: the big numbers on the left, how the orders split on the right */
+.store .sales { grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: start; }
+.sales-nums { display: grid; gap: 18px; }
+.sales-nums .row { gap: 28px; align-items: start; }
+.sales .stat-n { margin-top: 6px; }
+.sales .stat-n.sm strong { font-size: 26px; }
+.sales-side { display: grid; gap: var(--sp-3); align-content: start; }
+.sales-side .mix { height: 12px; }
+.sales-side > .dim { margin: 0; font-size: var(--fs-sm); }
+.sales-now { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-5); font-size: var(--fs-sm); color: var(--text-2); }
+.sales-now p { margin: 0; }
+.sales-now b { color: var(--text); font: 600 var(--fs) var(--mono); }
+.sales-now b.warn-n { color: var(--warn); }
+.sales-now b.danger-n { color: var(--danger); }
+.store p.card-foot { margin: 0; font-size: var(--fs-sm); }
+
+/* Products: a picture tile, the name and SKU, mono numbers; a low row on the warm paper */
+.store .t td { height: 60px; }
+.store .t th:last-child { width: 1%; }
+.store .card-foot .grow { flex: 1; font-size: var(--fs-sm); }
+.store .t .site small { font-family: var(--sans); }
+.store .row.nowrap { gap: var(--sp-2); }
+.pthumb { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 10px; }
+.pthumb .glyph { width: 14px; height: 14px; }
+.pthumb.lg { width: 44px; height: 44px; }
+.pthumb.lg .glyph { width: 18px; height: 18px; }
+.pthumb.t0 { background: #e9dcc4; color: #6b5023; }
+.pthumb.t1 { background: #eadfd3; color: #6b4a2b; }
+.pthumb.t2 { background: #f3e3c1; color: #7a5410; }
+[data-theme="dark"] .pthumb.t0 { background: #2a2621; color: #b9a88c; }
+[data-theme="dark"] .pthumb.t1 { background: #2a2420; color: #b49a82; }
+[data-theme="dark"] .pthumb.t2 { background: #2b271d; color: #bfa676; }
+
+/* The change dialog: price and sale price side by side, mono numbers */
+.sheet.dialog:has(.prodf) { width: 600px; }
+.prodf { gap: var(--sp-3); align-items: start; }
+.prodf .field { margin: 0; }
+.sheet .input.m { font-family: var(--mono); }
+
+@media (max-width: 900px) {
+  .store .sales { grid-template-columns: minmax(0, 1fr); }
+}
