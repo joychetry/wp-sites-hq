@@ -118,7 +118,8 @@ function NextSteps({ sites, onGo, onAdd }: { sites: Site[]; onGo: NonNullable<Pr
     ["Review the updates waiting", false, "Open Updates", () => onGo("Updates")],
     ["Let an AI app plan work for you, with your confirmation", false, "Connect an AI app", () => onGo("AI")],
   ];
-  if (hidden || steps.every(([, done]) => done)) return null;
+  // Only while the fleet is new; after that the steps are in the way.
+  if (hidden || sites.length > 2 || steps.every(([, done]) => done)) return null;
   return (
     <section className="next-steps" aria-label="Next steps">
       <h2>Next steps</h2>

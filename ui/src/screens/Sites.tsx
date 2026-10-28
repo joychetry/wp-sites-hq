@@ -1,5 +1,6 @@
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
+import { toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, connectionLabel, hasTool, NO_TOOLS, noTools, siteStatus, slow, type Site, type Tone } from "../api";
@@ -514,7 +515,13 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
                     type="button"
                     className="btn sm"
                     style={{ marginLeft: "auto" }}
-                    onClick={() => run(() => api.deleteNote(s.id, n.id))}
+                    onClick={() =>
+                      run(async () => {
+                        await api.deleteNote(s.id, n.id);
+                        // Undo writes the note again (with today's date).
+                        toast(`Deleted the note on ${s.name}.`, { undo: () => run(() => api.addNote(s.id, n.body)) });
+                      })
+                    }
                   >
                     Delete note
                   </button>

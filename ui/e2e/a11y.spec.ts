@@ -32,7 +32,7 @@ test("Tab reaches the skip link first, and it moves focus to the content", async
   await page.keyboard.press("Enter");
   await expect(page.locator("#content")).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Open Updates" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Check again" })).toBeFocused();
 });
 
 test("every focusable control shows a focus ring", async ({ page }) => {

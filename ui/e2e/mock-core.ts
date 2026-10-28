@@ -1,5 +1,6 @@
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
-// browser (vite --mode mock). Pick the data with ?fixture=fleet|empty|loading|error.
+// browser (vite --mode mock). Pick the data with ?fixture=fleet|first|empty|loading|error
+// (first: one site, as just after adding it).
 import type { Action, ActivityRow, AppSettings, ReportAsk, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
@@ -107,7 +108,7 @@ const FLEET: Site[] = [
   site({ id: 6, client_id: 2, client: "Studio North", name: "Portfolio", url: "https://portfolio.local", group: "Personal", tags: ["static"], php_version: "8.3.14", health: "ok", health_detail: "Slow: the home page took 4.2 s.", checked_at: now - 3600 * 2 }),
 ];
 
-let sites: Site[] = fixture === "empty" ? [] : FLEET.map((s) => ({ ...s }));
+let sites: Site[] = fixture === "empty" ? [] : fixture === "first" ? [{ ...FLEET[0] }] : FLEET.map((s) => ({ ...s }));
 
 let BUNDLES: Bundle[] = fixture === "empty" ? [] : [
   { id: 1, name: "New shop", plugins: [{ source: "woocommerce", name: "WooCommerce" }, { source: "wordpress-seo", name: "Yoast SEO" }, { source: "wp-mail-smtp", name: "" }] },

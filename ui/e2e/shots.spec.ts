@@ -12,7 +12,7 @@ for (const s of SCREENS) {
       const file = `${s.name}-${theme}${density === "compact" ? "-compact" : ""}.png`;
       test(file, async ({ page }) => {
         await show(page, s, theme, density);
-        await page.screenshot({ path: `../docs/ux/${dir}/${file}` });
+        await page.screenshot({ path: `../docs/ux/${dir}/${file}`, animations: "disabled" });
       });
     }
   }
@@ -26,7 +26,21 @@ test.describe("200% zoom", () => {
       test(`${name}-${theme}-zoom200.png`, async ({ page }) => {
         test.skip(dir.endsWith("before"));
         await show(page, SCREENS.find((s) => s.name === name)!, theme);
-        await page.screenshot({ path: `../docs/ux/${dir}/${name}-${theme}-zoom200.png`, fullPage: true });
+        await page.screenshot({ path: `../docs/ux/${dir}/${name}-${theme}-zoom200.png`, fullPage: true, animations: "disabled" });
+      });
+    }
+  }
+});
+
+// A 960px window: the narrowest before the one-column layout. The rail and inspector narrow.
+test.describe("960px wide", () => {
+  test.use({ viewport: { width: 960, height: 720 } });
+  for (const name of ["overview", "sites", "updates", "plugins", "content-editor", "clients", "ai"]) {
+    for (const theme of ["dark", "light"]) {
+      test(`${name}-${theme}-960.png`, async ({ page }) => {
+        test.skip(dir.endsWith("before"));
+        await show(page, SCREENS.find((s) => s.name === name)!, theme);
+        await page.screenshot({ path: `../docs/ux/${dir}/${name}-${theme}-960.png`, animations: "disabled" });
       });
     }
   }

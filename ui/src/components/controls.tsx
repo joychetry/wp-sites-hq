@@ -712,7 +712,7 @@ function DayField({ value, onChange, label, disabled }: { value: string; onChang
         aria-label={label}
         aria-invalid={bad || undefined}
         aria-describedby={bad ? err : undefined}
-        placeholder="1 Dec 2026"
+        placeholder="e.g. 1 Dec 2026"
         disabled={disabled}
         value={draft}
         onChange={(e) => {

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Overview, summary } from "./Overview";
 import { site } from "../test-fixtures";
 
@@ -47,4 +47,28 @@ test("a connection with no tools says so and offers to sign in again; slow is on
   expect(onSignInAgain).toHaveBeenCalledWith(1);
   expect(panel).toHaveTextContent("Slow site. Slow: the home page took 4.2 s. It still works.");
   expect(screen.getByRole("heading", { level: 2, name: "One needs a look. The other one is fine." })).toBeInTheDocument();
+});
+
+test("a new user gets three steps, then next steps that can be hidden for good", () => {
+  const onAdd = vi.fn();
+  const onGo = vi.fn();
+  const { rerender } = render(<Overview sites={[]} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={onAdd} onGo={onGo} />);
+  const start = screen.getByRole("region", { name: "Getting started" });
+  fireEvent.click(within(start).getByRole("button", { name: /^Add a site/ }));
+  fireEvent.click(within(start).getByRole("button", { name: "Open the command palette" }));
+  expect(onAdd).toHaveBeenCalled();
+  expect(onGo).toHaveBeenCalledWith("palette");
+
+  localStorage.removeItem("mc-tips-hidden");
+  rerender(<Overview sites={[site()]} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={onAdd} onGo={onGo} />);
+  const next = screen.getByRole("region", { name: "Next steps" });
+  expect(next).toHaveTextContent("Add more sites: not done yet");
+  fireEvent.click(within(next).getByRole("button", { name: "Connect an AI app" }));
+  expect(onGo).toHaveBeenCalledWith("AI");
+  fireEvent.click(within(next).getByRole("button", { name: "Hide these steps" }));
+  expect(screen.queryByRole("region", { name: "Next steps" })).toBeNull();
+  expect(localStorage.getItem("mc-tips-hidden")).toBe("1");
+  localStorage.removeItem("mc-tips-hidden");
+  rerender(<Overview sites={[site(), site({ id: 2 }), site({ id: 3 })]} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={onAdd} onGo={onGo} />);
+  expect(screen.queryByRole("region", { name: "Next steps" })).toBeNull();
 });

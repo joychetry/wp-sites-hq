@@ -15,6 +15,7 @@ const nav = (name: string) => (page: Page) => page.getByRole("navigation", { nam
 export const SCREENS: Screen[] = [
   { name: "overview" },
   { name: "overview-empty", fixture: "empty" },
+  { name: "overview-first-site", fixture: "first" },
   { name: "sites", open: nav("Sites") },
   {
     name: "sites-selected",
@@ -109,6 +110,15 @@ export const SCREENS: Screen[] = [
       await choose(page.getByRole("combobox", { name: "On" }), { name: "MC A" });
       await page.getByRole("textbox", { name: "What it is" }).fill("Backups");
       await page.getByRole("textbox", { name: "Amount" }).fill("5.50");
+    },
+  },
+  {
+    name: "cost-calendar",
+    open: async (page) => {
+      await nav("Clients")(page);
+      await page.getByRole("button", { name: "Add a cost or charge" }).click();
+      await page.getByRole("button", { name: "Choose the renews on from a calendar" }).click();
+      await page.getByRole("grid").waitFor();
     },
   },
   {
@@ -224,6 +234,14 @@ export const SCREENS: Screen[] = [
     },
   },
   { name: "content", open: nav("Content") },
+  {
+    name: "content-show-list",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("combobox", { name: "Show", exact: true }).press("ArrowDown");
+      await page.getByRole("listbox", { name: "Show" }).waitFor();
+    },
+  },
   {
     name: "content-editor",
     open: async (page) => {
