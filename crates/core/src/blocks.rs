@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Block-safe body editing (plan Phase 3). WordPress block markup is read just
 //! far enough to find the text inside simple blocks (paragraphs, headings, list
 //! items). An edit replaces only that text, and the block comments with their

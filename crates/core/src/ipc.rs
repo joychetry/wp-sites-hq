@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Local socket for the CLI and `monks mcp`: a Unix socket in a 0700 folder, or
 //! an owner-only Windows named pipe. One JSON object per line.
 //!

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // AI apps and Monks Central (plan Phase 5): plans AI agents proposed, waiting
 // for you to confirm them; which sites agents may change; the activity log of
 // who did what; and how to connect an AI app with `monks mcp`.

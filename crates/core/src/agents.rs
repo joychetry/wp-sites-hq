@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! AI agents on the socket (plan 5.6). They read every Classic Monks site with
 //! the app's grant. A change on one site goes through the agents' own grant,
 //! which the human gives per site with "operator" left unticked, so the site's

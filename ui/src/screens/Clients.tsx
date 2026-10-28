@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Clients, their sites, and what the sites cost you and earn (plan Phase 7).
 import { Skeleton, toast } from "../components/feedback";
 import { DateInput, MultiSelect, Select } from "../components/controls";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Phase 6: security scan results, monitoring and safe updates.
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";

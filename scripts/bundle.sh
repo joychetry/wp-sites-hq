@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Build the installers for this computer: the `monks` command goes inside each
 # one (next to the app), then Tauri bundles the app.
 #

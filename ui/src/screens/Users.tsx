@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
 import { Skeleton, toast } from "../components/feedback";

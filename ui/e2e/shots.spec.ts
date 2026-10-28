@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Screenshots of every screen into docs/ux/<SHOTS>: SHOTS=phase-2 npx playwright test shots
 import { test } from "@playwright/test";
 import { SCREENS, show } from "./screens";

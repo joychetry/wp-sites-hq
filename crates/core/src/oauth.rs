@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! OAuth 2.1 client for Classic Monks (plan 5.4): discovery from the
 //! protected-resource document, dynamic client registration, PKCE S256, a
 //! loopback redirect, code exchange, refresh and revoke.

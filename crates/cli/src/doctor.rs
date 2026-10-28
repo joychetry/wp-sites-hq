@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! `monks doctor`: checks the pieces a user can't see, in plain words.
 //! Prints no secret.
 

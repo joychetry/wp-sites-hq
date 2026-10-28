@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Security: known vulnerabilities, abandoned plugins and changed files on every site.
 import { useState } from "react";
 import { ago, api, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";

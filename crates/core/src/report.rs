@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Monthly client reports: what was done on each site, uptime, speed,
 //! security, what was published, the store, and search numbers when they're on.
 //! One document model, written out as HTML and as a PDF (a small writer of our

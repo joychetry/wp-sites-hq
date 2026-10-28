@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Every screen the UI has, as a URL plus the steps that open it.
 import type { Locator, Page } from "@playwright/test";
 

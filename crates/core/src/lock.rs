@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! One core per data folder, guarded by an OS file lock.
 
 use std::fs::{File, OpenOptions, TryLockError};

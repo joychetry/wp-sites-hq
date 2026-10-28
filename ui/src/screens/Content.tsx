@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Posts, pages and every post type a site lets us edit: list, filter, open, create (plan Phase 3).
 import { Skeleton, toast } from "../components/feedback";
 import { Select } from "../components/controls";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Posts, pages and every post type the connection can edit (plan Phase 3):
 //! find the types, list and read entries, create and edit them (title, status,
 //! terms, featured image, and the body through the block-safe editor), trash

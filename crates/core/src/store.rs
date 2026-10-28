@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! SQLite store with versioned migrations tracked in `PRAGMA user_version`.
 
 use std::path::Path;

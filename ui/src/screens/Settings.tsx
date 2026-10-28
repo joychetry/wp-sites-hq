@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Settings: how the app looks (remembered on this computer), how reports look,
 // Search Console and AgentedSEO, and your site list in and out.
 import { ColorInput, FilePicker, Menu, Slider } from "../components/controls";

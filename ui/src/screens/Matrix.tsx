@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Plugins and Themes: one row per site, one column per plugin or theme, and an
 // inspector for the cell in focus. Arrow keys move between cells.
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";

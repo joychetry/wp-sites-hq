@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Plugins, themes and updates across sites (plan Phase 2): what each site runs
 //! (a cached inventory), the changes Monks Central can make, and jobs that make
 //! them on many sites with progress per site.

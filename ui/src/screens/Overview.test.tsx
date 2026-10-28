@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Overview, summary } from "./Overview";
 import { site } from "../test-fixtures";

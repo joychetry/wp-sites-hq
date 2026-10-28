@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Plugin bundles (a named set installed together) and installing a plugin or
 //! theme from a zip on this computer (Classic Monks M8, `install-zip`).
 //!

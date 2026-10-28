@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { useEffect, useMemo, useState } from "react";

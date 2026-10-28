@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Updates: everything waiting on every site, picked and sent to the plan.
 import { useMemo, useState } from "react";
 import { ago, api, blocked, type Action, type Site, type SiteInventory } from "../api";

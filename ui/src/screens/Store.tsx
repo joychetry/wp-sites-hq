@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // A WooCommerce store on one site: how it did over a period, what runs low, and
 // its products with their prices and stock, changed as a job (plan Phase 7).
 import { Skeleton, toast } from "../components/feedback";

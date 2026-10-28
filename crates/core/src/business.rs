@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Clients, what sites cost and earn, the app's own settings, and the site
 //! list in and out as JSON or CSV (plan Phase 7). Secrets never leave: an
 //! export lists sites, not how to sign in to them.

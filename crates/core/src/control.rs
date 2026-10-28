@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! One-click login (Classic Monks M3) and Classic Monks itself (plan Phase 4):
 //! its features (on/off), the settings it lets Monks Central change, its
 //! activity log with undo, and the changes waiting for approval on the site.

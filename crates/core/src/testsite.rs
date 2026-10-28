@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! A fake WordPress site for tests: Classic Monks' OAuth server as the plugin
 //! runs it (rotating refresh tokens, reuse revokes the grant), its MCP endpoint,
 //! the home page and feed, and the core REST routes Basic mode uses.

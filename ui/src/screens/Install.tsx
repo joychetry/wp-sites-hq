@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Install a plugin from WordPress.org (search), a zip link, a zip on this computer
 // (plugin or theme, Classic Monks M8) or a bundle, on the sites you pick.
 import { FilePicker, SearchInput } from "../components/controls";

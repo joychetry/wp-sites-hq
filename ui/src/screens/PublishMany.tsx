@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // One entry, written once, published on several sites as one plan (plan Phase 7).
 import { Select, DateInput } from "../components/controls";
 import { useState } from "react";

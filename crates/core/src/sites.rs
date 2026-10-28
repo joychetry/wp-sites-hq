@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Sites in the store: how to reach them, what they run, groups, tags, notes.
 
 use reqwest::Url;

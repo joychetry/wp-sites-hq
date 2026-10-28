@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! A WooCommerce store on one site: its overview for a period, its products a
 //! page at a time, and price and stock changes (Classic Monks `list-products`,
 //! `get-store-overview`, `update-products`). Changes run as jobs.

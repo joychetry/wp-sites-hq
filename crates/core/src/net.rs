@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! HTTP client that trusts exactly what the OS trusts.
 //!
 //! reqwest's `rustls` backend verifies with `rustls-platform-verifier`, so sites

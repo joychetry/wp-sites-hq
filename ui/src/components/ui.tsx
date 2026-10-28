@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Small pieces of the Console design system.
 import type { ReactNode } from "react";
 import type { Tone } from "../api";

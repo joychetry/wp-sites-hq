@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { fireEvent } from "@testing-library/react";
 import type { Site } from "./api";
 

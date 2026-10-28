@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Ctrl K / Cmd K: every action and page, by typing.
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Kbd } from "./ui";

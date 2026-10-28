@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { Combobox, ColorInput, DateInput, Menu, MultiSelect, NumberInput, parseDate, parseTime, SearchInput, Select, Slider, Tabs, TagInput } from "./controls";

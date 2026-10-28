@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Overview: one serif sentence about the fleet (from direction A), then the
 // dense Console panels.
 import { NO_TOOLS, noTools, siteStatus, slow, type Site } from "../api";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Monks Central desktop app. The window is the only operator (plan D6): it
 //! reaches the core through Tauri commands, never through the local socket.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Monks Central's own log of what was done through it, and who started it:
 //! the person in the app, or an AI agent (plan 5.8). Each site's Classic Monks
 //! keeps its own log too; this one covers every site, Basic mode included.

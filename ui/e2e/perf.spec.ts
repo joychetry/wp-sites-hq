@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // 300 sites: every list opens and answers keys, clicks and typing without a long freeze.
 // A long task is the browser busy for over 50 ms; none may pass the budget below.
 import { expect, test, type Page } from "@playwright/test";

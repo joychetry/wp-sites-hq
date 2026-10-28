@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Test sites for Monks Central in WordPress Studio.
 #
 #   scripts/test-sites.sh create|start|stop|status|delete [mc-a|mc-b|mc-c ...]

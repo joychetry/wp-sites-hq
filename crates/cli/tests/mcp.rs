@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! `monks mcp` speaks MCP on stdio and asks the running core, as an agent.
 
 use std::io::{BufRead, BufReader, Write};

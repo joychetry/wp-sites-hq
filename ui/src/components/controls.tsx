@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Custom form controls, so nothing falls back to the OS look: a listbox select, a combobox with
 // suggestions, a multi-select, date, time and month pickers, number, search, tags, colour, files,
 // a menu, tabs and a slider. Each follows its WAI-ARIA pattern and works from the keyboard.

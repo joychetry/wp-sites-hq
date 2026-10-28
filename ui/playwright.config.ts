@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { defineConfig } from "@playwright/test";
 
 // A build of the UI against the mock core (e2e/mock-core.ts), on its own port.

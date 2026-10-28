@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Custom controls (components/controls.tsx, feedback.tsx). Nothing draws in the OS look:
    e2e/native.spec.ts fails if a control's computed appearance is not "none". */
 button, input, textarea, select, progress, meter { -webkit-appearance: none; appearance: none; }

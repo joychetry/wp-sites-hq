@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Monitoring: is each site up, how fast, and when its certificate and domain expire.
 import { useState } from "react";
 import { ago, api, type Monitor, type Site } from "../api";

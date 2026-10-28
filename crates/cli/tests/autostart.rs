@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! `monks status` starts a headless core when none runs; the app can stop it.
 
 use std::process::Command;

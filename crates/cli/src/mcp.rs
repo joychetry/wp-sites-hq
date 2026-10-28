@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! `monks mcp`: an MCP server on stdin and stdout for Claude, Cursor, VS Code and
 //! other AI apps. A few general tools for every site, never one tool per site
 //! ability (plan 5.6). Each call goes to the core over the socket, as an agent:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! `monks`: the Monks Central command line. A console program on every OS.
 
 mod doctor;

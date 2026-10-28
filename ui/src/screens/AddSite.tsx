@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Add a site (or sign one in again): Classic Monks OAuth in the browser, or
 // Basic mode with an application password.
 import { useState } from "react";

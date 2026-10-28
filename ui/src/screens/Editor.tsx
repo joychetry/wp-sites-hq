@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // One entry in a side sheet: title, status, terms, featured image, and the body
 // through the block-safe editor (only text blocks change; every other block stays).
 import { Combobox, DateInput, Select } from "../components/controls";

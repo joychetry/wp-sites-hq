@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Theme: the OS setting unless the person picked light or dark.
 import { useEffect, useState } from "react";
 

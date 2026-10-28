@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
 import { dismiss, toast } from "../components/feedback";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Adding, refreshing, checking and removing sites (plan 5.4, 5.5).
 
 use std::sync::atomic::Ordering;

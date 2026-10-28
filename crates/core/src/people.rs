@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Users and comments (plan Phase 4): list a site's users, add one, change a
 //! role, delete one and hand their content to another user, and email a password
 //! reset (Classic Monks M7); the comments waiting on a site, approve, unapprove,

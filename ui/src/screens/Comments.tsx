@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // One comment inbox for every site shown: approve, unapprove, spam, trash and reply (plan Phase 4).
 import { Skeleton, toast } from "../components/feedback";
 import { useCallback, useEffect, useRef, useState } from "react";

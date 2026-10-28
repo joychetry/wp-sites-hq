@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Every change goes the same way (plan 5.7): choose what changes on which site,
 // review it, then watch it run, site by site.
 import { useMemo, useState } from "react";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // axe on every screen, in both themes and both row heights, plus the
 // keyboard and zoom checks axe can't do. Serious and critical issues fail.
 import { expect, test } from "@playwright/test";

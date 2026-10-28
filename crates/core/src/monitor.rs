@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Monitoring (plan Phase 6): each site's home page every five minutes (up or
 //! down, how fast, and when its certificate expires), when its domain expires
 //! (RDAP, once a day), and Google PageSpeed when asked. It runs while the core

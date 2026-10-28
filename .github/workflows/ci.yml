@@ -54,6 +54,23 @@ jobs:
       - uses: actions/checkout@v5
       - run: shellcheck -x scripts/*.sh
       - run: bash scripts/test-sites.test.sh
+      - name: Licence headers
+        run: bash scripts/check-headers.sh
+
+  licences:
+    name: Licences (no AGPL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: ui
+      - run: bash scripts/licence-audit.sh
 
   ui:
     name: UI

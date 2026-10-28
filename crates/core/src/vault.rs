@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Secret vault: records encrypted with XChaCha20-Poly1305 in SQLite, under one
 //! master key kept in the OS keychain.
 

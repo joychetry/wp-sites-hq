@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Search numbers for reports, both off until turned on in Settings:
 //! Google Search Console (read-only, through your own Google OAuth client and a
 //! loopback sign-in with PKCE), and AgentedSEO's abilities on sites that have it.

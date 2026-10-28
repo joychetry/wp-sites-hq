@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Live acceptance driver for Studio sites. Uses the same core API as the app.
 //!
 //!   MONKS_HOME=<data folder> cargo run -p monks-core --example acceptance -- <command>

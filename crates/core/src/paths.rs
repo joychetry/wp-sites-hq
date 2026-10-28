@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Where Monks Central keeps its data.
 
 use std::io;

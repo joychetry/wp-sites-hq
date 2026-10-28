@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // A side sheet over the page (bulk actions, adding a site). Esc closes it.
 import { useEffect, useRef, type ReactNode } from "react";
 

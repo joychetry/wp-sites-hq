@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // @vitest-environment node
 // WCAG 2.2 AA over the token pairs the UI actually draws, in both themes:
 // 4.5:1 for text, 3:1 for icons, control borders and the focus ring.

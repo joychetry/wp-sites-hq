@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import App, { SECTIONS } from "./App";

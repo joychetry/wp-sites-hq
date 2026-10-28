@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Light mode with each rail palette: SHOTS=1 npx playwright test sidebar-options
 import { test } from "@playwright/test";
 import { SCREENS, show } from "./screens";

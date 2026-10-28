@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // A site's media library: browse, search, and import an image from a link (plan Phase 3).
 import { SearchInput } from "../components/controls";
 import { Skeleton, toast } from "../components/feedback";

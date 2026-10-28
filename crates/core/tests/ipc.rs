@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! End-to-end: a real core on a temp data folder, clients over the socket.
 
 use monks_core::ipc::{self, ClientError};

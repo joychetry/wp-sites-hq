@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Monthly reports for a client's sites, saved as HTML and PDF in Downloads (plan Phase 7).
 import { Select, DateInput } from "../components/controls";
 import { useEffect, useState } from "react";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // No control on any screen draws in the OS look: every button, input, textarea, select, progress
 // and meter has a computed appearance of "none", and the controls a browser always draws itself
 // (select, datalist, date, time, month, colour, number spinners, visible file inputs, title tooltips)

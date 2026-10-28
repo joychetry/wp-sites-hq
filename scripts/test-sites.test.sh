@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Self-test for test-sites.sh helpers on a temp hosts file. No Studio needed.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)

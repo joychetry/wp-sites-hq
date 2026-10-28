@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Phase 7: monthly client reports, and report and search settings.
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";

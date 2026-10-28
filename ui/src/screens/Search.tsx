@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Search everything: sites, plugins, themes and clients at once from what Monks
 // Central already knows, then posts and pages on every site (plan Phase 7).
 import { useEffect, useState } from "react";

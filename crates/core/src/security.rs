@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Security (plan Phase 6): known vulnerabilities in what each site runs, from
 //! WPVulnerability (free, no key), plugins WordPress.org closed or nobody has
 //! updated in two years (the same answers carry both), and checksums of

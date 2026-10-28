@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Classic Monks on one site: its features, the settings it lets Monks Central change,
 // its activity log with undo, and changes waiting for approval (plan Phase 4).
 import { Skeleton, toast } from "../components/feedback";

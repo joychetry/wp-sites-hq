@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The three rail palettes tried for light mode (docs/ux/README.md says which won and why).
 export const OPTIONS: Record<string, Record<string, string>> = {
   "a-ink": {
