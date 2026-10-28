@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Phase 7 content: scheduling, custom fields, earlier versions, the trash, bulk changes, publishing on several sites.
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render as draw, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
+import type { ReactElement, ReactNode } from "react";
 import { Content, bulkRows } from "./Content";
 import { siteDate } from "./Editor";
 import { site, choose } from "../test-fixtures";
+import { HeadSlot } from "../components/ui";
 import type { Post, PostType } from "../api";
+
+// The page head's action slot, as App gives it: the screen's main actions render there.
+const head = document.body.appendChild(document.createElement("div"));
+const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider value={head}>{children}</HeadSlot.Provider>;
+const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -73,6 +80,18 @@ function core(over: Record<string, (a: Record<string, unknown>) => unknown> = {}
   });
   return calls;
 }
+
+test("an entry moved to the trash comes back with Undo on the message", async () => {
+  const calls = core();
+  render(<Content sites={[CM]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  const sheet = await screen.findByRole("dialog");
+  fireEvent.click(await within(sheet).findByRole("button", { name: "Move to the trash" }));
+  fireEvent.click(within(sheet).getByRole("button", { name: "Move it to the trash" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+  await waitFor(() => expect(calls.some((c) => c[0] === "content_untrash" && c[1].postId === 7)).toBe(true));
+  expect(await screen.findByText("Brought it back from the trash on Alpha.")).toBeInTheDocument();
+});
 
 test("datetime-local values become the site's date format", () => {
   expect(siteDate("2026-11-02T09:30")).toBe("2026-11-02 09:30:00");
