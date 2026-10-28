@@ -19,8 +19,9 @@ test("autop makes paragraphs and line breaks as WordPress does, and leaves block
   expect(autop("  \r\n ")).toBe("");
 });
 
-test("site HTML shown before the editor starts keeps inline tags and safe links only", () => {
-  expect(html(safeHtml('<b>Bold</b> <a href="https://x.test" onclick="evil()">link</a>'))).toBe('<b>Bold</b> <a href="https://x.test">link</a>');
+test("site HTML shown before the editor starts keeps inline tags only, and links without an address", () => {
+  // A live link there would take the app window to the site's address on the click that starts the editor.
+  expect(html(safeHtml('<b>Bold</b> <a href="https://x.test" onclick="evil()">link</a> <a href="/x">here</a>'))).toBe("<b>Bold</b> <a>link</a> <a>here</a>");
   expect(html(safeHtml('<img src=x onerror="evil()"><script>evil()</script><a href="javascript:evil()">x</a>'))).toBe("evil()<a>x</a>");
   expect(html(safeHtml("<div><em>in</em> a div</div>"))).toBe("<em>in</em> a div");
 });

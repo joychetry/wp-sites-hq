@@ -177,6 +177,23 @@ test("saving and its messages never move the page: title, a body edit and an ACF
   expect(await y(mail)).toBe(at);
 });
 
+test("site HTML with position: fixed stays inside the editor, never over the window", async ({ page }) => {
+  // A fixed box put inside an editor fills that editor's padding box, not the viewport.
+  const fill = (el: Element) => {
+    const d = document.createElement("div");
+    d.style.cssText = "position: fixed; inset: 0; z-index: 99999";
+    el.append(d);
+    const r = d.getBoundingClientRect(), b = el.getBoundingClientRect();
+    d.remove();
+    return [r.x - b.x - el.clientLeft, r.y - b.y - el.clientTop, r.width - el.clientWidth, r.height - el.clientHeight];
+  };
+  await show(page, SCREENS.find((s) => s.name === "content-classic")!, "light");
+  await expect(page.getByRole("textbox", { name: "Body" })).toHaveAttribute("contenteditable", "true");
+  expect(await page.getByRole("textbox", { name: "Body" }).evaluate(fill)).toEqual([0, 0, 0, 0]);
+  await show(page, SCREENS.find((s) => s.name === "content-block-text")!, "light");
+  expect(await page.locator(".blk-text").first().evaluate(fill)).toEqual([0, 0, 0, 0]);
+});
+
 test("entries are ticked and changed in bulk from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "content")!, "light");
   await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).focus();

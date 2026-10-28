@@ -60,8 +60,9 @@ export function autop(html: string): string {
 const SAFE_TAGS = new Set(["A", "ABBR", "B", "BR", "CODE", "DEL", "EM", "I", "INS", "KBD", "MARK", "S", "SMALL", "SPAN", "STRONG", "SUB", "SUP", "U"]);
 
 /**
- * Site HTML shown before an editor starts: inline tags only, links with web addresses, no other
- * attributes. Parsed in an inert document, so nothing in it runs or loads.
+ * Site HTML shown before an editor starts: inline tags only, no attributes (a link keeps its look
+ * but no address, so a click can't take the window away). Parsed in an inert document, so nothing
+ * in it runs or loads.
  */
 export function safeHtml(html: string): DocumentFragment {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
@@ -76,8 +77,6 @@ export function safeHtml(html: string): DocumentFragment {
           continue;
         }
         const made = document.createElement(el.tagName.toLowerCase());
-        const href = el.getAttribute("href") ?? "";
-        if (el.tagName === "A" && /^(https?:|mailto:|\/|#)/i.test(href)) made.setAttribute("href", href);
         to.appendChild(made);
         copy(el, made);
       }
