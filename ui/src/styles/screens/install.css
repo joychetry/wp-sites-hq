@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Install a plugin (screens/Install.tsx, board D04): what sits inside the sheet. */
+.ins-rule { margin: var(--sp-5) 0; border: 0; border-top: 1px solid var(--line); }
+.ins-zip { margin-top: var(--sp-5); }
+.sheet .btn.ghost { border-color: transparent; background: transparent; color: var(--text-2); }
+.sheet .btn.ghost:hover:not(:disabled) { border-color: transparent; background: var(--panel); color: var(--text); }
+
+/* Plugins found: one card, a row each with the plugin's tile, its name and what it is */
+.ins-found { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 12px; }
+.ins-found li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); padding: 14px var(--sp-4); border-top: 1px solid var(--line); }
+.ins-found li:first-child { border-top: 0; }
+.ins-found .grow { display: grid; gap: 2px; min-width: 0; }
+.ins-found b { font-weight: 600; }
+.ins-found small { font-size: var(--fs-sm); color: var(--text-2); }
+.ins-found small.cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); }
+.ins-found .mono { color: var(--text-2); }
+
+/* Bundles: a card in the well each, with its box tile */
+.ins-bundles { display: grid; gap: var(--sp-2); margin: 0 0 var(--sp-2); padding: 0; list-style: none; }
+.ins-bundles li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--sp-3); border-radius: 12px; background: var(--panel); }
+.ins-bundles .grow { display: grid; gap: 2px; flex: 1 1 160px; min-width: 0; }
+.ins-bundles b { font-weight: 600; }
+.ins-bundles small { font-size: var(--fs-sm); color: var(--text-2); overflow-wrap: anywhere; }
+.ins-acts { flex-wrap: wrap; margin-top: var(--sp-2); }
+
+/* Where: a site's box, its tile and name; a site that can't take it says why */
+.ins-sites { display: grid; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.ins-sites li { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+.ins-sites .grow { flex: 1; min-width: 0; }
+.ins-sites .dim { margin-left: var(--sp-1); font-size: var(--fs-sm); }
+.ins-sites li.no { color: var(--text-3); }
+.field > .callout { font-weight: 400; }
+.ins-then { margin: var(--sp-4) 0 0; padding-top: var(--sp-4); border-top: 1px solid var(--line); gap: 10px; }
