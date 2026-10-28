@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
+import "../styles/screens/users.css";
 import { Skeleton, toast } from "../components/feedback";
-import { Select, SearchInput } from "../components/controls";
+import { dayLabel, Menu, Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Role, type Site, type User, type Users as SiteUsers } from "../api";
-import { Button } from "../components/ui";
+import { initials, SiteTile } from "../components/SiteTile";
+import { Button, Glyph, HeadActions } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 
 type Loaded = { site: Site; users?: SiteUsers; error?: string };
@@ -19,6 +21,9 @@ export function Users({ sites }: { sites: Site[] }) {
   const [typed, setTyped] = useState("");
   const [search, setSearch] = useState("");
   const [action, setAction] = useState<Action | null>(null);
+  // Site and Role filters work on the rows already read.
+  const [siteF, setSiteF] = useState<number | null>(null);
+  const [roleF, setRoleF] = useState<string | null>(null);
   const ids = usable.map((s) => s.id).join(",");
 
   // Only the newest request's answer is shown, so a slow older search or tab can't replace it.
@@ -62,8 +67,14 @@ export function Users({ sites }: { sites: Site[] }) {
     }
   };
 
-  const rows = (loaded ?? []).flatMap((l) => (l.users?.users ?? []).map((u) => ({ l, u })));
+  const all = (loaded ?? []).flatMap((l) => (l.users?.users ?? []).map((u) => ({ l, u })));
+  const rows = all.filter(({ l, u }) => (siteF == null || l.site.id === siteF) && (roleF == null || u.role === roleF));
   const blocked = sites.filter((s) => peopleBlocked(s, "get-users"));
+  // Every role any shown site has, once, for the Role filter.
+  const roleList = [...new Map((loaded ?? []).flatMap((l) => l.users?.roles ?? []).map((r) => [r.id, r])).values()];
+  const people = new Set(rows.map(({ u }) => (u.email || u.username).toLowerCase())).size;
+  const onSites = new Set(rows.map(({ l }) => l.site.id)).size;
+  const filtered = search || siteF != null || roleF != null;
   let body;
   if (!loaded) {
     body = (
@@ -72,13 +83,15 @@ export function Users({ sites }: { sites: Site[] }) {
   } else if (rows.length === 0) {
     body = (
       <div className="empty">
-        <h2>{search ? "Nobody matches." : "No users to show."}</h2>
-        <p>{search ? "Try part of a name, username or email address." : "The sites below can't list their users here."}</p>
-        {search && (
+        <h2>{filtered ? "Nobody matches." : "No users to show."}</h2>
+        <p>{filtered ? "Try part of a name, username or email address, or another site or role." : "The sites below can't list their users here."}</p>
+        {filtered && (
           <Button
             onClick={() => {
               setTyped("");
               setSearch("");
+              setSiteF(null);
+              setRoleF(null);
             }}
           >
             Clear the search
@@ -89,18 +102,18 @@ export function Users({ sites }: { sites: Site[] }) {
   } else {
     body = (
       <>
-        <p className="legend" id="users-legend">
+        <p className="sr-only" id="users-legend">
           Users on every site shown, by name. Deleting a user hands their posts and pages to another user on the same site.
         </p>
         <table className="t" aria-label="Users" aria-describedby="users-legend">
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col">Role</th>
+              <th scope="col">User</th>
               <th scope="col">Site</th>
-              <th scope="col">
-                <span className="sr-only">Actions</span>
+              <th scope="col">Role</th>
+              <th scope="col">Joined</th>
+              <th scope="col" className="r">
+                Actions
               </th>
             </tr>
           </thead>
@@ -110,30 +123,45 @@ export function Users({ sites }: { sites: Site[] }) {
               const who = u.name || u.username;
               return (
                 <tr key={`${l.site.id}-${u.id}`}>
-                  <td className="name">
-                    <span className="cut" data-tip={who}>
-                      {who}
-                    </span>
-                    {u.name && u.name !== u.username && <span className="dim"> {u.username}</span>}
-                  </td>
-                  <td className="cut" data-tip={u.email}>
-                    {u.email || "none"}
-                  </td>
-                  <td>{roleName(roles, u.role)}</td>
-                  <td>{l.site.name}</td>
                   <td>
-                    <div className="row">
-                    <Button small aria-label={`Change role for ${who} on ${l.site.name}`} disabled={roles.length === 0} onClick={() => setAction({ kind: "role", site: l.site, user: u, roles })}>
-                      Change role
-                    </Button>
-                    {l.users!.can_reset && (
-                      <Button small aria-label={`Send password reset to ${who} on ${l.site.name}`} onClick={() => reset(l.site, u)}>
-                        Send password reset
+                    <div className="site">
+                      <span className="av lg well" aria-hidden="true">
+                        {initials(who)}
+                      </span>
+                      <span>
+                        <b>{who}</b>
+                        <small>{u.email || u.username}</small>
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="conn">
+                      <SiteTile site={l.site} size="sm" />
+                      {l.site.name}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={u.role === "administrator" ? "pchip brand" : "pchip"}>{roleName(roles, u.role)}</span>
+                  </td>
+                  <td>
+                    <span className="when" data-tip={u.registered || undefined}>
+                      {dayLabel(u.registered) || "not known"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="rowacts">
+                      <Button small className="ghost" aria-label={`Change role for ${who} on ${l.site.name}`} disabled={roles.length === 0} onClick={() => setAction({ kind: "role", site: l.site, user: u, roles })}>
+                        Change role
                       </Button>
-                    )}
-                    <Button small kind="danger" aria-label={`Delete ${who} from ${l.site.name}`} onClick={() => setAction({ kind: "delete", site: l.site, user: u, roles })}>
-                      Delete
-                    </Button>
+                      {l.users!.can_reset && (
+                        <Button small className="ghost" aria-label={`Send password reset to ${who} on ${l.site.name}`} onClick={() => reset(l.site, u)}>
+                          <Glyph name="mail" />
+                          Send password reset
+                        </Button>
+                      )}
+                      <button type="button" className="icon-btn" aria-label={`Delete ${who} from ${l.site.name}`} data-tip="Delete" onClick={() => setAction({ kind: "delete", site: l.site, user: u, roles })}>
+                        <Glyph name="trash" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -141,51 +169,79 @@ export function Users({ sites }: { sites: Site[] }) {
             })}
           </tbody>
         </table>
+        <div className="card-foot">
+          <span className="count">
+            {rows.length === 1 ? "1 account" : `${rows.length} accounts`} for {people === 1 ? "1 person" : `${people} people`} on {onSites === 1 ? "1 site" : `${onSites} sites`}
+          </span>
+        </div>
       </>
     );
   }
 
   const partial = (loaded ?? []).filter((l) => l.users && l.users.total > l.users.users.length);
   const failed = (loaded ?? []).filter((l) => l.error);
+  const siteName = usable.find((s) => s.id === siteF)?.name;
 
   return (
-    <div className="scroll">
-      <form
-        className="bar"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSearch(typed.trim());
-        }}
-      >
-        <SearchInput className="sm" aria-label="Search users" placeholder="Search by name, username or email" value={typed} onChange={(e) => setTyped(e.target.value)} />
-        <Button small type="submit">
-          Search
-        </Button>
-        <span className="grow" />
-        <Button kind="primary" small disabled={usable.length === 0} onClick={() => setAction({ kind: "add" })}>
+    <div className="scroll page users">
+      <HeadActions>
+        <Button kind="primary" className="disc" disabled={usable.length === 0} onClick={() => setAction({ kind: "add" })}>
           Add a user
+          <span className="btn-disc">
+            <Glyph name="plus" />
+          </span>
         </Button>
-      </form>
-      {body}
-      {(partial.length > 0 || failed.length > 0 || blocked.length > 0) && (
-        <ul className="notes" aria-label="Sites not fully shown">
-          {partial.map((l) => (
-            <li key={l.site.id}>
-              {l.site.name}: showing {l.users!.users.length} of {l.users!.total} users. Search to find the others.
-            </li>
-          ))}
-          {failed.map((l) => (
-            <li key={l.site.id}>
-              {l.site.name}: the users didn't load. {l.error}
-            </li>
-          ))}
-          {blocked.map((s) => (
-            <li key={s.id}>
-              {s.name}: {peopleBlocked(s, "get-users")}
-            </li>
-          ))}
-        </ul>
-      )}
+      </HeadActions>
+      <div className="stack">
+        <form
+          className="filters"
+          aria-label="Which users to show"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSearch(typed.trim());
+          }}
+        >
+          <SearchInput aria-label="Search users" placeholder="Search users by name or email" value={typed} onChange={(e) => setTyped(e.target.value)} />
+          <Button type="submit">Search</Button>
+          <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
+            Site: <b>{siteName ?? "Any"}</b>
+          </Menu>
+          <Menu label="Role" className={roleF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setRoleF(null) }, ...roleList.map((r) => ({ label: r.name, run: () => setRoleF(r.id) }))]}>
+            Role: <b>{roleF == null ? "Any" : roleName(roleList, roleF)}</b>
+          </Menu>
+        </form>
+        <section className="card" aria-label="Users on every site">
+          {body}
+        </section>
+        {(partial.length > 0 || failed.length > 0 || blocked.length > 0) && (
+          <ul className="pnotes" aria-label="Sites not fully shown">
+            {partial.map((l) => (
+              <li key={l.site.id} className="callout">
+                <Glyph name="info" />
+                <span>
+                  {l.site.name}: showing {l.users!.users.length} of {l.users!.total} users. Search to find the others.
+                </span>
+              </li>
+            ))}
+            {failed.map((l) => (
+              <li key={l.site.id} className="callout warning">
+                <Glyph name="alert" />
+                <span>
+                  {l.site.name}: the users didn't load. {l.error}
+                </span>
+              </li>
+            ))}
+            {blocked.map((s) => (
+              <li key={s.id} className="callout">
+                <Glyph name="info" />
+                <span>
+                  {s.name}: {peopleBlocked(s, "get-users")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       {action?.kind === "add" && <AddUser sites={usable} onClose={() => setAction(null)} onDone={done} />}
       {action?.kind === "role" && <ChangeRole {...action} onClose={() => setAction(null)} onDone={done} />}
       {action?.kind === "delete" && <DeleteUser {...action} onClose={() => setAction(null)} onDone={done} />}
@@ -241,10 +297,15 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
       onClose={onClose}
       footer={
         <>
-          <Button kind="primary" disabled={busy || !username.trim() || !email.trim() || !info} onClick={save}>
-            {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
+          <Button className="ghost" onClick={onClose}>
+            Cancel
           </Button>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button kind="primary" className="disc" disabled={busy || !username.trim() || !email.trim() || !info} onClick={save}>
+            {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
+            <span className="btn-disc">
+              <Glyph name="plus" />
+            </span>
+          </Button>
         </>
       }
     >
@@ -253,11 +314,13 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
         <Select className="input" aria-label="Site" value={siteId} onChange={(e) => setSiteId(Number(e.target.value))}>
           {sites.map((s) => (
             <option key={s.id} value={s.id}>
+              <SiteTile site={s} size="sm" />
               {s.name}
             </option>
           ))}
         </Select>
       </label>
+      <div className="g2 pair">
       <label className="field">
         <span>Username</span>
         <input className="input" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
@@ -267,6 +330,7 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
         <span>Email address</span>
         <input className="input" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
+      </div>
       <label className="field">
         <span>Role</span>
         <Select className="input" aria-label="Role" value={role} disabled={!info} onChange={(e) => setRole(e.target.value)}>
@@ -276,8 +340,8 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
             </option>
           ))}
         </Select>
-        {admin && <small>An administrator can change everything on {site?.name}, including other users.</small>}
       </label>
+      {admin && <AdminNote site={site?.name} />}
       {info?.can_reset ? (
         <p className="row">
           <button type="button" className="box" role="checkbox" aria-checked={sendReset} aria-labelledby="reset-label" onClick={() => setSendReset((v) => !v)} />
@@ -318,10 +382,15 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
       onClose={onClose}
       footer={
         <>
-          <Button kind="primary" disabled={busy || role === user.role} onClick={save}>
-            {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
+          <Button className="ghost" onClick={onClose}>
+            Cancel
           </Button>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button kind="primary" className="disc" disabled={busy || role === user.role} onClick={save}>
+            {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
+            <span className="btn-disc">
+              <Glyph name="check" />
+            </span>
+          </Button>
         </>
       }
     >
@@ -334,8 +403,8 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
             </option>
           ))}
         </Select>
-        {role === "administrator" && role !== user.role && <small>An administrator can change everything on {site.name}, including other users.</small>}
       </label>
+      {role === "administrator" && role !== user.role && <AdminNote site={site.name} />}
       {error && (
         <p className="alert danger" role="alert">
           {error}
@@ -354,7 +423,6 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
       (u) => {
         const rest = u.users.filter((o) => o.id !== user.id);
         setOthers(rest);
-        setTo(rest[0]?.id ?? 0);
       },
       (e) => setError(String(e)),
     );
@@ -381,10 +449,13 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
       onClose={onClose}
       footer={
         <>
-          <Button kind="danger" disabled={busy || !to} onClick={save}>
+          <Button className="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button kind="danger" className="solid" disabled={busy || !to} onClick={save}>
+            <Glyph name="trash" />
             {busy ? "Deleting…" : `Delete ${who}`}
           </Button>
-          <Button onClick={onClose}>Cancel</Button>
         </>
       }
     >
@@ -395,13 +466,14 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
       ) : (
         <label className="field">
           <span>Give their posts and pages to</span>
-          <Select className="input" aria-label="Give their posts and pages to" value={to} onChange={(e) => setTo(Number(e.target.value))}>
+          <Select className="input" aria-label="Give their posts and pages to" placeholder="Choose a user" value={to || ""} onChange={(e) => setTo(Number(e.target.value))}>
             {others.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name || o.username} ({o.username})
               </option>
             ))}
           </Select>
+          <small>Their posts and pages move to this user before {who} is deleted from {site.name}.</small>
         </label>
       )}
       {error && (
@@ -410,5 +482,17 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
         </p>
       )}
     </Sheet>
+  );
+}
+
+/** What making someone an administrator means, before it is done. */
+function AdminNote({ site }: { site?: string }) {
+  return (
+    <p className="callout warning admin-note">
+      <Glyph name="alert" />
+      <span>
+        <b>An administrator can change everything on {site},</b> including plugins, users and settings.
+      </span>
+    </p>
   );
 }

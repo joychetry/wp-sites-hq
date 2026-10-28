@@ -9,6 +9,9 @@ const icons = new Map<string, Promise<string | null>>();
 /** The first letter or digit of a site's name, for the monogram. */
 export const initial = (name: string) => (name.match(/[\p{L}\p{N}]/u)?.[0] ?? "?").toUpperCase();
 
+/** Up to two word initials for an avatar: "Sam Okafor" is "SO". */
+export const initials = (name: string) => (name.match(/(?<![\p{L}\p{N}])[\p{L}\p{N}]/gu) ?? ["?"]).slice(0, 2).join("").toUpperCase();
+
 export function SiteTile({ site, size }: { site: Pick<Site, "id" | "name"> & { icon?: string | null }; size?: "sm" | "lg" }) {
   const key = site.icon ? `${site.id}:${site.icon}` : null;
   const [src, setSrc] = useState<string | null>(null);

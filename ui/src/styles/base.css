@@ -282,6 +282,13 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .av.ai { background: var(--btn-ink); color: var(--btn-on-ink); }
 [data-theme="dark"] .av.ai { background: var(--tint-2); color: var(--text); }
 .av .glyph { width: 14px; height: 14px; }
+/* A person's initials on the well (Users, Comments, Clients), and the 36px size of table rows and cards */
+.av.well { background: var(--panel); color: var(--text-2); }
+.av.lg { width: 36px; height: 36px; flex: none; font-size: var(--fs-sm); }
+/* A quiet pill for a word (a role, a site): the design's cm-chip; .brand is the green one */
+.pchip { display: inline-flex; align-items: center; vertical-align: middle; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--panel); color: var(--text); font-size: var(--fs-sm); line-height: 1; white-space: nowrap; }
+.pchip.brand { background: var(--tint); color: var(--brand-text); font-weight: 600; }
+.pchip .fav { width: 18px; height: 18px; border-radius: 5px; font-size: 10px; }
 /* The card table wraps to fit instead of scrolling sideways (a scroll box would need its own Tab stop). */
 .card .t td:first-child, .card .t th:first-child { white-space: normal; }
 .card .site small { overflow-wrap: anywhere; }
