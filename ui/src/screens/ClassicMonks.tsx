@@ -471,7 +471,7 @@ function Approvals({ site, onDone }: Part) {
   );
 }
 
-const pct = (part: number, all: number) => (all ? `${Math.round((part / all) * 100)}%` : "–");
+const pct = (part: number, all: number) => (all ? `${Math.round((part / all) * 100)}%` : "no users");
 const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`;
 const REPORT_NAME: Record<string, string> = {
   "get-404-report": "Pages not found",
@@ -532,7 +532,7 @@ function Reports({ site }: { site: Site }) {
         )}
         {um && (
           <div className="kpi">
-            <div className="v">{um.has_results ? (um.counts.unused ?? 0) : "–"}</div>
+            <div className="v">{um.has_results ? (um.counts.unused ?? 0) : "not scanned"}</div>
             <div className="l">{um.has_results ? `Unused media files, ${mb(um.listed_size)} listed` : "Unused media: not scanned yet"}</div>
           </div>
         )}
@@ -555,7 +555,10 @@ function Reports({ site }: { site: Site }) {
       {nf && nf.urls.length > 0 && (
         <section aria-label="Pages not found">
           <h2 className="sect">Pages not found, most visited</h2>
-          <table className="t" aria-label="Pages not found">
+          <p className="legend" id="notfound-legend">
+            Addresses visitors asked for that the site doesn't have. Came from is the page that linked to it, when the browser said.
+          </p>
+          <table className="t" aria-label="Pages not found" aria-describedby="notfound-legend">
             <thead>
               <tr>
                 <th scope="col">Address</th>
@@ -572,7 +575,7 @@ function Reports({ site }: { site: Site }) {
                   <td className="m cut">{u.url}</td>
                   <td className="r">{u.hits}</td>
                   <td className="dim">{u.last_seen}</td>
-                  <td className="dim cut">{u.referrer || "–"}</td>
+                  <td className="dim cut">{u.referrer || "not known"}</td>
                 </tr>
               ))}
             </tbody>

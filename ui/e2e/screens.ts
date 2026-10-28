@@ -249,7 +249,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Content")(page);
       await page.getByRole("button", { name: "Autumn opening hours" }).click();
-      await page.getByRole("button", { name: "Move to the trash" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Move to the trash" }).click();
     },
   },
   {

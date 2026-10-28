@@ -37,7 +37,7 @@ function core() {
 
 test("prices read in the store's currency, and a change sends only what differs", () => {
   expect(price("4.5", "EUR")).toBe("€4.50");
-  expect(price("", "EUR")).toBe("–");
+  expect(price("", "EUR")).toBe("not set");
   expect(productChange(RYE, "3.50", "3.00", "1")).toBe("Nothing changed yet.");
   expect(productChange(RYE, "3,50", "", "1")).toMatch(/like 12.50/);
   expect(productChange(RYE, "3.50", "4", "1")).toMatch(/lower than the price/);

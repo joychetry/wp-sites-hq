@@ -74,7 +74,7 @@ export function Reports({ sites }: { sites: Site[] }) {
           {who === "client" ? (
             <label className="field">
               <span>Client</span>
-              <select className="input" value={clientId ?? ""} onChange={(e) => setClientId(Number(e.target.value))}>
+              <select className="input" aria-label="Client" value={clientId ?? ""} onChange={(e) => setClientId(Number(e.target.value))}>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({sites.filter((s) => s.client_id === c.id).length} sites)

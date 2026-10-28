@@ -16,10 +16,10 @@ const PERIODS: [number, string][] = [
 const STOCK: Record<string, string> = { instock: "In stock", outofstock: "Out of stock", onbackorder: "On backorder" };
 const STATUS: Record<string, string> = { publish: "Published", draft: "Draft", pending: "Pending review", private: "Private" };
 
-/** WooCommerce's "12.50" in the store's currency; "" stays a dash. */
+/** WooCommerce's "12.50" in the store's currency; "" is "not set". */
 export function price(p: string, currency: string): string {
   const n = Number(p);
-  return p === "" || Number.isNaN(n) ? "–" : money(Math.round(n * 100), currency || "USD");
+  return p === "" || Number.isNaN(n) ? "not set" : money(Math.round(n * 100), currency || "USD");
 }
 
 /** The change a form asks for, or why it can't be made. Only fields that differ are sent. */
@@ -197,7 +197,12 @@ export function Store({ sites, onPlan }: Props) {
           </form>
           {list && list.products.length === 0 && <p className="dim">No products match.</p>}
           {list && list.products.length > 0 && (
-            <table className="t" aria-label="Products">
+            <p className="legend" id="products-legend">
+              Struck-through prices are the regular price during a sale. Products with options are changed in wp-admin.
+            </p>
+          )}
+          {list && list.products.length > 0 && (
+            <table className="t" aria-label="Products" aria-describedby="products-legend">
               <thead>
                 <tr>
                   <th scope="col">Name</th>
@@ -218,7 +223,7 @@ export function Store({ sites, onPlan }: Props) {
                     <td className="name cut" title={p.name}>
                       {p.name}
                     </td>
-                    <td className="dim">{p.sku || "–"}</td>
+                    <td className="dim">{p.sku || "none"}</td>
                     <td className="r m">
                       {p.sale_price ? (
                         <>
