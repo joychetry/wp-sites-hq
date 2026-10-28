@@ -1,9 +1,10 @@
 name: Release
 
-# A version tag (v0.1.0) builds unsigned installers on all three systems and
-# puts them in a draft GitHub release with latest.json for the in-app updater.
-# Nothing is published until a person publishes the draft. Needs the repo
-# secret TAURI_SIGNING_PRIVATE_KEY (the updater key; its password, if any, in
+# A version tag (v0.2.0) builds installers on all three systems and puts them
+# in a draft GitHub release; one last job adds latest.json for the in-app
+# updater, from every build's .sig file (one writer, so no upload race). Nothing
+# is published until a person publishes the draft. Needs the repo secret
+# TAURI_SIGNING_PRIVATE_KEY (the updater key; its password, if any, in
 # TAURI_SIGNING_PRIVATE_KEY_PASSWORD). See docs/release/checklist.md.
 on:
   push:
@@ -12,9 +13,30 @@ on:
 permissions:
   contents: write
 
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+  TAG: ${{ github.ref_name }}
+  NOTES: Installers for macOS, Windows and Linux. How to install and open them, see docs/install.md.
+
 jobs:
+  draft:
+    name: Draft release
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    steps:
+      # A normal release, not a pre-release: the updater reads
+      # releases/latest, and GitHub's "latest" skips pre-releases.
+      - id: draft
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 ||
+            gh release create "$TAG" --draft --verify-tag --title "Monks Central $TAG" --notes "$NOTES"
+          echo "id=$(gh release view "$TAG" --json databaseId -q .databaseId)" >> "$GITHUB_OUTPUT"
+
   installers:
     name: ${{ matrix.name }}
+    needs: draft
     strategy:
       fail-fast: false
       matrix:
@@ -64,9 +86,18 @@ jobs:
           projectPath: .
           tauriScript: bash scripts/bundle.sh
           args: --target ${{ matrix.target }}
-          tagName: ${{ github.ref_name }}
-          releaseName: Monks Central ${{ github.ref_name }}
-          releaseBody: Unsigned beta installers. How to install and open them, see docs/install.md.
-          releaseDraft: true
-          prerelease: true
-          includeUpdaterJson: true
+          releaseId: ${{ needs.draft.outputs.id }}
+          includeUpdaterJson: false
+
+  latest-json:
+    name: latest.json for the updater
+    needs: installers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          gh release download "$TAG" --pattern '*.sig' --dir sigs
+          scripts/latest-json.sh sigs "${TAG#v}" \
+            "https://github.com/$GH_REPO/releases/download/$TAG" "$NOTES" > latest.json
+          cat latest.json
+          gh release upload "$TAG" latest.json --clobber
