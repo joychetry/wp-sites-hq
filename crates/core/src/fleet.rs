@@ -433,6 +433,8 @@ pub enum ItemState {
     Running,
     Done,
     Failed,
+    /// A safe update broke the site, so the version before it was put back.
+    RolledBack,
 }
 
 impl ItemState {
@@ -442,6 +444,7 @@ impl ItemState {
             ItemState::Running => "running",
             ItemState::Done => "done",
             ItemState::Failed => "failed",
+            ItemState::RolledBack => "rolled_back",
         }
     }
 
@@ -450,6 +453,7 @@ impl ItemState {
             "running" => ItemState::Running,
             "done" => ItemState::Done,
             "failed" => ItemState::Failed,
+            "rolled_back" => ItemState::RolledBack,
             _ => ItemState::Waiting,
         }
     }
@@ -915,6 +919,7 @@ impl Core {
                             ItemState::Failed,
                             format!("{NEEDS_APPROVAL} {approve_url}, then try this change again."),
                         ),
+                        Err(SiteError::RolledBack(m)) => (ItemState::RolledBack, m),
                         Err(e) => (ItemState::Failed, e.to_string()),
                     };
                     core.mark(item.id, state, &msg);
@@ -975,6 +980,11 @@ impl Core {
         match site.mode {
             Mode::ClassicMonks => {
                 let (tool, args) = action.classic_monks();
+                if let Action::UpdatePlugin { plugin } = action
+                    && has_tool(&site, "get-http-status")
+                {
+                    return self.update_plugin_safely(&site, plugin).await;
+                }
                 if !has_tool(&site, tool) {
                     return Err(plain(format!(
                         "This connection can't do that: it has no {tool} tool. Update Classic Monks on the site, or sign in again and tick the plugin and theme tool groups."
@@ -988,6 +998,94 @@ impl Core {
             }
             Mode::Basic => self.run_basic(&site, action).await,
         }
+    }
+
+    /// Update a plugin with Classic Monks' checks (M10). The site checks itself
+    /// in the same request and puts the old version back if the new one fails
+    /// to load, since a fatal error there would stop every later request too.
+    /// Then Monks Central looks at the home page from outside and at the error
+    /// log, and rolls back over MCP if either shows the update broke the site.
+    async fn update_plugin_safely(&self, site: &Site, plugin: &str) -> Result<String, SiteError> {
+        let id = site.id;
+        let before = self
+            .call_ability_inner(id, "get-http-status", json!({}))
+            .await?;
+        if before["ok"] != true {
+            return Err(plain(format!(
+                "Not updated: the site wasn't working before the update ({}), so Monks Central couldn't tell whether the update broke it. Fix the site, then try again.",
+                http_problem(&before)
+            )));
+        }
+        let mark = self
+            .call_ability_inner(id, "get-error-log-since", json!({}))
+            .await?;
+        let out = self
+            .call_ability_inner(
+                id,
+                "update-plugin",
+                json!({ "plugin_file": plugin, "safe": true }),
+            )
+            .await?;
+        let previous = out["previous_version"].as_str().unwrap_or_default();
+        if out["rolled_back"] == true {
+            return Err(SiteError::RolledBack(format!(
+                "Rolled back to {previous}. {}",
+                text(&out["reason"])
+            )));
+        }
+        if out["updated"] == false {
+            return Err(plain(done_message(&out)));
+        }
+        let Some(reason) = self.broken_after_update(site, plugin, &mark).await else {
+            return Ok("Updated. The site works after the update.".into());
+        };
+        let back = self
+            .call_ability_inner(
+                id,
+                "rollback-plugin",
+                json!({ "plugin": plugin, "version": previous, "note": format!("Safe update from Monks Central: {reason}") }),
+            )
+            .await;
+        match back {
+            Ok(_) => Err(SiteError::RolledBack(format!(
+                "Rolled back to {previous}. {reason}"
+            ))),
+            Err(e) => Err(plain(format!(
+                "{reason} Putting {previous} back failed too ({e}). Roll it back by hand in wp-admin."
+            ))),
+        }
+    }
+
+    /// What shows the update broke the site, from outside: the home page as a
+    /// visitor gets it, and new fatal errors from the plugin in the error log.
+    async fn broken_after_update(&self, site: &Site, plugin: &str, mark: &Value) -> Option<String> {
+        if let Ok(home) = self.http.get(&site.url).send().await {
+            let status = home.status().as_u16();
+            let body = home.text().await.unwrap_or_default();
+            if status >= 500 || body.contains(CRITICAL_ERROR) {
+                return Some(format!(
+                    "After the update the home page answered {status} with WordPress' critical error page."
+                ));
+            }
+        }
+        let folder = plugin.split('/').next().unwrap_or(plugin);
+        let log = self
+            .call_ability_inner(
+                site.id,
+                "get-error-log-since",
+                json!({ "offset": mark["offset"] }),
+            )
+            .await
+            .ok()?;
+        log["lines"]
+            .as_array()?
+            .iter()
+            .filter_map(Value::as_str)
+            .find(|l| {
+                (l.contains("PHP Fatal error") || l.contains("PHP Parse error"))
+                    && l.contains(&format!("plugins/{folder}/"))
+            })
+            .map(|l| format!("After the update the error log shows: {}", l.trim()))
     }
 
     /// Core REST can activate, deactivate, delete and install from WordPress.org.
@@ -1052,6 +1150,24 @@ impl Core {
                 })))
             }
         }
+    }
+}
+
+/// WordPress' page for a PHP fatal error (WP_Fatal_Error_Handler).
+const CRITICAL_ERROR: &str = "There has been a critical error on this website";
+
+/// Why `get-http-status` says the site isn't working, in a few words.
+fn http_problem(v: &Value) -> String {
+    if let Some(f) = v["fatal"].as_str() {
+        return f.to_string();
+    }
+    if let Some(e) = v["error"].as_str() {
+        return e.to_string();
+    }
+    match v["status"].as_u64() {
+        Some(503) if v["maintenance"] == true => "it is in maintenance mode".into(),
+        Some(0) | None => "it didn't answer".into(),
+        Some(s) => format!("the home page answered {s}"),
     }
 }
 
@@ -1226,6 +1342,134 @@ mod tests {
         assert!(all[0].fetched_at > 0);
     }
 
+    async fn update_woo(core: &Arc<Core>, site: i64) -> JobItem {
+        let job = core
+            .start_job(
+                "Update WooCommerce",
+                vec![Change {
+                    site_id: site,
+                    action: Action::UpdatePlugin { plugin: woo() },
+                }],
+            )
+            .await
+            .unwrap();
+        wait(core, job.id).await.items.remove(0)
+    }
+
+    #[tokio::test]
+    async fn a_safe_update_that_breaks_the_site_is_rolled_back_with_the_reason() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+        core.refresh_inventory(s.id).await.unwrap();
+
+        // The new version fatals: the site puts the old one back in the same request.
+        site.state().update_fatals = true;
+        let item = update_woo(&core, s.id).await;
+        assert_eq!(item.state, ItemState::RolledBack, "{}", item.message);
+        assert!(
+            item.message
+                .starts_with("Rolled back to 10.2.0. The home page answered 500"),
+            "{}",
+            item.message
+        );
+        assert!(item.message.contains("Call to undefined function boom()"));
+        let calls: Vec<_> = site.state().calls.iter().map(|c| c.0.clone()).collect();
+        assert_eq!(
+            calls[calls.len() - 4..],
+            [
+                "get-http-status",
+                "get-error-log-since",
+                "update-plugin",
+                "get-site-snapshot"
+            ]
+        );
+        assert_eq!(site.state().calls[calls.len() - 2].1["safe"], true);
+        assert_eq!(site.state().plugins[0]["version"], "10.2.0");
+        let log = core.activity_log(None).unwrap();
+        assert_eq!(
+            (log[0].outcome, log[0].detail.as_str()),
+            (Outcome::Failed, item.message.as_str())
+        );
+
+        // Only a visitor sees it: Monks Central rolls back over MCP.
+        site.state().update_breaks_home = true;
+        let item = update_woo(&core, s.id).await;
+        assert_eq!(item.state, ItemState::RolledBack, "{}", item.message);
+        assert_eq!(
+            item.message,
+            "Rolled back to 10.2.0. After the update the home page answered 500 with WordPress' critical error page."
+        );
+        assert_eq!(
+            site.state().calls.iter().rev().nth(1).unwrap().0,
+            "rollback-plugin"
+        );
+        assert_eq!(site.state().plugins[0]["version"], "10.2.0");
+
+        // A fatal error in the log after the update, from this plugin only.
+        site.state().error_log =
+            vec!["PHP Fatal error: from before in plugins/woocommerce/a.php".into()];
+        site.state().log_on_update =
+            Some("PHP Fatal error: elsewhere in ABSPATH/wp-content/plugins/other/x.php:3".into());
+        let item = update_woo(&core, s.id).await;
+        assert_eq!(item.state, ItemState::Done, "{}", item.message);
+        site.state().plugins[0]["update"] = json!("10.4.0");
+        let line = "[28-Oct-2026 10:00:00 UTC] PHP Fatal error:  Uncaught TypeError in ABSPATH/wp-content/plugins/woocommerce/src/x.php:9";
+        site.state().log_on_update = Some(line.into());
+        core.refresh_inventory(s.id).await.unwrap();
+        let item = update_woo(&core, s.id).await;
+        assert_eq!(item.state, ItemState::RolledBack, "{}", item.message);
+        assert_eq!(
+            item.message,
+            format!("Rolled back to 10.3.0. After the update the error log shows: {line}")
+        );
+    }
+
+    #[tokio::test]
+    async fn a_safe_update_needs_a_working_site_first_and_older_sites_update_unchecked() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+        core.refresh_inventory(s.id).await.unwrap();
+        site.state().home_status = 500;
+        let item = update_woo(&core, s.id).await;
+        assert_eq!(item.state, ItemState::Failed);
+        assert!(
+            item.message.starts_with(
+                "Not updated: the site wasn't working before the update (PHP Fatal error"
+            ),
+            "{}",
+            item.message
+        );
+        assert_eq!(
+            site.state().plugins[0]["version"],
+            "10.2.0",
+            "nothing changed"
+        );
+
+        site.state().home_status = 200;
+        site.state().no_safe_tools = true;
+        let s = core.sign_in_again_oauth(s.id, browser).await.unwrap();
+        let item = update_woo(&core, s.id).await;
+        assert_eq!(
+            (item.state, item.message.as_str()),
+            (ItemState::Done, "Updated.")
+        );
+        assert_eq!(site.state().calls.last().unwrap().0, "get-site-snapshot");
+        assert!(
+            site.state()
+                .calls
+                .iter()
+                .rev()
+                .nth(1)
+                .unwrap()
+                .1
+                .get("safe")
+                .is_none(),
+            "a plain update"
+        );
+    }
+
     #[tokio::test]
     async fn a_job_updates_two_sites_then_one_rolls_back() {
         let (_h, core) = core().await;
@@ -1263,7 +1507,10 @@ mod tests {
             "{:?}",
             job.items
         );
-        assert_eq!(job.items[0].message, "Updated.");
+        assert_eq!(
+            job.items[0].message,
+            "Updated. The site works after the update."
+        );
         assert!(matches!(events.recv().await, Ok(Changed::Jobs)));
         for s in [sa.id, sb.id] {
             let inv = core.inventory_of(s).unwrap().unwrap();

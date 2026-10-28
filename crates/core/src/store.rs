@@ -11,6 +11,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0003_fleet.sql"),
     include_str!("../migrations/0004_agent_access.sql"),
     include_str!("../migrations/0005_plans_activity.sql"),
+    include_str!("../migrations/0006_safe_updates.sql"),
 ];
 
 /// Schema version this build writes.
@@ -104,6 +105,40 @@ mod tests {
             .query_row("PRAGMA journal_mode", [], |r| r.get(0))
             .unwrap();
         assert_eq!(mode, "wal");
+    }
+
+    #[test]
+    fn job_items_keep_their_rows_when_rolled_back_is_added() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("monks.db");
+        let conn = Connection::open(&path).unwrap();
+        for sql in &MIGRATIONS[..5] {
+            conn.execute_batch(sql).unwrap();
+        }
+        conn.pragma_update(None, "user_version", 5).unwrap();
+        conn.execute_batch(
+            "INSERT INTO jobs (title) VALUES ('Update');
+             INSERT INTO job_items (job_id, site_name, action, label, state, message)
+             VALUES (1, 'MC A', '{}', 'Update X', 'done', 'Updated.');",
+        )
+        .unwrap();
+        drop(conn);
+        let store = Store::open(&path).unwrap();
+        let c = store.conn();
+        let row: (String, String) = c
+            .query_row("SELECT label, message FROM job_items", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(row, ("Update X".into(), "Updated.".into()));
+        c.execute("UPDATE job_items SET state = 'rolled_back'", [])
+            .unwrap();
+        assert!(c.execute("UPDATE job_items SET state = 'x'", []).is_err());
+        c.execute("DELETE FROM jobs", []).unwrap();
+        let n: i64 = c
+            .query_row("SELECT count(*) FROM job_items", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0, "items still go with their job");
     }
 
     #[test]

@@ -48,6 +48,16 @@ pub struct State {
     pub needs_credentials: bool,
     /// This tool fails, as an update that couldn't be installed.
     pub fail_tool: Option<String>,
+    /// Classic Monks before M10: no safe update tools.
+    pub no_safe_tools: bool,
+    /// The next safe update fails to load, and the site puts the old version back.
+    pub update_fatals: bool,
+    /// The next update breaks the home page in a way only a visitor sees.
+    pub update_breaks_home: bool,
+    /// The next update writes this to the error log.
+    pub log_on_update: Option<String>,
+    /// The site's error log, a line each.
+    pub error_log: Vec<String>,
     /// Every tool called, with its arguments.
     pub calls: Vec<(String, serde_json::Value)>,
     /// Posts, pages and books as WordPress stores them (`content` is the raw body).
@@ -121,6 +131,11 @@ impl Default for State {
             })],
             needs_credentials: false,
             fail_tool: None,
+            no_safe_tools: false,
+            update_fatals: false,
+            update_breaks_home: false,
+            log_on_update: None,
+            error_log: Vec::new(),
             calls: Vec::new(),
             posts: Vec::new(),
             terms: vec![json!({ "id": 1, "taxonomy": "category", "name": "Uncategorized" })],
@@ -466,10 +481,15 @@ async fn home(Ax(s): Ax<Shared>, Query(q): Query<HashMap<String, String>>) -> Re
             .into_response();
     }
     let link = format!("<{}/wp-json/>; rel=\"https://api.w.org/\"", s.base);
+    let body = if s.home_status >= 500 {
+        "<html>There has been a critical error on this website.</html>"
+    } else {
+        "<html>home</html>"
+    };
     (
         StatusCode::from_u16(s.home_status).unwrap(),
         [(header::LINK, link)],
-        "<html>home</html>",
+        body,
     )
         .into_response()
 }
@@ -518,7 +538,8 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
             let people = PEOPLE_TOOLS
                 .iter()
                 .filter(|(n, _)| !s.released || RELEASED_PEOPLE_TOOLS.contains(n));
-            for (name, read_only) in PLUGIN_TOOLS.iter().chain(content).chain(people) {
+            let safe = SAFE_TOOLS.iter().filter(|_| !s.no_safe_tools);
+            for (name, read_only) in PLUGIN_TOOLS.iter().chain(safe).chain(content).chain(people) {
                 tools.push(json!({ "name": name, "annotations": { "readOnlyHint": read_only } }));
             }
             if !s.no_hq {
@@ -541,6 +562,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
         Some("tools/call")
             if PLUGIN_TOOLS
                 .iter()
+                .chain(SAFE_TOOLS)
                 .chain(CONTENT_TOOLS)
                 .chain(PEOPLE_TOOLS)
                 .chain(&[("get-posts", true), ("update-post", false)])
@@ -550,6 +572,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
             let args = req["params"]["arguments"].clone();
             let read_only = PLUGIN_TOOLS
                 .iter()
+                .chain(SAFE_TOOLS)
                 .chain(CONTENT_TOOLS)
                 .chain(PEOPLE_TOOLS)
                 .any(|(n, r)| *n == name && *r)
@@ -575,6 +598,8 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
             s.calls.push((name.clone(), args.clone()));
             let out = if s.fail_tool.as_deref() == Some(name.as_str()) {
                 Err("The update could not be installed.".to_string())
+            } else if SAFE_TOOLS.iter().any(|(n, _)| *n == name) {
+                Ok(safe_tool(&s, &name, &args))
             } else if PLUGIN_TOOLS.iter().any(|(n, _)| *n == name) {
                 plugin_tool(&mut s, &name, &args)
             } else if PEOPLE_TOOLS.iter().any(|(n, _)| *n == name) {
@@ -659,6 +684,24 @@ const PLUGIN_TOOLS: &[(&str, bool)] = &[
     ("install-plugin", false),
 ];
 
+/// Classic Monks' safe update helpers (M10), all read-only.
+const SAFE_TOOLS: &[(&str, bool)] = &[("get-http-status", true), ("get-error-log-since", true)];
+
+fn safe_tool(s: &State, name: &str, args: &serde_json::Value) -> serde_json::Value {
+    if name == "get-http-status" {
+        let ok = s.home_status < 400;
+        return json!({ "url": s.base, "status": s.home_status, "ok": ok, "ms": 40,
+            "fatal": (!ok).then_some("PHP Fatal error: Uncaught Error in ABSPATH/wp-content/plugins/x/x.php on line 3"),
+            "error": null, "maintenance": false });
+    }
+    let from = args["offset"]
+        .as_u64()
+        .map_or(s.error_log.len(), |o| o as usize);
+    let lines = &s.error_log[from.min(s.error_log.len())..];
+    json!({ "available": true, "offset": s.error_log.len(), "lines": lines,
+        "fatal": lines.iter().filter(|l| l.contains("PHP Fatal error")).count(), "warnings": 0 })
+}
+
 fn plugin_tool(
     s: &mut State,
     name: &str,
@@ -697,16 +740,37 @@ fn plugin_tool(
             "installed": p["version"],
             "versions": [{ "version": "10.3.0" }, { "version": "10.2.0" }, { "version": "10.1.0" }],
         }),
+        "update-plugin" if p["update"].is_string() && args["safe"] == true && s.update_fatals => {
+            s.update_fatals = false;
+            let folder = file.split('/').next().unwrap_or_default();
+            let reason = format!(
+                "The home page answered 500 after the update: PHP Fatal error: Uncaught Error: Call to undefined function boom() in ABSPATH/wp-content/plugins/{folder}/{folder}.php on line 4"
+            );
+            json!({ "updated": false, "rolled_back": true, "reason": reason, "previous_version": p["version"], "version": p["version"],
+                "message": format!("The update broke the site, so the previous version was put back. {reason}") })
+        }
         "update-plugin" if p["update"].is_string() => {
             let previous = p["version"].clone();
             p["version"] = p["update"].take();
-            json!({ "updated": true, "previous_version": previous, "version": p["version"], "message": "Updated." })
+            let out = json!({ "updated": true, "previous_version": previous, "version": p["version"], "message": "Updated.",
+                "checked": args["safe"] == true, "rolled_back": false });
+            if s.update_breaks_home {
+                s.home_status = 500;
+            }
+            if let Some(line) = s.log_on_update.take() {
+                s.error_log.push(line);
+            }
+            out
         }
         "update-plugin" => json!({ "updated": false, "message": "This plugin is up to date." }),
         "rollback-plugin" => {
             let from = p["version"].clone();
             p["version"] = args["version"].clone();
             p["update"] = from.clone();
+            if s.update_breaks_home {
+                s.update_breaks_home = false;
+                s.home_status = 200;
+            }
             json!({ "plugin": file, "from": from, "to": args["version"], "message": "Rolled back." })
         }
         "activate-plugin" | "deactivate-plugin" => {

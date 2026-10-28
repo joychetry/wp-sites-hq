@@ -38,6 +38,9 @@ pub enum SiteError {
         message: String,
         approve_url: String,
     },
+    /// A safe update broke the site, so the version before it was put back.
+    #[error("{0}")]
+    RolledBack(String),
 }
 
 pub(crate) fn plain(msg: impl Into<String>) -> SiteError {
