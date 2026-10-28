@@ -6,6 +6,7 @@ import { Select } from "../components/controls";
 import { site } from "../test-fixtures";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
 const mockInvoke = vi.mocked(invoke);
 afterEach(() => mockInvoke.mockReset());
 // The inventory read (useInventory) and anything a test does not set up answer with nothing.
@@ -51,7 +52,7 @@ test("keys: j moves, x selects, / filters, a adds", () => {
 });
 
 test("remove asks first, then reports what happened on the site", async () => {
-  mockInvoke.mockResolvedValue({ signed_out: true, message: "Removed. Monks Central signed out of the site." });
+  mockInvoke.mockImplementation(async (c) => (c === "inventory_list" ? [] : { signed_out: true, message: "Removed. Monks Central signed out of the site." }));
   render(<Harness />);
   fireEvent.click(screen.getByRole("button", { name: "Remove from Monks Central" }));
   expect(screen.getByRole("alertdialog", { name: "Remove Alpha" })).toHaveTextContent("signs out on the site");
@@ -61,7 +62,7 @@ test("remove asks first, then reports what happened on the site", async () => {
 });
 
 test("tags, notes and group go to the core", async () => {
-  mockInvoke.mockResolvedValue(SITES[0]);
+  mockInvoke.mockImplementation(async (c) => (c === "inventory_list" ? [] : SITES[0]));
   render(<Harness />);
   const tag = screen.getByRole("combobox", { name: "Tags" });
   fireEvent.change(tag, { target: { value: "woo" } });
@@ -113,7 +114,7 @@ test("Space on a row's checkbox is left to that checkbox; rows say selected only
 });
 
 test("one-click login shows only where the connection can make a login link", async () => {
-  mockInvoke.mockResolvedValue(null);
+  mockInvoke.mockImplementation(async (c) => (c === "inventory_list" ? [] : null));
   const login = site({ id: 4, name: "Delta", capabilities: { operator: true, abilities: ["create-login-link"] } });
   const { rerender } = render(<Sites sites={[...SITES, login]} groups={[]} focusId={4} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Log in to the dashboard" }));
@@ -125,7 +126,7 @@ test("one-click login shows only where the connection can make a login link", as
 });
 
 test("deleting a note offers Undo, which writes it again", async () => {
-  mockInvoke.mockResolvedValue(undefined);
+  mockInvoke.mockImplementation(async (c) => (c === "inventory_list" ? [] : undefined));
   const noted = [{ ...SITES[0], notes: [{ id: 7, body: "Renews in March", added_at: 0 }] }, ...SITES.slice(1)];
   render(
     <Sites sites={noted} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />,
@@ -153,7 +154,7 @@ test("keys typed in the kit's own controls are theirs, not the table's", () => {
 });
 
 test("Enter in an empty group box leaves the selection's groups alone; a name moves them and says so", async () => {
-  mockInvoke.mockResolvedValue(null);
+  mockInvoke.mockImplementation(async (c) => (c === "inventory_list" ? [] : null));
   render(<Harness />);
   fireEvent.keyDown(document, { key: "x" });
   const box = screen.getByRole("combobox", { name: "Group for the selected sites" });

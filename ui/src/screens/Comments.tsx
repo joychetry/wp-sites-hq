@@ -192,12 +192,12 @@ export function Comments({ sites }: { sites: Site[] }) {
                       </Button>
                     )}
                     {show !== "spam" && (
-                      <Button small className="ghost" disabled={busy === k} aria-label={`Mark ${who}'s comment on ${r.site.name} as spam`} onClick={() => act(r, "spam")}>
+                      <Button small className="ghost" disabled={busy === k} aria-label={`Mark as spam: ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "spam")}>
                         Mark as spam
                       </Button>
                     )}
                     {show !== "trash" && (
-                      <Button small className="ghost" disabled={busy === k} aria-label={`Move ${who}'s comment on ${r.site.name} to the trash`} onClick={() => act(r, "trash")}>
+                      <Button small className="ghost" disabled={busy === k} aria-label={`Move to the trash: ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "trash")}>
                         <Glyph name="trash" />
                         Move to the trash
                       </Button>

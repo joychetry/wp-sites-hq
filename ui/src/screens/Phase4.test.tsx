@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
-import { ClassicMonks, toolLabel } from "./ClassicMonks";
+import { ClassicMonks, toolLabel, when } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
@@ -198,7 +198,7 @@ describe("Comments", () => {
     fireEvent.click(screen.getByRole("button", { name: "Spam" }));
     await waitFor(() => expect(calls).toContainEqual(["comments_list", { id: 1, status: "spam" }]));
     expect(await screen.findByRole("button", { name: "Approve Ana's comment on Alpha" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /as spam$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Mark as spam/ })).toBeNull();
   });
 
   it("an action keeps the list on screen, and Undo after a tab change reads the tab that shows", async () => {
@@ -234,7 +234,7 @@ describe("Comments", () => {
     unmount();
     core({ comment_moderate: () => Promise.reject("Comment not found.") });
     render(<Comments sites={[CM]} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Move Ana's comment on Alpha to the trash" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Move to the trash: Ana's comment on Alpha" }));
     expect(await screen.findByText("Comment not found.")).toBeInTheDocument();
   });
 
@@ -247,21 +247,23 @@ describe("Classic Monks", () => {
   it("turns a feature on and undoes it", async () => {
     const calls = core();
     render(<ClassicMonks sites={[CM]} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Turn on SVG Support" }));
+    const svg = await screen.findByRole("switch", { name: "SVG Support" });
+    expect(svg).not.toBeChecked();
+    fireEvent.click(svg);
     expect(await screen.findByText("Turned on SVG Support on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_set_feature", { id: 1, name: "enable_svg", on: true }]);
-    expect(screen.getByRole("button", { name: "Turn off SVG Support" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "SVG Support" })).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(await screen.findByText("Undone: Turned on SVG Support on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_undo", { id: 1, row: 42 }]);
     // The list reads the site again, so it shows what the undo put back.
-    expect(await screen.findByRole("button", { name: "Turn on SVG Support" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("switch", { name: "SVG Support" })).not.toBeChecked());
   });
 
   it("finds features in every section and shows locked ones as locked", async () => {
     core();
     render(<ClassicMonks sites={[CM]} />);
-    await screen.findByRole("button", { name: "Turn on SVG Support" });
+    await screen.findByRole("switch", { name: "SVG Support" });
     fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "bad logins" } });
     const list = screen.getByRole("list", { name: "Matching features" });
     expect(within(list).getByText("Login Lockdown")).toBeInTheDocument();
@@ -274,7 +276,7 @@ describe("Classic Monks", () => {
   it("saves a setting, undoes from the log and opens an approval on the site", async () => {
     const calls = core();
     render(<ClassicMonks sites={[CM]} />);
-    await screen.findByRole("button", { name: "Turn on SVG Support" });
+    await screen.findByRole("switch", { name: "SVG Support" });
     const tabs = screen.getByRole("tablist", { name: "Show" });
     fireEvent.click(within(tabs).getByRole("tab", { name: "Settings" }));
     const q = await screen.findByRole("spinbutton", { name: "Image Quality" });
@@ -285,7 +287,7 @@ describe("Classic Monks", () => {
     expect(calls).toContainEqual(["cm_set_setting", { id: 1, name: "auto_q", value: 70 }]);
 
     fireEvent.click(within(tabs).getByRole("tab", { name: "Activity" }));
-    const table = await screen.findByRole("table", { name: "Activity" });
+    const table = await screen.findByRole("list", { name: "Activity" });
     expect(within(table).getByText("Update features")).toBeInTheDocument();
     fireEvent.click(within(table).getByRole("button", { name: /^Undo/ }));
     expect(await screen.findByText("Undone: Update features on Alpha.")).toBeInTheDocument();
@@ -300,7 +302,7 @@ describe("Classic Monks", () => {
     core();
     const released = site({ id: 4, name: "Released", capabilities: { abilities: ["get-features", "update-features"] } });
     render(<ClassicMonks sites={[BASIC, released]} />);
-    expect(await screen.findByRole("button", { name: "Turn on SVG Support" })).toBeInTheDocument();
+    expect(await screen.findByRole("switch", { name: "SVG Support" })).toBeInTheDocument();
     expect(within(screen.getByRole("tablist", { name: "Show" })).getAllByRole("tab").map((b) => b.textContent)).toEqual(["Features"]);
     choose(screen.getByRole("combobox", { name: "Site" }), "2");
     expect(screen.getByText("This site doesn't have Classic Monks. It's connected in Basic mode.")).toBeInTheDocument();
@@ -308,6 +310,10 @@ describe("Classic Monks", () => {
 
   it("names tools and blocks plainly", () => {
     expect(toolLabel("classic-monks/update-features")).toBe("Update features");
+    const noon = new Date(2026, 9, 28, 12);
+    expect(when("2026-10-28 09:30:12", noon)).toBe("Today, 09:30");
+    expect(when("2026-10-27 16:12:00", noon)).toBe("Yesterday, 16:12");
+    expect(when("2026-10-24 14:20:00", noon)).toBe("Oct 24, 14:20");
     expect(cmBlocked(OLD)).toMatch(/can't change Classic Monks/);
     expect(cmBlocked(site({ sign_in_again: true }))).toBe("Sign in again first.");
     expect(peopleBlocked(BASIC, "get-users")).toBeNull();
