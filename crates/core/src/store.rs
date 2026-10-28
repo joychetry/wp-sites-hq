@@ -14,6 +14,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0006_safe_updates.sql"),
     include_str!("../migrations/0007_security.sql"),
     include_str!("../migrations/0008_monitoring.sql"),
+    include_str!("../migrations/0009_business.sql"),
 ];
 
 /// Schema version this build writes.

@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use monks_core::activity::{Actor, Entry};
+use monks_core::business::{AppSettings, Client, Cost, Imported};
 use monks_core::connect::{Removed, SiteError};
 use monks_core::content::{Draft, Listing, Media, Post, PostType, Query, Revision, Term};
 use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
@@ -579,6 +580,93 @@ fn activity_list(state: State<'_, AppCore>, before: Option<i64>) -> Res<Vec<Entr
 }
 
 #[tauri::command]
+fn clients_list(state: State<'_, AppCore>) -> Res<Vec<Client>> {
+    core(&state)?.clients().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn client_save(state: State<'_, AppCore>, client: Client) -> Res<Client> {
+    core(&state)?
+        .save_client(&client)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn client_delete(state: State<'_, AppCore>, id: i64) -> Res<()> {
+    core(&state)?.delete_client(id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn site_set_client(state: State<'_, AppCore>, id: i64, client: Option<i64>) -> Res<()> {
+    core(&state)?
+        .set_site_client(id, client)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn costs_list(state: State<'_, AppCore>) -> Res<Vec<Cost>> {
+    core(&state)?.costs().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cost_save(state: State<'_, AppCore>, cost: Cost) -> Res<Cost> {
+    core(&state)?.save_cost(&cost).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cost_delete(state: State<'_, AppCore>, id: i64) -> Res<()> {
+    core(&state)?.delete_cost(id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn app_settings_get(state: State<'_, AppCore>) -> Res<AppSettings> {
+    core(&state)?.app_settings().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn app_settings_save(state: State<'_, AppCore>, settings: AppSettings) -> Res<AppSettings> {
+    core(&state)?
+        .save_app_settings(&settings)
+        .map_err(|e| e.to_string())
+}
+
+/// Save to the Downloads folder and return where it went.
+fn save_download(name: &str, bytes: &[u8]) -> Res<String> {
+    paths::downloads()
+        .and_then(|d| paths::save_new(&d, name, bytes))
+        .map(|p| p.display().to_string())
+        .map_err(|e| format!("Couldn't save {name} in Downloads: {e}"))
+}
+
+/// Every site, client and cost as JSON, or the site list as CSV, into Downloads.
+#[tauri::command]
+fn sites_export(state: State<'_, AppCore>, csv: bool) -> Res<String> {
+    let text = core(&state)?.export(csv).map_err(|e| e.to_string())?;
+    let today = paths::day(monks_core::oauth::now());
+    let ext = if csv { "csv" } else { "json" };
+    save_download(
+        &format!("monks-central-sites-{today}.{ext}"),
+        text.as_bytes(),
+    )
+}
+
+#[tauri::command]
+fn sites_import(state: State<'_, AppCore>, text: String) -> Res<Imported> {
+    core(&state)?.import(&text).map_err(|e| e.to_string())
+}
+
+/// Show a saved file in the file manager.
+#[tauri::command]
+fn file_show(path: String) -> Res<()> {
+    let p = std::path::Path::new(&path);
+    let folder = p
+        .parent()
+        .filter(|_| p.is_file())
+        .ok_or("That file isn't there any more.")?;
+    open::that_detached(folder).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn monitors_list(state: State<'_, AppCore>) -> Res<Vec<Monitor>> {
     core(&state)?.monitors().map_err(|e| e.to_string())
 }
@@ -826,6 +914,18 @@ fn main() {
             content_untrash,
             media_list,
             media_import,
+            clients_list,
+            client_save,
+            client_delete,
+            site_set_client,
+            costs_list,
+            cost_save,
+            cost_delete,
+            app_settings_get,
+            app_settings_save,
+            sites_export,
+            sites_import,
+            file_show,
             users_list,
             user_create,
             user_set_role,

@@ -15,7 +15,7 @@ pub enum Mode {
 }
 
 impl Mode {
-    fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Mode::ClassicMonks => "classic_monks",
             Mode::Basic => "basic",
@@ -95,6 +95,9 @@ pub struct Site {
     pub agent_oauth: Option<OAuthClient>,
     /// Agents may change this site, each change approved on the site.
     pub agent_access: bool,
+    pub client_id: Option<i64>,
+    /// The client's name.
+    pub client: Option<String>,
 }
 
 /// What a connect step learned about a site.
@@ -138,7 +141,8 @@ pub fn url_string(url: &Url) -> String {
 
 const COLUMNS: &str = "s.id, s.url, s.name, s.mode, s.api_url, s.oauth, s.username, s.wp_version,
     s.php_version, s.cm_version, s.capabilities, s.sign_in_again, s.health, s.health_detail,
-    s.checked_at, g.name, s.added_at, s.agent_oauth";
+    s.checked_at, g.name, s.added_at, s.agent_oauth, s.client_id, c.name";
+const JOINS: &str = "sites s LEFT JOIN site_groups g ON g.id = s.group_id LEFT JOIN clients c ON c.id = s.client_id";
 
 fn from_row(r: &Row) -> rusqlite::Result<Site> {
     let mode: String = r.get(3)?;
@@ -174,6 +178,8 @@ fn from_row(r: &Row) -> rusqlite::Result<Site> {
         added_at: r.get(16)?,
         agent_access: agent_oauth.is_some(),
         agent_oauth,
+        client_id: r.get(18)?,
+        client: r.get(19)?,
     })
 }
 
@@ -200,7 +206,7 @@ fn with_extras(conn: &Connection, mut site: Site) -> rusqlite::Result<Site> {
 
 pub fn list(conn: &Connection) -> rusqlite::Result<Vec<Site>> {
     let mut stmt = conn.prepare_cached(&format!(
-        "SELECT {COLUMNS} FROM sites s LEFT JOIN site_groups g ON g.id = s.group_id ORDER BY s.name COLLATE NOCASE, s.id"
+        "SELECT {COLUMNS} FROM {JOINS} ORDER BY s.name COLLATE NOCASE, s.id"
     ))?;
     let sites = stmt
         .query_map([], from_row)?
@@ -210,7 +216,7 @@ pub fn list(conn: &Connection) -> rusqlite::Result<Vec<Site>> {
 
 pub fn get(conn: &Connection, id: i64) -> rusqlite::Result<Option<Site>> {
     conn.query_row(
-        &format!("SELECT {COLUMNS} FROM sites s LEFT JOIN site_groups g ON g.id = s.group_id WHERE s.id = ?1"),
+        &format!("SELECT {COLUMNS} FROM {JOINS} WHERE s.id = ?1"),
         [id],
         from_row,
     )
