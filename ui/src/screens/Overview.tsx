@@ -459,56 +459,54 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                   </button>
                 )}
               </div>
-              <div className="tablewrap">
-                <table className="t">
-                  <caption className="sr-only">
-                    {sites.length > SHOW_SITES ? `${SHOW_SITES} of your ${sites.length} sites, the ones that need you first` : "Your sites"}
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Site</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">WordPress</th>
-                      <th scope="col" className="r">
-                        Uptime, 30 days
-                      </th>
-                      <th scope="col" className="r">
-                        Response
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {listed.map((s) => {
-                      const st = siteStatus(s);
-                      const m = mon.get(s.id);
-                      return (
-                        <tr key={s.id} className={st.tone === "danger" || st.tone === "warning" ? "warn" : ""}>
-                          <td>
-                            <span className="site">
-                              <span className="fav" aria-hidden="true">
-                                {s.name.trim().charAt(0).toUpperCase()}
-                              </span>
-                              <span>
-                                <b>{s.name}</b>
-                                <small>{s.url.replace(/^https?:\/\//, "")}</small>
-                              </span>
+              <table className="t">
+                <caption className="sr-only">
+                  {sites.length > SHOW_SITES ? `${SHOW_SITES} of your ${sites.length} sites, the ones that need you first` : "Your sites"}
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Site</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">WordPress</th>
+                    <th scope="col" className="r">
+                      Uptime, 30 days
+                    </th>
+                    <th scope="col" className="r">
+                      Response
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listed.map((s) => {
+                    const st = siteStatus(s);
+                    const m = mon.get(s.id);
+                    return (
+                      <tr key={s.id} className={st.tone === "danger" || st.tone === "warning" ? "warn" : ""}>
+                        <td>
+                          <span className="site">
+                            <span className="fav" aria-hidden="true">
+                              {s.name.trim().charAt(0).toUpperCase()}
                             </span>
-                          </td>
-                          <td>
-                            <span className={`st pill ${st.tone}`}>
-                              <Icon tone={st.tone} />
-                              {st.label}
+                            <span>
+                              <b>{s.name}</b>
+                              <small>{s.url.replace(/^https?:\/\//, "")}</small>
                             </span>
-                          </td>
-                          <td className="m">{s.wp_version ?? <span className="dim">not known</span>}</td>
-                          <td className="m r">{pct(m?.uptime_month)}</td>
-                          <td className="m r">{m?.up ? `${m.ms} ms` : <span className="dim">none</span>}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`st pill ${st.tone}`}>
+                            <Icon tone={st.tone} />
+                            {st.label}
+                          </span>
+                        </td>
+                        <td className="m">{s.wp_version ?? <span className="dim">not known</span>}</td>
+                        <td className="m r">{pct(m?.uptime_month)}</td>
+                        <td className="m r">{m?.up ? `${m.ms} ms` : <span className="dim">none</span>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </section>
           </div>
           <div className="ov-col">

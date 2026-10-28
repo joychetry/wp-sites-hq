@@ -33,7 +33,7 @@ test("Tab reaches the skip link first, and it moves focus to the content", async
   await page.keyboard.press("Enter");
   await expect(page.locator("#content")).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Check again" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /^Add a site/ })).toBeFocused();
 });
 
 test("every focusable control shows a focus ring", async ({ page }) => {
@@ -360,10 +360,10 @@ test("text grows with the browser's text size", async ({ page }) => {
   const at = (px: number) =>
     page.evaluate((px) => {
       document.documentElement.style.fontSize = `${px}px`;
-      return parseFloat(getComputedStyle(document.querySelector(".kpi .l")!).fontSize);
+      return parseFloat(getComputedStyle(document.querySelector(".stat .label")!).fontSize);
     }, px);
-  expect(await at(16)).toBe(13);
-  expect(await at(24)).toBe(19.5);
+  expect(await at(16)).toBe(12);
+  expect(await at(24)).toBe(18);
 });
 
 test("results never move the rows: ticking sites, a check, a feature and its Undo", async ({ page }) => {

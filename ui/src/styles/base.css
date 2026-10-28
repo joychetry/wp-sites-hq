@@ -267,7 +267,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .av.ai { background: var(--btn-ink); color: var(--btn-on-ink); }
 [data-theme="dark"] .av.ai { background: var(--tint-2); color: var(--text); }
 .av .glyph { width: 14px; height: 14px; }
-.tablewrap { overflow-x: auto; }
+/* The card table wraps to fit instead of scrolling sideways (a scroll box would need its own Tab stop). */
+.card .t td:first-child, .card .t th { white-space: normal; }
+.card .site small { overflow-wrap: anywhere; }
 .card .t th { position: static; }
 .card .t td { height: 56px; }
 .t tr.warn td { background: var(--warn-paper); }
@@ -490,6 +492,7 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .fields { gap: var(--sp-3); }
 .fieldrow { align-items: end; }
 .fieldrow > .field { margin: 0; }
+.fields .row > .btn { height: var(--field); }
 ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 ul.plain .row { flex-wrap: wrap; }
 /* A file picker that looks like a button; the ring shows on the label. */
