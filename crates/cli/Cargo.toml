@@ -18,6 +18,9 @@ monks-core = { path = "../core" }
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "io-std", "io-util"] }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation"] }
+
 [lints]
 workspace = true
 
