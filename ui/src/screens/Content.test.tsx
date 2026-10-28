@@ -106,6 +106,23 @@ test("lists a site's entries, pages through them, and says why an older site can
   expect(await screen.findByText(/Classic Monks on this site is older/)).toBeInTheDocument();
 });
 
+test("a slow site's list never shows under the site picked after it", async () => {
+  const GAMMA = site({ id: 3, name: "Gamma", capabilities: { operator: true, abilities: ["list-post-types"] } });
+  let slow: (v: unknown) => void = () => {};
+  const row = (title: string) => ({ posts: [{ id: 7, title, status: "draft", date: "", modified: "", author: "", link: "" }], total: 1, page: 1, pages: 1 });
+  core({
+    content_list: (a) => (a.id === 1 ? new Promise((r) => (slow = r)) : row("Gamma page")),
+  });
+  render(<Content sites={[CM, GAMMA]} />);
+  await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("content_list", expect.objectContaining({ id: 1 })));
+  fireEvent.change(screen.getByRole("combobox", { name: "Site" }), { target: { value: "3" } });
+  expect(await screen.findByRole("button", { name: "Gamma page" })).toBeInTheDocument();
+  slow(row("Alpha page"));
+  await new Promise((r) => setTimeout(r, 20));
+  expect(screen.queryByRole("button", { name: "Alpha page" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Gamma page" })).toBeInTheDocument();
+});
+
 test("the editor changes only edited text blocks and keeps the others", async () => {
   const calls = core();
   render(<Content sites={[CM]} />);

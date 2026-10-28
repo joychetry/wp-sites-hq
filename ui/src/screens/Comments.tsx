@@ -1,5 +1,5 @@
 // One comment inbox for every site shown: approve, unapprove, spam, trash and reply (plan Phase 4).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Comment, type CommentState, type Moderation, type Site } from "../api";
 import { Button } from "../components/ui";
 
@@ -43,7 +43,10 @@ export function Comments({ sites }: { sites: Site[] }) {
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const ids = usable.map((s) => s.id).join(",");
 
+  // Only the newest request's answer is shown, so a slow older search or tab can't replace it.
+  const asked = useRef(0);
   const load = useCallback(() => {
+    const n = ++asked.current;
     setLoaded(null);
     Promise.all(
       usable.map((site) =>
@@ -62,7 +65,7 @@ export function Comments({ sites }: { sites: Site[] }) {
         }
       }
       out.rows.sort((a, b) => b.c.date.localeCompare(a.c.date));
-      setLoaded(out);
+      if (n === asked.current) setLoaded(out);
     });
     // `ids` stands for the usable sites.
   }, [ids, show]);

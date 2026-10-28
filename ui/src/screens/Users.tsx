@@ -1,6 +1,6 @@
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Role, type Site, type User, type Users as SiteUsers } from "../api";
 import { Button } from "../components/ui";
 import { Sheet } from "../components/Sheet";
@@ -19,7 +19,10 @@ export function Users({ sites }: { sites: Site[] }) {
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const ids = usable.map((s) => s.id).join(",");
 
+  // Only the newest request's answer is shown, so a slow older search or tab can't replace it.
+  const asked = useRef(0);
   const load = useCallback(() => {
+    const n = ++asked.current;
     setLoaded(null);
     Promise.all(
       usable.map((site) =>
@@ -28,7 +31,7 @@ export function Users({ sites }: { sites: Site[] }) {
           (e) => ({ site, error: String(e) }),
         ),
       ),
-    ).then(setLoaded);
+    ).then((l) => n === asked.current && setLoaded(l));
     // `ids` stands for the usable sites.
   }, [ids, search]);
   useEffect(load, [load]);

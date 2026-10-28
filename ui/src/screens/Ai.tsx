@@ -247,7 +247,8 @@ function Log() {
       setError(String(e));
       return [];
     });
-    setRows([...rows, ...next]);
+    // The log may have been read again meanwhile: add to what shows now, once each.
+    setRows((now) => [...(now ?? []), ...next.filter((e) => !now?.some((x) => x.id === e.id))]);
     setMore(next.length === PER_PAGE);
   };
   if (error)

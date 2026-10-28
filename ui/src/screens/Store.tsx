@@ -1,6 +1,6 @@
 // A WooCommerce store on one site: how it did over a period, what runs low, and
 // its products with their prices and stock, changed as a job (plan Phase 7).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, hasTool, type Action, type Product, type ProductQuery, type Products, type Site, type StoreOverview } from "../api";
 import { Button } from "../components/ui";
@@ -57,15 +57,20 @@ export function Store({ sites, onPlan }: Props) {
   const [round, setRound] = useState(0);
 
   const can = !!site && shop(site);
+  // Only the newest request's answer is shown: a slow site's products must never appear
+  // under another site, where a change would go to that site's product with the same id.
+  const asked = useRef(0);
   const load = useCallback(async () => {
+    const n = ++asked.current;
     if (!site || !can) return;
     setError(null);
     try {
       const [o, p] = await Promise.all([api.storeOverview(site.id, days), api.products(site.id, query)]);
+      if (n !== asked.current) return;
       setOverview(o);
       setList(p);
     } catch (e) {
-      setError(String(e));
+      if (n === asked.current) setError(String(e));
     }
   }, [site?.id, can, days, query, round]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

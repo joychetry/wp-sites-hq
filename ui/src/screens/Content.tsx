@@ -1,5 +1,5 @@
 // Posts, pages and every post type a site lets us edit: list, filter, open, create (plan Phase 3).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary } from "../api";
 import type { PlanRow } from "../components/JobSheet";
@@ -103,28 +103,38 @@ export function Content({ sites, onPlan }: Props) {
     setTypes(null);
     setError(null);
     if (!site || blocked) return;
+    let live = true;
     api.postTypes(site.id).then(
       (t) => {
+        if (!live) return;
         setTypes(t);
         setTypeName((n) => (t.some((x) => x.name === n) ? n : (t[0]?.name ?? "post")));
       },
-      (e) => setError(String(e)),
+      (e) => live && setError(String(e)),
     );
+    return () => {
+      live = false;
+    };
     // Only a new site (or one that became usable) needs its types read again.
   }, [current, blocked]);
 
   const type = types?.find((t) => t.name === typeName) ?? null;
 
   const typeKey = type?.name;
+  // Only the newest request's answer is shown: a slow site's list must never appear under
+  // another site, where ticking its entries would change that site's posts with the same ids.
+  const asked = useRef(0);
   const load = useCallback(() => {
+    const n = ++asked.current;
     if (current == null || !typeKey) return;
     setList(null);
     api.posts(current, { post_type: typeKey, status: status || undefined, search: search || undefined, page }).then(
       (l) => {
+        if (n !== asked.current) return;
         setList(l);
         setError(null);
       },
-      (e) => setError(String(e)),
+      (e) => n === asked.current && setError(String(e)),
     );
   }, [current, typeKey, status, search, page]);
   useEffect(load, [load]);
@@ -132,9 +142,13 @@ export function Content({ sites, onPlan }: Props) {
   // A bulk job changed entries: read the page again, quietly.
   useEffect(() => {
     if (current == null || !typeKey) return;
-    const off = listen("jobs-changed", () =>
-      api.posts(current, { post_type: typeKey, status: status || undefined, search: search || undefined, page }).then(setList, () => {}),
-    );
+    const off = listen("jobs-changed", () => {
+      const n = ++asked.current;
+      api.posts(current, { post_type: typeKey, status: status || undefined, search: search || undefined, page }).then(
+        (l) => n === asked.current && setList(l),
+        () => {},
+      );
+    });
     return () => {
       off.then((f) => f()).catch(() => {});
     };

@@ -63,6 +63,24 @@ test("the store shows how it did, what runs low, and plans a product change to c
   expect(mockInvoke).toHaveBeenCalledWith("store_overview", { id: 1, days: 7 });
 });
 
+test("a slow answer for an older period never replaces the newer one", async () => {
+  core();
+  let slow: (v: unknown) => void = () => {};
+  const base = mockInvoke.getMockImplementation()!;
+  mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+    const a = args as { days?: number };
+    if (cmd === "store_overview" && a.days === 30) return new Promise((r) => (slow = r));
+    return base(cmd, args as never);
+  });
+  render(<Store sites={[A, B]} onPlan={() => {}} />);
+  fireEvent.click(screen.getByRole("group", { name: "Period" }).querySelectorAll("button")[0]);
+  expect(await screen.findByText("€120.00")).toBeInTheDocument();
+  slow({ ...OVERVIEW, revenue: "999.00" });
+  await new Promise((r) => setTimeout(r, 20));
+  expect(screen.queryByText("€999.00")).toBeNull();
+  expect(screen.getByText("€120.00")).toBeInTheDocument();
+});
+
 test("a site without the store tools says what it needs", () => {
   core();
   render(<Store sites={[B]} onPlan={() => {}} />);
