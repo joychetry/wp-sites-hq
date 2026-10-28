@@ -127,11 +127,41 @@ pub fn normalize_url(input: &str) -> Result<Url, &'static str> {
     if !url.username().is_empty() || url.password().is_some() {
         return Err("Leave the user name and password out of the address.");
     }
+    if url.scheme() == "http" && !is_local_host(&url) {
+        return Err(
+            "Use https:// for a site on the internet. Plain http is only for sites \
+             on this computer or your local network.",
+        );
+    }
     url.set_query(None);
     url.set_fragment(None);
     let path = url.path().trim_end_matches('/').to_string();
     url.set_path(&path);
     Ok(url)
+}
+
+/// On this computer or the local network, where plain http carries no password over
+/// the internet: loopback and private addresses, and local-only names.
+fn is_local_host(url: &Url) -> bool {
+    use std::net::IpAddr;
+    let host = url.host_str().unwrap_or_default();
+    match host.trim_matches(['[', ']']).parse::<IpAddr>() {
+        Ok(IpAddr::V4(ip)) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
+        Ok(IpAddr::V6(ip)) => ip.is_loopback() || ip.is_unique_local(),
+        Err(_) => {
+            host == "localhost"
+                || [
+                    ".local",
+                    ".localhost",
+                    ".test",
+                    ".internal",
+                    ".lan",
+                    ".home.arpa",
+                ]
+                .iter()
+                .any(|end| host.ends_with(end))
+        }
+    }
 }
 
 /// `url` without the trailing slash `Url` keeps on a bare host.
@@ -427,6 +457,18 @@ mod tests {
         );
         assert_eq!(n("https://x.local:8443").unwrap(), "https://x.local:8443");
         assert!(n("ftp://x.local").is_err());
+        // Plain http only off the internet.
+        assert!(n("http://example.com").unwrap_err().contains("https://"));
+        assert!(n("http://8.8.8.8").is_err());
+        for local in [
+            "http://localhost:8881",
+            "http://127.0.0.1:9000",
+            "http://192.168.1.20",
+            "http://[::1]:8080",
+            "http://shop.test",
+        ] {
+            assert!(n(local).is_ok(), "{local}");
+        }
         assert!(n("https://").is_err());
         assert!(n("https://joy:pw@x.local").is_err());
     }
