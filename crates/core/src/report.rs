@@ -322,7 +322,11 @@ impl Core {
         if !work.is_empty() {
             b.push(Block::Heading("Work done".into()));
             for (at, what) in work.iter().take(40) {
-                b.push(Block::Item(format!("{}: {what}", paths::day(*at))));
+                b.push(Block::Item(format!(
+                    "{}: {}",
+                    paths::day(*at),
+                    plain_what(what)
+                )));
             }
             if work.len() > 40 {
                 b.push(Block::Para(format!("And {} more.", work.len() - 40)));
@@ -430,6 +434,17 @@ impl Core {
         }
         (b, notes)
     }
+}
+
+/// An agent's call is logged by its tool name: "update-post" reads "Update post".
+fn plain_what(what: &str) -> String {
+    if what.contains(' ') || !what.contains('-') {
+        return what.to_string();
+    }
+    let s = what.rsplit('/').next().unwrap_or(what).replace('-', " ");
+    let mut c = s.chars();
+    c.next()
+        .map_or_else(String::new, |f| f.to_uppercase().chain(c).collect())
 }
 
 fn esc(s: &str) -> String {
@@ -621,6 +636,9 @@ struct Line {
     gap: f32,
     /// A rule above it, across the page.
     rule: bool,
+    /// The block it's part of; a block (with what it heads) isn't split across pages.
+    block: usize,
+    heads: bool,
 }
 
 pub fn pdf(doc: &[Block], s: &AppSettings, title: &str) -> Vec<u8> {
@@ -629,37 +647,43 @@ pub fn pdf(doc: &[Block], s: &AppSettings, title: &str) -> Vec<u8> {
     let grey = (0.33, 0.33, 0.33);
     let max = W - 2.0 * MARGIN;
     let mut lines: Vec<Line> = vec![];
-    let mut add = |text: &str, x: f32, size: f32, bold: bool, color, gap: f32, rule: bool| {
-        for (i, t) in wrap(text, size, bold, max - (x - MARGIN))
-            .into_iter()
-            .enumerate()
-        {
-            lines.push(Line {
-                x,
-                size,
-                bold,
-                color,
-                text: t,
-                gap: if i == 0 { gap } else { 0.0 },
-                rule: rule && i == 0,
-            });
-        }
-    };
-    if !s.report_name.trim().is_empty() {
-        add(s.report_name.trim(), MARGIN, 10.0, true, acc, 0.0, false);
-    }
-    for block in doc {
-        match block {
-            Block::Title(t) => add(t, MARGIN, 20.0, true, ink, 4.0, false),
-            Block::Sub(t) => add(t, MARGIN, 10.0, false, grey, 2.0, false),
-            Block::Site(name, url) => {
-                add(name, MARGIN, 15.0, true, acc, 26.0, true);
-                add(url, MARGIN, 9.0, false, grey, 2.0, false);
+    let mut block = 0;
+    let mut add =
+        |block: usize, text: &str, x: f32, size: f32, bold: bool, color, gap: f32, rule: bool| {
+            for (i, t) in wrap(text, size, bold, max - (x - MARGIN))
+                .into_iter()
+                .enumerate()
+            {
+                lines.push(Line {
+                    x,
+                    size,
+                    bold,
+                    color,
+                    text: t,
+                    gap: if i == 0 { gap } else { 0.0 },
+                    rule: rule && i == 0,
+                    block,
+                    heads: bold && size > 10.0,
+                });
             }
-            Block::Heading(t) => add(t, MARGIN, 11.0, true, ink, 12.0, false),
+        };
+    if !s.report_name.trim().is_empty() {
+        add(0, s.report_name.trim(), MARGIN, 10.0, true, acc, 0.0, false);
+    }
+    for b in doc {
+        block += 1;
+        match b {
+            Block::Title(t) => add(block, t, MARGIN, 20.0, true, ink, 4.0, false),
+            Block::Sub(t) => add(block, t, MARGIN, 10.0, false, grey, 2.0, false),
+            Block::Site(name, url) => {
+                add(block, name, MARGIN, 15.0, true, acc, 26.0, true);
+                add(block, url, MARGIN, 9.0, false, grey, 2.0, false);
+            }
+            Block::Heading(t) => add(block, t, MARGIN, 11.0, true, ink, 12.0, false),
             Block::Facts(f) => {
                 for (i, (k, v)) in f.iter().enumerate() {
                     add(
+                        block,
                         &format!("{k}:  {v}"),
                         MARGIN,
                         10.0,
@@ -671,6 +695,7 @@ pub fn pdf(doc: &[Block], s: &AppSettings, title: &str) -> Vec<u8> {
                 }
             }
             Block::Item(t) => add(
+                block,
                 &format!("\u{2022} {t}"),
                 MARGIN + 8.0,
                 10.0,
@@ -679,7 +704,7 @@ pub fn pdf(doc: &[Block], s: &AppSettings, title: &str) -> Vec<u8> {
                 1.0,
                 false,
             ),
-            Block::Para(t) => add(t, MARGIN, 10.0, false, ink, 4.0, false),
+            Block::Para(t) => add(block, t, MARGIN, 10.0, false, ink, 4.0, false),
         }
     }
 
@@ -687,13 +712,39 @@ pub fn pdf(doc: &[Block], s: &AppSettings, title: &str) -> Vec<u8> {
     let mut pages: Vec<String> = vec![];
     let mut page = String::new();
     let mut y = H - MARGIN;
-    for l in &lines {
-        let need = l.gap + l.size * 1.3;
-        if y - need < BOTTOM && !page.is_empty() {
+    let need = |l: &Line| l.gap + l.size * 1.3;
+    for (i, l) in lines.iter().enumerate() {
+        // At a block's first line: keep the block, and the block a heading heads, together.
+        let first = i == 0 || lines[i - 1].block != l.block;
+        let together: f32 = if first {
+            let mut end = i;
+            while end < lines.len() && lines[end].block == l.block {
+                end += 1;
+            }
+            if l.heads && end < lines.len() {
+                let next = lines[end].block;
+                while end < lines.len() && lines[end].block == next && end - i < 12 {
+                    end += 1;
+                }
+            }
+            lines[i..end].iter().map(need).sum()
+        } else {
+            need(l)
+        };
+        let keep = if together < (H - MARGIN - BOTTOM) / 2.0 {
+            together
+        } else {
+            need(l)
+        };
+        if y - keep < BOTTOM && !page.is_empty() {
             pages.push(std::mem::take(&mut page));
             y = H - MARGIN;
         }
-        y -= if page.is_empty() { l.size * 1.3 } else { need };
+        y -= if page.is_empty() {
+            l.size * 1.3
+        } else {
+            need(l)
+        };
         if l.rule {
             let _ = writeln!(
                 page,
@@ -848,6 +899,27 @@ mod tests {
             "x",
         );
         assert!(!String::from_utf8_lossy(&quiet).contains("Monks Central"));
+    }
+
+    #[test]
+    fn a_short_block_and_its_heading_stay_on_one_page() {
+        for filler in 30..70 {
+            let mut doc: Vec<Block> = (0..filler)
+                .map(|i| Block::Item(format!("Line {i}")))
+                .collect();
+            doc.push(Block::Site("Second site".into(), "https://b.test".into()));
+            doc.push(Block::Facts(
+                (1..=6).map(|i| (format!("Fact {i}"), "x".into())).collect(),
+            ));
+            let out = String::from_utf8_lossy(&pdf(&doc, &AppSettings::default(), "t")).to_string();
+            let streams: Vec<&str> = out.split("stream\n").collect();
+            let with = |t: &str| streams.iter().position(|s| s.contains(t)).unwrap();
+            assert_eq!(
+                with("(Second site)"),
+                with("(Fact 6:"),
+                "{filler} lines before"
+            );
+        }
     }
 
     fn check_pdf_offsets(pdf: &[u8]) -> usize {
