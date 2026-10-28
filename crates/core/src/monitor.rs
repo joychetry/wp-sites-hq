@@ -17,8 +17,8 @@ use crate::{Changed, Core};
 /// How often each home page is loaded.
 pub const UPTIME_EVERY: Duration = Duration::from_secs(5 * 60);
 const DOMAIN_EVERY: i64 = 24 * 3600;
-/// Uptime rows older than this are dropped.
-const KEEP: i64 = 30 * 24 * 3600;
+/// Uptime rows older than this are dropped: two months, so last month's report has all of it.
+const KEEP: i64 = 62 * 24 * 3600;
 const LOCAL: &str = "A local address: there's no domain to renew and PageSpeed can't reach it.";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -354,7 +354,7 @@ impl Core {
                     )
                 };
                 m.uptime_day = share(24 * 3600)?;
-                m.uptime_month = share(KEEP)?;
+                m.uptime_month = share(30 * 24 * 3600)?;
                 if m.up == Some(false) {
                     m.down_since = c.query_row(
                         "SELECT min(at) FROM uptime WHERE site_id = ?1 AND up = 0

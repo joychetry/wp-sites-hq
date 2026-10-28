@@ -235,15 +235,20 @@ impl Core {
                 st.query_map(params![site.id, start, end], |r| Ok((r.get(0)?, r.get(1)?)))?.collect()
             })
             .unwrap_or_default();
-        let (uptime, checks): (Option<f64>, i64) = self
+        let (uptime, checks, first): (Option<f64>, i64, Option<i64>) = self
             .db(|c| {
                 c.query_row(
-                    "SELECT avg(up) * 100, count(*) FROM uptime WHERE site_id = ?1 AND at >= ?2 AND at < ?3",
+                    "SELECT avg(up) * 100, count(*), min(at) FROM uptime WHERE site_id = ?1 AND at >= ?2 AND at < ?3",
                     params![site.id, start, end],
-                    |r| Ok((r.get(0)?, r.get(1)?)),
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
                 )
             })
-            .unwrap_or((None, 0));
+            .unwrap_or((None, 0, None));
+        // Checks began after the month did (a new site, or rows already dropped): say from when.
+        let since = first
+            .filter(|f| *f > start + 86_400)
+            .map(|f| format!(", from {}", paths::day(f)))
+            .unwrap_or_default();
         let monitor = self
             .monitors()
             .ok()
@@ -256,13 +261,13 @@ impl Core {
         let mut facts = vec![(
             "Uptime".to_string(),
             match uptime {
-                Some(u) => format!("{u:.2}% ({checks} checks)"),
+                Some(u) => format!("{u:.2}% ({checks} checks{since})"),
                 None => "Not measured this month".into(),
             },
         )];
         if let Some(ps) = monitor.as_ref().and_then(|m| m.pagespeed.as_ref()) {
             facts.push((
-                "Speed on a phone".into(),
+                "Speed on a phone (latest)".into(),
                 format!("{}/100, page shown in {}", ps.score, ps.lcp),
             ));
         }
@@ -279,14 +284,17 @@ impl Core {
             .join(", "),
         ));
         if let Some(r) = &security {
+            // Each entry is WordPress or one plugin whose files differ.
             let changed = r.checksums.as_ref().map_or(0, |c| c.changed.len());
             facts.push((
                 "Security".into(),
                 if r.vulnerabilities.is_empty() && r.abandoned.is_empty() && changed == 0 {
-                    format!("No known problems, checked {}", paths::day(r.checked_at))
+                    // A check that didn't answer is not a clean bill.
+                    let how = if r.notes.is_empty() { "checked" } else { "partly checked" };
+                    format!("No known problems, {how} {}", paths::day(r.checked_at))
                 } else {
                     format!(
-                        "{} known vulnerabilit{}, {} abandoned plugin{}, {} changed file{}",
+                        "{} known vulnerabilit{}, {} abandoned plugin{}, changed files in {} place{}",
                         r.vulnerabilities.len(),
                         if r.vulnerabilities.len() == 1 {
                             "y"
@@ -308,8 +316,9 @@ impl Core {
                     if let Some(l) = r.logins {
                         let attempts = l["period"]["attempts"].as_i64().unwrap_or_default();
                         let lockouts = l["period"]["lockouts"].as_i64().unwrap_or_default();
+                        // Classic Monks counts back from today, not over the report's month.
                         facts.push((
-                            "Logins blocked".into(),
+                            format!("Logins blocked (last {days} days)"),
                             format!("{attempts} failed tries, {lockouts} lockouts"),
                         ));
                     }
@@ -333,37 +342,53 @@ impl Core {
             }
         }
 
-        // What went live this month: the newest posts, by the site's own dates.
-        // shortcut: reads the newest 20 posts only, so a busy month lists its last 20; page back by date when a client posts more.
-        let q = Query {
-            post_type: "post".into(),
-            status: Some("publish".into()),
-            search: None,
-            page: Some(1),
-        };
-        match self.posts_inner(site.id, &q).await {
-            Ok(list) => {
-                let posted: Vec<_> = list
-                    .posts
-                    .iter()
-                    .filter(|p| p.date.get(..10).is_some_and(|d| d >= from && d <= to))
-                    .collect();
-                if !posted.is_empty() {
-                    b.push(Block::Heading(format!("Published ({})", posted.len())));
-                    for p in posted {
-                        b.push(Block::Item(format!(
-                            "{}: {}",
-                            &p.date[..10],
-                            if p.title.is_empty() {
-                                "(no title)"
-                            } else {
-                                &p.title
-                            }
-                        )));
+        // What went live this month, by the site's own dates. Lists come newest first, so
+        // page back until a page reaches past the month's start.
+        // shortcut: reads at most 10 pages (about 200 posts) back; pass the month to the site when lists take dates.
+        let mut posted = vec![];
+        for page in 1..=10 {
+            let q = Query {
+                post_type: "post".into(),
+                status: Some("publish".into()),
+                search: None,
+                page: Some(page),
+            };
+            match self.posts_inner(site.id, &q).await {
+                Ok(list) => {
+                    posted.extend(
+                        list.posts
+                            .iter()
+                            .filter(|p| p.date.get(..10).is_some_and(|d| d >= from && d <= to))
+                            .cloned(),
+                    );
+                    let reached = list
+                        .posts
+                        .last()
+                        .and_then(|p| p.date.get(..10))
+                        .is_none_or(|d| d < from);
+                    if reached || page >= list.pages {
+                        break;
                     }
                 }
+                Err(e) => {
+                    note("posts", &e);
+                    break;
+                }
             }
-            Err(e) => note("posts", &e),
+        }
+        if !posted.is_empty() {
+            b.push(Block::Heading(format!("Published ({})", posted.len())));
+            for p in posted {
+                b.push(Block::Item(format!(
+                    "{}: {}",
+                    &p.date[..10],
+                    if p.title.is_empty() {
+                        "(no title)"
+                    } else {
+                        &p.title
+                    }
+                )));
+            }
         }
 
         if site.mode == Mode::ClassicMonks && has_tool(site, "get-store-overview") {
@@ -414,7 +439,11 @@ impl Core {
                 .await
             {
                 Ok(Some(s)) => {
-                    b.push(Block::Heading("SEO".into()));
+                    // AgentedSEO counts back from today, not over the report's month.
+                    b.push(Block::Heading(format!(
+                        "SEO (last {} days)",
+                        (end - start) / 86_400
+                    )));
                     let mut f = vec![];
                     if let Some(c) = s.clicks {
                         f.push(("Clicks".into(), n(c)));
@@ -1008,8 +1037,12 @@ mod tests {
             .add_site_basic(&b.url, "admin", "abcd efgh ijkl mnop qrst uvwx")
             .await
             .unwrap();
-        a.state().posts.push(json!({ "id": 5, "type": "post", "title": "Autumn menu", "status": "publish", "date": "2026-10-03 09:00:00", "content": "" }));
         a.state().posts.push(json!({ "id": 6, "type": "post", "title": "Old news", "status": "publish", "date": "2026-08-03 09:00:00", "content": "" }));
+        a.state().posts.push(json!({ "id": 5, "type": "post", "title": "Autumn menu", "status": "publish", "date": "2026-10-03 09:00:00", "content": "" }));
+        // A busy November after it: October's post is on the second page, newest first.
+        for i in 0..25 {
+            a.state().posts.push(json!({ "id": 100 + i, "type": "post", "title": format!("Later {i}"), "status": "publish", "date": "2026-11-02 09:00:00", "content": "" }));
+        }
         let c = core
             .save_client(&Client {
                 id: 0,
@@ -1046,9 +1079,11 @@ mod tests {
         assert!(h.contains("Corner Bakery: October 2026"));
         assert!(h.contains("2026-10-01: Update WooCommerce") && !h.contains("Too early"));
         assert!(h.contains("50.00% (2 checks)"));
-        assert!(h.contains("Autumn menu") && !h.contains("Old news"));
+        assert!(h.contains("Autumn menu") && !h.contains("Old news") && !h.contains("Later 1"));
+        assert!(h.contains("Published (1)"));
         assert!(h.contains("<h3>Store</h3>") && h.contains("EUR 120.00"));
         assert!(h.contains("25 failed tries, 2 lockouts"));
+        assert!(h.contains("Logins blocked (last 31 days)"));
         // Basic mode: no store, no login report, and nothing about Search Console when it's off.
         assert_eq!(h.matches("<h3>Store</h3>").count(), 1);
         assert!(!h.contains("Google search"));
