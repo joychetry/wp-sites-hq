@@ -7,6 +7,22 @@ import { Sheet } from "../components/Sheet";
 
 type Mode = Site["mode"];
 
+/** What is wrong with a typed site address, in words, or null when it can be tried. */
+export function addressProblem(typed: string): string | null {
+  const t = typed.trim();
+  if (!t) return null;
+  if (/\s/.test(t)) return "An address has no spaces. Write it like https://example.com.";
+  const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(t)?.[1]?.toLowerCase();
+  if (scheme && scheme !== "https" && scheme !== "http") return "Use an address that starts with https://.";
+  try {
+    const host = new URL(scheme ? t : `https://${t}`).hostname;
+    if (!host.includes(".") && host !== "localhost") return "Write the whole address, like https://example.com.";
+  } catch {
+    return "Write the site's address, like https://example.com.";
+  }
+  return null;
+}
+
 type Props = {
   /** Sign this site in again instead of adding a new one. */
   again?: Site;
@@ -21,6 +37,8 @@ export function AddSite({ again, onClose, onDone }: Props) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<null | "browser" | "saving">(null);
   const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
+  const problem = again ? null : addressProblem(url);
 
   const submit = async () => {
     setError(null);
@@ -47,7 +65,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
   };
 
   const title = again ? `Sign in to ${again.name} again` : "Add a site";
-  const ready = url.trim() && (mode === "classic_monks" || (username.trim() && password.trim()));
+  const ready = url.trim() && !problem && (mode === "classic_monks" || (username.trim() && password.trim()));
 
   return (
     <Sheet
@@ -87,21 +105,38 @@ export function AddSite({ again, onClose, onDone }: Props) {
             className="input"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            onBlur={() => setTouched(true)}
+            aria-invalid={(touched && !!problem) || undefined}
+            aria-describedby={touched && problem ? "address-problem" : undefined}
             placeholder="https://example.com"
             readOnly={!!again}
             autoComplete="url"
             spellCheck={false}
           />
+          {touched && problem && (
+            <span id="address-problem" className="err">
+              {problem}
+            </span>
+          )}
         </label>
         {!again && (
-          <div className="segmented" role="group" aria-label="How to connect">
-            <button type="button" aria-pressed={mode === "classic_monks"} onClick={() => setMode("classic_monks")}>
-              Classic Monks
-            </button>
-            <button type="button" aria-pressed={mode === "basic"} onClick={() => setMode("basic")}>
-              Basic mode
-            </button>
-          </div>
+          <fieldset className="radios cards">
+            <legend>How to connect</legend>
+            <label>
+              <input type="radio" name="mode" checked={mode === "classic_monks"} onChange={() => setMode("classic_monks")} />
+              <span>
+                Classic Monks
+                <small>Full control: updates, content, people, one-click login. Signs in through the browser.</small>
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="mode" checked={mode === "basic"} onChange={() => setMode("basic")} />
+              <span>
+                Basic mode
+                <small>Any WordPress 7.1 site, with an application password. Fewer tools.</small>
+              </span>
+            </label>
+          </fieldset>
         )}
         {mode === "classic_monks" ? (
           <ol className="steps">
