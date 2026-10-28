@@ -136,9 +136,9 @@ describe("Monitoring", () => {
     expect(within(beta).getByText(/^beta\.com, /)).toBeInTheDocument();
     expect(within(beta).getByText(/^5 days left/).closest(".st")).toHaveClass("danger");
     expect(within(beta).getByText("LCP 1.8 s, CLS 0, TBT 40 ms. Tested 1 hr ago.")).toBeInTheDocument();
-    mockInvoke.mockRejectedValue("Google limits PageSpeed tests without a key, and the limit is used up. Try again in an hour.");
+    mockInvoke.mockRejectedValue("Google's shared daily limit for PageSpeed tests without a key is used up. Try again tomorrow.");
     fireEvent.click(within(beta).getByRole("button", { name: "Run PageSpeed again on Beta" }));
     expect(mockInvoke).toHaveBeenCalledWith("pagespeed_run", { id: 2 });
-    expect(await within(beta).findByText(/^Google limits PageSpeed/)).toBeInTheDocument();
+    expect(await within(beta).findByText(/^Google.s shared daily limit/)).toBeInTheDocument();
   });
 });

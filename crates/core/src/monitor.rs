@@ -303,7 +303,7 @@ impl Core {
             (200, Some(ps)) => ps,
             (429, _) => {
                 return Err(plain(
-                    "Google limits PageSpeed tests without a key, and the limit is used up. Try again in an hour.",
+                    "Google's shared daily limit for PageSpeed tests without a key is used up. Try again tomorrow.",
                 ));
             }
             _ => {
@@ -683,7 +683,7 @@ mod tests {
                 .await
                 .unwrap_err()
                 .to_string()
-                .starts_with("Google limits PageSpeed")
+                .starts_with("Google's shared daily limit")
         );
     }
 }
