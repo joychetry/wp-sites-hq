@@ -380,7 +380,9 @@ impl Core {
     }
 
     /// Load every home page, and look up domains not looked up for a day
-    /// (or every domain, when `all`). Then tell the window.
+    /// (or every domain, when `all`). Then tell the window. A site Monks
+    /// Central is changing right now is skipped: a safe update puts it in
+    /// maintenance mode, which isn't downtime.
     pub async fn check_monitors(self: &Arc<Self>, all: bool) {
         let Ok(sites) = self.sites() else { return };
         let due: Vec<i64> = self
@@ -391,12 +393,22 @@ impl Core {
                 stmt.query_map([DOMAIN_EVERY], |r| r.get(0))?.collect()
             })
             .unwrap_or_default();
+        let busy: Vec<i64> = self
+            .db(|c| {
+                let mut stmt =
+                    c.prepare_cached("SELECT site_id FROM job_items WHERE state = 'running'")?;
+                stmt.query_map([], |r| r.get(0))?.collect()
+            })
+            .unwrap_or_default();
         let mut set = tokio::task::JoinSet::new();
         for site in sites {
             let core = self.clone();
             let domain = all || !due.contains(&site.id);
+            let uptime = !busy.contains(&site.id);
             set.spawn(async move {
-                let _ = core.check_uptime(&site).await;
+                if uptime {
+                    let _ = core.check_uptime(&site).await;
+                }
                 if domain {
                     let _ = core.check_domain(&site).await;
                 }
@@ -638,6 +650,33 @@ mod tests {
         site.state().home_status = 200;
         core.check_uptime(&core.site(s.id).unwrap()).await.unwrap();
         assert_eq!(core.monitors().unwrap()[0].down_since, None, "up again");
+
+        // While Monks Central changes the site (a safe update's maintenance mode), its home page isn't checked.
+        site.state().home_status = 503;
+        core.db(|c| {
+            c.execute("INSERT INTO jobs (title) VALUES ('update')", [])?;
+            c.execute(
+                "INSERT INTO job_items (job_id, site_id, site_name, action, label, state) VALUES (?1, ?2, 'x', '{\"do\":\"update_core\"}', 'Update WordPress', 'running')",
+                params![c.last_insert_rowid(), s.id],
+            )
+        })
+        .unwrap();
+        core.check_monitors(false).await;
+        let m = core.monitors().unwrap().remove(0);
+        assert_eq!(
+            (m.up, m.down_since),
+            (Some(true), None),
+            "not down while it updates"
+        );
+        core.db(|c| c.execute("UPDATE job_items SET state = 'done'", []))
+            .unwrap();
+        core.check_monitors(false).await;
+        assert_eq!(
+            core.monitors().unwrap()[0].up,
+            Some(false),
+            "checked again after"
+        );
+        site.state().home_status = 200;
 
         // A public domain: the registry knows example.com, not www.example.com's co-names.
         let public = Site {
