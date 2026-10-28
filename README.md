@@ -19,6 +19,27 @@ The builds aren't code-signed yet, so macOS and Windows warn you the first time;
 Anyway, Windows SmartScreen, Linux AppImage, .deb and .rpm). The app updates
 itself from GitHub Releases, and checks each update's signature first.
 
+### macOS says "Monks Central is damaged and can't be opened"
+
+The app isn't damaged. macOS shows this for an app that isn't signed by an
+Apple-registered developer and was downloaded with a browser. To open it:
+
+1. Click **Cancel** (not "Move to Bin").
+2. Open the `.dmg` and drag **Monks Central** into **Applications**.
+3. Open **Terminal** and run:
+
+   ```bash
+   xattr -cr "/Applications/Monks Central.app"
+   ```
+
+   This removes the "downloaded from the internet" mark macOS put on the app.
+4. Open Monks Central as usual. You only need to do this once per download.
+
+If it still won't open, run
+`codesign -dv "/Applications/Monks Central.app" 2>&1 | head -5` and include
+what it prints in an [issue](https://github.com/joychetry/monks-central/issues).
+Signed and notarised macOS builds will remove this step.
+
 Your sites need WordPress 7.1 or newer. With the
 [Classic Monks](https://classicmonks.com) plugin on a site you get everything;
 any other site connects in Basic mode (an application password) with fewer
