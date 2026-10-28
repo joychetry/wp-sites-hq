@@ -617,6 +617,23 @@ impl Core {
             })
             .map_err(|e| plain(format!("A cost in the file, {}: {e}", c.label)))?;
         }
+        // Client names in the file follow the same rule as typed ones. A site row may leave
+        // its client blank; a cost that names a client may not.
+        let sites_clients = data.sites.iter().filter_map(|r| r.client.as_deref());
+        let costs_clients = data.costs.iter().filter_map(|c| c.client.as_deref());
+        for name in sites_clients
+            .filter(|n| !n.trim().is_empty())
+            .chain(costs_clients)
+        {
+            let as_typed = Client {
+                id: 0,
+                name: name.into(),
+                email: String::new(),
+                notes: String::new(),
+            };
+            clean_client(&as_typed)
+                .map_err(|e| plain(format!("A client in the file, \u{201c}{name}\u{201d}: {e}")))?;
+        }
         let out = self.db(|conn| {
             let tx = conn.unchecked_transaction()?;
             let mut out = Imported::default();
@@ -674,11 +691,20 @@ impl Core {
                 }
                 out.sites += 1;
             }
+            // Read once: a big file would otherwise read every cost again for each one.
+            let mut have = list_costs(&tx)?;
             for c in &data.costs {
                 let site_id = match &c.site {
                     Some(url) => match find(&tx, url)? {
                         Some(id) => Some(id),
-                        None => continue,
+                        // Its site isn't here: say so with the sites, never drop it silently.
+                        None => {
+                            let url = url.trim().to_string();
+                            if !out.not_connected.contains(&url) {
+                                out.not_connected.push(url);
+                            }
+                            continue;
+                        }
                     },
                     None => None,
                 };
@@ -701,12 +727,11 @@ impl Core {
                     every: c.every,
                     renews_on: c.renews_on.clone(),
                 };
-                let same = list_costs(&tx)?
-                    .into_iter()
-                    .any(|x| Cost { id: 0, ..x } == cost);
+                let same = have.iter().any(|x| Cost { id: 0, ..x.clone() } == cost);
                 if !same {
                     insert_cost(&tx, &cost)?;
                     out.costs += 1;
+                    have.push(cost);
                 }
             }
             tx.commit()?;
@@ -966,7 +991,8 @@ mod tests {
                 sites: 1,
                 clients: 1,
                 costs: 1,
-                not_connected: vec!["https://c.test".into()]
+                // a.test's cost has no site here, so a.test is named too.
+                not_connected: vec!["https://c.test".into(), "https://a.test".into()]
             }
         );
         let s = other.site(b2).unwrap();
@@ -1021,6 +1047,21 @@ mod tests {
                 .unwrap_err()
                 .to_string()
                 .contains("A cost in the file, X")
+        );
+        let blank = r#"{"monks_central":1,"costs":[{"kind":"cost","label":"X","cents":1,"currency":"EUR","every":"month","client":"   "}]}"#;
+        let err = other.import(blank).unwrap_err().to_string();
+        assert!(err.contains("Give the client a name"), "{err}");
+        let long = format!(
+            r#"{{"monks_central":1,"sites":[{{"url":"https://b.test","client":"{}"}}]}}"#,
+            "x".repeat(121)
+        );
+        assert!(other.import(&long).is_err());
+        // A cost whose site isn't here is named, not dropped quietly.
+        let away = r#"{"monks_central":1,"costs":[{"kind":"cost","label":"Y","cents":1,"currency":"EUR","every":"month","site":"https://gone.test"}]}"#;
+        let got = other.import(away).unwrap();
+        assert_eq!(
+            (got.costs, got.not_connected),
+            (0, vec!["https://gone.test".to_string()])
         );
         let _ = b;
     }
