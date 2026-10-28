@@ -389,7 +389,7 @@ export default function App() {
   } else if (section === "Store") {
     body = <Store sites={scoped} onPlan={plan} />;
   } else if (section === "Reports") {
-    body = <Reports sites={scoped} />;
+    body = <Reports sites={scoped} onSettings={() => setSection("Settings")} />;
   } else if (section === "Search") {
     body = (
       <Search

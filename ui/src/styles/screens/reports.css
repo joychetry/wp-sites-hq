@@ -1,0 +1,25 @@
+/* Reports: the form and its result on the left, the report's page on the well at the right (design 15) */
+.rep-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: var(--sp-4); align-items: start; }
+.reports .card-body { display: grid; gap: var(--sp-4); }
+.reports .field small { color: var(--text-3); }
+.reports .plain .row.check { gap: var(--sp-2); }
+.rep-ready h2 { display: flex; align-items: center; gap: 10px; margin: 0; font: 600 var(--fs)/1.4 var(--sans); }
+.rep-ready .row { flex-wrap: wrap; gap: var(--sp-2); }
+.rep-ready .link { display: inline-flex; align-items: center; gap: 6px; }
+.rep-foot { margin: 0; font-size: var(--fs-sm); }
+.rep-well { padding: var(--sp-5); background: var(--panel); }
+.rep-well .preview { height: 640px; }
+/* The report's own look: white paper whatever the theme, as the PDF prints. */
+.rep-page { display: grid; gap: var(--sp-3); max-width: 380px; margin: 0 auto; padding: var(--sp-5); border-radius: 6px; background: #ffffff; color: #0d1411; box-shadow: var(--shadow-float); }
+.rep-page header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: 2px solid var(--accent-r); }
+.rep-page header > div { display: grid; gap: 2px; }
+.rep-page .label { color: #45524b; }
+.rep-page header b { font: 600 var(--fs-lg)/1.25 var(--display); letter-spacing: -0.02em; }
+.rep-page header span, .rep-page .dim, .rep-page footer { font-size: var(--fs-xs); color: #45524b; }
+.rep-page .biz { font-weight: 600; color: #0d1411; text-align: right; }
+.rep-page .rep-h { font-size: var(--fs-sm); }
+.rep-page ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: var(--fs-sm); }
+.rep-page li { display: flex; align-items: center; gap: 8px; }
+.rep-page li .glyph { width: 14px; height: 14px; color: #01824c; }
+.rep-page footer { display: flex; justify-content: space-between; gap: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid #dde3df; }
+@media (max-width: 900px) { .rep-split { grid-template-columns: minmax(0, 1fr); } }
