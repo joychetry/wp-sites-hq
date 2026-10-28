@@ -149,6 +149,9 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .selbar .dim, .selbar .kbd { color: inherit; }
 .selbar .kbd { background: transparent; border-color: color-mix(in srgb, currentColor 35%, transparent); }
 .selbar :focus-visible { outline-color: var(--btn-on-ink); }
+.selbar .input { width: auto; height: 32px; border-radius: var(--radius-pill); background: color-mix(in srgb, currentColor 10%, transparent); border-color: color-mix(in srgb, currentColor 35%, transparent); box-shadow: none; color: inherit; }
+.selbar .input::placeholder { color: color-mix(in srgb, currentColor 75%, transparent); }
+.selbar .chev { stroke: currentColor; }
 
 /* Tables: mono uppercase heads on the well, hover in the well, selected rows tinted with a green edge */
 table.t { width: 100%; border-collapse: separate; border-spacing: 0; }

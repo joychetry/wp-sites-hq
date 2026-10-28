@@ -211,7 +211,9 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 
 /* Empty states: one picture for all of them, unless they bring their own */
 /* Centred, the way the design draws first runs and errors */
-.empty { padding: var(--sp-7) var(--sp-5); margin: 0 auto; display: grid; justify-items: center; gap: var(--sp-3); text-align: center; }
+.empty { padding: var(--sp-7) var(--sp-5); margin: 0 auto; display: grid; justify-items: center; align-content: start; gap: var(--sp-3); text-align: center; }
+/* Loading and start-up errors stand in for the screen, so they take its card. */
+.body > .empty, .body > .skel { max-width: none; width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .empty h2 { margin: 0; }
 .empty p { margin: 0; }
 .empty:not(:has(.empty-pic)) > h2:first-child::before {
