@@ -229,7 +229,7 @@ const ENTRIES: Entry[] =
     : [
         entry(6, 240, "agent", "", "Proposed a plan: Update WooCommerce on 3 sites", "waiting", "3 changes on 3 sites. Waiting for you to confirm it under AI."),
         entry(5, 600, "agent", "MC A", "update-post", "done"),
-        entry(4, 660, "agent", "MC A", "update-post", "waiting", "This change needs approval. Ask the user to open https://mc-a.local/wp-admin/admin.php?page=cm-ai-approve&op=44 and approve it."),
+        entry(4, 660, "agent", "MC A", "update-post", "waiting", "This change needs approval. Ask the user to open https://mc-a.local/wp-admin/admin.php?page=cm-ai-approve&op=44 and approve it, then call the same tool again with exactly the same arguments."),
         entry(3, 900, "agent", "Portfolio", "activate-plugin", "refused", "AI agents can only read this site: it has no AI agent access."),
         entry(2, 3600, "agent_confirmed", "Corner Bakery", "Update Yoast SEO", "failed", "The site took too long to answer."),
         entry(1, 7200, "human", "MC A", "Turned on AI agent access", "done"),

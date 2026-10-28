@@ -213,6 +213,16 @@ test.describe("200% zoom", () => {
   }
 });
 
+test("a long reason in the activity log wraps, so Result stays in view", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "ai-activity")!, "light");
+  const sideways = await page.evaluate(() => {
+    let el = document.querySelector('table[aria-label="Activity"]')!.parentElement;
+    while (el && el.scrollWidth <= el.clientWidth) el = el.parentElement;
+    return el?.tagName ?? null;
+  });
+  expect(sideways).toBeNull();
+});
+
 test("text grows with the browser's text size", async ({ page }) => {
   await show(page, SCREENS[0], "light");
   const at = (px: number) =>

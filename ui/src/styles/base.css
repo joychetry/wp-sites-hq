@@ -210,7 +210,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .box[aria-checked="mixed"]::before { background: linear-gradient(var(--text), var(--text)) center / 8px 2px no-repeat var(--bg); border-color: var(--text); }
 .box:disabled::before { border-style: dashed; }
 .tag.state { min-width: 72px; justify-content: center; }
-.why { display: block; color: var(--text-2); font-size: var(--fs-sm); }
+.why { display: block; color: var(--text-2); font-size: var(--fs-sm); white-space: normal; overflow-wrap: anywhere; }
 .why.danger { color: var(--danger); }
 .bar-progress { height: 4px; background: var(--raise); border-radius: 2px; margin: 0 0 var(--sp-3); overflow: hidden; }
 .bar-progress span { display: block; height: 100%; background: var(--text); }
