@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
-import { Overview, summary } from "./Overview";
+import { Overview, said, summary } from "./Overview";
 import { site } from "../test-fixtures";
-import type { Entry, Job } from "../api";
+import type { Entry, Job, SiteInventory } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -99,4 +99,17 @@ test("updates, plans and vulnerabilities each get one fix, and the latest change
   fireEvent.click(within(feed).getByRole("button", { name: "You" }));
   expect(within(feed).queryByText("Update post")).toBeNull();
   expect(within(feed).getByText(/^You turned on AI agent access/)).toBeInTheDocument();
+});
+
+test("a change that names a plugin the site runs carries its tile, just before the name", () => {
+  const inv: SiteInventory = {
+    site_id: 1,
+    fetched_at: 0,
+    inventory: { wordpress: null, wordpress_update: null, plugins: [{ id: "classic-editor/classic-editor.php", name: "Classic Editor", version: "1", active: true, auto_update: null, update: null }], themes: [], translations: 0, updates_known: true, needs_credentials: false },
+  };
+  const entry = (what: string, site_id: number | null = 1): Entry => ({ id: 1, at: 0, actor: "human", site_id, site_name: "MC A", what, outcome: "done", detail: "" });
+  const html = (e: Entry) => render(<p>{said(e, new Map([[1, inv]]))}</p>).container.innerHTML;
+  expect(html(entry("Update Classic Editor"))).toMatch(/ran <span class="ptile xs"[^>]*>C<\/span><b>Update Classic Editor<\/b>/);
+  expect(html(entry("Confirmed the plan: Update Classic Editor on MC A", null))).toMatch(/confirmed the plan: Update <span class="ptile xs"[^>]*>C<\/span>Classic Editor on MC A/);
+  expect(html(entry("Update Yoast SEO"))).not.toContain("ptile");
 });
