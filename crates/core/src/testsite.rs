@@ -72,6 +72,10 @@ pub struct State {
     pub zip_kinds: Vec<String>,
     /// Classic Monks before M8: no install-zip.
     pub no_zip_tool: bool,
+    /// No WooCommerce: no store tools.
+    pub no_woo: bool,
+    /// WooCommerce products as `list-products` gives them.
+    pub products: Vec<serde_json::Value>,
     /// `{ id, post_id, date, title, content }`, oldest first.
     pub revisions: Vec<serde_json::Value>,
     next_id: i64,
@@ -154,6 +158,11 @@ impl Default for State {
             uploads: HashMap::new(),
             zip_kinds: Vec::new(),
             no_zip_tool: false,
+            no_woo: false,
+            products: vec![
+                json!({ "id": 61, "name": "Sourdough", "type": "simple", "status": "publish", "sku": "SD-1", "price": "4.50", "regular_price": "4.50", "sale_price": "", "stock_status": "instock", "manage_stock": true, "stock_quantity": 9, "permalink": "https://shop.test/sourdough" }),
+                json!({ "id": 62, "name": "Rye", "type": "simple", "status": "publish", "sku": "", "price": "3.00", "regular_price": "3.50", "sale_price": "3.00", "stock_status": "instock", "manage_stock": true, "stock_quantity": 1, "permalink": "https://shop.test/rye" }),
+            ],
             next_id: 100,
             saves: 0,
             mangle_blocks: false,
@@ -553,7 +562,8 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 .iter()
                 .filter(|(n, _)| !s.released || RELEASED_PEOPLE_TOOLS.contains(n));
             let safe = SAFE_TOOLS.iter().filter(|_| !s.no_safe_tools);
-            for (name, read_only) in PLUGIN_TOOLS.iter().chain(safe).chain(content).chain(people) {
+            let business = BUSINESS_TOOLS.iter().filter(|(n, _)| !s.no_woo || !WOO_TOOLS.contains(n));
+            for (name, read_only) in PLUGIN_TOOLS.iter().chain(safe).chain(content).chain(people).chain(business) {
                 if s.no_zip_tool && *name == "install-zip" {
                     continue;
                 }
@@ -582,6 +592,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 .chain(SAFE_TOOLS)
                 .chain(CONTENT_TOOLS)
                 .chain(PEOPLE_TOOLS)
+                .chain(BUSINESS_TOOLS)
                 .chain(&[("get-posts", true), ("update-post", false)])
                 .any(|(n, _)| req["params"]["name"] == *n) =>
         {
@@ -592,6 +603,7 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 .chain(SAFE_TOOLS)
                 .chain(CONTENT_TOOLS)
                 .chain(PEOPLE_TOOLS)
+                .chain(BUSINESS_TOOLS)
                 .any(|(n, r)| *n == name && *r)
                 || name == "get-posts";
             // Classic Monks' approval gate: a change by a grant that isn't the operator waits.
@@ -621,6 +633,8 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
                 plugin_tool(&mut s, &name, &args)
             } else if PEOPLE_TOOLS.iter().any(|(n, _)| *n == name) {
                 people_tool(&mut s, &name, &args)
+            } else if BUSINESS_TOOLS.iter().any(|(n, _)| *n == name) {
+                Ok(business_tool(&mut s, &name, &args))
             } else {
                 content_tool(&mut s, &name, &args)
             };
@@ -1466,6 +1480,90 @@ const PEOPLE_TOOLS: &[(&str, bool)] = &[
     ("undo-operation", false),
     ("list-pending-approvals", true),
 ];
+/// Classic Monks' reports, and the WooCommerce store tools (only with WooCommerce).
+const BUSINESS_TOOLS: &[(&str, bool)] = &[
+    ("get-404-report", true),
+    ("get-search-report", true),
+    ("get-unused-media-report", true),
+    ("get-login-security-report", true),
+    ("get-2fa-report", true),
+    ("list-products", true),
+    ("get-store-overview", true),
+    ("update-products", false),
+];
+const WOO_TOOLS: &[&str] = &["list-products", "get-store-overview", "update-products"];
+
+fn business_tool(s: &mut State, name: &str, a: &serde_json::Value) -> serde_json::Value {
+    match name {
+        "get-404-report" => json!({
+            "count": 2,
+            "urls": [
+                { "id": 1, "url": "/old-menu", "hits": 14, "first_seen": "2026-10-01 08:00:00", "last_seen": "2026-10-27 18:00:00", "status": "new", "referrer": "https://google.com/" },
+                { "id": 2, "url": "/wp-login.bak", "hits": 3, "first_seen": "2026-10-20 08:00:00", "last_seen": "2026-10-21 08:00:00", "status": "new", "referrer": "" },
+            ],
+            "top_referrers": [{ "referrer": "https://google.com/", "hits": 14 }],
+        }),
+        "get-search-report" => json!({
+            "days": a["days"], "total_searches": 40, "zero_result_searches": 6,
+            "top_searches": [{ "query": "gluten free", "searches": 12, "avg_results": 3.0 }],
+            "zero_result_queries": [{ "query": "vegan cake", "searches": 4 }],
+        }),
+        "get-unused-media-report" => json!({
+            "has_results": true, "scanned_at": "2026-10-26 09:00:00", "counts": { "unused": 3, "used": 40 }, "listed_size": 2_400_000,
+            "items": [{ "id": 31, "title": "Old banner", "filename": "banner-2024.jpg", "mime": "image/jpeg", "size": 1_200_000, "status": "unused" }],
+        }),
+        "get-login-security-report" => json!({
+            "days": a["days"], "lockdown_enabled": true, "period": { "attempts": 25, "lockouts": 2 },
+            "top_ips": [{ "value": "203.0.113.9", "attempts": 20 }], "top_usernames": [{ "value": "admin", "attempts": 22 }],
+            "all_time": { "total_attempts": 300, "total_lockouts": 12, "unique_ips": 40 }, "recent": [],
+        }),
+        "get-2fa-report" => json!({
+            "methods": ["totp", "email"], "enforcement": { "enabled": true, "roles": ["administrator"], "grace_days": 7, "after_grace": "block" },
+            "stats": { "total_users": 2, "users_with_2fa": 1, "totp_users": 1, "email_users": 0 },
+            "roles": [{ "role": "administrator", "users": 1, "with_2fa": 1, "enforced": true }], "users": [], "recent_events": [],
+        }),
+        "list-products" => {
+            let search = a["search"].as_str().unwrap_or_default().to_lowercase();
+            let list: Vec<_> = s
+                .products
+                .iter()
+                .filter(|p| p["name"].as_str().unwrap().to_lowercase().contains(&search))
+                .cloned()
+                .collect();
+            json!({ "products": list, "total": list.len(), "pages": 1, "currency": "EUR" })
+        }
+        "get-store-overview" => json!({
+            "currency": "EUR", "from": a["from"].as_str().unwrap_or("2026-09-28"), "to": a["to"].as_str().unwrap_or("2026-10-28"),
+            "orders": 3, "revenue": "120.00", "average_order": "40.00", "by_status": { "completed": 2, "processing": 1, "refunded": 0 },
+            "low_stock": [{ "id": 62, "name": "Rye", "stock_quantity": 1 }], "out_of_stock": 0, "processing": 1,
+        }),
+        _ => {
+            let mut results = vec![];
+            for item in a["products"].as_array().cloned().unwrap_or_default() {
+                let Some(p) = s.products.iter_mut().find(|p| p["id"] == item["id"]) else {
+                    results.push(json!({ "id": item["id"], "success": false, "updated_fields": [], "error": "No such product" }));
+                    continue;
+                };
+                let mut fields = vec![];
+                for key in [
+                    "regular_price",
+                    "sale_price",
+                    "manage_stock",
+                    "stock_quantity",
+                ] {
+                    if !item[key].is_null() {
+                        p[key] = item[key].clone();
+                        fields.push(key);
+                    }
+                }
+                results
+                    .push(json!({ "id": item["id"], "success": true, "updated_fields": fields }));
+            }
+            json!({ "results": results, "updated": results.len() })
+        }
+    }
+}
+
 /// What Classic Monks 2.5.0 has of those.
 const RELEASED_PEOPLE_TOOLS: &[&str] = &[
     "get-users",

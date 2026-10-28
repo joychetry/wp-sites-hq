@@ -262,7 +262,90 @@ fn on_site(site: &Site, link: &str) -> Result<String, SiteError> {
     }
 }
 
+/// Classic Monks' own reports on one site, as the site gives them. A report the
+/// site's Classic Monks doesn't have is `None`.
+#[derive(Debug, Default, Serialize)]
+pub struct CmReports {
+    pub not_found: Option<Value>,
+    pub searches: Option<Value>,
+    pub unused_media: Option<Value>,
+    pub logins: Option<Value>,
+    pub two_factor: Option<Value>,
+    /// Reports the site has but didn't give, with why.
+    pub failed: Vec<(String, String)>,
+}
+
+pub const NO_REPORTS: &str = "This site's Classic Monks has no reports Monks Central can read. Update Classic Monks on the site, then check it again.";
+
+fn keep(
+    got: Option<Result<Value, SiteError>>,
+    tool: &str,
+    failed: &mut Vec<(String, String)>,
+) -> Option<Value> {
+    match got? {
+        Ok(v) => Some(v),
+        Err(e) => {
+            failed.push((tool.to_string(), e.to_string()));
+            None
+        }
+    }
+}
+
 impl Core {
+    /// The 404, search, unused media, login and two-factor reports over `days` days.
+    pub async fn cm_reports(&self, id: i64, days: u32) -> Result<CmReports, SiteError> {
+        let _work = self.working().await;
+        self.cm_reports_inner(id, days).await
+    }
+
+    pub(crate) async fn cm_reports_inner(
+        &self,
+        id: i64,
+        days: u32,
+    ) -> Result<CmReports, SiteError> {
+        let site = self.site(id)?;
+        if site.mode != Mode::ClassicMonks {
+            return Err(plain("Reports need Classic Monks on the site."));
+        }
+        const TOOLS: [&str; 5] = [
+            "get-404-report",
+            "get-search-report",
+            "get-unused-media-report",
+            "get-login-security-report",
+            "get-2fa-report",
+        ];
+        if !TOOLS.iter().any(|t| has_tool(&site, t)) {
+            return Err(plain(NO_REPORTS));
+        }
+        let days = days.clamp(1, 365);
+        let ask = |tool: &'static str, args: Value| {
+            let has = has_tool(&site, tool);
+            async move {
+                if has {
+                    Some(self.call_ability_inner(id, tool, args).await)
+                } else {
+                    None
+                }
+            }
+        };
+        let (a, b, c, d, e) = tokio::join!(
+            ask(TOOLS[0], json!({ "days": days, "limit": 10 })),
+            ask(TOOLS[1], json!({ "days": days, "limit": 10 })),
+            ask(TOOLS[2], json!({ "limit": 10 })),
+            ask(TOOLS[3], json!({ "days": days, "limit": 10 })),
+            ask(TOOLS[4], json!({ "limit": 20 })),
+        );
+        let mut failed = vec![];
+        Ok(CmReports {
+            not_found: keep(a, TOOLS[0], &mut failed),
+            searches: keep(b, TOOLS[1], &mut failed),
+            unused_media: keep(c, TOOLS[2], &mut failed),
+            logins: keep(d, TOOLS[3], &mut failed),
+            two_factor: keep(e, TOOLS[4], &mut failed),
+            failed,
+        })
+    }
+
     /// The site, if its Classic Monks has this tool.
     fn cm_site(&self, id: i64, tool: &str) -> Result<Site, SiteError> {
         let site = self.site(id)?;
@@ -491,6 +574,34 @@ mod tests {
         let url = url.to_string();
         tokio::spawn(async move { reqwest::get(url).await });
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn classic_monks_reports_come_together_and_a_failing_one_is_named() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core.add_site_oauth(&site.url, browser).await.unwrap();
+        site.state().fail_tool = Some("get-search-report".into());
+        let r = core.cm_reports(s.id, 30).await.unwrap();
+        assert_eq!(r.not_found.as_ref().unwrap()["count"], 2);
+        assert_eq!(r.two_factor.as_ref().unwrap()["stats"]["users_with_2fa"], 1);
+        assert!(r.searches.is_none());
+        assert_eq!(r.failed[0].0, "get-search-report");
+        let days: Vec<_> = site
+            .state()
+            .calls
+            .iter()
+            .filter(|(t, _)| t == "get-login-security-report")
+            .map(|(_, a)| a["days"].clone())
+            .collect();
+        assert_eq!(days, [json!(30)]);
+
+        let b = TestSite::start().await;
+        let sb = core
+            .add_site_basic(&b.url, "admin", "abcd efgh ijkl mnop qrst uvwx")
+            .await
+            .unwrap();
+        assert!(core.cm_reports(sb.id, 30).await.is_err());
     }
 
     #[tokio::test]

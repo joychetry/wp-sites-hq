@@ -134,6 +134,17 @@ pub enum Action {
         post_id: i64,
         title: String,
     },
+    /// A WooCommerce product's prices or stock. `None` leaves it; a sale price of "" removes it.
+    UpdateProduct {
+        product_id: i64,
+        name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        regular_price: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        sale_price: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        stock_quantity: Option<i64>,
+    },
 }
 
 impl Action {
@@ -142,7 +153,11 @@ impl Action {
         use Action::*;
         matches!(
             self,
-            PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. }
+            PublishPost { .. }
+                | SetPostStatus { .. }
+                | TrashPost { .. }
+                | UntrashPost { .. }
+                | UpdateProduct { .. }
         )
     }
 
@@ -181,6 +196,7 @@ impl Action {
             PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. } => {
                 ("", json!({}))
             }
+            UpdateProduct { .. } => ("update-products", json!({})),
         }
     }
 
@@ -225,6 +241,7 @@ impl Action {
             }
             InstallPlugin { .. } | InstallZip { .. } | UpdateCore | UpdateTranslations => {}
             PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. } => {}
+            UpdateProduct { .. } => {}
         }
         Ok(())
     }
@@ -348,6 +365,31 @@ impl Action {
                 None,
                 None,
             ),
+            UpdateProduct {
+                name,
+                regular_price,
+                sale_price,
+                stock_quantity,
+                ..
+            } => {
+                let mut what = vec![];
+                if let Some(p) = regular_price {
+                    what.push(format!("price {p}"));
+                }
+                match sale_price.as_deref() {
+                    Some("") => what.push("no sale price".into()),
+                    Some(p) => what.push(format!("sale price {p}")),
+                    None => {}
+                }
+                if let Some(q) = stock_quantity {
+                    what.push(format!("stock {q}"));
+                }
+                (
+                    format!("Change \u{201c}{name}\u{201d}: {}", what.join(", ")),
+                    None,
+                    None,
+                )
+            }
         }
     }
 }
@@ -1088,6 +1130,9 @@ impl Core {
 
     /// Make one change on one site, as the operator. Returns the site's message.
     async fn run_action(&self, id: i64, action: &Action) -> Result<String, SiteError> {
+        if let Action::UpdateProduct { .. } = action {
+            return self.run_product(id, action).await;
+        }
         if action.is_content() {
             return self.run_content(id, action).await;
         }

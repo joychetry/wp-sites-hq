@@ -12,13 +12,14 @@ use monks_core::connect::{Removed, SiteError};
 use monks_core::content::{
     Draft, Found as ContentFound, Listing, Media, Post, PostType, Query, Revision, Term,
 };
-use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
+use monks_core::control::{Activity, Approval, CmReports, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
 use monks_core::monitor::{Monitor, PageSpeed};
 use monks_core::packages::{Bundle, Staged};
 use monks_core::people::{Comments, NewUser, User, Users};
 use monks_core::security::Report;
+use monks_core::shop::{Overview, ProductQuery, Products};
 use monks_core::sites::{Mode, Site};
 use monks_core::{Core, Options, paths, vault};
 use serde_json::Value;
@@ -523,6 +524,26 @@ async fn cm_undo(state: State<'_, AppCore>, id: i64, row: i64) -> Res<()> {
 }
 
 #[tauri::command]
+async fn cm_reports(state: State<'_, AppCore>, id: i64, days: u32) -> Res<CmReports> {
+    let core = core(&state)?;
+    core.cm_reports(id, days).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn store_products(state: State<'_, AppCore>, id: i64, query: ProductQuery) -> Res<Products> {
+    let core = core(&state)?;
+    core.products(id, &query).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn store_overview(state: State<'_, AppCore>, id: i64, days: u32) -> Res<Overview> {
+    let core = core(&state)?;
+    core.store_overview(id, days, None)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn cm_approvals(state: State<'_, AppCore>, id: i64) -> Res<Vec<Approval>> {
     let core = core(&state)?;
     core.approvals(id).await.map_err(|e| e.to_string())
@@ -983,6 +1004,9 @@ fn main() {
             cm_activity,
             cm_undo,
             cm_approvals,
+            cm_reports,
+            store_products,
+            store_overview,
             cm_approval_open,
             agent_access_on,
             agent_access_off,
