@@ -70,10 +70,10 @@ test("the Sites table works from the keyboard", async ({ page }) => {
 
 test("the Plugins matrix is one Tab stop, arrow keys move and Enter opens a cell", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "plugins")!, "light");
-  await page.getByRole("button", { name: /^Update \d+ plugins/ }).focus();
+  await page.getByRole("button", { name: /^Status:/ }).focus();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: /^WooCommerce on MC A/ })).toBeFocused();
-  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("button", { name: /^WooCommerce on mc-c/ })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("complementary", { name: "WooCommerce on mc-c" })).toBeVisible();

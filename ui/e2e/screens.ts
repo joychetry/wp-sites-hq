@@ -384,7 +384,7 @@ export const SCREENS: Screen[] = [
       await nav("Plugins")(page);
       await page.getByRole("button", { name: /^WooCommerce on MC A/ }).click();
       await page.getByRole("button", { name: "Choose an older version" }).click();
-      await page.getByRole("button", { name: "Roll back to 10.1.0" }).click();
+      await page.getByRole("radio", { name: "10.1.0" }).check();
     },
   },
   { name: "themes", open: nav("Themes") },

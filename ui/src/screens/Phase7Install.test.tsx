@@ -105,7 +105,7 @@ test("bundles are made and edited in the sheet", async () => {
   const calls = core();
   render(<Install sites={[A]} inventory={INV} onClose={vi.fn()} onPlan={vi.fn()} />);
   fireEvent.click(await screen.findByRole("button", { name: "Edit the New shop bundle" }));
-  const box = screen.getByRole("group", { name: "Or a bundle" });
+  const box = screen.getByRole("group", { name: "Bundles" });
   expect(within(box).getByRole("textbox", { name: /^Plugins, one a line/ })).toHaveValue("woocommerce\nwp-mail-smtp");
   fireEvent.change(within(box).getByRole("textbox", { name: /^Plugins, one a line/ }), { target: { value: "woocommerce\nakismet" } });
   fireEvent.click(within(box).getByRole("button", { name: "Save the bundle" }));
@@ -127,7 +127,7 @@ test("deleting a bundle asks first, and a failed delete keeps it open", async ()
   });
   render(<Install sites={[A]} inventory={INV} onClose={vi.fn()} onPlan={vi.fn()} />);
   fireEvent.click(await screen.findByRole("button", { name: "Edit the New shop bundle" }));
-  const box = screen.getByRole("group", { name: "Or a bundle" });
+  const box = screen.getByRole("group", { name: "Bundles" });
   fireEvent.click(within(box).getByRole("button", { name: "Delete the bundle" }));
   expect(calls.some((c) => c[0] === "bundle_delete")).toBe(false);
   expect(within(box).getByText(/Delete the New shop bundle\?/)).toBeInTheDocument();

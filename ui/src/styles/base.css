@@ -370,31 +370,13 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .bar-progress { height: 6px; background: var(--panel); border-radius: 3px; margin: 0 0 var(--sp-3); overflow: hidden; }
 .bar-progress span { display: block; height: 100%; background: var(--green); }
 
-/* Plugins and Themes matrix (screens/Matrix.tsx) */
-.mxbox { overflow: auto; }
-.t.mx { width: auto; min-width: 100%; }
-.t.mx th[scope="col"] { white-space: normal; vertical-align: bottom; min-width: 96px; max-width: 136px; height: auto; padding-block: var(--sp-2); line-height: var(--lh-tight); }
-.t.mx th[scope="col"]:first-child, .t.mx th[scope="row"] { position: sticky; left: 0; z-index: 3; background: var(--bg); text-align: left; min-width: 160px; max-width: 220px; }
-.t.mx th[scope="col"]:first-child { background: var(--panel); }
-.t.mx th[scope="row"] { z-index: 1; font: 600 var(--fs) var(--sans); text-transform: none; letter-spacing: 0; color: var(--text); border-bottom: 1px solid var(--line); padding: 0 var(--sp-3) 0 var(--pad); }
-.colname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.t.mx td { padding: 3px; }
-.cell { width: 100%; height: calc(var(--row) - 6px); display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: var(--panel); text-align: left; white-space: nowrap; font: 500 var(--fs-sm) var(--mono); }
-.cell:hover { border-color: var(--line-2); }
-.cell[aria-pressed="true"] { background: var(--sel); border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
-.cell .tag { padding: 0 var(--sp-1); font-size: var(--fs-xs); }
-.off { text-decoration: line-through; }
+/* Sites a list can't show (Updates, Security) */
 .unseen { padding: var(--sp-4) var(--pad); border-top: 1px solid var(--line); }
 .unseen h3 { margin: 0 0 var(--sp-2); font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 .unseen li { justify-content: flex-start; gap: var(--sp-3); }
-.versions li { align-items: center; }
 
 /* Install (screens/Install.tsx) */
 .found-count:not(:empty) { margin: var(--sp-2) 0; }
-.found { list-style: none; margin: 0; padding: 0; }
-.found li { display: flex; gap: var(--sp-3); align-items: flex-start; padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
-.found .grow { flex: 1; min-width: 0; }
-.found p { margin: 2px 0; color: var(--text-2); }
 .row .input { flex: 1; }
 
 /* Command palette */
