@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Posts, pages and every post type a site lets us edit: list, filter, open, create (plan Phase 3).
+import "../styles/screens/content.css";
 import { Skeleton, toast } from "../components/feedback";
-import { Select } from "../components/controls";
+import { dayLabel, SearchInput, Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary } from "../api";
+import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary, type Tone } from "../api";
 import type { PlanRow } from "../components/JobSheet";
-import { Button } from "../components/ui";
+import { SiteTile } from "../components/SiteTile";
+import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { Editor } from "./Editor";
 import { PublishMany } from "./PublishMany";
 
@@ -18,6 +20,9 @@ export const STATUS_LABEL: Record<string, string> = {
   future: "Scheduled",
   trash: "In the trash",
 };
+
+/** A status pill's tone: live is ok, scheduled waits, the trash is danger, the rest are neutral. */
+const STATUS_TONE: Record<string, Tone> = { publish: "ok", future: "warning", trash: "danger" };
 
 const FILTERS = [
   ["", "All but the trash"],
@@ -40,6 +45,7 @@ export function SitePick({ sites, value, onChange }: { sites: Site[]; value: num
       <Select className="input sm" aria-label="Site" value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))}>
         {sites.map((s) => (
           <option key={s.id} value={s.id}>
+            <SiteTile site={s} size="sm" />
             {s.name}
             {contentBlocked(s) ? " (not available)" : ""}
           </option>
@@ -221,21 +227,28 @@ export function Content({ sites, onPlan }: Props) {
       const n = chosen.length;
       onPlan?.(`${BULK[what].title} ${n === 1 ? "1 entry" : `${n} entries`} on ${site!.name}`, bulkRows(site!, type, chosen, what), "confirm", BULK[what].danger);
     };
+    // Pages are the same size but the last, so the first entry shown counts from either end.
+    const first = list.page < list.pages ? (list.page - 1) * rows.length + 1 : list.total - rows.length + 1;
     body = (
       <>
-        <p className="legend" id="content-legend">
+        <p className={inTrash && !canBack ? "legend" : "sr-only"} id="content-legend">
           Select a title to open it, or tick entries to change several at once. Dates are in the site's own time zone.
           {inTrash && !canBack && " Bringing entries back from the trash needs Classic Monks on the site."}
         </p>
         {onPlan && actions.length > 0 && (
-          <div className="bar" role="group" aria-label="Change the ticked entries">
-            <span className="dim">{chosen.length === 0 ? "None ticked" : `${chosen.length} ticked`}</span>
+          <div className="bulk" role="group" aria-label="Change the ticked entries">
+            <b>{chosen.length === 0 ? "None ticked" : chosen.length === 1 ? "1 entry ticked" : `${chosen.length} entries ticked`}</b>
             {actions.map((a) => (
-              <Button key={a} small kind={BULK[a].danger ? "danger" : undefined} disabled={chosen.length === 0} onClick={() => bulk(a)}>
+              <Button key={a} small disabled={chosen.length === 0} onClick={() => bulk(a)}>
+                {a === "trash" && <Glyph name="trash" />}
                 {BULK[a].button}
                 {chosen.length > 0 && ` (${chosen.length})`}
               </Button>
             ))}
+            <span className="grow" />
+            <Button small keys="Esc" disabled={chosen.length === 0} onClick={() => setPicked(new Set())}>
+              Clear selection
+            </Button>
           </div>
         )}
         <table className="t" aria-label={type.label} aria-describedby="content-legend">
@@ -254,46 +267,57 @@ export function Content({ sites, onPlan }: Props) {
               <th scope="col">Title</th>
               <th scope="col">Status</th>
               <th scope="col">Author</th>
-              <th scope="col">Last changed</th>
+              <th scope="col">Date</th>
             </tr>
           </thead>
           <tbody>
-            {list.posts.map((p) => (
-              <tr key={p.id}>
-                {onPlan && actions.length > 0 && (
-                  <td className="tick">
-                    <input
-                      type="checkbox"
-                      aria-label={`Tick ${p.title || "(no title)"}`}
-                      checked={picked.has(p.id)}
-                      onChange={(e) =>
-                        setPicked((was) => {
-                          const next = new Set(was);
-                          if (e.target.checked) next.add(p.id);
-                          else next.delete(p.id);
-                          return next;
-                        })
-                      }
-                    />
+            {list.posts.map((p) => {
+              const tone = STATUS_TONE[p.status] ?? "unknown";
+              const when = p.date || p.modified;
+              return (
+                <tr key={p.id} className={picked.has(p.id) ? "sel" : undefined}>
+                  {onPlan && actions.length > 0 && (
+                    <td className="tick">
+                      <input
+                        type="checkbox"
+                        aria-label={`Tick ${p.title || "(no title)"}`}
+                        checked={picked.has(p.id)}
+                        onChange={(e) =>
+                          setPicked((was) => {
+                            const next = new Set(was);
+                            if (e.target.checked) next.add(p.id);
+                            else next.delete(p.id);
+                            return next;
+                          })
+                        }
+                      />
+                    </td>
+                  )}
+                  <td className="name">
+                    <button type="button" className="linkish" data-tip={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
+                      {p.title || "(no title)"}
+                    </button>
                   </td>
-                )}
-                <td className="name">
-                  <button type="button" className="linkish" data-tip={p.title || "(no title)"} onClick={() => setOpen({ postId: p.id })}>
-                    {p.title || "(no title)"}
-                  </button>
-                </td>
-                <td>
-                  <span className="tag">{STATUS_LABEL[p.status] ?? p.status}</span>
-                </td>
-                <td>{p.author || "not known"}</td>
-                <td className="num">{p.modified || p.date}</td>
-              </tr>
-            ))}
+                  <td>
+                    <span className={`st pill ${tone}`}>
+                      <Icon tone={tone} />
+                      {STATUS_LABEL[p.status] ?? p.status}
+                    </span>
+                  </td>
+                  <td className="who">{p.author || "not known"}</td>
+                  <td>
+                    <span className="when" data-tip={when || undefined}>
+                      {dayLabel(when) || when || "not known"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-        <div className="pager">
-          <span>
-            Page {list.page} of {list.pages}, {list.total} {list.total === 1 ? "entry" : "entries"}
+        <div className="card-foot">
+          <span className="count">
+            {first}–{first + rows.length - 1} of {list.total} {(list.total === 1 ? type.singular : type.label).toLowerCase()}
           </span>
           <Button small disabled={page <= 1} onClick={() => setPage(page - 1)}>
             Previous page
@@ -307,70 +331,101 @@ export function Content({ sites, onPlan }: Props) {
   }
 
   return (
-    <div className="scroll">
-      <div className="bar">
-        <SitePick sites={sites} value={current} onChange={pickSite} />
-        {types && types.length > 0 && (
-          <div className="segmented types" role="group" aria-label="Post type">
-            {types.map((t) => (
-              <button
-                key={t.name}
-                type="button"
-                aria-pressed={t.name === typeName}
-                onClick={() => {
-                  setTypeName(t.name);
-                  setPage(1);
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+    <div className="scroll page">
+      <HeadActions>
+        {onPlan && (
+          <Button onClick={() => setMany(true)}>
+            <Glyph name="copy" />
+            Publish on several sites
+          </Button>
         )}
-      </div>
-      {type && !blocked && (
+        {type && !blocked && (
+          <Button kind="primary" className="disc" onClick={() => setOpen({})}>
+            New {type.singular.toLowerCase()}
+            <span className="btn-disc">
+              <Glyph name="plus" />
+            </span>
+          </Button>
+        )}
+      </HeadActions>
+      <div className="stack">
         <form
-          className="bar"
+          className="card cfilter"
+          aria-label="Which entries to show"
           onSubmit={(e) => {
             e.preventDefault();
             setPage(1);
             setSearch(typed.trim());
           }}
         >
-          <label className="row pick">
-            <span>Show</span>
-            <Select
-              className="input sm"
-              aria-label="Show"
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                setPage(1);
-              }}
-            >
-              {FILTERS.map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
+          <SitePick sites={sites} value={current} onChange={pickSite} />
+          {types && types.length > 0 && (
+            <div className="segmented inline" role="group" aria-label="Post type">
+              {types.map((t) => (
+                <button
+                  key={t.name}
+                  type="button"
+                  aria-pressed={t.name === typeName}
+                  onClick={() => {
+                    setTypeName(t.name);
+                    setPage(1);
+                  }}
+                >
+                  {t.label}
+                </button>
               ))}
-            </Select>
-          </label>
-          <input className="input sm" aria-label={`Search ${type.label.toLowerCase()}`} placeholder={`Search ${type.label.toLowerCase()}`} value={typed} onChange={(e) => setTyped(e.target.value)} />
-          <Button small type="submit">
-            Search
-          </Button>
-          <span className="grow" />
-          {onPlan && (
-            <Button small onClick={() => setMany(true)}>
-              Publish on several sites
-            </Button>
+            </div>
           )}
-          <Button kind="primary" small onClick={() => setOpen({})}>
-            New {type.singular.toLowerCase()}
-          </Button>
+          {type && !blocked && (
+            <>
+              <label className="row pick">
+                <span>Show</span>
+                <Select
+                  className="input sm"
+                  aria-label="Show"
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  {FILTERS.map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              {/* Enter searches; clearing the box shows everything again. */}
+              <SearchInput
+                className="sm end"
+                aria-label={`Search ${type.label.toLowerCase()}`}
+                placeholder={`Search ${type.label.toLowerCase()}`}
+                value={typed}
+                onChange={(e) => {
+                  setTyped(e.target.value);
+                  if (!e.target.value && search) {
+                    setPage(1);
+                    setSearch("");
+                  }
+                }}
+              />
+            </>
+          )}
         </form>
-      )}
-      {body}
+        <section
+          className="card ctable"
+          aria-label={type && site ? `${type.label} on ${site.name}` : "Entries"}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && picked.size > 0) {
+              e.preventDefault();
+              setPicked(new Set());
+            }
+          }}
+        >
+          {body}
+        </section>
+      </div>
       {many && onPlan && (
         <PublishMany
           sites={sites}
@@ -389,8 +444,16 @@ export function Content({ sites, onPlan }: Props) {
           type={type}
           postId={open.postId}
           onClose={() => setOpen(null)}
-          onSaved={(msg) => {
-            toast(msg);
+          onSaved={(msg, undo) => {
+            const back = () =>
+              undo!().then(
+                () => {
+                  toast(`Brought it back from the trash on ${site.name}.`);
+                  load(true);
+                },
+                (e) => toast(String(e), { tone: "danger" }),
+              );
+            toast(msg, undo ? { undo: back } : undefined);
             load(true);
           }}
         />

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // One entry, written once, published on several sites as one plan (plan Phase 7).
+import "../styles/screens/editor.css";
 import { Select, DateInput } from "../components/controls";
 import { useState } from "react";
 import { contentBlocked, type Change, type Site } from "../api";
 import type { PlanRow } from "../components/JobSheet";
-import { Button } from "../components/ui";
+import { SiteTile } from "../components/SiteTile";
+import { Button, Glyph } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { siteDate, toBlocks } from "./Editor";
 
@@ -51,8 +53,11 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
     <>
       <span className="sum">{picked.size === 1 ? "1 site" : `${picked.size} sites`} picked</span>
       <Button onClick={onClose}>Close without publishing</Button>
-      <Button kind="primary" disabled={!title.trim() || picked.size === 0} onClick={review}>
+      <Button kind="primary" className="disc" disabled={!title.trim() || picked.size === 0} onClick={review}>
         Review the plan
+        <span className="btn-disc">
+          <Glyph name="arrow" />
+        </span>
       </Button>
     </>
   );
@@ -61,7 +66,7 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
     <Sheet title="Publish on several sites" intro="Write it once. Each site gets its own copy, made the same way." onClose={onClose} footer={footer}>
       <fieldset className="field">
         <legend>What to add</legend>
-        <div className="segmented" role="group" aria-label="Kind">
+        <div className="segmented inline" role="group" aria-label="Kind">
           {KINDS.map(([v, l]) => (
             <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)}>
               {l}
@@ -75,7 +80,7 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
       </label>
       <label className="field">
         <span>Text</span>
-        <textarea className="input" rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
+        <textarea className="input" rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
         <small>Each paragraph becomes a paragraph block. Leave a blank line between paragraphs.</small>
       </label>
       <label className="field">
@@ -100,12 +105,12 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
           <small>Names, separated by commas. A site that doesn't have one yet gets it.</small>
         </label>
       )}
-      <fieldset className="field">
+      <fieldset className="field pm-sites">
         <legend>Sites</legend>
         {sites.map((s) => {
           const why = contentBlocked(s);
           return (
-            <label key={s.id} className="row check">
+            <label key={s.id} className={why ? "row check na" : "row check"}>
               <input
                 type="checkbox"
                 disabled={!!why}
@@ -119,8 +124,9 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
                   })
                 }
               />
-              <span>{s.name}</span>
-              {why && <span className="dim">{why}</span>}
+              <SiteTile site={s} size="sm" />
+              <span className="pm-name">{s.name}</span>
+              {why && <small>{why}</small>}
             </label>
           );
         })}

@@ -1,0 +1,52 @@
+/* What's inside the content sheets (screens/Editor.tsx, PublishMany.tsx): fields, terms, the image
+   picker, custom fields, earlier versions, the trash confirm and the site list. */
+
+/* A new entry's title reads like a title. */
+.input.title-lg { height: 46px; font: 600 var(--fs-lg)/1 var(--display); letter-spacing: -0.01em; }
+.blk textarea.input { min-height: 72px; }
+.sheet .btn.quiet { border-color: transparent; background: none; }
+.sheet .btn.quiet:hover:not(:disabled) { background: var(--panel); }
+.vlist .btn[aria-pressed="true"] { border-color: var(--line-ui); background: var(--bg); }
+
+/* Terms: bordered pills, each with a round remove button. */
+.terms .term { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 0 1px 0 10px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--bg); color: var(--text); font-size: var(--fs-sm); }
+.terms .term button { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text-3); cursor: pointer; }
+.terms .term button:hover { background: var(--panel); color: var(--text); }
+.terms .term .glyph { width: 12px; height: 12px; }
+
+/* The featured image picker: four thumbnails a row, the picked one ringed, Use under them. */
+.imgpick { gap: var(--sp-3); }
+.mthumbs.small { width: 100%; padding: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
+.imgpick > .row { gap: var(--sp-2); flex-wrap: wrap; }
+
+/* Custom fields: the field's name as its label, an outlined x to remove it. */
+.fields .icon-btn.line { width: var(--field); height: var(--field); border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--bg); color: var(--text-2); }
+.fields .icon-btn.line:hover:not(:disabled) { border-color: var(--line-ui); background: var(--panel); }
+.fields .icon-btn .glyph { width: 16px; height: 16px; }
+
+/* Earlier versions: who and when beside an avatar; the one being put back is tinted. */
+.vlist { list-style: none; margin: 0; padding: 0; }
+.vlist li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); margin: 0 calc(-1 * var(--sp-3)); padding: var(--sp-3); border-radius: 10px; }
+.vlist li.on { background: var(--tint); }
+.vlist .av { background: var(--panel); color: var(--text-2); }
+.vwho { display: grid; gap: 2px; min-width: 0; }
+.vwho b { font-weight: 600; }
+.vwho > span { font-size: var(--fs-sm); color: var(--text-2); overflow-wrap: anywhere; }
+.vwho .mono { font-size: var(--fs-sm); }
+.vask { margin-top: var(--sp-2); }
+.vask p { margin: 0 0 var(--sp-3); }
+.vask .row { gap: var(--sp-2); flex-wrap: wrap; }
+
+/* Trash: the question sits in a danger callout beside a solid red button. */
+.sheet footer:has(> .callout) { flex-wrap: wrap; }
+.sheet footer > .callout.sum { flex: 1 1 260px; margin: 0 auto 0 0; padding: var(--sp-2) var(--sp-3); }
+.btn.danger.solid { background: var(--danger); border-color: var(--danger); color: #ffffff; }
+.btn.danger.solid:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 86%, #000000); border-color: transparent; }
+[data-theme="dark"] .btn.danger.solid { color: #1a0605; }
+[data-theme="dark"] .btn.danger.solid:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 86%, #ffffff); }
+
+/* Publish on several sites: each site with its tile; one that can't take it says why, quietly. */
+.pm-sites .row.check { gap: 10px; min-height: 36px; padding: 2px 0; flex-wrap: wrap; }
+.pm-sites .pm-name { flex: none; }
+.pm-sites .row.check small { flex: 1 1 12em; color: var(--text-3); font-size: var(--fs-sm); }
+.pm-sites .row.check.na { color: var(--text-3); cursor: not-allowed; }
