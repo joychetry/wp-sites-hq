@@ -148,6 +148,39 @@ pub enum Action {
 }
 
 impl Action {
+    /// What an AI agent may put in a plan: plugins and themes it can name, core and
+    /// translations, and installs from WordPress.org. Content, products and zips stay
+    /// with a person: their labels would come from the agent's own words, and a zip's
+    /// file is something only a person picks.
+    fn agent_may_propose(&self) -> bool {
+        use Action::*;
+        match self {
+            InstallPlugin { source, .. } => {
+                !source.is_empty()
+                    && source
+                        .bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+            }
+            UpdatePlugin { .. }
+            | RollbackPlugin { .. }
+            | ActivatePlugin { .. }
+            | DeactivatePlugin { .. }
+            | DeletePlugin { .. }
+            | AutoUpdatePlugin { .. }
+            | UpdateTheme { .. }
+            | ActivateTheme { .. }
+            | DeleteTheme { .. }
+            | UpdateCore
+            | UpdateTranslations => true,
+            InstallZip { .. }
+            | PublishPost { .. }
+            | SetPostStatus { .. }
+            | TrashPost { .. }
+            | UntrashPost { .. }
+            | UpdateProduct { .. } => false,
+        }
+    }
+
     /// Changes an entry, not what the site runs.
     fn is_content(&self) -> bool {
         use Action::*;
@@ -654,6 +687,11 @@ pub const NEEDS_APPROVAL: &str =
 /// Most changes one plan may hold.
 pub const PLAN_MAX: usize = 200;
 
+/// Why an agent's plan was refused for what it asks.
+pub const AGENT_PLAN_ONLY: &str = "An AI agent's plan can only update, roll back, turn on or off, \
+     delete or install (by WordPress.org slug) plugins and themes, and update WordPress or \
+     translations. Changes to posts, products and zips are made by a person in the app.";
+
 fn job_items(conn: &Connection, job: i64) -> rusqlite::Result<Vec<JobItem>> {
     let mut stmt = conn.prepare_cached(
         "SELECT id, site_id, site_name, action, label, from_version, to_version, state, message
@@ -886,6 +924,9 @@ impl Core {
             )));
         }
         for c in &mut changes {
+            if !c.action.agent_may_propose() {
+                return Err(plain(AGENT_PLAN_ONLY));
+            }
             let site = self.site(c.site_id)?;
             if let Some(inv) = self.inventory_of(c.site_id)? {
                 c.action.resolve(&inv).map_err(|what| {
@@ -2137,6 +2178,34 @@ mod tests {
             "Test Site has no plugin nope. List its plugins and themes first."
         );
         assert!(core.propose_plan("x", vec![]).is_err());
+        // Content, products, zips and installs from a link stay with a person.
+        for action in [
+            json!({"do": "trash_post", "post_type": "page", "post_id": 2, "title": "Old draft"}),
+            json!({"do": "publish_post", "post_type": "post", "title": "x", "body": "x", "status": "publish"}),
+            json!({"do": "set_post_status", "post_type": "post", "post_id": 2, "title": "x", "status": "draft"}),
+            json!({"do": "untrash_post", "post_type": "post", "post_id": 2, "title": "x"}),
+            json!({"do": "update_product", "product_id": 2, "name": "x", "regular_price": "1"}),
+            json!({"do": "install_zip", "file": "x.zip", "name": "x", "kind": "plugin", "activate": true, "overwrite": true}),
+            json!({"do": "install_plugin", "source": "http://example.test/x.zip", "activate": true}),
+            json!({"do": "install_plugin", "source": "", "activate": false}),
+        ] {
+            let action: Action = serde_json::from_value(action).unwrap();
+            let err = core
+                .propose_plan(
+                    "x",
+                    vec![Change {
+                        site_id: s.id,
+                        action,
+                    }],
+                )
+                .unwrap_err();
+            assert_eq!(err.to_string(), AGENT_PLAN_ONLY);
+        }
+        let slug = Action::InstallPlugin {
+            source: "classic-editor".into(),
+            activate: false,
+        };
+        assert!(slug.agent_may_propose());
         assert!(
             core.propose_plan("x", vec![change("WooCommerce"); PLAN_MAX + 1])
                 .is_err()

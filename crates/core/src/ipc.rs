@@ -109,6 +109,16 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
                 serde_json::from_value(p["changes"].clone()).map_err(|e| {
                     RpcError::new("invalid_request", format!("The changes don't read: {e}"))
                 })?;
+            // Before any site lookups, so a huge request costs nothing.
+            if wanted.len() > crate::fleet::PLAN_MAX {
+                return Err(RpcError::new(
+                    "invalid_request",
+                    format!(
+                        "A plan can hold at most {} changes. Split it into smaller plans.",
+                        crate::fleet::PLAN_MAX
+                    ),
+                ));
+            }
             let mut changes = Vec::with_capacity(wanted.len());
             for w in wanted {
                 let site = core.find_site(&w.site).map_err(agent_error)?;
