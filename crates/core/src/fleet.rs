@@ -95,9 +95,46 @@ pub enum Action {
     },
     UpdateCore,
     UpdateTranslations,
+    /// Add one entry, the same on every site it's sent to. Terms by name.
+    PublishPost {
+        post_type: String,
+        title: String,
+        body: String,
+        status: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        date: Option<String>,
+        #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+        terms: BTreeMap<String, Vec<String>>,
+    },
+    /// Publish, draft or hide an entry.
+    SetPostStatus {
+        post_type: String,
+        post_id: i64,
+        title: String,
+        status: String,
+    },
+    TrashPost {
+        post_type: String,
+        post_id: i64,
+        title: String,
+    },
+    UntrashPost {
+        post_type: String,
+        post_id: i64,
+        title: String,
+    },
 }
 
 impl Action {
+    /// Changes an entry, not what the site runs.
+    fn is_content(&self) -> bool {
+        use Action::*;
+        matches!(
+            self,
+            PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. }
+        )
+    }
+
     /// The Classic Monks tool and its arguments.
     fn classic_monks(&self) -> (&'static str, Value) {
         use Action::*;
@@ -127,19 +164,24 @@ impl Action {
             DeleteTheme { theme } => ("delete-theme", json!({ "stylesheet": theme })),
             UpdateCore => ("update-core", json!({})),
             UpdateTranslations => ("update-translations", json!({})),
+            // Run through the content code, which also speaks core REST.
+            PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. } => {
+                ("", json!({}))
+            }
         }
     }
 
     /// Writes files on the site, so it can't run where WordPress needs FTP details.
     fn writes_files(&self) -> bool {
         use Action::*;
-        !matches!(
-            self,
-            ActivatePlugin { .. }
-                | DeactivatePlugin { .. }
-                | AutoUpdatePlugin { .. }
-                | ActivateTheme { .. }
-        )
+        !self.is_content()
+            && !matches!(
+                self,
+                ActivatePlugin { .. }
+                    | DeactivatePlugin { .. }
+                    | AutoUpdatePlugin { .. }
+                    | ActivateTheme { .. }
+            )
     }
 
     /// Name the plugin or theme by its file or folder, as the site does, when it
@@ -169,6 +211,7 @@ impl Action {
                 *theme = find(&inv.themes, theme).ok_or(format!("theme {theme}"))?;
             }
             InstallPlugin { .. } | UpdateCore | UpdateTranslations => {}
+            PublishPost { .. } | SetPostStatus { .. } | TrashPost { .. } | UntrashPost { .. } => {}
         }
         Ok(())
     }
@@ -244,7 +287,48 @@ impl Action {
                 inv.wordpress_update.clone(),
             ),
             UpdateTranslations => ("Update translations".into(), None, None),
+            PublishPost {
+                title,
+                status,
+                date,
+                ..
+            } => {
+                let label = match (status.as_str(), date) {
+                    ("publish" | "future", Some(d)) => {
+                        format!("Schedule \u{201c}{title}\u{201d} for {d}")
+                    }
+                    ("publish", None) => format!("Publish \u{201c}{title}\u{201d}"),
+                    _ => format!("Add \u{201c}{title}\u{201d} as a {}", status_word(status)),
+                };
+                (label, None, None)
+            }
+            SetPostStatus { title, status, .. } => (
+                match status.as_str() {
+                    "publish" => format!("Publish \u{201c}{title}\u{201d}"),
+                    s => format!("Make \u{201c}{title}\u{201d} a {}", status_word(s)),
+                },
+                None,
+                None,
+            ),
+            TrashPost { title, .. } => (
+                format!("Move \u{201c}{title}\u{201d} to the trash"),
+                None,
+                None,
+            ),
+            UntrashPost { title, .. } => (
+                format!("Bring \u{201c}{title}\u{201d} back from the trash"),
+                None,
+                None,
+            ),
         }
+    }
+}
+
+fn status_word(status: &str) -> &str {
+    match status {
+        "pending" => "pending review entry",
+        "private" => "private entry",
+        _ => "draft",
     }
 }
 
@@ -909,6 +993,7 @@ impl Core {
         let mut set = tokio::task::JoinSet::new();
         for (site, items) in by_site {
             let core = self.clone();
+            let content = items.iter().all(|i| i.action.is_content());
             set.spawn(async move {
                 for item in items {
                     core.mark(item.id, ItemState::Running, "");
@@ -931,7 +1016,9 @@ impl Core {
                     core.record(actor, item.site_id, &item.label, outcome, &msg);
                 }
                 // The versions changed: read them again so the screens are right.
-                let _ = core.refresh_inventory_inner(site).await;
+                if !content {
+                    let _ = core.refresh_inventory_inner(site).await;
+                }
             });
         }
         while set.join_next().await.is_some() {}
@@ -971,6 +1058,9 @@ impl Core {
 
     /// Make one change on one site, as the operator. Returns the site's message.
     async fn run_action(&self, id: i64, action: &Action) -> Result<String, SiteError> {
+        if action.is_content() {
+            return self.run_content(id, action).await;
+        }
         let site = self.site(id)?;
         if action.writes_files() && self.inventory_of(id)?.is_some_and(|i| i.needs_credentials) {
             return Err(plain(
@@ -1214,6 +1304,167 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         panic!("job {job} didn't finish");
+    }
+
+    #[tokio::test]
+    async fn one_post_goes_to_many_sites_and_entries_change_in_bulk() {
+        let (_h, core) = core().await;
+        let (a, b, c) = (
+            TestSite::start().await,
+            TestSite::start().await,
+            TestSite::start().await,
+        );
+        let sa = core.add_site_oauth(&a.url, browser).await.unwrap();
+        let sb = core.add_site_oauth(&b.url, browser).await.unwrap();
+        let sc = core
+            .add_site_basic(&c.url, "admin", "abcd efgh ijkl mnop qrst uvwx")
+            .await
+            .unwrap();
+        let publish = Action::PublishPost {
+            post_type: "post".into(),
+            title: "Open on Sunday".into(),
+            body: "<!-- wp:paragraph -->\n<p>From 9.</p>\n<!-- /wp:paragraph -->".into(),
+            status: "publish".into(),
+            date: None,
+            terms: BTreeMap::from([("category".into(), vec!["News".into()])]),
+        };
+        let changes = [sa.id, sb.id, sc.id]
+            .map(|site_id| Change {
+                site_id,
+                action: publish.clone(),
+            })
+            .to_vec();
+        let snapshots = |s: &TestSite| {
+            s.state()
+                .calls
+                .iter()
+                .filter(|(t, _)| t == "get-site-snapshot")
+                .count()
+        };
+        let before = snapshots(&a);
+        let job = core.start_job("Publish on 3 sites", changes).await.unwrap();
+        assert_eq!(job.items[0].label, "Publish \u{201c}Open on Sunday\u{201d}");
+        let job = wait(&core, job.id).await;
+        assert!(
+            job.items.iter().all(|i| i.state == ItemState::Done),
+            "{:?}",
+            job.items
+        );
+        assert!(
+            job.items[0].message.starts_with("Published at "),
+            "{}",
+            job.items[0].message
+        );
+        for site in [&a, &b, &c] {
+            let st = site.state();
+            let p = st
+                .posts
+                .iter()
+                .find(|p| p["title"] == "Open on Sunday")
+                .unwrap();
+            assert_eq!(p["status"], "publish");
+            assert!(st.terms.iter().any(|t| t["name"] == "News"));
+        }
+        assert_eq!(
+            snapshots(&a),
+            before,
+            "a content job doesn't read plugins again"
+        );
+
+        // Bulk on one site: draft, trash and back.
+        let id = a.state().posts[0]["id"].as_i64().unwrap();
+        let entry = |action| Change {
+            site_id: sa.id,
+            action,
+        };
+        let (post_type, title) = (String::from("post"), String::from("Open on Sunday"));
+        for (action, label, message) in [
+            (
+                Action::SetPostStatus {
+                    post_type: post_type.clone(),
+                    post_id: id,
+                    title: title.clone(),
+                    status: "draft".into(),
+                },
+                "Make \u{201c}Open on Sunday\u{201d} a draft",
+                "Now a draft.",
+            ),
+            (
+                Action::TrashPost {
+                    post_type: post_type.clone(),
+                    post_id: id,
+                    title: title.clone(),
+                },
+                "Move \u{201c}Open on Sunday\u{201d} to the trash",
+                "Moved to the trash.",
+            ),
+            (
+                Action::UntrashPost {
+                    post_type: post_type.clone(),
+                    post_id: id,
+                    title: title.clone(),
+                },
+                "Bring \u{201c}Open on Sunday\u{201d} back from the trash",
+                "Back from the trash, a draft.",
+            ),
+        ] {
+            let job = core.start_job("Bulk", vec![entry(action)]).await.unwrap();
+            assert_eq!(job.items[0].label, label);
+            let job = wait(&core, job.id).await;
+            assert_eq!(job.items[0].message, message, "{label}");
+        }
+
+        // A scheduled one says when; Basic mode has no trash to bring back from.
+        let later = Action::PublishPost {
+            post_type: "post".into(),
+            title: "Later".into(),
+            body: String::new(),
+            status: "publish".into(),
+            date: Some("2027-01-01 09:00:00".into()),
+            terms: BTreeMap::new(),
+        };
+        let back = Action::UntrashPost {
+            post_type,
+            post_id: 1,
+            title,
+        };
+        let job = core
+            .start_job(
+                "Mixed",
+                vec![
+                    Change {
+                        site_id: sb.id,
+                        action: later,
+                    },
+                    Change {
+                        site_id: sc.id,
+                        action: back,
+                    },
+                ],
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            job.items[0].label,
+            "Schedule \u{201c}Later\u{201d} for 2027-01-01 09:00:00"
+        );
+        let job = wait(&core, job.id).await;
+        assert_eq!(job.items[0].message, "Scheduled for 2027-01-01 09:00:00.");
+        assert_eq!(job.items[1].state, ItemState::Failed);
+        assert_eq!(job.items[1].message, crate::content::NEEDS_CM_HISTORY);
+        assert_eq!(
+            Action::PublishPost {
+                post_type: "page".into(),
+                title: "T".into(),
+                body: String::new(),
+                status: "pending".into(),
+                date: None,
+                terms: BTreeMap::new(),
+            }
+            .describe(&Inventory::default())
+            .0,
+            "Add \u{201c}T\u{201d} as a pending review entry"
+        );
     }
 
     fn woo() -> String {

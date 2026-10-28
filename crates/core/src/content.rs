@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use crate::Core;
 use crate::blocks::{self, Block};
 use crate::connect::{AppPassword, SiteError, plain, rest_url, site_said};
-use crate::fleet::has_tool;
+use crate::fleet::{Action, has_tool};
 use crate::net::{self, Retry};
 use crate::sites::{self, Mode, Site};
 
@@ -444,6 +444,19 @@ fn media_from(m: &Value, rest: bool) -> Media {
         } else {
             text(&m["date"])
         },
+    }
+}
+
+/// A status as a person says it.
+pub fn status_label(status: &str) -> &str {
+    match status {
+        "publish" => "published",
+        "future" => "scheduled",
+        "pending" => "pending review",
+        "draft" => "a draft",
+        "private" => "private",
+        "trash" => "in the trash",
+        s => s,
     }
 }
 
@@ -945,6 +958,10 @@ impl Core {
     /// Add an entry. Returns it as the site saved it.
     pub async fn create_post(&self, id: i64, post_type: &str, d: Draft) -> Result<Post, SiteError> {
         let _work = self.working().await;
+        self.create_inner(id, post_type, d).await
+    }
+
+    async fn create_inner(&self, id: i64, post_type: &str, d: Draft) -> Result<Post, SiteError> {
         let site = self.content_site(id)?;
         check_draft(&d)?;
         if d.title.as_deref().is_none_or(|t| t.trim().is_empty()) {
@@ -986,6 +1003,16 @@ impl Core {
         d: Draft,
     ) -> Result<Post, SiteError> {
         let _work = self.working().await;
+        self.edit_inner(id, post_type, post_id, d).await
+    }
+
+    async fn edit_inner(
+        &self,
+        id: i64,
+        post_type: &str,
+        post_id: i64,
+        d: Draft,
+    ) -> Result<Post, SiteError> {
         let site = self.content_site(id)?;
         check_draft(&d)?;
         if d.title.as_deref().is_some_and(|t| t.trim().is_empty()) {
@@ -1040,6 +1067,10 @@ impl Core {
         post_id: i64,
     ) -> Result<(), SiteError> {
         let _work = self.working().await;
+        self.trash_inner(id, post_type, post_id).await
+    }
+
+    async fn trash_inner(&self, id: i64, post_type: &str, post_id: i64) -> Result<(), SiteError> {
         let site = self.content_site(id)?;
         match site.mode {
             Mode::ClassicMonks => {
@@ -1054,6 +1085,69 @@ impl Core {
             }
         }
         Ok(())
+    }
+
+    /// One content change from a job (bulk changes, publishing to many sites).
+    pub(crate) async fn run_content(&self, id: i64, action: &Action) -> Result<String, SiteError> {
+        match action {
+            Action::PublishPost {
+                post_type,
+                title,
+                body,
+                status,
+                date,
+                terms,
+            } => {
+                let d = Draft {
+                    title: Some(title.clone()),
+                    status: Some(status.clone()),
+                    body: Some(body.clone()),
+                    date: date.clone(),
+                    terms: (!terms.is_empty()).then(|| {
+                        terms
+                            .iter()
+                            .map(|(tax, names)| {
+                                (
+                                    tax.clone(),
+                                    names.iter().cloned().map(TermRef::Name).collect(),
+                                )
+                            })
+                            .collect()
+                    }),
+                    ..Default::default()
+                };
+                let p = self.create_inner(id, post_type, d).await?;
+                Ok(match p.status.as_str() {
+                    "publish" => format!("Published at {}", p.link),
+                    "future" => format!("Scheduled for {}.", p.date),
+                    s => format!("Saved as {}.", status_label(s)),
+                })
+            }
+            Action::SetPostStatus {
+                post_type,
+                post_id,
+                status,
+                ..
+            } => {
+                let d = Draft {
+                    status: Some(status.clone()),
+                    ..Default::default()
+                };
+                let p = self.edit_inner(id, post_type, *post_id, d).await?;
+                Ok(format!("Now {}.", status_label(&p.status)))
+            }
+            Action::TrashPost {
+                post_type, post_id, ..
+            } => {
+                self.trash_inner(id, post_type, *post_id).await?;
+                Ok("Moved to the trash.".into())
+            }
+            Action::UntrashPost { post_id, .. } => {
+                let s = self.untrash_inner(id, *post_id).await?;
+                Ok(format!("Back from the trash, {}.", status_label(&s)))
+            }
+            _ => Err(plain("That isn't a change to content.")),
+        }
     }
 
     /// The saved versions of an entry, newest first.
