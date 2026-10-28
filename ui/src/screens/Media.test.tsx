@@ -127,6 +127,8 @@ test("uploads several files one after another with their alt text, and Stop ends
   act(() => release());
   expect(await list().findByText("Stopped")).toBeInTheDocument();
   expect(await screen.findByText("Uploaded 1 file to Alpha.")).toBeInTheDocument();
+  // Nothing left to send: no "Upload 0 files".
+  expect(screen.queryByRole("button", { name: /^Upload \d/ })).not.toBeInTheDocument();
   mockListen.mockImplementation(() => Promise.resolve(() => {}));
 });
 

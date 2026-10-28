@@ -130,9 +130,11 @@ function Uploads({ site, lib, onUploaded, onClose, children }: { site: Site; lib
         )}
         {jobs.length > 0 && (
           <div className="row">
-            <Button kind="primary" disabled={busy || ready.length === 0} onClick={send}>
-              {busy ? "Uploading…" : ready.length === 1 ? "Upload 1 file" : `Upload ${ready.length} files`}
-            </Button>
+            {(busy || ready.length > 0) && (
+              <Button kind="primary" disabled={busy} onClick={send}>
+                {busy ? "Uploading…" : ready.length === 1 ? "Upload 1 file" : `Upload ${ready.length} files`}
+              </Button>
+            )}
             {!busy && (
               <Button className="quiet" onClick={() => setJobs([])}>
                 Clear the list
