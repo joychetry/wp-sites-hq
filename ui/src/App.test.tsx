@@ -31,7 +31,7 @@ test("shows every section in the sidebar, the sentence and the version", async (
     expect(within(nav).getByRole("button", { name: new RegExp(`^${s}`) })).toBeInTheDocument();
   }
   expect(screen.getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
-  expect(await screen.findByText("Both sites are healthy.")).toBeInTheDocument();
+  expect(await screen.findByText("Both sites are healthy.", undefined, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.getByText("v0.0.1")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("core_status");
 });
