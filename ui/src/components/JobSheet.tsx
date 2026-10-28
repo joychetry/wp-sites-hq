@@ -88,7 +88,8 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
   );
 
   if (step === "progress" && jobId != null) {
-    return <Progress jobId={jobId} title={state.title} steps={steps} onClose={onClose} onRetry={start} />;
+    // A new job (a retry) mounts a new sheet, so focus moves into it and Esc still works.
+    return <Progress key={jobId} jobId={jobId} title={state.title} steps={steps} onClose={onClose} onRetry={start} />;
   }
 
   const confirmLabel = chosen.length === 1 ? chosen[0].label : `Make these ${chosen.length} changes`;

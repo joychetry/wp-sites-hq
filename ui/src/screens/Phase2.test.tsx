@@ -221,10 +221,13 @@ test("the job sheet goes plan, confirm, progress and only sends what stayed tick
   expect(await screen.findByText("Finished. 1 change done, 1 failed.")).toBeInTheDocument();
   expect(screen.getByText("The site took too long to answer.")).toBeInTheDocument();
   expect(screen.getByRole("progressbar", { name: "Changes finished" })).toHaveAttribute("aria-valuenow", "2");
+  mockInvoke.mockImplementation(async (cmd: string) => (cmd === "job_start" ? job({ id: 10, finished_at: null }) : new Promise(() => {})));
   fireEvent.click(screen.getByRole("button", { name: "Try the 1 failed change again" }));
   await waitFor(() =>
-    expect(mockInvoke).toHaveBeenLastCalledWith("job_start", { title: "Try again: Update WooCommerce on 2 sites", changes: [ROWS[1].change] }),
+    expect(mockInvoke).toHaveBeenCalledWith("job_start", { title: "Try again: Update WooCommerce on 2 sites", changes: [ROWS[1].change] }),
   );
+  // The retry button is gone, so focus must not fall out of the sheet.
+  await waitFor(() => expect(screen.getByRole("button", { name: "Hide this panel" })).toHaveFocus());
 });
 
 test("a finished job of one change says so in words", async () => {
