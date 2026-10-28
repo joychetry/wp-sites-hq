@@ -283,7 +283,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 [data-theme="dark"] .av.ai { background: var(--tint-2); color: var(--text); }
 .av .glyph { width: 14px; height: 14px; }
 /* The card table wraps to fit instead of scrolling sideways (a scroll box would need its own Tab stop). */
-.card .t td:first-child, .card .t th { white-space: normal; }
+.card .t td:first-child, .card .t th:first-child { white-space: normal; }
 .card .site small { overflow-wrap: anywhere; }
 .card .t th { position: static; }
 .card .t td { height: 56px; }

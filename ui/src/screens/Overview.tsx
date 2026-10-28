@@ -4,7 +4,8 @@
 import { ago, api, NO_TOOLS, noTools, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Button, Glyph, Icon, Kbd, Status, type GlyphName } from "../components/ui";
+import { Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
+import { SiteTile } from "../components/SiteTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
 
@@ -88,32 +89,50 @@ const TIPS = "mc-tips-hidden";
 function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
   return (
     <section className="welcome" aria-label="Getting started">
-      <ol className="steps-cards">
-        <li>
-          <span className="n" aria-hidden="true">1</span>
-          <h3>Add your first site</h3>
-          <p>With Classic Monks on the site you get full control. Any WordPress 7.1 site also works in Basic mode, with fewer tools.</p>
-          <Button kind="primary" keys="A" onClick={onAdd}>
+      <div className="card">
+        <div className="empty">
+          <span className="brand-disc" aria-hidden="true">
+            <Logo />
+          </span>
+          <h2>Every WordPress site you look after, in one place</h2>
+          <p>Monks Central checks your sites, keeps them updated and tells you what needs you. Add your first site to start.</p>
+          <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
             Add a site
+            <span className="btn-disc">
+              <Glyph name="plus" />
+            </span>
           </Button>
-        </li>
-        <li>
-          <span className="n" aria-hidden="true">2</span>
-          <h3>See how every site is doing</h3>
-          <p>Monks Central checks health, versions and updates every 15 minutes while it runs, also from the tray with the window closed.</p>
-        </li>
-        <li>
-          <span className="n" aria-hidden="true">3</span>
-          <h3>Work on all of them at once</h3>
-          <p>
-            Update, install and publish across sites with one plan you review first. Press <Kbd>Ctrl K</Kbd> to find any page, site or action.
+          <p className="dim or">
+            or press <Kbd>A</Kbd>
           </p>
-          {onGo && (
-            <Button onClick={() => onGo("palette")}>Open the command palette</Button>
-          )}
-        </li>
-      </ol>
-      <p className="dim">Your sign-ins stay on this computer, encrypted. Nothing goes to a Monks Central server.</p>
+          <ol className="steps-line" aria-label="Three steps">
+            <li aria-current="step">
+              <i>1</i>Add a site
+            </li>
+            <li>
+              <i>2</i>Sign in once
+            </li>
+            <li>
+              <i>3</i>See what needs you
+            </li>
+          </ol>
+        </div>
+      </div>
+      <p className="dim">
+        Your sign-ins stay on this computer, encrypted. Nothing goes to a Monks Central server. Press <Kbd>Ctrl K</Kbd> to find any page, site
+        or action
+        {onGo ? (
+          <>
+            {", or "}
+            <button type="button" className="link" onClick={() => onGo("palette")}>
+              open the command palette
+            </button>
+            .
+          </>
+        ) : (
+          "."
+        )}
+      </p>
     </section>
   );
 }
@@ -223,6 +242,29 @@ const WHO: Record<Entry["actor"], string> = { human: "You", agent: "An AI agent"
 const OUTCOME: Record<Entry["outcome"], string> = { done: "", failed: "It failed.", refused: "It was refused.", waiting: "It waits for you." };
 const FEED = 6;
 
+/** The design's feed sentence: "You turned on AI agent access", "An AI agent ran <b>Update post</b>". */
+function said(r: Entry) {
+  const [verb] = r.what.split(" ");
+  // The log keeps past-tense phrases ("Turned on ...", "Proposed a plan: ...") and tool or job names ("update-post", "Update Yoast SEO").
+  if (r.what.includes(" ") && /ed$/.test(verb)) return `${WHO[r.actor]}${r.actor === "agent_confirmed" ? "," : ""} ${r.what.charAt(0).toLowerCase()}${r.what.slice(1)}`;
+  return (
+    <>
+      {WHO[r.actor]}
+      {r.actor === "agent_confirmed" ? "," : ""} ran <b>{r.what.includes(" ") ? r.what : toolLabel(r.what)}</b>
+    </>
+  );
+}
+
+/** "Today, 10:42", "Yesterday, 17:20", "Oct 26, 11:15" in the computer's own clock format. */
+export function when(unix: number, now = new Date()) {
+  const d = new Date(unix * 1000);
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const days = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  if (days === 0) return `Today, ${time}`;
+  if (days === 1) return `Yesterday, ${time}`;
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
+}
+
 /** Latest changes from the activity log, with All, You and AI. */
 function Feed({ onGo }: { onGo?: Props["onGo"] }) {
   const [rows, setRows] = useState<Entry[] | null>(null);
@@ -261,7 +303,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
                 {r.actor === "human" ? "You" : <Glyph name="sparkle" />}
               </span>
               <p>
-                {WHO[r.actor]}: <b>{r.what.includes(" ") ? r.what : toolLabel(r.what)}</b>
+                {said(r)}
                 {r.site_name && (
                   <>
                     {" "}
@@ -269,7 +311,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
                   </>
                 )}
                 . {OUTCOME[r.outcome]}
-                <time dateTime={new Date(r.at * 1000).toISOString()}>{ago(r.at)}</time>
+                <time dateTime={new Date(r.at * 1000).toISOString()}>{when(r.at)}</time>
               </p>
             </li>
           ))}
@@ -484,9 +526,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                       <tr key={s.id} className={st.tone === "danger" || st.tone === "warning" ? "warn" : ""}>
                         <td>
                           <span className="site">
-                            <span className="fav" aria-hidden="true">
-                              {s.name.trim().charAt(0).toUpperCase()}
-                            </span>
+                            <SiteTile site={s} />
                             <span>
                               <b>{s.name}</b>
                               <small>{s.url.replace(/^https?:\/\//, "")}</small>

@@ -212,7 +212,7 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 /* Centred, the way the design draws first runs and errors */
 .empty { padding: var(--sp-7) var(--sp-5); margin: 0 auto; display: grid; justify-items: center; align-content: start; gap: var(--sp-3); text-align: center; }
 /* Loading and start-up errors stand in for the screen, so they take its card. */
-.body > .empty, .body > .skel { max-width: none; width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.body > .empty, .body > .skel { align-self: start; max-width: none; width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .empty h2 { margin: 0; }
 .empty p { margin: 0; }
 .empty:not(:has(.empty-pic)) > h2:first-child::before {
@@ -223,13 +223,26 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 .empty p { max-width: 60ch; }
 
 /* First run and next steps on Overview */
-.welcome { max-width: 1100px; }
-.steps-cards { list-style: none; margin: 0 0 var(--sp-5); padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-4); }
-.steps-cards li { display: grid; align-content: start; justify-items: start; gap: var(--sp-2); padding: var(--sp-5); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg); }
-.steps-cards li:first-child { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
-.steps-cards .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 600 var(--fs-sm) var(--mono); background: var(--btn-ink); color: var(--btn-on-ink); }
-.steps-cards h3 { margin: var(--sp-1) 0 0; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; }
-.steps-cards p { margin: 0 0 var(--sp-2); color: var(--text-2); }
+/* Errors in place of a page (board D01): a danger disc, plain words, Try again, the detail in mono */
+.danger-disc { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--danger-bg); color: var(--danger); }
+.danger-disc .glyph { width: 22px; height: 22px; }
+.empty b { color: var(--text); font-weight: 600; }
+.empty .detail { font-size: var(--fs-xs); overflow-wrap: anywhere; }
+/* First run (board D01): one card with the brand disc, the first action and three steps in a line */
+.welcome { display: grid; gap: var(--sp-3); max-width: 760px; }
+.welcome .empty { padding: var(--sp-7) var(--sp-5) 40px; }
+.welcome h2 { max-width: 22ch; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; }
+.welcome .empty > p:not(.or) { max-width: 46ch; color: var(--text-2); }
+.welcome .or { font-size: var(--fs-sm); margin-top: calc(-1 * var(--sp-1)); }
+.brand-disc { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--tint); }
+.brand-disc .mark { width: 30px; height: 30px; }
+.steps-line { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; list-style: none; margin: var(--sp-3) 0 0; padding: 0; font-size: var(--fs-sm); color: var(--text-3); }
+.steps-line li { display: inline-flex; align-items: center; gap: 6px; }
+.steps-line li + li::before { content: ""; width: 18px; height: 1px; background: var(--line-2); margin-right: 2px; }
+.steps-line i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); font: 600 var(--fs-xs)/1 var(--mono); font-style: normal; }
+.steps-line [aria-current] { color: var(--text); font-weight: 600; }
+.steps-line [aria-current] i { background: var(--btn-ink); border-color: var(--btn-ink); color: var(--btn-on-ink); }
+[data-theme="dark"] .steps-line [aria-current] i { background: var(--green); border-color: var(--green); color: var(--on-green); }
 .welcome > .dim { margin: 0; font-size: var(--fs-sm); }
 .next-steps { margin: 0; padding: var(--sp-4) 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg); display: grid; gap: var(--sp-2); justify-items: start; }
 .next-steps h2 { margin: 0; font-size: var(--fs-md); font-weight: 600; }

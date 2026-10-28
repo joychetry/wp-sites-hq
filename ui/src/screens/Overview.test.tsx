@@ -62,7 +62,7 @@ test("a new user gets three steps, then next steps that can be hidden for good",
   const { rerender } = render(<Overview sites={[]} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={onAdd} onGo={onGo} />);
   const start = screen.getByRole("region", { name: "Getting started" });
   fireEvent.click(within(start).getByRole("button", { name: /^Add a site/ }));
-  fireEvent.click(within(start).getByRole("button", { name: "Open the command palette" }));
+  fireEvent.click(within(start).getByRole("button", { name: "open the command palette" }));
   expect(onAdd).toHaveBeenCalled();
   expect(onGo).toHaveBeenCalledWith("palette");
 
@@ -98,5 +98,5 @@ test("updates, plans and vulnerabilities each get one fix, and the latest change
   expect(await within(feed).findByText("Update post")).toBeInTheDocument();
   fireEvent.click(within(feed).getByRole("button", { name: "You" }));
   expect(within(feed).queryByText("Update post")).toBeNull();
-  expect(within(feed).getByText("Turned on AI agent access")).toBeInTheDocument();
+  expect(within(feed).getByText(/^You turned on AI agent access/)).toBeInTheDocument();
 });

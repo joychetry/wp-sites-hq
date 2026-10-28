@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, hasTool, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
@@ -97,6 +97,8 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
 
 export default function App() {
   const [section, setSection] = useState<Section>("Overview");
+  const sectionRef = useRef(section);
+  sectionRef.current = section;
   // Messages belong to the screen they came from; on another screen they would only cover it.
   useEffect(() => dismissAll(), [section]);
   const [status, setStatus] = useState<CoreStatus | null>(null);
@@ -136,6 +138,18 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPalette((p) => !p);
+      }
+      const t = e.target as HTMLElement;
+      // A adds a site from the Overview too (Sites has its own keys).
+      if (
+        e.key === "a" &&
+        sectionRef.current === "Overview" &&
+        !e.ctrlKey && !e.metaKey && !e.altKey && !e.defaultPrevented &&
+        !["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) &&
+        !document.querySelector('[aria-modal="true"]')
+      ) {
+        e.preventDefault();
+        setAdding({});
       }
     };
     document.addEventListener("keydown", onKey);
@@ -259,18 +273,35 @@ export default function App() {
   if (coreError) {
     body = (
       <div className="empty" role="alert">
+        <span className="danger-disc" aria-hidden="true">
+          <Glyph name="alert" />
+        </span>
         <h2>Monks Central couldn't start.</h2>
-        <p>{coreError}</p>
-        <p>Close Monks Central and open it again. If it keeps happening, restart the computer.</p>
-        <Button onClick={() => location.reload()}>Try again</Button>
+        <p>
+          <b>Nothing was changed.</b> Close Monks Central and open it again. If it keeps happening, restart the computer.
+        </p>
+        <Button onClick={() => location.reload()}>
+          <Glyph name="refresh" />
+          Try again
+        </Button>
+        <p className="mono dim detail">{coreError}</p>
       </div>
     );
   } else if (error) {
     body = (
       <div className="empty" role="alert">
+        <span className="danger-disc" aria-hidden="true">
+          <Glyph name="alert" />
+        </span>
         <h2>Your sites didn't load.</h2>
-        <p>{error}</p>
-        <Button onClick={reload}>Try again</Button>
+        <p>
+          <b>Nothing was changed.</b> Try again; if it keeps happening, close Monks Central and open it again.
+        </p>
+        <Button onClick={reload}>
+          <Glyph name="refresh" />
+          Try again
+        </Button>
+        <p className="mono dim detail">{error}</p>
       </div>
     );
   } else if (!sites) {
