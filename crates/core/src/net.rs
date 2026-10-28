@@ -24,11 +24,27 @@ const MAX_WAIT: Duration = Duration::from_secs(10);
 /// twice, so it gets far longer to answer than a read.
 const WRITE_WAIT: Duration = Duration::from_secs(300);
 
+/// The client for sites: it carries tokens, app passwords and sign-in codes, so it
+/// follows a redirect only on the same host (http may move to https). reqwest drops
+/// `Authorization` on another host but not `X-CM-Authorization`, and a 307 replays a
+/// token request's body. Requests with no credentials use [`probe`].
 pub fn client() -> reqwest::Result<reqwest::Client> {
     reqwest::Client::builder()
         .user_agent(concat!("MonksCentral/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::custom(|a| {
+            let (to, from) = (a.url(), &a.previous()[0]);
+            if a.previous().len() > 10 {
+                a.error("too many redirects")
+            } else if to.host_str() == from.host_str()
+                && (to.origin() == from.origin() || to.scheme() == "https")
+            {
+                a.follow()
+            } else {
+                a.stop()
+            }
+        }))
         .build()
 }
 
@@ -417,6 +433,57 @@ mod tests {
             (503, TRIES as usize)
         );
         assert!(explain_status(&reply).unwrap().contains("had an error"));
+    }
+
+    #[tokio::test]
+    async fn redirects_to_another_host_are_not_followed() {
+        use axum::{Router, http::HeaderMap, response::Redirect, routing::get};
+        use std::future::IntoFuture;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let other = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        // Another host: localhost is not 127.0.0.1 to the redirect policy.
+        let away = format!("http://localhost:{}/", other.local_addr().unwrap().port());
+        let seen = Arc::new(AtomicUsize::new(0));
+        let s = seen.clone();
+        tokio::spawn(
+            axum::serve(
+                other,
+                Router::new().route(
+                    "/",
+                    get(move |h: HeaderMap| async move {
+                        if h.contains_key("x-cm-authorization") {
+                            s.fetch_add(1, Ordering::SeqCst);
+                        }
+                        "away"
+                    }),
+                ),
+            )
+            .into_future(),
+        );
+        let site = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", site.local_addr().unwrap());
+        tokio::spawn(
+            axum::serve(
+                site,
+                Router::new()
+                    .route(
+                        "/away",
+                        get(move || async move { Redirect::temporary(&away) }),
+                    )
+                    .route("/here", get(|| async { Redirect::temporary("/ok") }))
+                    .route("/ok", get(|| async { "ok" })),
+            )
+            .into_future(),
+        );
+        let http = client().unwrap();
+        let get = |path: &str| {
+            http.get(format!("{base}{path}"))
+                .header("X-CM-Authorization", "Bearer secret")
+                .send()
+        };
+        assert_eq!(get("/here").await.unwrap().text().await.unwrap(), "ok");
+        assert_eq!(get("/away").await.unwrap().status(), 307);
+        assert_eq!(seen.load(Ordering::SeqCst), 0);
     }
 
     /// A port that refuses connections. Bound but never listening, so it stays ours and no

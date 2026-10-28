@@ -245,7 +245,8 @@ impl Core {
     async fn rdap(&self, host: &str) -> (Option<String>, Option<i64>, String) {
         for name in candidates(host) {
             let url = format!("{}/domain/{name}", self.feeds.rdap);
-            let Ok(r) = self.http.get(&url).send().await else {
+            // The probe client: rdap.org redirects to each registry's own server.
+            let Ok(r) = self.probe.get(&url).send().await else {
                 return (
                     None,
                     None,

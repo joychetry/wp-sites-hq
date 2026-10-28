@@ -1369,8 +1369,9 @@ impl Core {
             Mode::Basic => {
                 // Basic mode has no import tool: fetch the image here, then upload it.
                 let host = url.host_str().unwrap_or_default().to_string();
+                // No credentials, and image links often redirect to a CDN: the probe client.
                 let got = net::send(&self.limits, &host, Retry::ReadOnly, || {
-                    self.http.get(url.clone())
+                    self.probe.get(url.clone())
                 })
                 .await?;
                 let mime = got
