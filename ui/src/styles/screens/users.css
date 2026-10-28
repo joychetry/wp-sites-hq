@@ -15,6 +15,5 @@
 /* Sites the list can't fully show: a callout each, under the card. */
 .pnotes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 
-/* Add a user and Change role (board D06): username and email side by side, the administrator note in amber. */
-.g2.pair { gap: 0 var(--sp-3); align-items: start; }
+/* Add a user and Change role (board D06): the administrator note in amber. */
 .callout.admin-note { margin: 0 0 var(--sp-4); }

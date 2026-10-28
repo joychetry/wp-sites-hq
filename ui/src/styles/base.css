@@ -534,6 +534,8 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
 .btn.ghost:hover:not(:disabled) { background: var(--panel); border-color: transparent; color: var(--text); }
 .btn.danger-text, .btn.danger-text:hover:not(:disabled) { color: var(--danger); }
+/* Two fields side by side in a sheet (board D06); each keeps its own help line under it */
+.g2.pair { gap: 0 var(--sp-3); align-items: start; }
 .btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
 .field-label { display: block; margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
 .row.nowrap { flex-wrap: nowrap; gap: 6px; }
