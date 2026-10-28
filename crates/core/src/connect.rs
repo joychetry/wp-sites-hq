@@ -143,7 +143,10 @@ pub fn at_least_7_1(version: &str) -> bool {
 /// The REST root a `Link` header names, kept only on the site's own address: the app
 /// password goes there. A site behind a proxy that hides HTTPS names http; that is moved
 /// back to https.
-fn rest_root_from_link<'a>(site: &Url, links: impl Iterator<Item = &'a str>) -> Option<String> {
+pub(crate) fn rest_root_from_link<'a>(
+    site: &Url,
+    links: impl Iterator<Item = &'a str>,
+) -> Option<String> {
     let link = links
         .flat_map(|v| v.split(','))
         .find(|l| l.contains("rel=\"https://api.w.org/\""))?;
@@ -968,9 +971,15 @@ impl Core {
         let (health, detail) = self.health(&site).await;
         let _ = self.db(|c| sites::set_health(c, id, health, &detail));
         self.notify();
-        if health == Health::Ok {
+        // The icon after the health is saved, so it never holds the check up.
+        match health {
             // Plugins, themes and updates, for the screens that show them.
-            let _ = self.refresh_inventory_inner(id).await;
+            Health::Ok => drop(tokio::join!(
+                self.refresh_icon(&site),
+                self.refresh_inventory_inner(id)
+            )),
+            Health::Down => {}
+            _ => self.refresh_icon(&site).await,
         }
     }
 
@@ -1144,6 +1153,7 @@ impl Core {
             self.delete_named(c, &Grant::Agent.secret(id))?;
             sites::delete(c, id)
         })?;
+        self.forget_icon(id);
         self.refresh_locks
             .lock()
             .unwrap()

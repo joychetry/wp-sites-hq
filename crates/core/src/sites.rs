@@ -99,6 +99,8 @@ pub struct Site {
     pub client_id: Option<i64>,
     /// The client's name.
     pub client: Option<String>,
+    /// Changes when the cached icon does; None: no icon.
+    pub icon: Option<String>,
 }
 
 /// What a connect step learned about a site.
@@ -172,7 +174,7 @@ pub fn url_string(url: &Url) -> String {
 
 const COLUMNS: &str = "s.id, s.url, s.name, s.mode, s.api_url, s.oauth, s.username, s.wp_version,
     s.php_version, s.cm_version, s.capabilities, s.sign_in_again, s.health, s.health_detail,
-    s.checked_at, g.name, s.added_at, s.agent_oauth, s.client_id, c.name";
+    s.checked_at, g.name, s.added_at, s.agent_oauth, s.client_id, c.name, s.icon";
 const JOINS: &str = "sites s LEFT JOIN site_groups g ON g.id = s.group_id LEFT JOIN clients c ON c.id = s.client_id";
 
 fn from_row(r: &Row) -> rusqlite::Result<Site> {
@@ -211,6 +213,7 @@ fn from_row(r: &Row) -> rusqlite::Result<Site> {
         agent_oauth,
         client_id: r.get(18)?,
         client: r.get(19)?,
+        icon: r.get(20)?,
     })
 }
 
@@ -348,6 +351,14 @@ pub fn set_health(
         params![id, health.as_str(), detail],
     )?;
     Ok(())
+}
+
+/// False when the site is gone.
+pub fn set_icon(conn: &Connection, id: i64, icon: &str) -> rusqlite::Result<bool> {
+    Ok(conn.execute(
+        "UPDATE sites SET icon = ?2 WHERE id = ?1",
+        params![id, icon],
+    )? > 0)
 }
 
 pub fn delete(conn: &Connection, id: i64) -> rusqlite::Result<bool> {
