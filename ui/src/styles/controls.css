@@ -152,14 +152,19 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .toasts { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: 60; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
 /* A sheet's buttons are at its bottom right; messages go to the other corner while it is open. */
 body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
-.toasts ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
-.toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; min-height: 48px; background: var(--btn-ink); color: var(--btn-on-ink); border-radius: 12px; box-shadow: var(--shadow-pop); font-size: var(--fs-sm); animation: toast-in 220ms var(--ease); }
-.toast .btn, .toast .icon-btn { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 30%, transparent); }
-.toast .icon-btn { border: 0; }
+.toasts ol { list-style: none; margin: 0; padding: 0; display: grid; justify-items: end; gap: var(--sp-2); }
+body:has(.sheet) .toasts ol { justify-items: start; }
+/* The design's toast: an ink pill as wide as its words, quiet buttons, green icons */
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; padding: 10px 10px 10px 14px; min-height: 48px; background: var(--btn-ink); color: var(--btn-on-ink); border-radius: 12px; box-shadow: var(--shadow-float); font-size: var(--fs); animation: toast-in 220ms var(--ease); }
+[data-theme="dark"] .toast { border: 1px solid var(--line-2); }
+.toast .btn, .toast .icon-btn { height: 28px; padding: 0 10px; background: transparent; color: inherit; border-color: transparent; font-size: var(--fs-sm); }
+.toast .icon-btn { width: 28px; padding: 0; }
 .toast .btn:hover:not(:disabled), .toast .icon-btn:hover:not(:disabled) { background: color-mix(in srgb, currentColor 14%, transparent); }
 .toast :focus-visible { outline-color: currentColor; }
 .toast .grow { flex: 1; min-width: 0; }
+.toast .glyph { width: 16px; height: 16px; color: #5bd394; }
 .toast.ok .ico { color: #5bd394; }
+[data-theme="dark"] .toast .glyph, [data-theme="dark"] .toast.ok .ico { color: var(--accent); }
 .toast.warning .ico { color: #efb25a; }
 .toast.danger .ico { color: #ff8f84; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }

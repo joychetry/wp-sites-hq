@@ -2,10 +2,11 @@
 // Feedback pieces: toasts (with Undo), tooltips, loading skeletons, a progress bar and empty states.
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Icon } from "./ui";
+import { Glyph, Icon, type GlyphName } from "./ui";
 import type { Tone } from "../api";
 
-type Toast = { id: number; text: string; tone: Tone | "info"; undo?: () => unknown; stay?: boolean };
+type Action = { label: string; icon?: GlyphName; run: () => unknown };
+type Toast = { id: number; text: string; tone: Tone | "info"; undo?: () => unknown; action?: Action; stay?: boolean };
 let toasts: Toast[] = [];
 let nextId = 1;
 const subs = new Set<() => void>();
@@ -21,9 +22,12 @@ export const dismissAll = () => {
   emit();
 };
 
-/** Shows a short message at the bottom of the window. With `undo`, it offers an Undo button; with `stay`, it waits to be closed. */
-export function toast(text: string, opts: { tone?: Tone | "info"; undo?: () => unknown; stay?: boolean } = {}) {
-  const t = { id: nextId++, text, tone: opts.tone ?? "ok", undo: opts.undo, stay: opts.stay };
+/**
+ * Shows a short message at the bottom of the window. With `undo`, it offers an Undo button; with `action`, another
+ * button (like Show in folder); with `stay`, it waits to be closed.
+ */
+export function toast(text: string, opts: { tone?: Tone | "info"; undo?: () => unknown; action?: Action; stay?: boolean } = {}) {
+  const t = { id: nextId++, text, tone: opts.tone ?? "ok", undo: opts.undo, action: opts.action, stay: opts.stay };
   toasts = [...toasts.slice(-2), t];
   emit();
   return t.id;
@@ -43,7 +47,7 @@ function ToastItem({ t }: { t: Toast }) {
   useEffect(() => {
     if (paused) return;
     // Errors, Undo and news you act on later stay until closed (or pushed out by newer ones), so there is time to read and reach them.
-    if (t.tone === "danger" || t.undo || t.stay) return;
+    if (t.tone === "danger" || t.undo || t.action || t.stay) return;
     const timer = setTimeout(() => dismiss(t.id), 5000);
     return () => clearTimeout(timer);
   }, [paused, t]);
@@ -63,8 +67,21 @@ function ToastItem({ t }: { t: Toast }) {
           Undo
         </button>
       )}
+      {t.action && (
+        <button
+          type="button"
+          className="btn sm"
+          onClick={() => {
+            close(t.id);
+            t.action!.run();
+          }}
+        >
+          {t.action.icon && <Glyph name={t.action.icon} />}
+          {t.action.label}
+        </button>
+      )}
       <button type="button" className="icon-btn" aria-label="Close the message" onClick={() => close(t.id)}>
-        ×
+        <Glyph name="x" />
       </button>
     </li>
   );

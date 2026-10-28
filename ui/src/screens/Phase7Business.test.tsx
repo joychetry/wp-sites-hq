@@ -135,8 +135,7 @@ test("exports into Downloads and imports a file, saying what was left out", asyn
     sites_import: () => ({ sites: 1, clients: 1, costs: 2, not_connected: ["https://gone.test"] }),
   });
   render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Export the sites" }));
-  fireEvent.click(screen.getByRole("menuitem", { name: /^Export as CSV/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Export as CSV" }));
   expect(await screen.findByText("Saved /home/you/Downloads/sites.csv")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "file_show")).toBe(true));

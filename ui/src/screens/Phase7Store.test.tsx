@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Phase 7: a WooCommerce store's overview and products, and Classic Monks' reports.
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render as draw, screen, fireEvent, within } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Store, price, productChange, label } from "./Store";
 import { ClassicMonks } from "./ClassicMonks";
 import { site } from "../test-fixtures";
 import type { Product } from "../api";
+import { HeadSlot } from "../components/ui";
+
+// The page head's action slot, as App gives it: the site and period pickers render there.
+const head = document.body.appendChild(document.createElement("div"));
+const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider value={head}>{children}</HeadSlot.Provider>;
+const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -94,7 +101,7 @@ test("Classic Monks' reports show what the site has and name what failed", async
   fireEvent.click(await screen.findByRole("tab", { name: "Reports" }));
   expect(await screen.findByRole("table", { name: "Pages not found" })).toHaveTextContent("/old");
   expect(screen.getByText("75%")).toBeInTheDocument();
-  expect(screen.getByText("Unused media: not scanned yet")).toBeInTheDocument();
+  expect(screen.getByText("Not scanned yet")).toBeInTheDocument();
   expect(screen.getByText("Not read: Searches (Timed out.)")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("cm_reports", { id: 1, days: 30 });
 });
