@@ -83,3 +83,18 @@ test("a failed search says why", async () => {
   render(<Search sites={[A]} inventory={inv} query="ab" onGo={() => {}} />);
   await waitFor(() => expect(screen.getByText("Type at least two letters.")).toBeInTheDocument());
 });
+
+test("a post found opens in the editor from the results", async () => {
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    if (cmd === "clients_list") return [];
+    if (cmd === "content_search") return { hits: [{ site_id: 1, post_type: "post", id: 9, title: "Menu news", status: "publish", link: "https://alpha.test/news" }], failed: [] };
+    if (cmd === "content_types") return [{ name: "post", label: "Posts", singular: "Post", hierarchical: false, supports: ["title", "editor"], can_publish: true, can_delete: true, taxonomies: [], rest_base: "posts" }];
+    if (cmd === "content_get") return new Promise(() => {});
+    return null;
+  });
+  const ready = { ...A, capabilities: { ...A.capabilities, abilities: ["list-post-types"] } };
+  render(<Search sites={[ready]} inventory={inv} query="menu" onGo={() => {}} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Edit Menu news on Alpha" }));
+  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  expect(mockInvoke).toHaveBeenCalledWith("content_types", { id: 1 });
+});

@@ -3,7 +3,9 @@
 // Central already knows, then posts and pages on every site (plan Phase 7).
 import "../styles/screens/search.css";
 import { useEffect, useState } from "react";
-import { api, type Client, type ContentFound, type Site, type SiteInventory } from "../api";
+import { api, contentBlocked, type Client, type ContentFound, type PostType, type Site, type SiteInventory } from "../api";
+import { toast } from "../components/feedback";
+import { Editor } from "./Editor";
 import { SearchInput } from "../components/controls";
 import { SiteTile, initial } from "../components/SiteTile";
 import { Button, Glyph, Kbd } from "../components/ui";
@@ -80,6 +82,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
   const [found, setFound] = useState<ContentFound | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ site: Site; type: PostType; id: number } | null>(null);
 
   useEffect(() => {
     api.clients().then(setClients, () => setClients([]));
@@ -108,6 +111,11 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
   const kinds = (["All", "Pages", "Posts", "Sites", "Plugins", "Themes", "Clients"] as Kind[]).filter((k) => k === "All" || count(k) > 0);
   const on = new Set([...hits.map((h) => h.site_id), ...local.flatMap((h) => (h.siteId ? [h.siteId] : []))]).size;
   const shown = (k: Kind) => show === "All" || show === k;
+  const edit = async (s: Site, postType: string, id: number) => {
+    const type = (await api.postTypes(s.id).catch(() => [])).find((t) => t.name === postType);
+    if (type) setEditing({ site: s, type, id });
+    else toast(`Couldn't open it here. Open it on Content for ${s.name}.`, { tone: "danger" });
+  };
 
   return (
     <div className="scroll page search">
@@ -164,6 +172,12 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                         {h.kind === "Pages" ? "Page" : "Post"} · {name(h.site_id)} · {STATUS_LABEL[h.status] ?? h.status}
                       </span>
                     </div>
+                    {site(h.site_id) && !contentBlocked(site(h.site_id)!) && (
+                      <Button small className="ghost" aria-label={`Edit ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => edit(site(h.site_id)!, h.post_type, h.id)}>
+                        <Glyph name="edit" />
+                        Edit
+                      </Button>
+                    )}
                     {h.link.startsWith("https://") && (
                       <Button small aria-label={`View ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
                         <Glyph name="external" />
@@ -220,6 +234,17 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
             </p>
           )}
         </>
+      )}
+      {editing && (
+        <Editor
+          site={editing.site}
+          type={editing.type}
+          postId={editing.id}
+          onClose={() => setEditing(null)}
+          onSaved={(msg, undo) =>
+            toast(msg, undo ? { undo: () => undo().then(() => toast(`Brought it back from the trash on ${editing.site.name}.`), (e) => toast(String(e), { tone: "danger" })) } : undefined)
+          }
+        />
       )}
       <p className="callout">
         <Glyph name="command" />
