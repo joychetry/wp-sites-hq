@@ -168,6 +168,17 @@ test("an AI agent's plan is confirmed from the keyboard and its progress shows",
   await expect(page.getByRole("heading", { name: "No plans are waiting." })).toBeVisible();
 });
 
+test("the palette opens an agent's plan with focus on it, two Tabs from Confirm", async ({ page }) => {
+  await show(page, SCREENS[0], "light");
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("Review the AI");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Update WooCommerce on 3 sites" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" })).toBeFocused();
+});
+
 test("AI agent access is turned on from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-access")!, "light");
   await page.getByRole("button", { name: "Turn on access for Portfolio" }).focus();

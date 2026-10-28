@@ -53,6 +53,7 @@ export default function App() {
   const [jobError, setJobError] = useState<string | null>(null);
   const [scope, setScope] = useState("");
   const [focusId, setFocusId] = useState<number | null>(null);
+  const [focusPlan, setFocusPlan] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
   const [adding, setAdding] = useState<{ again?: Site } | null>(null);
   const [checking, setChecking] = useState(false);
@@ -138,7 +139,10 @@ export default function App() {
       id: `plan-${p.id}`,
       group: "Actions",
       label: `Review the AI agent's plan: ${p.title}`,
-      run: () => setSection("AI"),
+      run: () => {
+        setFocusPlan(p.id);
+        setSection("AI");
+      },
     })),
     ...all.map((s) => ({
       id: `site-${s.id}`,
@@ -225,7 +229,7 @@ export default function App() {
   } else if (section === "Classic Monks") {
     body = <ClassicMonks sites={scoped} />;
   } else if (section === "AI") {
-    body = <Ai sites={all} plans={plans ?? []} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
+    body = <Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
   } else if (section === "Settings") {
     body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   } else {

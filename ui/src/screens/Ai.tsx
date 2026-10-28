@@ -1,7 +1,7 @@
 // AI apps and Monks Central (plan Phase 5): plans AI agents proposed, waiting
 // for you to confirm them; which sites agents may change; the activity log of
 // who did what; and how to connect an AI app with `monks mcp`.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { ago, api, type Entry, type Job, type Site } from "../api";
 import { Button, Status } from "../components/ui";
@@ -28,9 +28,10 @@ const CONFIG = '{ "mcpServers": { "monks-central": { "command": "monks", "args":
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 const sitesIn = (j: Job) => new Set(j.items.map((i) => i.site_name)).size;
 
-type Props = { sites: Site[]; plans: Job[]; onWatch: (job: Job) => void };
+/** `focusPlan`: the plan the palette asked to review gets focus. */
+type Props = { sites: Site[]; plans: Job[]; onWatch: (job: Job) => void; focusPlan?: number | null };
 
-export function Ai({ sites, plans, onWatch }: Props) {
+export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
   const [tab, setTab] = useState<Tab>("plans");
   const [note, setNote] = useState<Note | null>(null);
   const tabs: [Tab, string][] = [
@@ -62,7 +63,7 @@ export function Ai({ sites, plans, onWatch }: Props) {
         {note && <p className={`alert ${note.ok ? "ok" : "danger"}`}>{note.text}</p>}
       </div>
       {tab === "plans" ? (
-        <Plans plans={plans} onNote={setNote} onWatch={onWatch} />
+        <Plans plans={plans} onNote={setNote} onWatch={onWatch} focusPlan={focusPlan} />
       ) : tab === "access" ? (
         <Access sites={sites} onNote={setNote} />
       ) : tab === "activity" ? (
@@ -74,8 +75,12 @@ export function Ai({ sites, plans, onWatch }: Props) {
   );
 }
 
-function Plans({ plans, onNote, onWatch }: { plans: Job[]; onNote: (n: Note) => void; onWatch: (j: Job) => void }) {
+type PlansProps = { plans: Job[]; onNote: (n: Note) => void; onWatch: (j: Job) => void; focusPlan?: number | null };
+
+function Plans({ plans, onNote, onWatch, focusPlan }: PlansProps) {
   const [busy, setBusy] = useState<number | null>(null);
+  const focused = useRef<HTMLHeadingElement>(null);
+  useEffect(() => focused.current?.focus(), [focusPlan]);
   if (plans.length === 0)
     return (
       <div className="empty">
@@ -104,7 +109,9 @@ function Plans({ plans, onNote, onWatch }: { plans: Job[]; onNote: (n: Note) => 
       </p>
       {plans.map((p) => (
         <section key={p.id} className="plan-card" aria-labelledby={`plan-${p.id}`} aria-describedby="plans-legend">
-          <h2 id={`plan-${p.id}`}>{p.title}</h2>
+          <h2 id={`plan-${p.id}`} tabIndex={-1} ref={p.id === focusPlan ? focused : undefined}>
+            {p.title}
+          </h2>
           <p className="why">
             Proposed by an AI agent {ago(p.created_at)}. {plural(p.items.length, "change")} on {plural(sitesIn(p), "site")}.
           </p>
