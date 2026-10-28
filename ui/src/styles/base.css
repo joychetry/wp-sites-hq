@@ -397,6 +397,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .settings p { margin: 0 0 var(--sp-3); color: var(--text-2); }
 .settings .segmented { margin: 0; max-width: 520px; display: inline-flex; flex-wrap: wrap; }
 .settings .segmented button { white-space: nowrap; }
+/* A choice that has fields under it (Reports) keeps the same space as between two fields. */
+.settings .segmented:not(:last-child) { margin-bottom: var(--sp-4); }
 
 /* Content and Media (screens/Content.tsx, Editor.tsx, Media.tsx) */
 .pick span { font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; white-space: nowrap; }
