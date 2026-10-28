@@ -80,7 +80,7 @@ function Field({ f, value, error, ctx, onChange }: { f: AcfField; value: unknown
         <p className="callout">
           <Glyph name="lock" />
           <span>
-            {f.type === "flexible_content" ? "Flexible content" : f.type === "clone" ? "A clone field" : `A ${f.type.replace(/_/g, " ")} field`} can only be changed in WordPress.
+            {({ flexible_content: "Flexible content", clone: "A clone field", oembed: "An oEmbed field" } as Record<string, string>)[f.type] ?? "This field"} can only be changed in WordPress.
             {!empty(value) && typeof value !== "object" && <span className="mono cut"> Now: {str(value)}</span>}
           </span>
           <Button small onClick={() => api.openLink(ctx.editUrl, ctx.site.id).catch(() => {})}>

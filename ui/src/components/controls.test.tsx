@@ -356,3 +356,12 @@ test("select: inside a dialog, its list opens inside that dialog", () => {
   fireEvent.keyDown(screen.getByRole("combobox", { name: "Fruit" }), { key: "ArrowDown" });
   expect(within(screen.getByRole("dialog", { name: "Add a user" })).getByRole("listbox")).toBeInTheDocument();
 });
+
+test("a number box with one limit names it", () => {
+  const { rerender } = render(<NumberInput aria-label="Count" value="6" max={5} onChange={() => {}} />);
+  const box = screen.getByRole("spinbutton", { name: "Count" });
+  fireEvent.blur(box);
+  expect(box).toHaveAccessibleDescription("Write a number of 5 or less.");
+  rerender(<NumberInput aria-label="Count" value="0" min={1} onChange={() => {}} />);
+  expect(box).toHaveAccessibleDescription("Write a number of 1 or more.");
+});

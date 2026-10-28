@@ -60,11 +60,17 @@ export const isClassic = (p: Post) => !p.locked && (p.blocks.length === 0 || (p.
  */
 export const leaveGuard: { ask: ((go: () => void) => void) | null } = { ask: null };
 
-/** Custom fields: text values can change; lists and other values stay as they are. */
-function FieldsEdit({ meta, value, onChange }: { meta: Record<string, unknown>; value: Record<string, string | null>; onChange: (v: Record<string, string | null>) => void }) {
+/** PHP's serialize() output: WordPress keeps these out of its Custom Fields box, and so do we. */
+export const isSerialized = (v: string) => /^(?:[aOC]:\d+:[\s\S]*[;}]|s:\d+:"[\s\S]*";|[bid]:[^;]*;|N;)$/.test(v.trim());
+
+/**
+ * Custom fields: text values can change; lists, serialized values and other values stay as they are.
+ * Keys an ACF group owns are left to its card, so one value isn't edited in two places.
+ */
+function FieldsEdit({ meta, value, owned, onChange }: { meta: Record<string, unknown>; value: Record<string, string | null>; owned: (key: string) => boolean; onChange: (v: Record<string, string | null>) => void }) {
   const [key, setKey] = useState("");
   const [val, setVal] = useState("");
-  const keys = [...new Set([...Object.keys(meta), ...Object.keys(value)])].sort();
+  const keys = [...new Set([...Object.keys(meta), ...Object.keys(value)])].filter((k) => !owned(k)).sort();
   const add = () => {
     const k = key.trim();
     if (!k || k.startsWith("_")) return;
@@ -79,7 +85,7 @@ function FieldsEdit({ meta, value, onChange }: { meta: Record<string, unknown>; 
       </header>
       <fieldset className="ed-card-body field fields">
         <legend className="sr-only">Custom fields</legend>
-        {keys.length === 0 && <span className="dim">None</span>}
+        {keys.length === 0 && <p className="dim ed-none">None</p>}
         {keys.map((k) => {
           const was = meta[k];
           const now = k in value ? value[k] : was;
@@ -95,8 +101,8 @@ function FieldsEdit({ meta, value, onChange }: { meta: Record<string, unknown>; 
             );
           }
           return (
-            <div key={k} className={typeof now === "string" ? "row fieldrow" : "row"}>
-              {typeof now === "string" ? (
+            <div key={k} className={typeof now === "string" && !isSerialized(now) ? "row fieldrow" : "row"}>
+              {typeof now === "string" && !isSerialized(now) ? (
                 <label className="field grow">
                   <span>{k}</span>
                   <input className="input" value={now} onChange={(e) => onChange({ ...value, [k]: e.target.value })} />
@@ -584,6 +590,9 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
     );
   }
 
+  const acfNames = (acf?.groups ?? []).flatMap((g) => g.fields.map((f) => ({ name: f.name, nested: !!f.sub_fields?.length || f.type === "flexible_content" })));
+  const acfOwns = (k: string) => acfNames.some((f) => k === f.name || (f.nested && k.startsWith(`${f.name}_`)));
+
   let bodyPart;
   if (!isNew && !post) bodyPart = <p role="status">Opening it…</p>;
   else if (post?.locked) {
@@ -648,7 +657,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
               {bodyPart}
             </div>
           </section>
-          {canFields && <FieldsEdit meta={post?.meta ?? {}} value={fields} onChange={setFields} />}
+          {canFields && <FieldsEdit meta={post?.meta ?? {}} value={fields} owned={acfOwns} onChange={setFields} />}
           {acf && acf.groups.length > 0 && (
             <AcfGroups
               acf={acf}

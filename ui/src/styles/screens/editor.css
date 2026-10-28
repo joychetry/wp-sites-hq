@@ -66,7 +66,7 @@
 .ed-card .card-head { min-height: 48px; }
 .ed-card-body { display: grid; gap: var(--sp-3); padding: var(--pad); min-width: 0; }
 .ed-card-body > .field, .ed-card-body > fieldset.field { margin: 0; }
-.ed-card-body.fields { border: 0; }
+.ed-card-body.fields { border: 0; padding: var(--pad); margin: 0; }
 .ed-box-title { margin: 0; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); font: 600 var(--fs)/1.4 var(--sans); }
 .ed-box-body { display: grid; gap: var(--sp-3); padding: var(--sp-4); min-width: 0; }
 .ed-box-body > .field, .ed-box-body > fieldset { margin: 0; }
@@ -155,8 +155,10 @@ html .tox .tox-toolbar__group { padding: 0 var(--sp-1); }
 html .tox .tox-tbtn, html .tox .tox-split-button, html .tox .tox-split-button .tox-tbtn { color: var(--text); background: transparent; border-radius: var(--radius-sm); }
 html .tox .tox-tbtn svg { fill: var(--text); }
 html .tox .tox-tbtn:hover, html .tox .tox-split-button:hover { background: var(--panel); color: var(--text); }
-html .tox .tox-tbtn--enabled, html .tox .tox-tbtn--enabled:hover { background: var(--sel); }
-html .tox .tox-tbtn--enabled svg { fill: var(--brand-text); }
+/* Oxide styles these with two classes, so ours carry both too. */
+html .tox .tox-tbtn.tox-tbtn--enabled, html .tox .tox-tbtn.tox-tbtn--enabled:hover, html .tox .tox-tbtn.tox-tbtn--active { background: var(--sel); color: var(--brand-text); outline: 0; }
+html .tox .tox-tbtn.tox-tbtn--enabled svg { fill: var(--brand-text) !important; }
+html .tox .tox-tbtn.tox-tbtn--disabled, html .tox .tox-tbtn.tox-tbtn--disabled:hover, html .tox .tox-tbtn:disabled { background: transparent; color: var(--text-3); }
 html .tox .tox-tbtn--disabled svg, html .tox .tox-tbtn:disabled svg { fill: var(--text-3); }
 html .tox .tox-tbtn:focus-visible, html .tox .tox-split-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; background: var(--panel); }
 html .tox .tox-tbtn__select-label { color: var(--text); }
@@ -185,3 +187,4 @@ html .tox .tox-swatches-menu, html .tox .tox-collection--grid { background: var(
 html .tox .tox-tooltip__body { background: var(--text); color: var(--bg); font-family: var(--sans); }
 html .tox .tox-tooltip__arrow { border-top-color: var(--text); border-bottom-color: var(--text); }
 html .tox .tox-icon svg, html .tox .tox-collection__item-icon svg { fill: currentColor; }
+.ed-card-body .ed-none { margin: 0; }

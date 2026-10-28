@@ -26,9 +26,9 @@ const lookups = (cmd: string) => (cmd === "users_list" ? { users: [], total: 0, 
 const FIELDS = ACF_FIELDS as unknown as AcfField[];
 const ACF: Acf = { post_id: 7, groups: [{ key: "group_t", title: "Monks test fields", fields: FIELDS }], refs: { media: {}, posts: {}, terms: {}, users: {} } };
 const field = (type: string) => FIELDS.find((f) => f.type === type)!;
-const CM = site({ id: 1, name: "Alpha", capabilities: { operator: true, abilities: ["list-post-types", "get-acf-fields", "update-acf-fields"] } });
+const CM = site({ id: 1, name: "Alpha", capabilities: { operator: true, abilities: ["list-post-types", "get-post-meta", "get-acf-fields", "update-acf-fields"] } });
 const POSTS: PostType = { name: "post", label: "Posts", singular: "Post", hierarchical: false, supports: ["title", "editor"], can_publish: true, can_delete: true, taxonomies: [], rest_base: "" };
-const POST: Post = { id: 7, post_type: "post", title: "Fields", status: "publish", date: "2026-10-28 09:00:00", modified: "2026-10-28 09:05:00", link: "", featured_image: 0, featured_url: null, terms: {}, meta: {}, builder: null, blocks: [], locked: null, ...POST_FIELDS };
+const POST: Post = { id: 7, post_type: "post", title: "Fields", status: "publish", date: "2026-10-28 09:00:00", modified: "2026-10-28 09:05:00", link: "", featured_image: 0, featured_url: null, terms: {}, meta: { [field("email").name]: "a@b.co", chef: "Ana", tags: 'a:1:{i:0;s:1:"x";}' }, builder: null, blocks: [], locked: null, ...POST_FIELDS };
 
 test("ACF's dates, rules and messages", () => {
   expect(fromYmd("20261028")).toBe("2026-10-28");
@@ -76,6 +76,11 @@ test("the editor checks ACF's rules first, saves the fields, and Undo puts them 
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Fields" }));
   const mail = await screen.findByRole("textbox", { name: "Email" });
+  // The ACF group owns its keys, and a serialized value is never offered as text.
+  const fields = screen.getByRole("group", { name: "Custom fields" });
+  expect(within(fields).getByRole("textbox", { name: "chef" })).toHaveValue("Ana");
+  expect(within(fields).queryByText(field("email").name)).toBeNull();
+  expect(within(fields).getByText("kept as is (not plain text)")).toBeInTheDocument();
   fireEvent.change(mail, { target: { value: "x@" } });
   fireEvent.click(screen.getByRole("button", { name: "Update" }));
   expect(await screen.findByText(/Nothing was saved. Fix the ACF field marked in red/)).toBeInTheDocument();

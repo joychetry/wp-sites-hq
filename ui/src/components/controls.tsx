@@ -823,7 +823,9 @@ export function NumberInput({ value, onChange, min, max, step: by, className, ty
   const n = Number(value);
   const bad =
     left && value !== "" && value != null && (!Number.isFinite(n) || (min != null && min !== "" && n < Number(min)) || (max != null && max !== "" && n > Number(max)));
-  const limits = min != null && min !== "" && max != null && max !== "" ? ` from ${min} to ${max}` : "";
+  const lo = min != null && min !== "";
+  const hi = max != null && max !== "";
+  const limits = lo && hi ? ` from ${min} to ${max}` : hi ? ` of ${max} or less` : lo ? ` of ${min} or more` : "";
   return (
     <>
       <span className={cx("num-in", className?.includes("sm") && "sm")}>
