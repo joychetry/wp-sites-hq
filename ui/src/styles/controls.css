@@ -240,8 +240,6 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 .srch { width: 300px; max-width: 100%; }
 .srch .input { width: 100%; }
 .srch.grow { width: auto; flex: 1; }
-.bar-progress { height: 6px; border-radius: 3px; }
-.bar-progress span { border-radius: 3px; transition: width 300ms var(--ease); }
 
 /* Between 900 and 1300px wide: a narrower rail and inspector, so tables keep their room
    (switching at 1200 left a 1201px window 100px less table than a 1200px one). */
