@@ -24,7 +24,7 @@ const STATE_TONE: Record<JobItem["state"], string> = { waiting: "", running: "",
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-function Versions({ from, to }: { from?: string | null; to?: string | null }) {
+export function Versions({ from, to }: { from?: string | null; to?: string | null }) {
   if (!from && !to) return null;
   return (
     <span className="mono vers">

@@ -34,6 +34,8 @@ export type Site = {
   tags: string[];
   notes: Note[];
   added_at: number;
+  /** AI agents may change this site, each change approved on the site. */
+  agent_access: boolean;
 };
 
 export type Removed = { signed_out: boolean; message: string };
@@ -89,7 +91,30 @@ export type JobItem = {
   message: string;
 };
 
-export type Job = { id: number; title: string; created_at: number; finished_at: number | null; items: JobItem[] };
+export type Job = {
+  id: number;
+  title: string;
+  created_at: number;
+  finished_at: number | null;
+  /** "agent" for a plan an AI agent proposed; it runs only after you confirm it. */
+  proposed_by: "human" | "agent";
+  confirmed_at: number | null;
+  declined_at: number | null;
+  items: JobItem[];
+};
+
+/** Who started something done through Monks Central. */
+export type Actor = "human" | "agent" | "agent_confirmed";
+export type Entry = {
+  id: number;
+  at: number;
+  actor: Actor;
+  site_id: number | null;
+  site_name: string;
+  what: string;
+  outcome: "done" | "failed" | "refused" | "waiting";
+  detail: string;
+};
 
 export type Found = { slug: string; name: string; version: string; active_installs: number; summary: string };
 
@@ -236,6 +261,12 @@ export const api = {
   undo: (id: number, row: number) => invoke<void>("cm_undo", { id, row }),
   approvals: (id: number) => invoke<Approval[]>("cm_approvals", { id }),
   openApproval: (id: number, op: number) => invoke<void>("cm_approval_open", { id, op }),
+  agentAccessOn: (id: number) => invoke<Site>("agent_access_on", { id }),
+  agentAccessOff: (id: number) => invoke<Site>("agent_access_off", { id }),
+  plansWaiting: () => invoke<Job[]>("plans_waiting"),
+  confirmPlan: (id: number) => invoke<Job>("plan_confirm", { id }),
+  declinePlan: (id: number) => invoke<Job>("plan_decline", { id }),
+  activityLog: (before?: number) => invoke<Entry[]>("activity_list", { before }),
 };
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */
@@ -299,6 +330,12 @@ export function useInventory() {
   const { data, error, reload } = useLive(api.inventory, "inventory-changed");
   const byId = useMemo(() => new Map((data ?? []).map((i) => [i.site_id, i])), [data]);
   return { inventory: data ? byId : null, error, reload };
+}
+
+/** AI agents' plans waiting for you, kept fresh. */
+export function usePlans() {
+  const { data, error, reload } = useLive(api.plansWaiting, "jobs-changed");
+  return { plans: data, error, reload };
 }
 
 /** One job, kept fresh while it runs. */

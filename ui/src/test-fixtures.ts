@@ -20,6 +20,7 @@ export function site(over: Partial<Site> = {}): Site {
     tags: [],
     notes: [],
     added_at: 0,
+    agent_access: false,
     ...over,
   };
 }

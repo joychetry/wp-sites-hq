@@ -1,6 +1,6 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
 import { useEffect, useMemo, useState } from "react";
-import { ago, api, hasTool, siteStatus, useInventory, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { ago, api, hasTool, siteStatus, useInventory, usePlans, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Kbd, Logo } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
@@ -16,6 +16,7 @@ import { Media } from "./screens/Media";
 import { Users } from "./screens/Users";
 import { Comments } from "./screens/Comments";
 import { ClassicMonks } from "./screens/ClassicMonks";
+import { Ai } from "./screens/Ai";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -30,7 +31,7 @@ const GROUPS = [
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 type Section = (typeof SECTIONS)[number];
-const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "Settings"];
+const BUILT: Section[] = ["Overview", "Sites", "Updates", "Plugins", "Themes", "Content", "Media", "Users", "Comments", "Classic Monks", "AI", "Settings"];
 const CHECK_EVERY = 15 * 60;
 
 const THEME_NEXT: Record<ThemeChoice, ThemeChoice> = { system: "light", light: "dark", dark: "system" };
@@ -46,6 +47,7 @@ export default function App() {
   const [coreError, setCoreError] = useState<string | null>(null);
   const { sites, error, reload } = useSites();
   const { inventory } = useInventory();
+  const { plans } = usePlans();
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [installing, setInstalling] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
@@ -132,6 +134,12 @@ export default function App() {
       label: density === "compact" ? "Use comfortable rows" : "Use compact rows",
       run: () => setDensity(density === "compact" ? "comfortable" : "compact"),
     },
+    ...(plans ?? []).map((p) => ({
+      id: `plan-${p.id}`,
+      group: "Actions",
+      label: `Review the AI agent's plan: ${p.title}`,
+      run: () => setSection("AI"),
+    })),
     ...all.map((s) => ({
       id: `site-${s.id}`,
       group: "Sites",
@@ -216,6 +224,8 @@ export default function App() {
     body = <Comments sites={scoped} />;
   } else if (section === "Classic Monks") {
     body = <ClassicMonks sites={scoped} />;
+  } else if (section === "AI") {
+    body = <Ai sites={all} plans={plans ?? []} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
   } else if (section === "Settings") {
     body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   } else {
@@ -270,6 +280,12 @@ export default function App() {
                   >
                     {s}
                     {s === "Sites" && down > 0 && <span className="n alert">{down} down</span>}
+                    {s === "AI" && (plans?.length ?? 0) > 0 && (
+                      <span className="n alert">
+                        {plans!.length}
+                        <span className="sr-only"> to confirm</span>
+                      </span>
+                    )}
                     {s === "Updates" && waiting.length > 0 && (
                       <span className="n">
                         {waiting.length}
