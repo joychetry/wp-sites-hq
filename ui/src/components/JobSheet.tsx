@@ -6,6 +6,7 @@ import { api, useJob, type Change, type JobItem } from "../api";
 import { Button, Glyph, type GlyphName } from "./ui";
 import { Sheet } from "./Sheet";
 import { SiteTile } from "./SiteTile";
+import { ChangeTile } from "./PkgTile";
 
 /** One change as the plan shows it, before the core has it. Name, icon and note are for the pick list. */
 export type PlanRow = {
@@ -191,6 +192,7 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
                     return (
                       <li key={i} onClick={() => toggle([i], !picked.has(i))}>
                         <button type="button" className="box" role="checkbox" aria-checked={picked.has(i)} aria-label={`${r.label} on ${site}`} />
+                        <ChangeTile action={r.change.action} name={r.name} size="xs" />
                         <span>{r.name ?? r.label}</span>
                         <small>{[r.from && r.to && `${r.from} → ${r.to}`, r.note].filter(Boolean).join(" · ")}</small>
                       </li>
@@ -209,7 +211,10 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
               <ul>
                 {ids.map((i) => (
                   <li key={i}>
-                    <span>{rows[i].label}</span>
+                    <span className="named">
+                      <ChangeTile action={rows[i].change.action} name={rows[i].name} size="xs" />
+                      {rows[i].label}
+                    </span>
                     <Versions from={rows[i].from} to={rows[i].to} />
                   </li>
                 ))}
@@ -305,13 +310,16 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
           return (
             <li key={i.id} className={i.state}>
               <Glyph name={STATE_ICON[i.state]} />
-              <span>
-                <b>{i.label}</b>
-                <small>
-                  {[i.site_name, ...say].filter(Boolean).map((t, k) => (
-                    <span key={k}>{t}</span>
-                  ))}
-                </small>
+              <span className="named">
+                <ChangeTile action={i.action} size="sm" />
+                <span>
+                  <b>{i.label}</b>
+                  <small>
+                    {[i.site_name, ...say].filter(Boolean).map((t, k) => (
+                      <span key={k}>{t}</span>
+                    ))}
+                  </small>
+                </span>
               </span>
               <span className={`meta ${STATE_TONE[i.state]}`}>{STATE_WORD[i.state]}</span>
             </li>

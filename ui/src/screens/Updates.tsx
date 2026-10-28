@@ -4,7 +4,8 @@ import { Fragment, useMemo, useState } from "react";
 import "../styles/screens/updates.css";
 import { ago, api, blocked, siteStatus, type Action, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
-import { SiteTile, initial } from "../components/SiteTile";
+import { SiteTile } from "../components/SiteTile";
+import { ChangeTile } from "../components/PkgTile";
 import { toast } from "../components/feedback";
 import type { PlanRow } from "../components/JobSheet";
 
@@ -100,16 +101,6 @@ const KEY_WORD: Record<Kind, [string, string]> = {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-function ItemTile({ r }: { r: Row }) {
-  if (r.kind === "WordPress") return <span className="ptile ink">W</span>;
-  if (r.kind === "Theme" || r.kind === "Translations")
-    return (
-      <span className="ptile">
-        <Glyph name={r.kind === "Theme" ? "palette" : "globe"} />
-      </span>
-    );
-  return <span className="ptile">{initial(r.name)}</span>;
-}
 
 type Props = {
   sites: Site[];
@@ -181,7 +172,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
         <td>{box([r.key], `Select ${r.label} on ${r.site}`)}</td>
         <td>
           <div className="item">
-            <ItemTile r={r} />
+            <ChangeTile action={r.change.action} name={r.name} />
             <span>
               <b className="cut" data-tip={r.name}>
                 {r.name}

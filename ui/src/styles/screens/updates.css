@@ -14,8 +14,6 @@
 .updates .item small { display: block; font-size: var(--fs-xs); color: var(--text-3); }
 .updates .grp .item b { display: inline; }
 .updates .grp .dim { font-size: var(--fs-sm); }
-.updates .ptile.ink { background: var(--btn-ink); color: var(--btn-on-ink); border-color: transparent; }
-.updates .ptile .glyph { width: 14px; height: 14px; }
 .updates .filters .check { padding: 0; flex-wrap: nowrap; }
 .updates .filters .check > span { flex: none; }
 .updates .card-foot .grow { flex: 1; font-size: var(--fs-sm); }

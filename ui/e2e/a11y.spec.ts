@@ -432,3 +432,22 @@ test("custom field boxes are as tall as the other fields, and Remove lines up wi
   const add = (await fields.getByRole("button", { name: "Add the field" }).boundingBox())!;
   expect(add.height).toBe(title.height);
 });
+
+test("plugins and themes show their WordPress.org pictures in tiles the size of the monograms", async ({ page }) => {
+  const tile = (name: RegExp) => page.getByRole("rowheader", { name }).locator(".ptile");
+  const size = async (l: ReturnType<typeof tile>) => {
+    const b = (await l.boundingBox())!;
+    return [b.width, b.height];
+  };
+  await show(page, SCREENS.find((s) => s.name === "plugins")!, "light");
+  const row = page.getByRole("rowheader", { name: /^WooCommerce/ });
+  const top = (await row.boundingBox())!;
+  await expect(tile(/^WooCommerce/).locator("img")).toBeVisible();
+  await expect(tile(/^Classic Monks/)).toHaveText("C");
+  expect(await size(tile(/^WooCommerce/))).toEqual(await size(tile(/^Classic Monks/)));
+  expect((await row.boundingBox())!).toEqual(top);
+  await show(page, SCREENS.find((s) => s.name === "themes")!, "light");
+  await expect(tile(/^Twenty Twenty-Five/).locator("img")).toBeVisible();
+  await expect(tile(/^Bricks/)).toHaveText("B");
+  expect(await size(tile(/^Twenty Twenty-Five/))).toEqual(await size(tile(/^Bricks/)));
+});

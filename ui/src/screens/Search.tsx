@@ -7,11 +7,12 @@ import { api, contentBlocked, type Client, type ContentFound, type PostType, typ
 import { toast } from "../components/feedback";
 import { Editor } from "./Editor";
 import { SearchInput } from "../components/controls";
-import { SiteTile, initial } from "../components/SiteTile";
+import { SiteTile } from "../components/SiteTile";
+import { PkgTile, slugOf, type Pkg } from "../components/PkgTile";
 import { Button, Glyph, Kbd } from "../components/ui";
 import { STATUS_LABEL } from "./Content";
 
-export type Local = { kind: "Sites" | "Plugins" | "Themes" | "Clients"; key: string; label: string; detail: string; siteId?: number };
+export type Local = { kind: "Sites" | "Plugins" | "Themes" | "Clients"; key: string; label: string; detail: string; siteId?: number; pkg?: Pkg };
 
 const has = (term: string, ...fields: (string | null | undefined)[]) => fields.some((f) => f?.toLowerCase().includes(term));
 
@@ -36,7 +37,8 @@ export function localHits(query: string, sites: Site[], inventory: Map<number, S
       }
     }
     for (const [id, f] of found) {
-      out.push({ kind: kind === "plugins" ? "Plugins" : "Themes", key: `${kind}${id}`, label: f.name, detail: `On ${f.on.join(", ")}` });
+      const pkg: Pkg = kind === "plugins" ? { kind: "plugin", slug: slugOf(id), name: f.name } : { kind: "theme", slug: id, name: f.name };
+      out.push({ kind: kind === "plugins" ? "Plugins" : "Themes", key: `${kind}${id}`, label: f.name, detail: `On ${f.on.join(", ")}`, pkg });
     }
   }
   for (const c of clients) {
@@ -198,11 +200,9 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                         <span className="tile neutral" aria-hidden="true">
                           <Glyph name="briefcase" />
                         </span>
-                      ) : (
-                        <span className="ptile" aria-hidden="true">
-                          {initial(h.label)}
-                        </span>
-                      )}
+                      ) : h.pkg ? (
+                        <PkgTile {...h.pkg} />
+                      ) : null}
                       <div>
                         <b>
                           <Marked text={h.label} term={query} />

@@ -95,6 +95,21 @@ function iconFor(s: Site): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
+// WordPress.org pictures: plugin icons (square, their own colours) and theme screenshots (4:3, cropped
+// in the tiles). Classic Monks, Bricks and the rest aren't in the directory, so their tiles show monograms.
+const svg = (w: number, h: number, body: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${body}</svg>`)}`;
+const mark = (fill: string, ink: string, letter: string) =>
+  svg(128, 128, `<rect width="128" height="128" fill="${fill}"/><text x="64" y="${letter.length > 1 ? 80 : 86}" font-family="sans-serif" font-size="${letter.length > 1 ? 44 : 64}" font-weight="700" fill="${ink}" text-anchor="middle">${letter}</text>`);
+const PACKAGE_ICONS: Record<string, string> = {
+  "plugin/woocommerce": mark("#7f54b3", "#ffffff", "Woo"),
+  "plugin/akismet": mark("#357b49", "#ffffff", "A"),
+  "plugin/elementor": svg(128, 128, `<rect width="128" height="128" fill="#92003b"/><rect x="40" y="36" width="12" height="56" fill="#fff"/><rect x="62" y="36" width="28" height="12" fill="#fff"/><rect x="62" y="58" width="28" height="12" fill="#fff"/><rect x="62" y="80" width="28" height="12" fill="#fff"/>`),
+  "plugin/wordpress-seo": mark("#a4286a", "#ffffff", "Y"),
+  "plugin/seo-by-rank-math": mark("#e1e8f8", "#4b2ea8", "R"),
+  "plugin/jetpack": svg(128, 128, `<rect width="128" height="128" fill="#ffffff"/><circle cx="64" cy="64" r="48" fill="#069e08"/><path d="M60 26v54H34zM68 102V48h26z" fill="#fff"/>`),
+  "theme/twentytwentyfive": svg(1200, 900, `<rect width="1200" height="900" fill="#fbf7ee"/><rect width="1200" height="120" fill="#ffffff"/><text x="80" y="76" font-family="serif" font-size="40" fill="#111">Twenty Twenty-Five</text><text x="80" y="420" font-family="serif" font-size="140" fill="#111">A calm,</text><text x="80" y="580" font-family="serif" font-size="140" fill="#111">clear voice</text><rect x="80" y="660" width="1040" height="240" fill="#d9c9a8"/>`),
+};
+
 const FLEET: Site[] = [
   site({
     group: "Clients",
@@ -558,6 +573,10 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       const s = sites.find((x) => x.id === id);
       return r(s?.icon ? iconFor(s) : null);
     }
+    case "package_icons":
+      return r(Object.fromEntries(Object.keys(PACKAGE_ICONS).map((k) => [k, 1])));
+    case "package_icon":
+      return r(PACKAGE_ICONS[`${args.kind}/${args.slug}`] ?? null);
     case "site_check":
       await new Promise((ok) => setTimeout(ok, 300));
       return r(null);

@@ -10,7 +10,7 @@ import { SiteTile } from "../components/SiteTile";
 import { toast } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import type { PlanRow } from "../components/JobSheet";
-import { slugOf } from "./Matrix";
+import { PkgTile, slugOf } from "../components/PkgTile";
 
 type Props = {
   sites: Site[];
@@ -165,8 +165,13 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
                 </span>
                 <span className="grow">
                   <b>{b.name}</b>
-                  <small>
-                    {b.plugins.length === 1 ? "1 plugin" : `${b.plugins.length} plugins`}: {b.plugins.map((p) => p.name || p.source.split("/").pop()).join(", ")}
+                  <small className="named">
+                    <span className="tiles">
+                      {b.plugins.map((p) => !isLink(p.source) && <PkgTile key={p.source} kind="plugin" slug={p.source} name={p.name || p.source} size="xs" />)}
+                    </span>
+                    <span>
+                      {b.plugins.length === 1 ? "1 plugin" : `${b.plugins.length} plugins`}: {b.plugins.map((p) => p.name || p.source.split("/").pop()).join(", ")}
+                    </span>
                   </small>
                 </span>
                 <Button small className="ghost" onClick={() => edit(b)}>
@@ -323,9 +328,7 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
             <ul className="ins-found" aria-label="Plugins found">
               {found.map((f, i) => (
                 <li key={f.slug}>
-                  <span className="ptile" aria-hidden="true">
-                    {(f.name.match(/[\p{L}\p{N}]/u)?.[0] ?? "?").toUpperCase()}
-                  </span>
+                  <PkgTile kind="plugin" slug={f.slug} name={f.name} />
                   <span className="grow">
                     <b>{f.name}</b>
                     <small className="cut" data-tip={f.summary}>

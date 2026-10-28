@@ -351,6 +351,8 @@ export const api = {
   sites: () => invoke<Site[]>("sites_list"),
   /** The site's favicon as a `data:` URL, or null. Load again when `Site.icon` changes. */
   siteIcon: (id: number) => invoke<string | null>("site_icon", { id }),
+  packageIcons: () => invoke<Record<string, number>>("package_icons"),
+  packageIcon: (kind: "plugin" | "theme", slug: string) => invoke<string | null>("package_icon", { kind, slug }),
   addOAuth: (url: string) => invoke<Site>("site_add_oauth", { url }),
   addBasic: (url: string, username: string, password: string) =>
     invoke<Site>("site_add_basic", { url, username, password }),

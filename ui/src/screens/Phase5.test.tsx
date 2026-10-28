@@ -61,7 +61,7 @@ test("a plan shows every change and runs only when you confirm it", async () => 
   expect(within(card).getByText(/asked 2 min ago/)).toBeInTheDocument();
   expect(within(card).getByText(/2 changes on 2 sites\./)).toBeInTheDocument();
   expect(within(card).getAllByRole("listitem")).toHaveLength(2);
-  expect(within(card).getAllByRole("listitem")[1]).toHaveTextContent("SiteBBetaUpdate WooCommerce10.1.0to10.3.0");
+  expect(within(card).getAllByRole("listitem")[1]).toHaveTextContent("SiteBBetaWUpdate WooCommerce10.1.0to10.3.0");
   expect(calls.some(([c]) => c === "plan_confirm")).toBe(false);
 
   fireEvent.click(screen.getByRole("button", { name: `Confirm and run 2 changes: ${PLAN.title}` }));

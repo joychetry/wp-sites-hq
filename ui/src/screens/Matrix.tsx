@@ -8,6 +8,7 @@ import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { Menu, SearchInput } from "../components/controls";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
+import { PkgTile, slugOf } from "../components/PkgTile";
 import { toast } from "../components/feedback";
 import type { PlanRow } from "../components/JobSheet";
 
@@ -42,8 +43,7 @@ export function olderStable(version: string, installed: string): boolean {
 
 const itemsOf = (kind: Kind, inv: SiteInventory | undefined) => (kind === "plugins" ? inv?.inventory.plugins : inv?.inventory.themes) ?? [];
 
-/** The plugin's folder is its WordPress.org slug. */
-export const slugOf = (file: string) => file.split("/")[0].replace(/\.php$/, "");
+export { slugOf };
 
 /** A known vulnerability in the version this site runs, from the last security check. */
 const vulnOf = (reports: SecurityReport[], kind: Kind, site: number, it: Item | undefined) =>
@@ -237,7 +237,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                       <tr key={col.id}>
                         <th scope="row">
                           <span className="mx-plug">
-                            <Tile kind={kind} name={col.name} />
+                            <Tile kind={kind} id={col.id} name={col.name} />
                             <span>
                               <b>{col.name}</b>
                               <small>{plugin ? slugOf(col.id) : col.id}</small>
@@ -380,13 +380,9 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
   );
 }
 
-/** A plugin's letter, or the palette for a theme. */
-function Tile({ kind, name, big }: { kind: Kind; name: string; big?: boolean }) {
-  return (
-    <span className={`ptile${big ? " lg" : ""}`} aria-hidden="true">
-      {kind === "themes" ? <Glyph name="palette" /> : (name.match(/[\p{L}\p{N}]/u)?.[0] ?? "?").toUpperCase()}
-    </span>
-  );
+/** The plugin's icon or the theme's screenshot from WordPress.org, else its letter. */
+function Tile({ kind, id, name, big }: { kind: Kind; id: string; name: string; big?: boolean }) {
+  return kind === "plugins" ? <PkgTile kind="plugin" slug={slugOf(id)} name={name} size={big ? "lg" : undefined} /> : <PkgTile kind="theme" slug={id} name={name} size={big ? "lg" : undefined} />;
 }
 
 type InspectorProps = {
@@ -478,7 +474,7 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
     <>
       <aside className="insp mx-insp" aria-label={`${name} on ${s.name}`}>
         <div className="ihead">
-          <Tile kind={kind} name={name} big />
+          <Tile kind={kind} id={col.id} name={name} big />
           <div>
             <h2>{name}</h2>
             <small>

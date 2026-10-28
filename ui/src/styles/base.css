@@ -276,6 +276,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .feed li:first-child { border-top: 0; }
 .feed p { margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
 .feed p b { color: var(--text); font-weight: 600; }
+.feed p .ptile { vertical-align: -4px; margin-right: 6px; }
 .feed time { display: block; margin-top: 2px; font: 400 var(--fs-xs) var(--mono); color: var(--text-3); }
 .av { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font: 600 var(--fs-xs)/1 var(--sans); }
 .av.me { background: var(--tint-2); color: var(--brand-text); }
@@ -543,6 +544,18 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 /* A plugin's or theme's tile: a letter in the well */
 .ptile { display: inline-grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); color: var(--text-2); font: 600 var(--fs-xs)/1 var(--display); }
 .ptile.sm { width: 24px; height: 24px; border-radius: 6px; }
+.ptile.xs { width: 18px; height: 18px; border-radius: 5px; font-size: 10px; }
+/* WordPress.org's image inside the tile's border: plugin icons whole, theme screenshots cropped from the top */
+.ptile.pic { overflow: hidden; background: #ffffff; }
+.ptile.ink { background: var(--btn-ink); color: var(--btn-on-ink); border-color: transparent; }
+.ptile .glyph { width: 14px; height: 14px; }
+.ptile.xs .glyph { width: 11px; height: 11px; }
+/* A name with its tile in a line of text */
+.named { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.tiles { display: inline-flex; gap: 4px; flex: none; }
+.tiles:empty { display: none; }
+.ptile img { width: 100%; height: 100%; object-fit: cover; }
+.ptile.theme img { object-position: top; }
 /* A version change: old in the quiet ink, an arrow, the new one bold green */
 .vto { display: inline-flex; align-items: center; gap: 6px; font: 500 var(--fs-sm) var(--mono); color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .vto s { color: var(--text-3); text-decoration: none; }

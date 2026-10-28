@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Overview: what needs you across the fleet (docs/design/redesign, board 01). The fleet sentence is
 // the page head's line; here are the stat cards, the fixes, your sites, the latest changes and versions.
-import { ago, api, NO_TOOLS, noTools, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site } from "../api";
+import { ago, api, NO_TOOLS, noTools, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
+import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
 
@@ -243,14 +244,27 @@ const OUTCOME: Record<Entry["outcome"], string> = { done: "", failed: "It failed
 const FEED = 6;
 
 /** The design's feed sentence: "You turned on AI agent access", "An AI agent ran <b>Update post</b>". */
-export function said(r: Entry) {
+export function said(r: Entry, inventory?: Map<number, SiteInventory> | null) {
   const [verb] = r.what.split(" ");
+  // The plugin or theme the change names, from what that site (or, for several sites, any site) runs.
+  const runs = [...(inventory?.values() ?? [])].filter((i) => r.site_id == null || i.site_id === r.site_id).map((i) => i.inventory);
+  const pkg = pkgNamed(r.what, runs);
+  const tile = pkg && <PkgTile {...pkg} size="xs" />;
   // The log keeps past-tense phrases ("Turned on ...", "Proposed a plan: ...") and tool or job names ("update-post", "Update Yoast SEO").
-  if (r.what.includes(" ") && /ed$/.test(verb)) return `${WHO[r.actor]}${r.actor === "agent_confirmed" ? "," : ""} ${r.what.charAt(0).toLowerCase()}${r.what.slice(1)}`;
+  if (r.what.includes(" ") && /ed$/.test(verb))
+    return (
+      <>
+        {WHO[r.actor]}
+        {r.actor === "agent_confirmed" ? "," : ""} {tile}
+        {r.what.charAt(0).toLowerCase()}
+        {r.what.slice(1)}
+      </>
+    );
   return (
     <>
       {WHO[r.actor]}
-      {r.actor === "agent_confirmed" ? "," : ""} ran <b>{r.what.includes(" ") ? r.what : toolLabel(r.what)}</b>
+      {r.actor === "agent_confirmed" ? "," : ""} ran {tile}
+      <b>{r.what.includes(" ") ? r.what : toolLabel(r.what)}</b>
     </>
   );
 }
@@ -270,6 +284,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
   const [rows, setRows] = useState<Entry[] | null>(null);
   const [error, setError] = useState(false);
   const [who, setWho] = useState<"All" | "You" | "AI">("All");
+  const { inventory } = useInventory();
   useEffect(() => {
     const load = () => api.activityLog().then((r) => (setRows(r), setError(false)), () => setError(true));
     load();
@@ -303,7 +318,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
                 {r.actor === "human" ? "You" : <Glyph name="sparkle" />}
               </span>
               <p>
-                {said(r)}
+                {said(r, inventory)}
                 {r.site_name && (
                   <>
                     {" "}

@@ -4,6 +4,7 @@ import "../styles/screens/security.css";
 import { useState } from "react";
 import { ago, api, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
 import { SiteTile } from "../components/SiteTile";
+import { PkgTile, slugOf } from "../components/PkgTile";
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { toast } from "../components/feedback";
 import type { PlanRow } from "../components/JobSheet";
@@ -177,7 +178,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                           <div>
                             <span className="row">
                               <span className={`tag ${tone}`}>{x.severity ? x.severity[0].toUpperCase() + x.severity.slice(1) : "Not rated"}</span>
-                              <span className="meta">
+                              <span className="meta named">
+                                {x.kind !== "wordpress" && <PkgTile kind={x.kind} slug={x.kind === "plugin" ? slugOf(x.id) : x.id} name={x.name} size="xs" />}
                                 {x.name}
                                 {x.kind !== "wordpress" && ` · ${kind}`}
                               </span>
@@ -263,7 +265,10 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                           </span>
                         </td>
                         <td className="cut" data-tip={x.name}>
-                          {x.name}
+                          <span className="site">
+                            <PkgTile kind="plugin" slug={slugOf(x.id)} name={x.name} size="sm" />
+                            {x.name}
+                          </span>
                         </td>
                         <td className="m">{x.version}</td>
                         <td className="wrap">

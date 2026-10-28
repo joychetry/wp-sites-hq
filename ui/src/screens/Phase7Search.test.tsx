@@ -22,7 +22,7 @@ const ROSA = { id: 1, name: "Rosa", email: "rosa@x.test", notes: "" };
 
 test("local matches come from sites, inventory and clients, one row per plugin", () => {
   const hits = localHits("WOO", [A, B], inv, [ROSA]);
-  expect(hits).toEqual([{ kind: "Plugins", key: "pluginswoocommerce/woocommerce.php", label: "WooCommerce", detail: "On Alpha (10.2.0), Beta (10.3.0, off)" }]);
+  expect(hits).toEqual([{ kind: "Plugins", key: "pluginswoocommerce/woocommerce.php", label: "WooCommerce", detail: "On Alpha (10.2.0), Beta (10.3.0, off)", pkg: { kind: "plugin", slug: "woocommerce", name: "WooCommerce" } }]);
   expect(localHits("rosa", [A, B], inv, [ROSA]).map((h) => `${h.kind}:${h.label}`)).toEqual(["Sites:Alpha", "Clients:Rosa"]);
   expect(localHits("  ", [A], inv, [ROSA])).toEqual([]);
 });

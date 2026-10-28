@@ -7,10 +7,11 @@ import { Skeleton, toast } from "../components/feedback";
 import { Tabs } from "../components/controls";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { ago, api, type Entry, type Job, type JobItem, type Site } from "../api";
+import { ago, api, useInventory, type Entry, type Job, type JobItem, type Site } from "../api";
 import { Button, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
+import { ChangeTile } from "../components/PkgTile";
 import { said, when } from "./Overview";
 
 type Tab = "plans" | "access" | "activity";
@@ -158,7 +159,10 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
                       </div>
                       {items.map((i) => (
                         <div key={i.id}>
-                          <span>{i.label}</span>
+                          <span className="named">
+                            <ChangeTile action={i.action} size="xs" />
+                            {i.label}
+                          </span>
                           <Diff from={i.from_version} to={i.to_version} />
                         </div>
                       ))}
@@ -333,6 +337,7 @@ function Log() {
   const [rows, setRows] = useState<Entry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [more, setMore] = useState(false);
+  const { inventory } = useInventory();
   const load = useCallback(() => {
     api.activityLog().then(
       (r) => {
@@ -384,7 +389,7 @@ function Log() {
                 {r.actor === "human" ? "You" : <Glyph name="sparkle" />}
               </span>
               <p>
-                {said(r)}
+                {said(r, inventory)}
                 {r.site_name ? (
                   <>
                     {" "}

@@ -15,7 +15,6 @@
 .mx-plug > span:last-child { display: grid; min-width: 0; }
 .mx-plug b { font-weight: 600; }
 .mx-plug small { font-size: var(--fs-xs); color: var(--text-3); }
-.ptile .glyph { width: 14px; height: 14px; }
 .ptile.lg { width: 40px; height: 40px; border-radius: 10px; }
 
 /* A cell: the version in mono over its state. Update tinted, active in the well, inactive outlined,
