@@ -190,6 +190,9 @@ test("a comment is answered from the keyboard", async ({ page }) => {
   const box = page.getByRole("textbox", { name: "Your reply to Mira Patel" });
   await expect(box).toBeFocused();
   await page.keyboard.type("Plain milk.");
+  // Cancel, then Send the reply: the design's order, the primary last.
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Send the reply" })).toBeFocused();
   await page.keyboard.press("Enter");
