@@ -42,6 +42,10 @@
 //!                       the consent form with "operator" left unticked
 //!   agent-access-off <url>
 //!   plans | log        agents' plans waiting for a person; Monks Central's activity log
+//!   security [url]     scan one site (or all) for vulnerabilities, abandoned plugins
+//!                      and changed files, and print what each scan found
+//!   monitors           load every home page, look up domains, print each site's monitors
+//!   pagespeed <url>    Google PageSpeed for a public site
 //!
 //! These two need no core of their own, so they also run while the app is open:
 //!   approve <studio site path> <approve url>   the person approves on the site's
@@ -383,6 +387,74 @@ async fn main() -> Res<()> {
             Ok(())
         }
         "plans" => show(&core.waiting_plans()?),
+        "security" => {
+            match args.get(1) {
+                Some(url) => drop(core.scan_security(site_id(&core, url)?).await?),
+                None => core.scan_all_security(false).await,
+            }
+            for r in core.security_reports()? {
+                let name = core.site(r.site_id)?.name;
+                println!(
+                    "{name}: {} vulnerabilities, {} abandoned, checksums {}",
+                    r.vulnerabilities.len(),
+                    r.abandoned.len(),
+                    r.checksums
+                        .as_ref()
+                        .map_or("not compared".into(), |c| format!(
+                            "{} compared, {} differ, {} not verifiable",
+                            c.checked,
+                            c.changed.len(),
+                            c.not_verifiable.len()
+                        ))
+                );
+                for v in &r.vulnerabilities {
+                    println!(
+                        "  {} {} {}: {} ({}; fixed in {})",
+                        v.kind,
+                        v.name,
+                        v.installed,
+                        v.title,
+                        v.severity.as_deref().unwrap_or("not rated"),
+                        v.fixed_in.as_deref().unwrap_or("no fix yet")
+                    );
+                }
+                for a in &r.abandoned {
+                    println!(
+                        "  abandoned {} {}: closed {} last release {:?}",
+                        a.name, a.version, a.closed, a.last_updated
+                    );
+                }
+                for c in r.checksums.iter().flat_map(|c| &c.changed) {
+                    println!(
+                        "  differs {}: {:?} {:?} {:?}",
+                        c.name, c.modified, c.missing, c.added
+                    );
+                }
+                for n in &r.notes {
+                    println!("  note: {n}");
+                }
+            }
+            Ok(())
+        }
+        "monitors" => {
+            core.check_monitors(true).await;
+            for m in core.monitors()? {
+                println!(
+                    "{}: up {:?} status {} in {} ms, uptime 24h {:?}, certificate expires {:?}, domain {:?} expires {:?} {}",
+                    core.site(m.site_id)?.name,
+                    m.up,
+                    m.status,
+                    m.ms,
+                    m.uptime_day,
+                    m.cert_expires,
+                    m.domain,
+                    m.domain_expires,
+                    m.domain_note
+                );
+            }
+            Ok(())
+        }
+        "pagespeed" => show(&core.run_pagespeed(site_id(&core, arg(1)?)?).await?),
         "log" => {
             for e in core.activity_log(None)?.iter().rev() {
                 println!(
