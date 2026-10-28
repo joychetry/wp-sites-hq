@@ -270,6 +270,15 @@ impl TestSite {
             .route("/wp-json/wp/v2/{base}/{id}", any(rest_content))
             .route("/img.png", get(image))
             .route(
+                "/huge.png",
+                get(|| async {
+                    (
+                        [(header::CONTENT_TYPE, "image/png")],
+                        vec![0u8; 26 * 1024 * 1024],
+                    )
+                }),
+            )
+            .route(
                 "/page.html",
                 get(|| async { ([(header::CONTENT_TYPE, "text/html")], "<p>hi") }),
             )

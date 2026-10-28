@@ -1368,14 +1368,17 @@ impl Core {
             }
             Mode::Basic => {
                 // Basic mode has no import tool: fetch the image here, then upload it.
-                let host = url.host_str().unwrap_or_default().to_string();
                 // No credentials, and image links often redirect to a CDN: the probe client.
-                let got = net::send(&self.limits, &host, Retry::ReadOnly, || {
-                    self.probe.get(url.clone())
-                })
-                .await?;
+                // Read at most 25 MB, so a link to a huge file never fills memory.
+                let too_big = || plain("That image is over 25 MB.");
+                let mut got = self
+                    .probe
+                    .get(url.clone())
+                    .send()
+                    .await
+                    .map_err(net::NetError::from)?;
                 let mime = got
-                    .headers
+                    .headers()
                     .get(reqwest::header::CONTENT_TYPE)
                     .and_then(|h| h.to_str().ok())
                     .unwrap_or_default()
@@ -1384,22 +1387,29 @@ impl Core {
                     .unwrap_or_default()
                     .trim()
                     .to_string();
-                if got.status != 200 {
+                if got.status() != 200 {
                     return Err(plain(format!(
                         "The link answered {} instead of an image.",
-                        got.status
+                        got.status().as_u16()
                     )));
                 }
                 if !mime.starts_with("image/") {
                     return Err(plain("That link isn't an image."));
                 }
-                if got.body.len() > MAX_IMPORT {
-                    return Err(plain("That image is over 25 MB."));
+                if got.content_length().is_some_and(|n| n > MAX_IMPORT as u64) {
+                    return Err(too_big());
+                }
+                let mut bytes = Vec::new();
+                while let Some(chunk) = got.chunk().await.map_err(net::NetError::from)? {
+                    bytes.extend_from_slice(&chunk);
+                    if bytes.len() > MAX_IMPORT {
+                        return Err(too_big());
+                    }
                 }
                 let file = Body::File {
                     name: file_name(&url, &mime),
                     mime,
-                    bytes: got.body,
+                    bytes,
                 };
                 let q = [("alt_text", alt.to_string())];
                 let (m, _) = self
@@ -1808,6 +1818,11 @@ mod tests {
             .await
             .unwrap_err();
         assert!(e.to_string().contains("answered 404"), "{e}");
+        let e = core
+            .import_media(s.id, &format!("{}/huge.png", site.url), "")
+            .await
+            .unwrap_err();
+        assert_eq!(e.to_string(), "That image is over 25 MB.");
         assert_eq!(core.media(s.id, 1, "", true).await.unwrap().len(), 1);
         assert!(
             core.media(s.id, 2, "dot", false).await.unwrap().is_empty(),
