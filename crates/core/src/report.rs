@@ -334,6 +334,7 @@ impl Core {
         }
 
         // What went live this month: the newest posts, by the site's own dates.
+        // shortcut: reads the newest 20 posts only, so a busy month lists its last 20; page back by date when a client posts more.
         let q = Query {
             post_type: "post".into(),
             status: Some("publish".into()),
