@@ -57,6 +57,8 @@ const POST: Post = {
   locked: null,
 };
 
+export const SHOP = { id: 9, title: "shop", url: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", mime: "image/jpeg", alt: "The shop", date: "", caption: "", description: "", file_name: "shop.jpg", author: "Joy", width: 0, height: 0, size: 0, thumb: "", usage: null };
+
 function core(over: Record<string, (args: Record<string, unknown>) => unknown> = {}) {
   const calls: [string, Record<string, unknown>][] = [];
   mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
@@ -75,7 +77,9 @@ function core(over: Record<string, (args: Record<string, unknown>) => unknown> =
       case "content_edit":
         return { ...POST, title: "Our menu" };
       case "media_list":
-        return [{ id: 9, title: "shop", url: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", mime: "image/jpeg", alt: "The shop", date: "" }];
+        return { items: [SHOP], total: 1, allowed: {}, limit: 0 };
+      case "media_get":
+        return { ...SHOP, usage: 2 };
       default:
         return null;
     }
@@ -221,16 +225,19 @@ test("existing terms only, when new ones can't be added; trash asks first", asyn
 });
 
 test("Media lists images with their alt text and imports one from a link", async () => {
-  const calls = core({ media_import: (a) => (String(a.url).includes("bad") ? Promise.reject("That link isn't an image.") : { id: 10, title: "dot", url: "", mime: "image/png", alt: "", date: "" }) });
+  const calls = core({ media_import: (a) => (String(a.url).includes("bad") ? Promise.reject("That link isn't an image.") : { ...SHOP, id: 10, title: "dot", alt: "" }) });
   render(<Media sites={[CM]} />);
-  expect(await screen.findByText("The shop")).toBeInTheDocument();
-  const link = screen.getByRole("textbox", { name: "Image link" });
+  const details = await screen.findByRole("form", { name: "Details of shop" });
+  expect(within(details).getByRole("textbox", { name: "Alt text" })).toHaveValue("The shop");
+  fireEvent.click(screen.getByRole("button", { name: "Upload files" }));
+  const form = within(screen.getByRole("form", { name: "Import an image" }));
+  const link = form.getByRole("textbox", { name: "Image link" });
   fireEvent.change(link, { target: { value: "https://x.test/bad.html" } });
-  fireEvent.click(screen.getByRole("button", { name: "Import the image" }));
+  fireEvent.click(form.getByRole("button", { name: "Import the image" }));
   expect(await screen.findByText("That link isn't an image.")).toBeInTheDocument();
   fireEvent.change(link, { target: { value: "https://x.test/dot.png" } });
-  fireEvent.change(screen.getByRole("textbox", { name: "Alt text" }), { target: { value: "A dot" } });
-  fireEvent.click(screen.getByRole("button", { name: "Import the image" }));
+  fireEvent.change(form.getByRole("textbox", { name: "Alt text" }), { target: { value: "A dot" } });
+  fireEvent.click(form.getByRole("button", { name: "Import the image" }));
   expect(await screen.findByText("Added dot to Alpha's media library.")).toBeInTheDocument();
   expect(calls.find((c) => c[0] === "media_import" && c[1].alt === "A dot")).toBeTruthy();
 });

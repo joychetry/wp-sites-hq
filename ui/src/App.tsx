@@ -73,7 +73,7 @@ const ABOUT: Record<Section, string> = {
   Plugins: "Every plugin on every site in one grid. Open a cell to manage that plugin on that site.",
   Themes: "Every theme on every site in one grid. Open a cell to manage that theme on that site.",
   Content: "Posts, pages and every custom post type, site by site.",
-  Media: "Browse a site's media library and bring in images by link.",
+  Media: "Upload, describe and replace the files in a site's media library.",
   Users: "Every user on every site. Add people, change roles, and remove them.",
   Comments: "Moderate every site's comments in one queue.",
   "Classic Monks": "Switch module features on each site, change their settings, and undo what changed.",

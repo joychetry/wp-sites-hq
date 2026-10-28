@@ -363,6 +363,45 @@ export const SCREENS: Screen[] = [
     },
   },
   { name: "media", open: nav("Media") },
+  {
+    name: "media-list",
+    open: async (page) => {
+      await nav("Media")(page);
+      await page.getByRole("button", { name: "List", exact: true }).click();
+      await page.getByRole("checkbox", { name: "Tick sourdough" }).check();
+      await page.getByRole("checkbox", { name: "Tick menu-board" }).check();
+      await page.getByRole("button", { name: /^shop-front/ }).waitFor();
+    },
+  },
+  {
+    name: "media-upload",
+    open: async (page) => {
+      await nav("Media")(page);
+      await page.getByRole("button", { name: "Upload files" }).click();
+      const jpg = (name: string) => ({ name, mimeType: "image/jpeg", buffer: Buffer.alloc(180_000) });
+      await page.getByLabel("Choose files").setInputFiles([jpg("rye-loaf.jpg"), jpg("bakery-team.jpg"), { name: "setup.exe", mimeType: "application/octet-stream", buffer: Buffer.from("MZ") }]);
+      await page.getByRole("list", { name: "Files to upload" }).getByRole("textbox", { name: "Alt text" }).first().fill("A dark rye loaf on a board");
+    },
+  },
+  {
+    name: "media-replaced",
+    open: async (page) => {
+      await nav("Media")(page);
+      await page.getByLabel("Choose the new file").setInputFiles({ name: "shop-front-2026.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(500_000) });
+      await page.getByRole("button", { name: "Undo the replace" }).waitFor();
+    },
+  },
+  {
+    name: "media-picker",
+    open: async (page) => {
+      await nav("Content")(page);
+      await page.getByRole("button", { name: "Pages", exact: true }).click();
+      await page.getByRole("button", { name: "Our menu" }).click();
+      await page.getByRole("button", { name: "Choose an image" }).click();
+      await page.getByRole("list", { name: "Images" }).waitFor();
+      await page.locator(".imgpick").evaluate((e) => e.closest("fieldset")!.scrollIntoView({ block: "start" }));
+    },
+  },
   { name: "updates", open: nav("Updates") },
   {
     name: "updates-plan",

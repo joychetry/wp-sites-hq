@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Media (screens/Media.tsx): the library card of thumbnails, and beside it Import and the picked item. */
+/* Media (screens/Media.tsx): Upload (opened from the page head, with Import from a link) over the library card
+   (grid or list), and beside them the picked item's details.
+   The picker (components/MediaPicker.tsx) reuses the thumbnails. */
 .mlib .card-head .pick { margin-right: auto; gap: var(--sp-2); }
 .mlib .card-head .pick > span { font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 .mlib .card-head .pick .input { width: 200px; min-width: 0; }
@@ -27,3 +29,78 @@
 .mpicked .mono { font-size: var(--fs-xs); }
 .mside .card-body .field { margin: 0; }
 .mside .card-head h2 .glyph { width: 16px; height: 16px; color: var(--text-2); }
+
+/* Filters under the head: type, month, and grid or list. */
+.mfilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding: var(--sp-3) 20px; border-bottom: 1px solid var(--line); }
+.mfilters .select { width: 160px; }
+.mfilters .grow { flex: 1; }
+
+/* The library's tiles: the picture, then the tick (when the site has a media trash) beside the name button.
+   The picked one has a green ring; a ticked one a tinted picture. */
+.mgrid li { display: grid; gap: 6px; align-content: start; }
+.mgrid .mpic { cursor: pointer; }
+.mgrid .mpic:hover .mthumb-img { border-color: var(--line-ui); }
+.mgrid li.on .mthumb-img { outline: 2px solid var(--green); outline-offset: 2px; }
+.mgrid li.sel .mthumb-img { background: var(--sel); }
+.mgrid li.sel .mthumb-img img { opacity: 0.85; }
+.mfoot { display: flex; align-items: flex-start; gap: var(--sp-2); min-width: 0; }
+.mfoot input { flex: none; margin-top: 2px; }
+.mfoot .mthumb { flex: 1; min-width: 0; gap: 2px; }
+
+/* List view: a small picture, the title over the file name, then the facts. */
+.mlist { overflow-x: auto; }
+.mlist .t .tick { width: 44px; padding-right: 0; }
+.mlist .t .name { width: 40%; max-width: 0; }
+.mlist .t tr.sel td { background: var(--sel); }
+.mrow { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-width: 0; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.mrow .mthumb-img { width: 48px; flex: none; border-radius: 6px; }
+.mrow > span { display: grid; min-width: 0; }
+.mrow b { font-weight: 600; }
+.mrow small { font-size: var(--fs-xs); color: var(--text-3); }
+.mrow .cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow[aria-pressed="true"] b { color: var(--brand-text); }
+.mlist .when { font: 400 var(--fs-xs)/16px var(--mono); color: var(--text-3); }
+.mlist .who { color: var(--text-2); }
+
+/* Details: a large preview, the facts, the address, the fields, then Replace. */
+.mpreview .mthumb-img { aspect-ratio: 4 / 3; border-radius: 10px; }
+.mpreview .mthumb-img img { object-fit: contain; background: var(--panel); }
+.mpreview .mthumb-img .glyph { width: 32px; height: 32px; }
+.mdetails .dl dd.cut { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdetails .field { margin: 0; }
+.mdetails .row.nowrap .input { min-width: 0; }
+.mform { display: grid; gap: var(--sp-3); }
+.mreplace { display: grid; gap: var(--sp-2); padding-top: var(--sp-4); border-top: 1px solid var(--line); justify-items: start; }
+.mreplace h3 { margin: 0; font: 600 var(--fs) var(--sans); }
+.mreplace p { margin: 0; font-size: var(--fs-sm); }
+.mreplace .drop, .mreplace .row.nowrap { width: 100%; }
+.row.nowrap .progress { flex: 1; margin: 0; }
+
+/* The upload list: each picked file with its details, then its bar while it goes. */
+.mup .card-body > small { font-size: var(--fs-sm); }
+.mqueue { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.mqueue li { display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.mqueue li .progress { margin: 0; }
+.mq-head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.mq-head b { flex: 1; min-width: 0; font: 500 var(--fs-sm)/1.4 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mq-head .dim { font-size: var(--fs-xs); }
+.mq-head .ok { color: var(--ok); font-size: var(--fs-sm); font-weight: 600; }
+.mqueue .err { margin: 0; }
+.mq-fields { display: grid; gap: var(--sp-2); }
+.mq-fields .field { margin: 0; gap: 4px; }
+
+/* The picker's own upload, under the library. */
+.imgpick-up { display: grid; gap: var(--sp-2); width: 100%; padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.imgpick-up .field { margin: 0; }
+.imgpick > form.row { width: 100%; }
+.imgpick > form .srch { flex: 1; }
+.mfilters .dt.sm .dt-btn { height: var(--field-sm); }
+
+/* Upload's queue lays each file's fields side by side; Import from a link sits under a line. */
+.mup .mq-fields { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.mimport { display: grid; gap: var(--sp-3); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
+.mimport h3 { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font: 600 var(--fs) var(--sans); }
+.mimport h3 .glyph { width: 16px; height: 16px; color: var(--text-2); }
+.mimport-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--sp-3); align-items: end; }
+.mimport-row .field { margin: 0; }
+@media (max-width: 900px) { .mimport-row { grid-template-columns: minmax(0, 1fr); } }

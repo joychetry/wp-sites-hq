@@ -13,14 +13,14 @@
 .cfilter .srch .input { width: 100%; }
 
 /* The bulk bar: the ink band on the card's top edge, always there so nothing moves when ticking. */
-.ctable .bulk { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-height: 46px; padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); background: var(--btn-ink); color: var(--btn-on-ink); }
-.ctable .bulk b { font-weight: 600; font-size: var(--fs-sm); margin-right: var(--sp-2); }
-.ctable .bulk .grow { flex: 1; }
-.ctable .bulk .btn { background: transparent; color: inherit; border-color: transparent; }
-.ctable .bulk .btn:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); }
-.ctable .bulk .btn:disabled { opacity: 0.6; }
-.ctable .bulk .kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 35%, transparent); }
-.ctable .bulk :focus-visible { outline-color: var(--btn-on-ink); }
+.ctable .bulk, .mlib .bulk { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-height: 46px; padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); background: var(--btn-ink); color: var(--btn-on-ink); }
+.ctable .bulk b, .mlib .bulk b { font-weight: 600; font-size: var(--fs-sm); margin-right: var(--sp-2); }
+.ctable .bulk .grow, .mlib .bulk .grow { flex: 1; }
+.ctable .bulk .btn, .mlib .bulk .btn { background: transparent; color: inherit; border-color: transparent; }
+.ctable .bulk .btn:hover:not(:disabled), .mlib .bulk .btn:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); }
+.ctable .bulk .btn:disabled, .mlib .bulk .btn:disabled { opacity: 0.6; }
+.ctable .bulk .kbd, .mlib .bulk .kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 35%, transparent); }
+.ctable .bulk :focus-visible, .mlib .bulk :focus-visible { outline-color: var(--btn-on-ink); }
 
 /* The table: bold titles, muted authors, mono dates; a ticked row is tinted. */
 .ctable .t { width: 100%; }

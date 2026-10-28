@@ -305,7 +305,32 @@ export type Draft = {
 
 export type Revision = { id: number; date: string; author: string; title: string };
 
-export type Media = { id: number; title: string; url: string; mime: string; alt: string; date: string };
+export type Media = {
+  id: number;
+  title: string;
+  url: string;
+  mime: string;
+  alt: string;
+  date: string;
+  caption: string;
+  description: string;
+  file_name: string;
+  author: string;
+  width: number;
+  height: number;
+  /** Bytes; 0 when not known. */
+  size: number;
+  thumb: string;
+  /** Entries using it, when asked for and the site can tell. */
+  usage: number | null;
+};
+/** One page of a media library, and what the site takes. */
+export type Library = { items: Media[]; total: number; allowed: Record<string, string>; limit: number };
+export type MediaQuery = { page?: number; search?: string; kind?: string; month?: string; usage?: boolean };
+export type MediaDetails = { alt?: string; title?: string; caption?: string; description?: string };
+export type Moved = { done: number[]; skipped: [number, string][] };
+/** A `media-progress` event: bytes sent of all, for the upload with this key. */
+export type MediaProgress = { key: string; sent: number; total: number };
 
 export type User = { id: number; username: string; email: string; name: string; role: string; registered: string };
 export type Role = { id: string; name: string };
@@ -392,7 +417,16 @@ export const api = {
   restoreRevision: (id: number, postId: number, revisionId: number) =>
     invoke<string>("content_restore_revision", { id, postId, revisionId }),
   untrash: (id: number, postId: number) => invoke<string>("content_untrash", { id, postId }),
-  media: (id: number, page: number, search: string, images: boolean) => invoke<Media[]>("media_list", { id, page, search, images }),
+  media: (id: number, query: MediaQuery) => invoke<Library>("media_list", { id, query }),
+  mediaItem: (id: number, mediaId: number) => invoke<Media>("media_get", { id, mediaId }),
+  /** `data` is the picked file as base64; progress comes as `media-progress` events with `key`. */
+  uploadMedia: (id: number, key: string, name: string, data: string, details: MediaDetails) => invoke<Media>("media_upload", { id, key, name, data, details }),
+  replaceMedia: (id: number, mediaId: number, key: string, name: string, data: string, keepName: boolean) => invoke<Media>("media_replace", { id, mediaId, key, name, data, keepName }),
+  stopMedia: (key: string) => invoke<void>("media_stop", { key }),
+  updateMedia: (id: number, mediaId: number, details: MediaDetails) => invoke<Media>("media_update", { id, mediaId, details }),
+  restoreMediaFile: (id: number, mediaId: number) => invoke<Media>("media_restore_file", { id, mediaId }),
+  trashMedia: (id: number, ids: number[], back: boolean) => invoke<Moved>("media_trash", { id, ids, back }),
+  onMediaProgress: (f: (p: MediaProgress) => void) => listen<MediaProgress>("media-progress", (e) => f(e.payload)),
   importMedia: (id: number, url: string, alt: string) => invoke<Media>("media_import", { id, url, alt }),
   users: (id: number, search: string, page = 1) => invoke<Users>("users_list", { id, search, page }),
   createUser: (id: number, user: NewUser) => invoke<User>("user_create", { id, user }),
@@ -452,6 +486,16 @@ export const api = {
 };
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */
+/** A file the person picked, as base64 without the data: prefix. */
+export function fileBase64(file: File): Promise<string> {
+  return new Promise((ok, fail) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(",", 2)[1] ?? "");
+    r.onerror = () => fail("The file couldn't be read.");
+    r.readAsDataURL(file);
+  });
+}
+
 export function hasTool(s: Site, tool: string): boolean {
   const tools = s.capabilities.abilities;
   return s.mode === "classic_monks" && Array.isArray(tools) && tools.includes(tool);

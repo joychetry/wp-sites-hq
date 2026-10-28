@@ -5,10 +5,11 @@ import "../styles/screens/media.css";
 import "../styles/screens/editor.css";
 import { Combobox, DateInput, Select } from "../components/controls";
 import { useEffect, useState } from "react";
-import { api, hasTool, type Block, type Draft, type Media, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
+import { api, hasTool, type Block, type Draft, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
 import { Button, Glyph } from "../components/ui";
 import { toast } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
+import { MediaPicker } from "../components/MediaPicker";
 import { STATUS_LABEL } from "./Content";
 
 const STATUSES = ["publish", "draft", "pending", "private"];
@@ -248,48 +249,6 @@ function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy;
   );
 }
 
-function ImagePick({ site, onPick, onCancel }: { site: Site; onPick: (m: Media) => void; onCancel: () => void }) {
-  const [images, setImages] = useState<Media[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [at, setAt] = useState<number | null>(null);
-  useEffect(() => {
-    api.media(site.id, 1, "", true).then(setImages, (e) => setError(String(e)));
-  }, [site.id]);
-  // The one clicked, or the newest, is the one Use puts on the entry.
-  const chosen = images?.find((m) => m.id === at) ?? images?.[0] ?? null;
-  return (
-    <div className="imgpick">
-      {error && <p className="alert danger">{error}</p>}
-      {!images && !error && <p role="status">Reading the media library…</p>}
-      {images?.length === 0 && <p>The media library has no images yet. Add one on Media first.</p>}
-      {images && images.length > 0 && (
-        <ul className="mthumbs small" aria-label="Images">
-          {images.map((m) => (
-            <li key={m.id}>
-              <button type="button" className="mthumb" aria-pressed={m.id === chosen?.id} onClick={() => setAt(m.id)}>
-                <span className="mthumb-img">
-                  <img src={m.url} alt="" />
-                </span>
-                <b data-tip={m.title}>{m.title || "No title"}</b>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="row">
-        {chosen && (
-          <Button small kind="soft" onClick={() => onPick(chosen)}>
-            Use {chosen.title || "this image"}
-          </Button>
-        )}
-        <Button small className="quiet" onClick={onCancel}>
-          Keep the current image
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function BlockRow({ b, value, onChange }: { b: Block; value: string; onChange: (html: string) => void }) {
   const label = `${blockLabel(b.name)} ${b.index + 1}`;
   const style = { marginLeft: `calc(${b.depth} * var(--sp-4))` };
@@ -486,8 +445,9 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
               <span className="dim">None</span>
             )}
             {picking ? (
-              <ImagePick
+              <MediaPicker
                 site={site}
+                cancel="Keep the current image"
                 onCancel={() => setPicking(false)}
                 onPick={(m) => {
                   setImage({ id: m.id, url: m.url });

@@ -4,7 +4,7 @@
 import "../styles/screens/install.css";
 import { FilePicker, SearchInput } from "../components/controls";
 import { useEffect, useState } from "react";
-import { api, blocked, can, count, hasTool, type Bundle, type Found, type Site, type SiteInventory, type Staged } from "../api";
+import { api, blocked, can, count, fileBase64, hasTool, type Bundle, type Found, type Site, type SiteInventory, type Staged } from "../api";
 import { Button, Glyph } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { toast } from "../components/feedback";
@@ -50,16 +50,6 @@ export function cannot(s: Site, inv: SiteInventory | undefined, pick: Pick): str
   if (pick.link && s.mode === "basic") return "Basic mode installs from WordPress.org only.";
   if (!pick.link && inv?.inventory.plugins.some((p) => slugOf(p.id) === pick.source)) return "Already installed.";
   return null;
-}
-
-/** A file as base64, without the data: prefix. */
-function base64Of(file: File): Promise<string> {
-  return new Promise((ok, fail) => {
-    const r = new FileReader();
-    r.onload = () => ok(String(r.result).split(",", 2)[1] ?? "");
-    r.onerror = () => fail("The file couldn't be read.");
-    r.readAsDataURL(file);
-  });
 }
 
 /** One slug or link a line, to bundle plugins. */
@@ -213,7 +203,7 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
     setReading(true);
     setError(null);
     try {
-      const zip = await api.stageZip(file.name, await base64Of(file));
+      const zip = await api.stageZip(file.name, await fileBase64(file));
       choose({ zip, kind: zipKind, overwrite, name: zip.name });
       // A new theme isn't switched to unless asked.
       setActivate(zipKind === "plugin");

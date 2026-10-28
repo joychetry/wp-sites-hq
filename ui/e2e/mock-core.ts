@@ -28,6 +28,13 @@ const TOOLS = [
   "list-revisions",
   "restore-revision",
   "untrash-post",
+  "get-media",
+  "upload-media",
+  "update-media",
+  "replace-media",
+  "restore-replaced-media",
+  "trash-media",
+  "restore-media",
   "get-users",
   "create-user",
   "update-user",
@@ -340,12 +347,42 @@ const TYPES = [
   ptype("cm_book", "Books", "Book", [tax("cm_genre", "Genres", false)]),
 ];
 const swatch = (fill: string) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="${fill}"/></svg>`)}`;
-const MEDIA: Media[] = [
-  { id: 31, title: "shop-front", url: swatch("#c8a27a"), mime: "image/jpeg", alt: "The bakery's shop front at dawn", date: "2026-10-20 08:10:00" },
-  { id: 32, title: "sourdough", url: swatch("#8a6a4f"), mime: "image/jpeg", alt: "A sliced sourdough loaf", date: "2026-10-18 12:00:00" },
-  { id: 33, title: "menu-board", url: swatch("#3d5a4c"), mime: "image/png", alt: "", date: "2026-10-11 16:30:00" },
-  { id: 34, title: "price-list", url: "", mime: "application/pdf", alt: "", date: "2026-10-02 09:00:00" },
+const media = (id: number, title: string, url: string, mime: string, alt: string, date: string, over: Partial<Media> = {}): Media => ({
+  id,
+  title,
+  url,
+  mime,
+  alt,
+  date,
+  caption: "",
+  description: "",
+  file_name: `${title}.${mime === "application/pdf" ? "pdf" : mime === "image/png" ? "png" : "jpg"}`,
+  author: "Joy",
+  width: mime.startsWith("image/") ? 1600 : 0,
+  height: mime.startsWith("image/") ? 1200 : 0,
+  size: 284_000,
+  thumb: url,
+  usage: null,
+  ...over,
+});
+let MEDIA: Media[] = [
+  media(31, "shop-front", swatch("#c8a27a"), "image/jpeg", "The bakery's shop front at dawn", "2026-10-20 08:10:00", { caption: "Open from 7 every day", size: 412_000 }),
+  media(32, "sourdough", swatch("#8a6a4f"), "image/jpeg", "A sliced sourdough loaf", "2026-10-18 12:00:00"),
+  media(33, "menu-board", swatch("#3d5a4c"), "image/png", "", "2026-10-11 16:30:00", { size: 96_000 }),
+  media(34, "price-list", "", "application/pdf", "", "2026-10-02 09:00:00", { size: 1_240_000 }),
+  media(35, "croissants", swatch("#d9b26f"), "image/webp", "Butter croissants on a tray", "2026-09-28 07:45:00"),
+  media(36, "team-photo", swatch("#6b7f8e"), "image/jpeg", "", "2026-09-14 15:20:00", { author: "Sam Okafor" }),
 ];
+let TRASHED: number[] = [];
+const STOPS = new Set<string>();
+/** Sends a fake upload's progress in four steps, unless Stop comes first. */
+async function sendSteps(key: string, size: number) {
+  for (let i = 0; i <= 4; i++) {
+    if (STOPS.delete(key)) throw "Stopped. Nothing was added.";
+    progress.forEach((f) => f({ payload: { key, sent: Math.round((size * i) / 4), total: size } }));
+    await new Promise((ok) => setTimeout(ok, 150));
+  }
+}
 const post = (id: number, post_type: string, title: string, status: string, over: Partial<Post> = {}): Post => ({
   id,
   post_type,
@@ -552,6 +589,7 @@ if (fixture === "fleet300") {
 }
 
 const listeners: Array<() => void> = [];
+const progress: Array<(e: { payload: unknown }) => void> = [];
 const changed = () => listeners.forEach((f) => f());
 const edit = (id: number, over: Partial<Site>) => {
   sites = sites.map((s) => (s.id === id ? { ...s, ...over } : s));
@@ -745,8 +783,42 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r("Restored the revision.");
     case "content_untrash":
       return r("draft");
-    case "media_list":
-      return r(args.images ? MEDIA.filter((m) => m.mime.startsWith("image/")) : MEDIA);
+    case "media_list": {
+      const q = args.query as { page?: number; search?: string; kind?: string; month?: string };
+      const list = MEDIA.filter((m) => !TRASHED.includes(m.id) && m.mime.startsWith(q.kind ?? "") && m.date.startsWith(q.month ?? "") && m.title.includes(q.search ?? ""));
+      const page = q.page ?? 1;
+      return r({ items: list.slice((page - 1) * 30, page * 30), total: list.length, allowed: { "jpg|jpeg|jpe": "image/jpeg", png: "image/png", webp: "image/webp", pdf: "application/pdf", mp4: "video/mp4" }, limit: 64 * 1024 * 1024 });
+    }
+    case "media_get":
+      return r({ ...MEDIA.find((m) => m.id === args.mediaId), usage: args.mediaId === 31 ? 3 : 0 });
+    case "media_upload": {
+      const name = args.name as string;
+      const d = args.details as { alt?: string; title?: string; caption?: string };
+      await sendSteps(args.key as string, 300_000);
+      const ext = name.split(".").pop() ?? "jpg";
+      const m = media(Math.max(...MEDIA.map((x) => x.id)) + 1, d.title || name.replace(/\.[^.]+$/, ""), swatch("#9bb59a"), ext === "pdf" ? "application/pdf" : `image/${ext === "jpg" ? "jpeg" : ext}`, d.alt ?? "", "2026-10-29 10:00:00", { caption: d.caption ?? "", file_name: name, size: 300_000 });
+      MEDIA = [m, ...MEDIA];
+      return r(m);
+    }
+    case "media_replace": {
+      await sendSteps(args.key as string, 500_000);
+      MEDIA = MEDIA.map((m) => (m.id === args.mediaId ? { ...m, size: 500_000, url: args.keepName ? m.url.replace(/[^/]*$/, args.name as string) : m.url } : m));
+      return r(MEDIA.find((m) => m.id === args.mediaId));
+    }
+    case "media_stop":
+      STOPS.add(args.key as string);
+      return r(null);
+    case "media_update":
+      MEDIA = MEDIA.map((m) => (m.id === args.mediaId ? { ...m, ...(args.details as Partial<Media>) } : m));
+      return r(MEDIA.find((m) => m.id === args.mediaId));
+    case "media_restore_file":
+      MEDIA = MEDIA.map((m) => (m.id === args.mediaId ? { ...m, size: 284_000 } : m));
+      return r(MEDIA.find((m) => m.id === args.mediaId));
+    case "media_trash": {
+      const ids = args.ids as number[];
+      TRASHED = args.back ? TRASHED.filter((i) => !ids.includes(i)) : [...TRASHED, ...ids];
+      return r({ done: ids, skipped: [] });
+    }
     case "media_import":
       await new Promise((ok) => setTimeout(ok, 300));
       return r(MEDIA[0]);
@@ -843,7 +915,8 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
   }
 }
 
-export async function listen(_event: string, f: () => void) {
-  listeners.push(f);
-  return () => listeners.splice(listeners.indexOf(f), 1);
+export async function listen(event: string, f: (e: { payload: unknown }) => void) {
+  const to = event === "media-progress" ? progress : listeners;
+  to.push(f as () => void);
+  return () => to.splice(to.indexOf(f as () => void), 1);
 }
