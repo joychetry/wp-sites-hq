@@ -221,34 +221,37 @@ export default function App() {
   };
 
   const commands: Command[] = [
-    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Go to", label: s, run: () => setSection(s) })),
-    { id: "add", group: "Actions", label: "Add a site", keys: "A", run: () => setAdding({}) },
-    { id: "check", group: "Actions", label: "Check all sites now", run: checkAll },
+    { id: "add", group: "Actions", label: "Add a site", keys: "A", icon: "plus", run: () => setAdding({}) },
+    { id: "check", group: "Actions", label: "Check all sites now", icon: "refresh", run: checkAll },
     {
       id: "update-all",
       group: "Actions",
       label: waiting.length ? `Update everything waiting (${waiting.length})` : "Update everything waiting (nothing now)",
+      icon: "download",
       run: () => (waiting.length ? plan(planTitle(waiting), waiting) : setSection("Updates")),
     },
-    { id: "install", group: "Actions", label: "Install a plugin", run: () => setInstalling(true) },
-    { id: "scan", group: "Actions", label: "Scan all sites for security problems", run: () => api.scanSecurity().catch(() => {}) },
-    { id: "read", group: "Actions", label: "Read every site's plugins and themes again", run: () => api.refreshInventory().catch(() => {}) },
+    { id: "install", group: "Actions", label: "Install a plugin", icon: "plug", run: () => setInstalling(true) },
+    { id: "scan", group: "Actions", label: "Scan all sites for security problems", icon: "shield", run: () => api.scanSecurity().catch(() => {}) },
+    { id: "read", group: "Actions", label: "Read every site's plugins and themes again", icon: "refresh", run: () => api.refreshInventory().catch(() => {}) },
     {
       id: "theme",
       group: "Actions",
       label: `Switch theme (now ${choice === "system" ? "the same as your computer" : choice})`,
+      icon: choice === "dark" ? "moon" : choice === "light" ? "sun" : "monitor",
       run: () => setChoice(THEME_NEXT[choice]),
     },
     {
       id: "density",
       group: "Actions",
       label: density === "compact" ? "Use comfortable rows" : "Use compact rows",
+      icon: "sliders",
       run: () => setDensity(density === "compact" ? "comfortable" : "compact"),
     },
     ...(plans ?? []).filter((p) => !p.expired).map((p) => ({
       id: `plan-${p.id}`,
       group: "Actions",
       label: `Review the AI agent's plan: ${p.title}`,
+      icon: "sparkle" as const,
       run: () => {
         setFocusPlan(p.id);
         setSection("AI");
@@ -259,14 +262,16 @@ export default function App() {
       group: "Sites",
       label: s.name,
       hint: s.url.replace(/^https?:\/\//, ""),
+      site: s,
       run: () => openSite(s.id),
     })),
     ...all
       .filter((s) => hasTool(s, "create-login-link") && !s.sign_in_again)
-      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, run: () => login(s) })),
+      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, icon: "login" as const, run: () => login(s) })),
     ...all
       .filter((s) => s.sign_in_again)
-      .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, run: () => signInAgain(s.id) })),
+      .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, icon: "login" as const, run: () => signInAgain(s.id) })),
+    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${LABEL[s] ?? s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
   ];
 
   let body;
