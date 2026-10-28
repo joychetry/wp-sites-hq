@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The editor's helpers: WordPress's autop, the safe preview of site HTML, and what Add media inserts.
-import { autop, mediaHtml, safeHtml, WP_TOOLBAR } from "./RichText";
+import { autop, BASE, mediaHtml, safeHtml, WP_TOOLBAR } from "./RichText";
 import type { Media } from "../api";
 
 const SHOP: Media = { id: 9, title: "shop", url: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", mime: "image/jpeg", alt: "The shop", date: "", caption: "", description: "", file_name: "shop.jpg", author: "Joy", width: 0, height: 0, size: 0, thumb: "", usage: null };
@@ -34,4 +34,13 @@ test("Add media inserts an image with its id class, or a link for other files", 
 test("the toolbar is WordPress's two rows, with the Read more tag", () => {
   expect(WP_TOOLBAR.split(" | ")).toHaveLength(2);
   for (const b of ["bold", "italic", "bullist", "numlist", "blockquote", "link", "wpmore", "strikethrough", "hr", "forecolor", "pastetext", "removeformat", "charmap", "outdent", "indent", "undo", "redo"]) expect(WP_TOOLBAR.split(/\s+/)).toContain(b);
+});
+
+test("the editor gives iframes back as the site has them, so saving a typo fix doesn't break a map", async () => {
+  window.matchMedia ??= (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as never; // TinyMCE reads it on load
+  const { default: tinymce } = await import("tinymce/tinymce");
+  const parse = tinymce.html.DomParser({ ...BASE, validate: true } as never);
+  const out = tinymce.html.Serializer({}).serialize(parse.parse('<p>Map</p><iframe src="https://maps.example/embed?x=1" width="600"></iframe>'));
+  expect(out).toContain('<iframe src="https://maps.example/embed?x=1" width="600">');
+  expect(out).not.toContain("sandbox");
 });

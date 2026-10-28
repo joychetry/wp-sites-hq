@@ -11,7 +11,7 @@ import { Button, Glyph } from "./ui";
 
 const load = () => import("./tinymce").then((m) => m.default);
 
-const BASE: RawEditorOptions = {
+export const BASE: RawEditorOptions = {
   license_key: "gpl",
   inline: true,
   skin: false,
@@ -29,6 +29,8 @@ const BASE: RawEditorOptions = {
   link_default_target: undefined,
   link_title: false,
   color_map: ["000000", "Black", "56625B", "Grey", "016B3F", "Green", "B42318", "Red", "B54708", "Amber", "1D4ED8", "Blue", "6D28D9", "Purple", "FFFFFF", "White"],
+  // Saving any edit sends the whole body: iframes (maps, forms) must go back as the site has them.
+  sandbox_iframes: false,
   block_formats: "Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4; Heading 5=h5; Heading 6=h6; Preformatted=pre",
 };
 
