@@ -129,6 +129,16 @@ impl Core {
         if tool == "create-login-link" {
             return Err(plain("Login links are only made in the Monks Central app."));
         }
+        // Files come only from what the person picked in the window (the site also keeps
+        // these to the operator; this holds even if a site tags them otherwise).
+        if matches!(
+            tool,
+            "upload-media" | "replace-media" | "restore-replaced-media"
+        ) {
+            return Err(plain(
+                "Files are only uploaded or replaced in the Monks Central app.",
+            ));
+        }
         if site.mode != Mode::ClassicMonks || !has_tool(&site, tool) {
             return Err(plain(format!("{} has no {tool} tool.", site.name)));
         }
@@ -241,6 +251,16 @@ mod tests {
             "Login links are only made in the Monks Central app."
         );
         assert_eq!(called(&site, "create-login-link"), 0);
+        for tool in ["upload-media", "replace-media", "restore-replaced-media"] {
+            let err = core.agent_call(&s.url, tool, json!({"id": 1})).await;
+            assert!(
+                err.unwrap_err()
+                    .to_string()
+                    .contains("only uploaded or replaced"),
+                "{tool}"
+            );
+            assert_eq!(called(&site, tool), 0);
+        }
 
         // Reads still use the app's grant, with no approval.
         let host = s.url.split_once("://").unwrap().1.to_string();
