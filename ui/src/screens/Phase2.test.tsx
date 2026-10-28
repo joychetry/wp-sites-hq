@@ -2,10 +2,11 @@
 // Updates, the Plugins and Themes matrix, Install and the job sheet.
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
-import { Updates, updatesOf } from "./Updates";
+import { fixes, Updates, updatesOf } from "./Updates";
 import { Matrix, olderStable } from "./Matrix";
 import { Install } from "./Install";
 import { JobSheet, type PlanRow } from "../components/JobSheet";
+import { HeadSlot } from "../components/ui";
 import { site } from "../test-fixtures";
 import type { Item, Job, SiteInventory } from "../api";
 
@@ -36,10 +37,11 @@ const INV = new Map([
 
 test("Updates lists every waiting update, says which sites are left out, and plans them", () => {
   const onPlan = vi.fn();
-  render(<Updates sites={[B, A, BASIC, DOWN]} inventory={INV} onPlan={onPlan} />);
+  render(<HeadSlot.Provider value={document.body}><Updates sites={[B, A, BASIC, DOWN]} inventory={INV} onPlan={onPlan} /></HeadSlot.Provider>);
   const table = screen.getByRole("table", { name: "Updates waiting" });
-  // Alpha: WordPress, WooCommerce, translations; Beta: WooCommerce. Sorted by site.
-  expect(within(table).getAllByRole("row")).toHaveLength(5);
+  // The head, then Alpha (WordPress, WooCommerce, translations) and Beta (WooCommerce), each under its site's row.
+  expect(within(table).getAllByRole("row")).toHaveLength(7);
+  expect(within(table).getByRole("checkbox", { name: "Select every update on Alpha" })).toBeInTheDocument();
   expect(within(table).getByText("7.1.4")).toBeInTheDocument();
   const out = screen.getByRole("region", { name: "Sites not in this list" });
   expect(out).toHaveTextContent("Basic mode can't see updates");
@@ -56,11 +58,22 @@ test("Updates lists every waiting update, says which sites are left out, and pla
 
 test("Updates: nothing waiting, and reading every site again", async () => {
   mockInvoke.mockResolvedValue(null);
-  render(<Updates sites={[BASIC]} inventory={INV} onPlan={vi.fn()} />);
+  render(<HeadSlot.Provider value={document.body}><Updates sites={[BASIC]} inventory={INV} onPlan={vi.fn()} /></HeadSlot.Provider>);
   expect(screen.getByText("No updates waiting.")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Read every site again" }));
   expect(mockInvoke).toHaveBeenCalledWith("inventory_refresh", { id: undefined });
   await waitFor(() => expect(screen.getByRole("button", { name: "Read every site again" })).toBeEnabled());
+});
+
+test("Updates marks an update that fixes a known vulnerability, and only when the new version has the fix", () => {
+  const vuln = { kind: "plugin" as const, id: WOO, name: "WooCommerce", installed: "10.2.0", title: "Stored XSS", severity: "high", fixed_in: "10.3.0", link: null };
+  const report = (fixed_in: string) => ({ site_id: 2, checked_at: 0, vulnerabilities: [{ ...vuln, fixed_in }], abandoned: [], checksums: null, notes: [] });
+  const [woo] = updatesOf(B, INV.get(2));
+  expect(fixes(woo, report("10.3.0"))?.title).toBe("Stored XSS");
+  expect(fixes(woo, report("10.10.0"))).toBeUndefined();
+  render(<HeadSlot.Provider value={document.body}><Updates sites={[B]} inventory={INV} reports={[report("10.3.0")]} onPlan={vi.fn()} /></HeadSlot.Provider>);
+  expect(screen.getByText("Security fix")).toHaveClass("danger");
+  expect(screen.getByText("Action needed")).toBeInTheDocument();
 });
 
 test("updatesOf skips sites that need a sign-in or can't see updates", () => {
@@ -221,11 +234,11 @@ test("a safe update that broke a site says it was rolled back and why, and isn't
 test("the job sheet goes plan, confirm, progress and only sends what stayed ticked", async () => {
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "job_start" ? job({ finished_at: null }) : job()));
   render(<JobSheet state={{ title: "Update WooCommerce on 2 sites", rows: ROWS, start: "plan" }} onClose={vi.fn()} />);
-  expect(screen.getByText("1. Plan")).toHaveAttribute("aria-current", "step");
+  expect(screen.getByText("Pick").closest("li")).toHaveAttribute("aria-current", "step");
   fireEvent.click(screen.getByRole("checkbox", { name: "Update WooCommerce on Beta" }));
   expect(screen.getByRole("checkbox", { name: "Every change on Beta" })).toHaveAttribute("aria-checked", "false");
   fireEvent.click(screen.getByRole("button", { name: "Review 1 change" }));
-  expect(screen.getByText("2. Confirm")).toHaveAttribute("aria-current", "step");
+  expect(screen.getByText("Review").closest("li")).toHaveAttribute("aria-current", "step");
   fireEvent.click(screen.getByRole("button", { name: "Back" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Every change on Beta" }));
   fireEvent.click(screen.getByRole("button", { name: "Review 2 changes" }));
