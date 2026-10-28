@@ -49,6 +49,9 @@ pub enum Block {
     Heading(String),
     Facts(Vec<(String, String)>),
     Item(String),
+    /// A list item naming a plugin or theme, with its WordPress.org picture (a
+    /// `data:` URL). The PDF shows the words only.
+    Pictured(String, String),
     Para(String),
 }
 
@@ -323,12 +326,17 @@ impl Core {
 
         if !work.is_empty() {
             b.push(Block::Heading("Work done".into()));
+            let inv = self
+                .inventory_of(site.id)
+                .ok()
+                .flatten()
+                .unwrap_or_default();
             for (at, what) in work.iter().take(40) {
-                b.push(Block::Item(format!(
-                    "{}: {}",
-                    paths::day(*at),
-                    plain_what(what)
-                )));
+                let text = format!("{}: {}", paths::day(*at), plain_what(what));
+                b.push(match self.icon_named(&inv, what) {
+                    Some(pic) => Block::Pictured(text, pic),
+                    None => Block::Item(text),
+                });
             }
             if work.len() > 40 {
                 b.push(Block::Para(format!("And {} more.", work.len() - 40)));
@@ -499,6 +507,20 @@ fn credit(s: &AppSettings) -> Vec<String> {
 pub fn html(doc: &[Block], s: &AppSettings, title: &str) -> String {
     let mut h = String::new();
     let a = esc(accent(s));
+    // Each picture once, as a class: a plugin updated often repeats it.
+    let mut pics: Vec<&str> = vec![];
+    for block in doc {
+        if let Block::Pictured(_, p) = block
+            && !pics.contains(&p.as_str())
+        {
+            pics.push(p);
+        }
+    }
+    let pic_css: String = pics
+        .iter()
+        .enumerate()
+        .map(|(i, p)| format!(".p{i}{{background-image:url(\"{}\")}}", esc(p)))
+        .collect();
     let _ = write!(
         h,
         "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>{}</title><style>\
@@ -507,6 +529,7 @@ body{{font:15px/1.5 system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;
 h2{{color:{a};font-size:20px;margin:36px 0 0;padding-top:20px;border-top:2px solid {a}}}.url{{color:#555;margin:0 0 12px}}\
 h3{{font-size:15px;margin:20px 0 6px}}dl{{display:grid;grid-template-columns:200px 1fr;gap:4px 16px;margin:0}}dt{{color:#555}}dd{{margin:0}}\
 ul{{margin:0;padding-left:20px}}footer{{margin-top:48px;color:#555;font-size:13px;border-top:1px solid #ddd;padding-top:12px}}\
+li i{{display:inline-block;width:16px;height:16px;margin-right:8px;vertical-align:-3px;border-radius:4px;border:1px solid #ddd;background:#fff center top/cover}}{pic_css}\
 @media print{{body{{margin:0}}h2{{break-before:auto}}}}</style></head><body>\n",
         esc(title)
     );
@@ -515,7 +538,7 @@ ul{{margin:0;padding-left:20px}}footer{{margin-top:48px;color:#555;font-size:13p
     }
     let mut in_list = false;
     for block in doc {
-        let item = matches!(block, Block::Item(_));
+        let item = matches!(block, Block::Item(_) | Block::Pictured(..));
         if in_list && !item {
             h.push_str("</ul>\n");
         }
@@ -538,6 +561,10 @@ ul{{margin:0;padding-left:20px}}footer{{margin-top:48px;color:#555;font-size:13p
                 h.push_str("</dl>\n");
             }
             Block::Item(t) => _ = writeln!(h, "<li>{}</li>", esc(t)),
+            Block::Pictured(t, p) => {
+                let i = pics.iter().position(|x| x == p).unwrap_or_default();
+                _ = writeln!(h, "<li><i class=\"p{i}\"></i>{}</li>", esc(t))
+            }
             Block::Para(t) => _ = writeln!(h, "<p>{}</p>", esc(t)),
         }
     }
@@ -739,7 +766,7 @@ pub fn pdf(doc: &[Block], s: &AppSettings, title: &str) -> Vec<u8> {
                     );
                 }
             }
-            Block::Item(t) => add(
+            Block::Item(t) | Block::Pictured(t, _) => add(
                 block,
                 &format!("\u{2022} {t}"),
                 MARGIN + 8.0,
@@ -1050,6 +1077,9 @@ mod tests {
             Block::Item("one".into()),
             Block::Item("two & three".into()),
             Block::Para("done".into()),
+            Block::Pictured("Update A".into(), "data:image/png;base64,AA==".into()),
+            Block::Pictured("Update B".into(), "data:image/svg+xml;base64,BB==".into()),
+            Block::Pictured("Update A again".into(), "data:image/png;base64,AA==".into()),
         ];
         let s = AppSettings {
             report_accent: "#aa0000".into(),
@@ -1058,6 +1088,10 @@ mod tests {
         let h = html(&doc, &s, "T");
         assert!(h.contains("<h1>&lt;b&gt;Bakery&lt;/b&gt;</h1>"));
         assert!(h.contains("<ul>\n<li>one</li>\n<li>two &amp; three</li>\n</ul>\n<p>done</p>"));
+        // Each picture once, as a class.
+        assert!(h.contains(r#".p0{background-image:url("data:image/png;base64,AA==")}.p1{"#));
+        assert!(h.contains("<ul>\n<li><i class=\"p0\"></i>Update A</li>\n<li><i class=\"p1\"></i>Update B</li>\n<li><i class=\"p0\"></i>Update A again</li>\n</ul>"));
+        assert_eq!(h.matches("AA==").count(), 1);
         assert!(h.contains("color:#aa0000") && h.contains("Made with Monks Central"));
         assert!(
             !html(

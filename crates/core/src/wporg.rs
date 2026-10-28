@@ -16,6 +16,7 @@ use reqwest::Url;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
+use crate::fleet::Inventory;
 use crate::icons::{image_mime, save};
 use crate::net::{self, Retry};
 use crate::{Changed, Core};
@@ -116,6 +117,21 @@ impl Core {
         std::fs::read_to_string(path(&self.home, kind, slug))
             .ok()
             .filter(|s| !s.is_empty())
+    }
+
+    /// The picture of the plugin or theme a sentence names ("Update WooCommerce"),
+    /// longest name first, from what the site runs.
+    pub(crate) fn icon_named(&self, inv: &Inventory, text: &str) -> Option<String> {
+        let plugins = inv
+            .plugins
+            .iter()
+            .map(|p| (Kind::Plugin, plugin_slug(&p.id), &p.name));
+        let themes = inv.themes.iter().map(|t| (Kind::Theme, &*t.id, &t.name));
+        let (kind, slug, _) = plugins
+            .chain(themes)
+            .filter(|(_, _, name)| name.len() > 2 && text.contains(name.as_str()))
+            .max_by_key(|(_, _, name)| name.len())?;
+        self.package_icon(kind, slug)
     }
 
     /// Every cached image, `plugin/akismet` to when it was saved, so the
@@ -285,7 +301,7 @@ mod tests {
     use serde_json::json;
 
     use crate::Options;
-    use crate::fleet::{Inventory, Item};
+    use crate::fleet::Item;
     use crate::security::Feeds;
     use crate::sites::{self, Details, Mode, NewSite};
 
@@ -451,7 +467,7 @@ mod tests {
     fn item(id: &str) -> Item {
         Item {
             id: id.into(),
-            name: id.into(),
+            name: plugin_slug(id).into(),
             ..Default::default()
         }
     }
@@ -553,6 +569,13 @@ mod tests {
                 "theme/twentytwentyfour",
             ]
         );
+
+        // A sentence naming one (the reports' work rows); the longest name wins.
+        let named = |t| core.icon_named(&inv, t).unwrap_or_default();
+        assert!(named("Update woocommerce").starts_with("data:image/svg+xml"));
+        assert!(named("Update elementor/elementor.php").starts_with("data:image/gif"));
+        assert_eq!(core.icon_named(&inv, "Update bricks/bricks.php"), None);
+        assert_eq!(core.icon_named(&inv, "Turned on AI agent access"), None);
 
         // Within the week nothing is asked again, misses included.
         core.refresh_package_icons().await;
