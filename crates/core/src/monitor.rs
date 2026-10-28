@@ -407,6 +407,57 @@ impl Core {
     }
 }
 
+/// The tray's line: "All 4 sites up", or "1 site down: Corner Bakery".
+/// `sites` are (id, name).
+pub fn tray_line(monitors: &[Monitor], sites: &[(i64, &str)]) -> String {
+    let down: Vec<&str> = sites
+        .iter()
+        .filter(|s| {
+            monitors
+                .iter()
+                .any(|m| m.site_id == s.0 && m.up == Some(false))
+        })
+        .map(|s| s.1)
+        .collect();
+    match (down.len(), sites.len()) {
+        (_, 0) => "No sites yet".into(),
+        (0, 1) => "Your site is up".into(),
+        (0, n) => format!("All {n} sites up"),
+        (1, _) => format!("1 site down: {}", down[0]),
+        (n, _) => format!("{n} sites down: {}", down.join(", ")),
+    }
+}
+
+/// Notices after a round of checks: sites that went down, and sites that came
+/// back. `was_down` is updated to the sites down now.
+pub fn news(
+    was_down: &mut std::collections::HashSet<i64>,
+    monitors: &[Monitor],
+    sites: &[(i64, &str)],
+) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for &(id, name) in sites {
+        let Some(m) = monitors.iter().find(|m| m.site_id == id) else {
+            continue;
+        };
+        match m.up {
+            Some(false) if was_down.insert(id) => {
+                out.push((format!("{name} is down"), m.error.clone()));
+            }
+            Some(true) if was_down.remove(&id) => {
+                out.push((
+                    format!("{name} is back up"),
+                    format!("It answered in {:.1} s.", m.ms as f64 / 1000.0),
+                ));
+            }
+            _ => {}
+        }
+    }
+    let known: Vec<i64> = sites.iter().map(|s| s.0).collect();
+    was_down.retain(|id| known.contains(id));
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -433,6 +484,61 @@ mod tests {
         );
         assert_eq!(not_after(&[0x30, 0x05, 0x01]), None);
         assert_eq!(not_after(b""), None);
+    }
+
+    #[test]
+    fn the_tray_says_what_is_down_and_notices_say_what_changed() {
+        let sites = [(1, "MC A"), (2, "Corner Bakery")];
+        let m = |id, up: Option<bool>| Monitor {
+            site_id: id,
+            up,
+            ms: 412,
+            error: "The site didn't answer.".into(),
+            ..Default::default()
+        };
+        assert_eq!(tray_line(&[], &[]), "No sites yet");
+        assert_eq!(
+            tray_line(&[m(1, Some(true))], &sites[..1]),
+            "Your site is up"
+        );
+        assert_eq!(
+            tray_line(&[m(1, Some(true)), m(2, None)], &sites),
+            "All 2 sites up"
+        );
+        assert_eq!(
+            tray_line(&[m(1, Some(true)), m(2, Some(false))], &sites),
+            "1 site down: Corner Bakery"
+        );
+        assert_eq!(
+            tray_line(&[m(1, Some(false)), m(2, Some(false))], &sites),
+            "2 sites down: MC A, Corner Bakery"
+        );
+
+        let mut down = std::collections::HashSet::new();
+        assert!(news(&mut down, &[m(1, Some(true)), m(2, None)], &sites).is_empty());
+        let n = news(&mut down, &[m(1, Some(true)), m(2, Some(false))], &sites);
+        assert_eq!(
+            n,
+            [(
+                "Corner Bakery is down".to_string(),
+                "The site didn't answer.".to_string()
+            )]
+        );
+        assert!(
+            news(&mut down, &[m(2, Some(false))], &sites).is_empty(),
+            "said once"
+        );
+        let n = news(&mut down, &[m(2, Some(true))], &sites);
+        assert_eq!(
+            n,
+            [(
+                "Corner Bakery is back up".to_string(),
+                "It answered in 0.4 s.".to_string()
+            )]
+        );
+        down.insert(9);
+        news(&mut down, &[], &sites);
+        assert!(down.is_empty(), "removed sites are forgotten");
     }
 
     #[test]

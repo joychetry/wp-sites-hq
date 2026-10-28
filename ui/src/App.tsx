@@ -325,7 +325,7 @@ export default function App() {
         ))}
         <div className="foot">
           <p>
-            Checks run while the app is open.
+            Checks run while Monks Central runs, also from the tray with the window closed.
             {nextCheck != null && ` Next check in ${nextCheck} min.`}
           </p>
           {status && <p>Version {status.version}</p>}

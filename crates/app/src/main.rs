@@ -18,7 +18,9 @@ use monks_core::security::Report;
 use monks_core::sites::{Mode, Site};
 use monks_core::{Core, Options, paths, vault};
 use serde_json::Value;
-use tauri::{Emitter, State};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri_plugin_notification::NotificationExt;
 
 /// The in-process core, or why it couldn't start (shown in the window).
 struct AppCore(Result<Arc<Core>, String>);
@@ -589,6 +591,92 @@ async fn security_scan(state: State<'_, AppCore>, id: Option<i64>) -> Res<()> {
     }
 }
 
+/// The "still watching from the tray" notice was shown this run.
+struct TrayHinted;
+
+/// The tray's status line, changed as checks come in.
+struct TrayStatus(MenuItem<tauri::Wry>);
+
+fn show_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+/// The tray agent: closing the window leaves Monks Central watching the
+/// sites from here; Quit stops it. Linux trays show only the menu, so the
+/// menu opens the window too.
+fn tray(app: &AppHandle, core: Arc<Core>) -> tauri::Result<()> {
+    let status = MenuItem::with_id(app, "status", "Checking your sites…", false, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open Monks Central", true, None::<&str>)?;
+    let check = MenuItem::with_id(app, "check", "Load every home page now", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Monks Central", true, None::<&str>)?;
+    let line = PredefinedMenuItem::separator(app)?;
+    let line2 = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(app, &[&status, &line, &open, &check, &line2, &quit])?;
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .ok_or(tauri::Error::InvalidIcon(std::io::Error::other(
+            "no window icon",
+        )))?;
+    tauri::tray::TrayIconBuilder::with_id("main")
+        .icon(icon)
+        .tooltip("Monks Central")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            if let tauri::tray::TrayIconEvent::Click {
+                button: tauri::tray::MouseButton::Left,
+                button_state: tauri::tray::MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_window(tray.app_handle());
+            }
+        })
+        .on_menu_event(move |app, event| match event.id.as_ref() {
+            "open" => show_window(app),
+            "check" => {
+                let core = core.clone();
+                tauri::async_runtime::spawn(async move { core.check_monitors(true).await });
+            }
+            "quit" => {
+                let (core, app) = (core.clone(), app.clone());
+                // Let in-flight site work finish, then go.
+                tauri::async_runtime::spawn(async move {
+                    core.finish().await;
+                    app.exit(0);
+                });
+            }
+            _ => {}
+        })
+        .build(app)?;
+    app.manage(TrayStatus(status));
+    Ok(())
+}
+
+/// After a round of checks: the tray line, and a notice per site that went
+/// down or came back.
+fn monitors_changed(app: &AppHandle, core: &Core, was_down: &mut std::collections::HashSet<i64>) {
+    let (Ok(monitors), Ok(sites)) = (core.monitors(), core.sites()) else {
+        return;
+    };
+    let names: Vec<(i64, &str)> = sites.iter().map(|s| (s.id, s.name.as_str())).collect();
+    let line = monks_core::monitor::tray_line(&monitors, &names);
+    if let Some(status) = app.try_state::<TrayStatus>() {
+        let _ = status.0.set_text(&line);
+    }
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_tooltip(Some(format!("Monks Central: {line}")));
+    }
+    for (title, body) in monks_core::monitor::news(was_down, &monitors, &names) {
+        let _ = app.notification().builder().title(title).body(body).show();
+    }
+}
+
 fn main() {
     let core = tauri::async_runtime::block_on(async {
         let home = paths::data_dir().map_err(|e| e.to_string())?;
@@ -604,11 +692,36 @@ fn main() {
     });
     let background = core.clone().ok();
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .manage(AppCore(core))
+        .on_window_event(|window, event| {
+            // With a tray, closing the window keeps the sites watched.
+            if let WindowEvent::CloseRequested { api, .. } = event
+                && window.app_handle().tray_by_id("main").is_some()
+            {
+                api.prevent_close();
+                let _ = window.hide();
+                let app = window.app_handle();
+                if app.try_state::<TrayHinted>().is_none() {
+                    app.manage(TrayHinted);
+                    let _ = app
+                        .notification()
+                        .builder()
+                        .title("Monks Central is still watching your sites")
+                        .body("It keeps checking them from the tray. To stop, choose Quit in the tray menu.")
+                        .show();
+                }
+            }
+        })
         .setup(move |app| {
             if let Some(core) = background {
                 let handle = app.handle().clone();
+                // No tray (no tray host on this desktop): closing the window quits, as before.
+                if let Err(e) = tray(&handle, core.clone()) {
+                    eprintln!("Monks Central couldn't add its tray icon: {e}");
+                }
                 tauri::async_runtime::spawn(async move {
+                    let mut was_down = std::collections::HashSet::new();
                     let mut changed = core.subscribe();
                     // Renew every grant, then check sites every 15 minutes.
                     core.start_background();
@@ -631,6 +744,9 @@ fn main() {
                             Err(RecvError::Closed) => break,
                         };
                         for c in events {
+                            if c == Changed::Monitors {
+                                monitors_changed(&handle, &core, &mut was_down);
+                            }
                             let _ = handle.emit(c.event(), ());
                         }
                     }
