@@ -1079,10 +1079,21 @@ impl Core {
 
     /// At start: close jobs a closed app left, renew every grant, check every
     /// site (and read its plugins), then check again every 15 minutes. Each
-    /// site's security scan runs once a day.
+    /// site's security scan runs once a day. Home pages load every 5 minutes.
     pub fn start_background(self: &Arc<Self>) {
         let weak: Weak<Self> = Arc::downgrade(self);
         let _ = self.close_unfinished_jobs();
+        let monitors = weak.clone();
+        tokio::spawn(async move {
+            loop {
+                let Some(core) = monitors.upgrade() else {
+                    return;
+                };
+                core.check_monitors(false).await;
+                drop(core);
+                tokio::time::sleep(crate::monitor::UPTIME_EVERY).await;
+            }
+        });
         tokio::spawn(async move {
             if let Some(core) = weak.upgrade() {
                 core.refresh_all().await;

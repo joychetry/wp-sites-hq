@@ -9,6 +9,7 @@ pub mod control;
 pub mod fleet;
 pub mod ipc;
 pub mod lock;
+pub mod monitor;
 pub mod net;
 pub mod oauth;
 pub mod paths;
@@ -58,6 +59,8 @@ pub enum Changed {
     Activity,
     /// A site's security scan finished.
     Security,
+    /// Home pages were loaded, or a domain or PageSpeed result came in.
+    Monitors,
 }
 
 impl Changed {
@@ -69,6 +72,7 @@ impl Changed {
             Changed::Jobs => "jobs-changed",
             Changed::Activity => "activity-changed",
             Changed::Security => "security-changed",
+            Changed::Monitors => "monitors-changed",
         }
     }
 }
@@ -107,6 +111,8 @@ pub struct Core {
     keychain: Result<Arc<CredentialStore>, String>,
     vault: Mutex<Option<Arc<vault::Vault>>>,
     http: reqwest::Client,
+    /// Loads home pages for monitoring, and keeps their certificates.
+    probe: reqwest::Client,
     feeds: security::Feeds,
     limits: net::Limits,
     refresh_locks: Mutex<HashMap<(i64, connect::Grant), RefreshLock>>,
@@ -129,6 +135,7 @@ impl Core {
         let lock = lock::CoreLock::acquire(&home)?;
         let store = store::Store::open(&paths::database(&home))?;
         let http = net::client().map_err(std::io::Error::other)?;
+        let probe = net::probe().map_err(std::io::Error::other)?;
         let core = Arc::new(Self {
             home,
             store: Mutex::new(store),
@@ -137,6 +144,7 @@ impl Core {
             keychain: opts.keychain.clone(),
             vault: Mutex::new(None),
             http,
+            probe,
             feeds: opts.feeds.clone(),
             limits: net::Limits::default(),
             refresh_locks: Mutex::new(HashMap::new()),

@@ -12,6 +12,7 @@ use monks_core::content::{Draft, Listing, Media, Post, PostType, Query, Term};
 use monks_core::control::{Activity, Approval, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
+use monks_core::monitor::{Monitor, PageSpeed};
 use monks_core::people::{Comments, NewUser, User, Users};
 use monks_core::security::Report;
 use monks_core::sites::{Mode, Site};
@@ -537,6 +538,26 @@ fn activity_list(state: State<'_, AppCore>, before: Option<i64>) -> Res<Vec<Entr
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn monitors_list(state: State<'_, AppCore>) -> Res<Vec<Monitor>> {
+    core(&state)?.monitors().map_err(|e| e.to_string())
+}
+
+/// Load every home page and look up every domain now.
+#[tauri::command]
+async fn monitors_check(state: State<'_, AppCore>) -> Res<()> {
+    core(&state)?.check_monitors(true).await;
+    Ok(())
+}
+
+#[tauri::command]
+async fn pagespeed_run(state: State<'_, AppCore>, id: i64) -> Res<PageSpeed> {
+    core(&state)?
+        .run_pagespeed(id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Open a link from an outside feed (a vulnerability report) in the browser.
 #[tauri::command]
 fn link_open(url: String) -> Res<()> {
@@ -604,6 +625,7 @@ fn main() {
                                     Changed::Jobs,
                                     Changed::Activity,
                                     Changed::Security,
+                                    Changed::Monitors,
                                 ]
                             }
                             Err(RecvError::Closed) => break,
@@ -673,6 +695,9 @@ fn main() {
             security_list,
             security_scan,
             link_open,
+            monitors_list,
+            monitors_check,
+            pagespeed_run,
         ])
         .run(tauri::generate_context!())
         .expect("Monks Central couldn't open its window");

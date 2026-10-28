@@ -32,6 +32,20 @@ pub fn client() -> reqwest::Result<reqwest::Client> {
         .build()
 }
 
+/// For monitoring: a visitor's request, which also hands back the certificate.
+pub fn probe() -> reqwest::Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .user_agent(concat!(
+            "MonksCentral/",
+            env!("CARGO_PKG_VERSION"),
+            " (uptime)"
+        ))
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(20))
+        .tls_info(true)
+        .build()
+}
+
 /// A request failure in plain words. The cause stays in `source`.
 #[derive(Debug, thiserror::Error)]
 #[error("{message}")]
