@@ -12,6 +12,7 @@ pub mod fleet;
 pub mod icons;
 pub mod ipc;
 pub mod lock;
+pub mod media;
 pub mod monitor;
 pub mod net;
 pub mod oauth;

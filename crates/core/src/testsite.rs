@@ -73,6 +73,8 @@ pub struct State {
     /// install-zip uploads under way, by upload id.
     pub uploads: HashMap<String, Vec<u8>>,
     pub zip_kinds: Vec<String>,
+    /// The file name an upload-media or replace-media upload started with.
+    upload_name: String,
     /// Classic Monks before M8: no install-zip.
     pub no_zip_tool: bool,
     /// `overwrite` as the upload's first chunk sent it.
@@ -165,6 +167,7 @@ impl Default for State {
             revisions: Vec::new(),
             uploads: HashMap::new(),
             zip_kinds: Vec::new(),
+            upload_name: String::new(),
             no_zip_tool: false,
             zip_overwrite: false,
             no_woo: false,
@@ -1011,6 +1014,12 @@ const CONTENT_TOOLS: &[(&str, bool)] = &[
     ("list-revisions", true),
     ("restore-revision", false),
     ("untrash-post", false),
+    ("upload-media", false),
+    ("update-media", false),
+    ("replace-media", false),
+    ("restore-replaced-media", false),
+    ("trash-media", false),
+    ("restore-media", false),
 ];
 
 /// (name, plural, singular, REST base, taxonomies)
@@ -1033,7 +1042,7 @@ fn tax_of_base(base: &str) -> Option<&'static str> {
     TAXES.iter().find(|t| t.2 == base).map(|t| t.0)
 }
 
-const DOT_PNG: &[u8] = &[
+pub(crate) const DOT_PNG: &[u8] = &[
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52,
 ];
 
@@ -1211,7 +1220,10 @@ impl State {
 
     fn add_media(&mut self, url: &str, mime: &str, alt: &str) -> serde_json::Value {
         let id = self.new_id();
-        let m = json!({ "id": id, "title": format!("image-{id}"), "url": url, "mime_type": mime, "alt_text": alt, "date": "2026-10-28 10:00:00" });
+        let file = url.rsplit('/').next().unwrap_or_default();
+        let m = json!({ "id": id, "title": format!("image-{id}"), "url": url, "mime_type": mime, "alt_text": alt, "date": "2026-10-28 10:00:00",
+            "caption": "", "description": "", "file_name": file, "author": "Joy", "author_id": 1, "file_size": 0, "width": 0, "height": 0,
+            "thumbnail": url, "status": "inherit", "backup": null });
         self.media.insert(0, m.clone());
         m
     }
@@ -1315,14 +1327,133 @@ fn content_tool(
             json!({ "post_id": a["post_id"], "status": "draft", "message": "Restored from the trash as a draft." })
         }
         "get-media" => {
-            let images = a["mime_type"] == "image";
+            let kind = a["mime_type"].as_str().unwrap_or_default();
+            let month = a["month"].as_str().unwrap_or_default();
+            let search = a["search"].as_str().unwrap_or_default();
             let list: Vec<_> = s
                 .media
                 .iter()
-                .filter(|m| !images || m["mime_type"].as_str().unwrap().starts_with("image/"))
-                .cloned()
+                .filter(|m| m["status"] != "trash")
+                .filter(|m| m["mime_type"].as_str().unwrap().starts_with(kind))
+                .filter(|m| m["date"].as_str().unwrap().starts_with(month))
+                .filter(|m| m["title"].as_str().unwrap().contains(search))
+                .filter(|m| a["id"].is_null() || m["id"] == a["id"])
+                .map(|m| {
+                    let mut m = m.clone();
+                    m["usage"] = if a["usage"] == true {
+                        0.into()
+                    } else {
+                        serde_json::Value::Null
+                    };
+                    m
+                })
                 .collect();
-            json!({ "media": list, "total": list.len() })
+            json!({ "media": list, "total": list.len(), "upload_limit": 2_097_152,
+                "allowed_types": { "jpg|jpeg|jpe": "image/jpeg", "png": "image/png", "pdf": "application/pdf" } })
+        }
+        "upload-media" | "replace-media" => {
+            // The chunk protocol of upload-media, replace-media and install-zip.
+            let data = base64::engine::general_purpose::STANDARD
+                .decode(a["data"].as_str().unwrap_or_default())
+                .map_err(|_| "data is not valid base64.")?;
+            let key = a["upload_id"].as_str().unwrap_or("m1").to_string();
+            if a["upload_id"].is_null() {
+                s.uploads.insert(key.clone(), Vec::new());
+                s.upload_name = a["filename"].as_str().unwrap_or_default().to_string();
+            }
+            let got = s
+                .uploads
+                .get_mut(&key)
+                .ok_or("This upload is unknown or expired.")?;
+            if a["offset"].as_u64().unwrap_or(0) as usize != got.len() {
+                return Err(
+                    "The site has a different number of bytes; send the chunk at that offset."
+                        .into(),
+                );
+            }
+            got.extend(data);
+            if a["done"] != true {
+                return Ok(json!({ "upload_id": key, "received": got.len() }));
+            }
+            let bytes = s.uploads.remove(&key).unwrap_or_default();
+            let file = s.upload_name.clone();
+            let mime = if file.ends_with(".png") {
+                "image/png"
+            } else if file.ends_with(".pdf") {
+                "application/pdf"
+            } else {
+                "image/jpeg"
+            };
+            if name == "upload-media" {
+                let url = format!("{}/wp-content/uploads/2026/10/{file}", s.base);
+                let m = s.add_media(&url, mime, a["alt"].as_str().unwrap_or_default());
+                let i = s.media.iter().position(|x| x["id"] == m["id"]).unwrap();
+                s.media[i]["file_size"] = bytes.len().into();
+                if let Some(t) = a["title"].as_str().filter(|t| !t.is_empty()) {
+                    s.media[i]["title"] = t.into();
+                }
+                return Ok(
+                    json!({ "upload_id": key, "received": bytes.len(), "attachment_id": m["id"], "url": url, "mime_type": mime }),
+                );
+            }
+            let m = s
+                .media
+                .iter_mut()
+                .find(|m| m["id"] == a["id"])
+                .ok_or("Attachment not found.")?;
+            m["backup"] = m["file_size"].clone();
+            m["file_size"] = bytes.len().into();
+            m["mime_type"] = mime.into();
+            json!({ "id": a["id"], "url": m["url"], "has_backup": true })
+        }
+        "update-media" => {
+            let m = s
+                .media
+                .iter_mut()
+                .find(|m| m["id"] == a["id"])
+                .ok_or("Attachment not found.")?;
+            for (from, to) in [
+                ("alt", "alt_text"),
+                ("title", "title"),
+                ("caption", "caption"),
+                ("description", "description"),
+            ] {
+                if let Some(v) = a.get(from) {
+                    m[to] = v.clone();
+                }
+            }
+            json!({ "id": a["id"] })
+        }
+        "restore-replaced-media" => {
+            let m = s
+                .media
+                .iter_mut()
+                .find(|m| m["id"] == a["id"])
+                .ok_or("Attachment not found.")?;
+            if m["backup"].is_null() {
+                return Err("This item has no earlier file to put back.".into());
+            }
+            let now = m["file_size"].clone();
+            m["file_size"] = m["backup"].clone();
+            m["backup"] = now;
+            json!({ "id": a["id"], "has_backup": true })
+        }
+        "trash-media" | "restore-media" => {
+            let back = name == "restore-media";
+            let (mut done, mut skipped) = (Vec::new(), Vec::new());
+            for id in a["ids"].as_array().into_iter().flatten() {
+                match s.media.iter_mut().find(|m| m["id"] == *id) {
+                    None => skipped.push(json!({ "id": id, "reason": "not_an_attachment" })),
+                    Some(m) if (m["status"] == "trash") != back => {
+                        skipped.push(json!({ "id": id, "reason": if back { "not_in_trash" } else { "already_trashed" } }))
+                    }
+                    Some(m) => {
+                        m["status"] = if back { "inherit" } else { "trash" }.into();
+                        done.push(id.clone());
+                    }
+                }
+            }
+            json!({ if back { "restored" } else { "trashed" }: done, "skipped": skipped, "retention_days": 30 })
         }
         "import-media-from-url" => {
             let m = s.add_media(
@@ -1334,6 +1465,13 @@ fn content_tool(
         }
         _ => unreachable!("not a content tool: {name}"),
     })
+}
+
+/// A media item as core REST's edit context gives it.
+fn rest_media(m: &serde_json::Value) -> serde_json::Value {
+    json!({ "id": m["id"], "title": { "raw": m["title"] }, "source_url": m["url"], "mime_type": m["mime_type"], "alt_text": m["alt_text"],
+        "caption": { "raw": m["caption"] }, "description": { "raw": m["description"] }, "date": "2026-10-28T10:00:00",
+        "media_details": { "filesize": m["file_size"] } })
 }
 
 /// Core REST for content: types, taxonomies, posts by REST base, terms and media.
@@ -1393,8 +1531,11 @@ async fn rest_content(
                 )
                     .into_response();
             }
-            let list: Vec<_> = s.media.iter().map(|m| json!({ "id": m["id"], "title": { "rendered": m["title"] }, "source_url": m["url"], "mime_type": m["mime_type"], "alt_text": m["alt_text"], "date": "2026-10-28T10:00:00" })).collect();
-            ok(list.into())
+            let list: Vec<_> = s.media.iter().map(rest_media).collect();
+            let mut r = ok(list.clone().into());
+            r.headers_mut()
+                .insert("x-wp-total", list.len().to_string().parse().unwrap());
+            r
         }
         ("media", None, "POST") => {
             let mime = h
@@ -1421,6 +1562,22 @@ async fn rest_content(
         }
         ("media", Some(id), "GET") => match s.media.iter().find(|m| m["id"] == id) {
             Some(m) => ok(json!({ "id": id, "source_url": m["url"] })),
+            None => missing(),
+        },
+        ("media", Some(id), "POST") => match s.media.iter_mut().find(|m| m["id"] == id) {
+            Some(m) => {
+                for (from, to) in [
+                    ("alt_text", "alt_text"),
+                    ("title", "title"),
+                    ("caption", "caption"),
+                    ("description", "description"),
+                ] {
+                    if let Some(v) = json_body.get(from) {
+                        m[to] = v.clone();
+                    }
+                }
+                ok(rest_media(m))
+            }
             None => missing(),
         },
         (b, None, "GET") if tax_of_base(b).is_some() => {

@@ -12,11 +12,12 @@ use monks_core::activity::{Actor, Entry};
 use monks_core::business::{AppSettings, Client, Cost, Imported};
 use monks_core::connect::{Removed, SiteError};
 use monks_core::content::{
-    Draft, Found as ContentFound, Listing, Media, Post, PostType, Query, Revision, Term,
+    Draft, Found as ContentFound, Listing, Post, PostType, Query, Revision, Term,
 };
 use monks_core::control::{Activity, Approval, CmReports, FeatureGroup, Setting};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
+use monks_core::media::{self, Details, Library, Media, MediaQuery, Moved};
 use monks_core::monitor::{Monitor, PageSpeed};
 use monks_core::packages::{Bundle, Staged};
 use monks_core::people::{Comments, NewUser, User, Users};
@@ -389,17 +390,157 @@ async fn content_untrash(state: State<'_, AppCore>, id: i64, post_id: i64) -> Re
 }
 
 #[tauri::command]
-async fn media_list(
-    state: State<'_, AppCore>,
-    id: i64,
-    page: u32,
-    search: String,
-    images: bool,
-) -> Res<Vec<Media>> {
+async fn media_list(state: State<'_, AppCore>, id: i64, query: MediaQuery) -> Res<Library> {
     let core = core(&state)?;
-    core.media(id, page, &search, images)
+    core.media(id, &query).await.map_err(|e| e.to_string())
+}
+
+/// One item with the number of entries using it.
+#[tauri::command]
+async fn media_get(state: State<'_, AppCore>, id: i64, media_id: i64) -> Res<Media> {
+    let core = core(&state)?;
+    core.media_item(id, media_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// Uploads and replaces under way, by the window's key, so Stop can reach them.
+#[derive(Default)]
+struct Sending(std::sync::Mutex<BTreeMap<String, Arc<std::sync::atomic::AtomicBool>>>);
+
+impl Sending {
+    fn start(&self, key: &str) -> Arc<std::sync::atomic::AtomicBool> {
+        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        self.0.lock().unwrap().insert(key.into(), stop.clone());
+        stop
+    }
+    fn end(&self, key: &str) {
+        self.0.lock().unwrap().remove(key);
+    }
+}
+
+/// `media-progress` events for the window: bytes sent of all, by key.
+fn progress(app: &AppHandle, key: &str) -> impl Fn(u64, u64) + Send + Sync + use<> {
+    let (app, key) = (app.clone(), key.to_string());
+    move |sent, total| {
+        let _ = app.emit(
+            "media-progress",
+            serde_json::json!({ "key": key, "sent": sent, "total": total }),
+        );
+    }
+}
+
+/// A file the person picked or dropped in the window, as base64. Never a path.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+async fn media_upload(
+    app: AppHandle,
+    state: State<'_, AppCore>,
+    sending: State<'_, Sending>,
+    id: i64,
+    key: String,
+    name: String,
+    data: String,
+    details: Details,
+) -> Res<Media> {
+    let core = core(&state)?;
+    let stop = sending.start(&key);
+    let r = match media::decode_file(&data) {
+        Ok(bytes) => {
+            drop(data);
+            core.upload_media(id, &name, &bytes, &details, &progress(&app, &key), &stop)
+                .await
+        }
+        Err(e) => Err(e),
+    };
+    sending.end(&key);
+    done(&core, Some(id), &format!("Uploaded {name}"), r)
+}
+
+/// Put a picked file in place of an item's file (same ID and, unless `keep_name`, address).
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+async fn media_replace(
+    app: AppHandle,
+    state: State<'_, AppCore>,
+    sending: State<'_, Sending>,
+    id: i64,
+    media_id: i64,
+    key: String,
+    name: String,
+    data: String,
+    keep_name: bool,
+) -> Res<Media> {
+    let core = core(&state)?;
+    let stop = sending.start(&key);
+    let r = match media::decode_file(&data) {
+        Ok(bytes) => {
+            drop(data);
+            let tell = progress(&app, &key);
+            core.replace_media(id, media_id, &name, &bytes, keep_name, &tell, &stop)
+                .await
+        }
+        Err(e) => Err(e),
+    };
+    sending.end(&key);
+    done(
+        &core,
+        Some(id),
+        &format!("Replaced the file of media item {media_id} with {name}"),
+        r,
+    )
+}
+
+/// Stop an upload or replace between chunks.
+#[tauri::command]
+fn media_stop(sending: State<'_, Sending>, key: String) {
+    if let Some(stop) = sending.0.lock().unwrap().get(&key) {
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+#[tauri::command]
+async fn media_update(
+    state: State<'_, AppCore>,
+    id: i64,
+    media_id: i64,
+    details: Details,
+) -> Res<Media> {
+    let core = core(&state)?;
+    let r = core.update_media(id, media_id, &details).await;
+    done(
+        &core,
+        Some(id),
+        &format!("Changed the details of media item {media_id}"),
+        r,
+    )
+}
+
+/// Put back the file an item had before its last replace.
+#[tauri::command]
+async fn media_restore_file(state: State<'_, AppCore>, id: i64, media_id: i64) -> Res<Media> {
+    let core = core(&state)?;
+    let r = core.restore_replaced_media(id, media_id).await;
+    done(
+        &core,
+        Some(id),
+        &format!("Put back the earlier file of media item {media_id}"),
+        r,
+    )
+}
+
+/// Move items to the media trash, or bring them back (`back`).
+#[tauri::command]
+async fn media_trash(state: State<'_, AppCore>, id: i64, ids: Vec<i64>, back: bool) -> Res<Moved> {
+    let core = core(&state)?;
+    let r = core.trash_media(id, &ids, back).await;
+    let what = match (back, ids.len()) {
+        (false, 1) => "Moved 1 media item to the trash".to_string(),
+        (false, n) => format!("Moved {n} media items to the trash"),
+        (true, 1) => "Brought 1 media item back from the trash".to_string(),
+        (true, n) => format!("Brought {n} media items back from the trash"),
+    };
+    done(&core, Some(id), &what, r)
 }
 
 #[tauri::command]
@@ -1022,6 +1163,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppCore(core))
+        .manage(Sending::default())
         .on_window_event(|window, event| {
             // With a tray, closing the window keeps the sites watched.
             if let WindowEvent::CloseRequested { api, .. } = event
@@ -1118,6 +1260,13 @@ fn main() {
             content_restore_revision,
             content_untrash,
             media_list,
+            media_get,
+            media_upload,
+            media_replace,
+            media_stop,
+            media_update,
+            media_restore_file,
+            media_trash,
             media_import,
             clients_list,
             client_save,

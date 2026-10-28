@@ -19,6 +19,7 @@ use crate::Core;
 use crate::blocks::{self, Block};
 use crate::connect::{AppPassword, SiteError, plain, rest_url, site_said};
 use crate::fleet::{Action, has_tool};
+use crate::media::Media;
 use crate::net::{self, Retry};
 use crate::sites::{self, Mode, Site};
 
@@ -167,16 +168,6 @@ pub struct Draft {
     pub date: Option<String>,
     /// Custom fields to set; null removes one. Classic Monks only.
     pub meta: Option<BTreeMap<String, Value>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Media {
-    pub id: i64,
-    pub title: String,
-    pub url: String,
-    pub mime: String,
-    pub alt: String,
-    pub date: String,
 }
 
 /// A post or page that matched a search on every site.
@@ -452,21 +443,6 @@ fn listing(posts: Vec<Summary>, total: u64, page: u32) -> Listing {
     }
 }
 
-fn media_from(m: &Value, rest: bool) -> Media {
-    Media {
-        id: m["id"].as_i64().unwrap_or_default(),
-        title: text(&m["title"]),
-        url: text(if rest { &m["source_url"] } else { &m["url"] }),
-        mime: text(&m["mime_type"]),
-        alt: text(&m["alt_text"]),
-        date: if rest {
-            local(&m["date"])
-        } else {
-            text(&m["date"])
-        },
-    }
-}
-
 /// A status as a person says it.
 pub fn status_label(status: &str) -> &str {
     match status {
@@ -544,7 +520,7 @@ pub(crate) enum Body {
 }
 
 impl Core {
-    fn content_site(&self, id: i64) -> Result<Site, SiteError> {
+    pub(crate) fn content_site(&self, id: i64) -> Result<Site, SiteError> {
         let site = self.site(id)?;
         if site.mode == Mode::ClassicMonks && !has_tool(&site, "list-post-types") {
             return Err(plain(OLD_CLASSIC_MONKS));
@@ -1286,60 +1262,6 @@ impl Core {
         }
     }
 
-    /// One page of the media library, newest first. `images` keeps only images.
-    pub async fn media(
-        &self,
-        id: i64,
-        page: u32,
-        search: &str,
-        images: bool,
-    ) -> Result<Vec<Media>, SiteError> {
-        let _work = self.working().await;
-        let site = self.content_site(id)?;
-        let page = page.max(1);
-        let search = search.trim();
-        match site.mode {
-            Mode::ClassicMonks => {
-                let mut args = json!({ "limit": 30, "offset": (page - 1) * 30 });
-                if images {
-                    args["mime_type"] = "image".into();
-                }
-                if !search.is_empty() {
-                    args["search"] = search.into();
-                }
-                let v = self.call_ability_inner(id, "get-media", args).await?;
-                Ok(v["media"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .map(|m| media_from(m, false))
-                    .collect())
-            }
-            Mode::Basic => {
-                let mut q = vec![("per_page", "30".to_string()), ("page", page.to_string())];
-                if images {
-                    q.push(("media_type", "image".into()));
-                }
-                if !search.is_empty() {
-                    q.push(("search", search.into()));
-                }
-                let reply = self
-                    .rest(&site, Method::GET, "/wp/v2/media", &q, Body::None)
-                    .await?;
-                // Past the last page core REST answers 400; that is an empty page.
-                if reply.status == 400 {
-                    return Ok(Vec::new());
-                }
-                let (v, _) = self.answer(&site, reply)?;
-                Ok(v.as_array()
-                    .into_iter()
-                    .flatten()
-                    .map(|m| media_from(m, true))
-                    .collect())
-            }
-        }
-    }
-
     /// Add an image to the media library from a link.
     pub async fn import_media(&self, id: i64, link: &str, alt: &str) -> Result<Media, SiteError> {
         let _work = self.working().await;
@@ -1364,7 +1286,7 @@ impl Core {
                     url: text(&v["url"]),
                     mime: text(&v["mime_type"]),
                     alt: alt.into(),
-                    date: String::new(),
+                    ..Default::default()
                 })
             }
             Mode::Basic => {
@@ -1416,7 +1338,14 @@ impl Core {
                 let (m, _) = self
                     .rest_json(&site, Method::POST, "/wp/v2/media", &q, file)
                     .await?;
-                Ok(media_from(&m, true))
+                Ok(Media {
+                    id: m["id"].as_i64().unwrap_or_default(),
+                    title: text(&m["title"]),
+                    url: text(&m["source_url"]),
+                    mime: text(&m["mime_type"]),
+                    alt: text(&m["alt_text"]),
+                    ..Default::default()
+                })
             }
         }
     }
@@ -1426,6 +1355,7 @@ impl Core {
 mod tests {
     use super::*;
     use crate::Options;
+    use crate::media::MediaQuery;
     use crate::testsite::TestSite;
     use std::sync::Arc;
 
@@ -1614,7 +1544,14 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(m.alt, "A dot");
-        assert_eq!(core.media(s.id, 1, "", true).await.unwrap()[0].id, m.id);
+        assert_eq!(
+            core.media(s.id, &MediaQuery::default())
+                .await
+                .unwrap()
+                .items[0]
+                .id,
+            m.id
+        );
         let with = core
             .edit_post(
                 s.id,
@@ -1824,9 +1761,27 @@ mod tests {
             .await
             .unwrap_err();
         assert_eq!(e.to_string(), "That image is over 25 MB.");
-        assert_eq!(core.media(s.id, 1, "", true).await.unwrap().len(), 1);
+        assert_eq!(
+            core.media(s.id, &MediaQuery::default())
+                .await
+                .unwrap()
+                .items
+                .len(),
+            1
+        );
         assert!(
-            core.media(s.id, 2, "dot", false).await.unwrap().is_empty(),
+            core.media(
+                s.id,
+                &MediaQuery {
+                    page: Some(2),
+                    search: Some("dot".into()),
+                    ..Default::default()
+                }
+            )
+            .await
+            .unwrap()
+            .items
+            .is_empty(),
             "past the last page"
         );
 
@@ -2087,14 +2042,6 @@ mod tests {
         assert_eq!((r.title.as_str(), r.author.as_str()), ("B", "admin"));
         assert_eq!(listing(vec![], 41, 1).pages, 3);
         assert_eq!(listing(vec![], 0, 1).pages, 1);
-        let m = media_from(
-            &json!({ "id": 3, "title": { "rendered": "Shop" }, "source_url": "https://c/s.jpg", "mime_type": "image/jpeg", "alt_text": "The shop", "date": "2026-10-28T09:00:00" }),
-            true,
-        );
-        assert_eq!(
-            (m.url.as_str(), m.alt.as_str()),
-            ("https://c/s.jpg", "The shop")
-        );
         let with = |status: &str, date: &str| Draft {
             status: Some(status.into()),
             date: (!date.is_empty()).then(|| date.into()),
