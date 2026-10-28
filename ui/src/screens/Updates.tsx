@@ -130,7 +130,9 @@ export function Updates({ sites, inventory, onPlan }: Props) {
             <span>
               Every update waiting on {siteCount(rows) === 1 ? "1 site" : `${siteCount(rows)} sites`}. Installed is the
               version the site runs now; Available is the one it gets. Tick some, or update all; you see the plan before
-              anything changes.
+              anything changes. After each plugin update on a site with current Classic Monks, Monks Central checks that
+              the site still works and puts the
+              old version back if it doesn't.
             </span>
           </p>
           <table className="t" aria-label="Updates waiting" aria-describedby="updates-legend">

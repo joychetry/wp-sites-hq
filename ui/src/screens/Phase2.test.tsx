@@ -205,6 +205,16 @@ function job(over: Partial<Job> = {}): Job {
   };
 }
 
+test("a safe update that broke a site says it was rolled back and why, and isn't offered again", async () => {
+  const reason = "Rolled back to 10.2.0. The home page answered 500 after the update: PHP Fatal error: Uncaught Error.";
+  mockInvoke.mockImplementation(async () => job({ items: [{ ...job().items[1], state: "rolled_back", message: reason }] }));
+  render(<JobSheet state={{ title: "Update WooCommerce", jobId: 9 }} onClose={vi.fn()} />);
+  expect(await screen.findByText("Finished. 0 changes done, 1 rolled back.")).toBeInTheDocument();
+  expect(screen.getByText("Rolled back")).toHaveClass("warning");
+  expect(screen.getByText(reason)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Try the/ })).toBeNull();
+});
+
 test("the job sheet goes plan, confirm, progress and only sends what stayed ticked", async () => {
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "job_start" ? job({ finished_at: null }) : job()));
   render(<JobSheet state={{ title: "Update WooCommerce on 2 sites", rows: ROWS, start: "plan" }} onClose={vi.fn()} />);

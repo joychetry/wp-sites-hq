@@ -87,7 +87,7 @@ export type JobItem = {
   label: string;
   from_version: string | null;
   to_version: string | null;
-  state: "waiting" | "running" | "done" | "failed";
+  state: "waiting" | "running" | "done" | "failed" | "rolled_back";
   message: string;
 };
 

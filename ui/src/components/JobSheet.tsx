@@ -19,8 +19,8 @@ const STEPS: [Step, string][] = [
   ["progress", "3. Progress"],
 ];
 
-const STATE_WORD: Record<JobItem["state"], string> = { waiting: "Waiting", running: "Running", done: "Done", failed: "Failed" };
-const STATE_TONE: Record<JobItem["state"], string> = { waiting: "", running: "", done: "ok", failed: "danger" };
+const STATE_WORD: Record<JobItem["state"], string> = { waiting: "Waiting", running: "Running", done: "Done", failed: "Failed", rolled_back: "Rolled back" };
+const STATE_TONE: Record<JobItem["state"], string> = { waiting: "", running: "", done: "ok", failed: "danger", rolled_back: "warning" };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -197,18 +197,21 @@ type ProgressProps = {
 function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
   const job = useJob(jobId);
   const items = job?.items ?? [];
-  const finished = items.filter((i) => i.state === "done" || i.state === "failed").length;
+  const finished = items.filter((i) => i.state !== "waiting" && i.state !== "running").length;
   const failed = items.filter((i) => i.state === "failed");
+  // Not offered again: trying would break the site again.
+  const back = items.filter((i) => i.state === "rolled_back").length;
+  const notDone = [failed.length && `${failed.length} failed`, back && `${back} rolled back`].filter(Boolean).join(", ");
   const over = job?.finished_at != null;
   const summary = !job
     ? "Starting…"
     : over
-      ? failed.length
-        ? `Finished. ${plural(items.length - failed.length, "change")} done, ${failed.length} failed.`
+      ? notDone
+        ? `Finished. ${plural(items.length - failed.length - back, "change")} done, ${notDone}.`
         : items.length === 1
           ? "Finished. The change is done."
           : `Finished. All ${items.length} changes done.`
-      : `${finished} of ${items.length} finished${failed.length ? `, ${failed.length} failed` : ""}. You can close this panel; it keeps running.`;
+      : `${finished} of ${items.length} finished${notDone ? `, ${notDone}` : ""}. You can close this panel; it keeps running.`;
   return (
     <Sheet
       title={over ? title : `${title}: running`}
@@ -253,6 +256,7 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
             <span className="grow">
               {i.site_name}, {i.label}
               {i.state === "failed" && <span className="why danger">{i.message}</span>}
+              {i.state === "rolled_back" && <span className="why">{i.message}</span>}
               {i.state === "done" && i.message && i.message !== "Done." && <span className="why">{i.message}</span>}
             </span>
             <Versions from={i.from_version} to={i.to_version} />
