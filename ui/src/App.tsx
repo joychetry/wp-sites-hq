@@ -1,5 +1,5 @@
 // The shell: left rail, top bar, Ctrl K palette, theme. Direction B "Console".
-import { Empty, Skeleton, Toaster, Tooltips, toast } from "./components/feedback";
+import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { useEffect, useMemo, useState } from "react";
 import { ago, api, hasTool, siteStatus, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
@@ -73,6 +73,8 @@ const THEME_LABEL: Record<ThemeChoice, string> = {
 
 export default function App() {
   const [section, setSection] = useState<Section>("Overview");
+  // Messages belong to the screen they came from; on another screen they would only cover it.
+  useEffect(() => dismissAll(), [section]);
   const [status, setStatus] = useState<CoreStatus | null>(null);
   const [coreError, setCoreError] = useState<string | null>(null);
   const { sites, error, reload } = useSites();

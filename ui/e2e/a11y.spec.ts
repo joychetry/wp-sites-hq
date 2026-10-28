@@ -383,3 +383,15 @@ test("results never move the rows: ticking sites, a check, a feature and its Und
   await expect(page.getByText(/^Undone: Turned on SVG Support/)).toBeVisible();
   expect(await y(first)).toBe(top);
 });
+
+test("approving from the keyboard moves focus to the next comment, and a new screen clears the messages", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "comments")!, "light");
+  await page.getByRole("button", { name: "Approve Mira Patel's comment on MC A" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Approved: Mira Patel's comment on MC A.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Approve Guest's comment/ })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: /^Approve Tom's comment/ })).toBeFocused();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Sites/ }).click();
+  await expect(page.getByText(/^Approved: /)).toHaveCount(0);
+});

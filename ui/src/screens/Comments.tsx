@@ -91,7 +91,11 @@ export function Comments({ sites }: { sites: Site[] }) {
     // A reload already on its way left before this change; its list would bring the comment back.
     asked.current++;
     // Optimistic: every action moves the comment out of this list, so it goes at once and comes back if the site says no.
+    // A keyboard user's focus goes on to the comment that takes its place, not back to the top of the page.
+    const item = (document.activeElement as HTMLElement | null)?.closest(".inbox > li");
+    const next = item?.nextElementSibling ?? item?.previousElementSibling;
     setLoaded((l) => l && { ...l, rows: l.rows.filter((x) => key(x) !== key(r)) });
+    requestAnimationFrame(() => next?.querySelector<HTMLElement>("button")?.focus());
     try {
       await api.moderate(r.site.id, r.c.id, action);
       // Undo puts it back where it was; WordPress has no "not spam" or "out of the trash" for comments here.
