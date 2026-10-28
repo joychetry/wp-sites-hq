@@ -3,23 +3,46 @@
 Every WordPress site you run, in one app on your computer. Free, open source,
 nothing to host.
 
-Status: Phase 7 (business). Not ready for use.
+Updates, plugins, themes, content, people, monitoring, client reports and AI
+agents for 3 to 300 WordPress sites, from one desktop app on macOS, Windows and
+Linux. No account, no cloud, no per-site price: your sites and their keys stay
+on your computer ([privacy](PRIVACY.md)).
+
+Status: 0.1.0 beta, not released yet.
+
+## Install
+
+Download the installer for your computer from the
+[releases page](https://github.com/joychetry/monks-central/releases/latest).
+The builds aren't code-signed yet, so macOS and Windows warn you the first time;
+[the install guide](docs/install.md) shows the one-time steps (macOS Open
+Anyway, Windows SmartScreen, Linux AppImage, .deb and .rpm). The app updates
+itself from GitHub Releases, and checks each update's signature first.
+
+Your sites need WordPress 7.1 or newer. With the
+[Classic Monks](https://classicmonks.com) plugin on a site you get everything;
+any other site connects in Basic mode (an application password) with fewer
+tools.
+
+Documentation: [docs/site](docs/site) (build it with `mdbook serve docs/site`).
+
+## Build from source
 
 - `crates/core`: store, vault, network, core lock, local socket, sites (OAuth and Basic mode)
 - `crates/cli`: the `monks` command (`monks doctor`, `monks core`, `monks status`, `monks run`, `monks mcp`)
 - `crates/app`: the desktop app (Tauri 2)
 - `ui/`: the app's web UI (React + TypeScript)
 
-## Build
-
 ```sh
 cargo test --workspace
 cd ui && npm ci && npm test
 cargo run -p monks-cli -- doctor https://example.com
 ui/node_modules/.bin/tauri dev   # the app, from the repo root
+scripts/bundle.sh                # installers for this computer, in target/release/bundle
 ```
 
-Linux needs the WebKitGTK 4.1 development packages for the app.
+Linux needs the WebKitGTK 4.1 development packages for the app. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the checks every change passes.
 
 ## AI apps (`monks mcp`)
 
@@ -78,6 +101,13 @@ Plans live in `docs/plans/`. Linux notes: `docs/dev-linux.md`.
   OAuth client (read-only, kept in the keychain), and AgentedSEO on sites that have
   it. Turn either on in Settings.
 
+## More
+
+- [Changelog](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md): report problems privately
+- [Privacy](PRIVACY.md)
+
 ## Licence
 
-GPL-3.0-or-later. See `LICENSE`.
+GPL-3.0-or-later. See `LICENSE`. Copyright (C) 2026 Classic Monks.
