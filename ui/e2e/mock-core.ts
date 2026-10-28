@@ -80,9 +80,19 @@ function site(over: Partial<Site>): Site {
     agent_access: false,
     client_id: null,
     client: null,
-    icon: null,
+    icon: "v1",
     ...over,
   };
+}
+
+// A favicon per site: a coloured rounded square or circle with the name's first letter.
+const ICON_COLOURS = ["#e4572e", "#2e86ab", "#3bb273", "#7768ae", "#f4a259", "#1b998b", "#c03221"];
+function iconFor(s: Site): string {
+  const fill = ICON_COLOURS[(s.id - 1) % ICON_COLOURS.length];
+  const shape = s.id % 2 ? `<rect width="32" height="32" rx="7" fill="${fill}"/>` : `<circle cx="16" cy="16" r="16" fill="${fill}"/>`;
+  const letter = (s.name.match(/[a-z0-9]/i)?.[0] ?? "W").toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${shape}<text x="16" y="22" font-family="sans-serif" font-size="17" font-weight="700" fill="#fff" text-anchor="middle">${letter}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 const FLEET: Site[] = [
@@ -105,8 +115,9 @@ const FLEET: Site[] = [
   }),
   site({ id: 2, client_id: 1, client: "Corner Bakery", name: "Corner Bakery", url: "https://corner-bakery-and-cafe-downtown.local", group: "Clients", health: "down", health_detail: "The site didn't answer within 20 seconds.", checked_at: now - 60 }),
   site({ id: 3, name: "mc-c", url: "https://mc-c.local", mode: "basic", username: "admin", cm_version: null, capabilities: {}, health_detail: "Answered in 0.7 s." }),
-  site({ id: 4, name: "Monks Central Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
-  site({ id: 5, name: "Studio Blog", url: "https://studio-blog.local", wp_version: "7.1.2", php_version: "8.3.14", cm_version: null, capabilities: { abilities: [], hq_status: false, degraded: true }, health_detail: "Answered in 0.5 s." }),
+  // 4 and 5 have no icon, so their tiles show the monogram.
+  site({ id: 4, icon: null, name: "Monks Central Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
+  site({ id: 5, icon: null, name: "Studio Blog", url: "https://studio-blog.local", wp_version: "7.1.2", php_version: "8.3.14", cm_version: null, capabilities: { abilities: [], hq_status: false, degraded: true }, health_detail: "Answered in 0.5 s." }),
   site({ id: 6, client_id: 2, client: "Studio North", name: "Portfolio", url: "https://portfolio.local", group: "Personal", tags: ["static"], php_version: "8.3.14", health: "ok", health_detail: "Slow: the home page took 4.2 s.", checked_at: now - 3600 * 2 }),
 ];
 
@@ -534,6 +545,10 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "sites_list":
       if (fixture === "loading") return new Promise<T>(() => {});
       return r(sites);
+    case "site_icon": {
+      const s = sites.find((x) => x.id === id);
+      return r(s?.icon ? iconFor(s) : null);
+    }
     case "site_check":
       await new Promise((ok) => setTimeout(ok, 300));
       return r(null);

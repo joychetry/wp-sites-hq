@@ -39,7 +39,7 @@ export type Site = {
   agent_access: boolean;
   client_id: number | null;
   client: string | null;
-  /** Changes when the site's cached favicon changes; null when it has none. */
+  /** Changes when the cached favicon does (see `api.siteIcon`); null: no icon. */
   icon: string | null;
 };
 
@@ -347,6 +347,8 @@ export type Approval = { id: number; tool: string; who: string; time: string; ex
 export const api = {
   status: () => invoke<CoreStatus>("core_status"),
   sites: () => invoke<Site[]>("sites_list"),
+  /** The site's favicon as a `data:` URL, or null. Load again when `Site.icon` changes. */
+  siteIcon: (id: number) => invoke<string | null>("site_icon", { id }),
   addOAuth: (url: string) => invoke<Site>("site_add_oauth", { url }),
   addBasic: (url: string, username: string, password: string) =>
     invoke<Site>("site_add_basic", { url, username, password }),
