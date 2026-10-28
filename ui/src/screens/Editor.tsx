@@ -478,6 +478,8 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         return;
       }
     }
+    // Nothing can be typed while it saves: the answer fills the page again, which would drop it.
+    const was = document.activeElement as HTMLElement | null;
     setSaving(true);
     try {
       const dr = draft();
@@ -515,6 +517,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
       toast(why, { tone: "danger", action });
     } finally {
       setSaving(false);
+      requestAnimationFrame(() => was?.isConnected && was.focus());
     }
   };
   saveRef.current = save;
@@ -645,7 +648,7 @@ export function Editor({ site, type, postId, onClose, onSaved }: Props) {
         </h2>
         {dirty && <span className="tag warning">Unsaved changes</span>}
       </div>
-      <div className="ed-grid">
+      <div className="ed-grid" inert={saving} aria-busy={saving || undefined}>
         <div className="ed-main stack">
           <section className="card ed-card" aria-label="Title and body">
             <div className="ed-card-body">

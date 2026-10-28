@@ -184,6 +184,23 @@ test("a classic body is edited whole; Ctrl+S saves and a changed entry offers th
   await waitFor(() => expect(calls.filter((c) => c[0] === "content_get")).toHaveLength(2));
 });
 
+test("nothing can be typed while a save is on its way, and focus comes back after", async () => {
+  let done: (v: unknown) => void = () => {};
+  core({ content_edit: () => new Promise((r) => (done = r)) });
+  render(<Content sites={[CM]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  const title = await screen.findByRole("textbox", { name: "Title" });
+  fireEvent.change(title, { target: { value: "Our menu" } });
+  title.focus();
+  fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+  const grid = title.closest(".ed-grid")!;
+  await waitFor(() => expect(grid).toHaveAttribute("inert"));
+  expect(grid).toHaveAttribute("aria-busy", "true");
+  done({ ...POST, title: "Our menu" });
+  await waitFor(() => expect(grid).not.toHaveAttribute("inert"));
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "Title" })).toHaveFocus());
+});
+
 test("leaving with unsaved changes asks first", async () => {
   core();
   render(<Content sites={[CM]} />);
