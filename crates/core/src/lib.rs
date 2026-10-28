@@ -16,6 +16,7 @@ pub mod oauth;
 pub mod packages;
 pub mod paths;
 pub mod people;
+pub mod report;
 pub mod security;
 pub mod seo;
 pub mod shop;

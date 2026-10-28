@@ -18,7 +18,9 @@ use monks_core::ipc::{self, Role};
 use monks_core::monitor::{Monitor, PageSpeed};
 use monks_core::packages::{Bundle, Staged};
 use monks_core::people::{Comments, NewUser, User, Users};
+use monks_core::report::{ReportAsk, Saved};
 use monks_core::security::Report;
+use monks_core::seo::GscStatus;
 use monks_core::shop::{Overview, ProductQuery, Products};
 use monks_core::sites::{Mode, Site};
 use monks_core::{Core, Options, paths, vault};
@@ -674,6 +676,59 @@ fn sites_export(state: State<'_, AppCore>, csv: bool) -> Res<String> {
     )
 }
 
+/// A monthly report as HTML and PDF, into Downloads.
+#[tauri::command]
+async fn report_make(state: State<'_, AppCore>, ask: ReportAsk) -> Res<Saved> {
+    let core = core(&state)?;
+    let dir = paths::downloads().map_err(|e| e.to_string())?;
+    core.client_report(&ask, &dir)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn file_open(path: String) -> Res<()> {
+    let p = std::path::Path::new(&path);
+    // Only the reports and exports Monks Central wrote.
+    let ours = paths::downloads().is_ok_and(|d| p.parent() == Some(d.as_path()));
+    let kind = p.extension().and_then(|e| e.to_str());
+    if !ours || !matches!(kind, Some("html" | "pdf")) {
+        return Err("Monks Central only opens the reports it saved.".into());
+    }
+    open::that_detached(p).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn gsc_status(state: State<'_, AppCore>) -> Res<GscStatus> {
+    core(&state)?.gsc_status().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn gsc_set_client(state: State<'_, AppCore>, id: String, secret: String) -> Res<GscStatus> {
+    core(&state)?
+        .gsc_set_client(&id, &secret)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn gsc_connect(state: State<'_, AppCore>) -> Res<GscStatus> {
+    let core = core(&state)?;
+    let r = core.gsc_connect(browser).await;
+    done(&core, None, "Connected Google Search Console", r)
+}
+
+#[tauri::command]
+fn gsc_forget(state: State<'_, AppCore>) -> Res<GscStatus> {
+    let core = core(&state)?;
+    let r = core.gsc_forget();
+    done(
+        &core,
+        None,
+        "Removed the Google Search Console connection",
+        r,
+    )
+}
+
 #[tauri::command]
 fn sites_import(state: State<'_, AppCore>, text: String) -> Res<Imported> {
     core(&state)?.import(&text).map_err(|e| e.to_string())
@@ -1005,6 +1060,12 @@ fn main() {
             cm_undo,
             cm_approvals,
             cm_reports,
+            report_make,
+            file_open,
+            gsc_status,
+            gsc_set_client,
+            gsc_connect,
+            gsc_forget,
             store_products,
             store_overview,
             cm_approval_open,

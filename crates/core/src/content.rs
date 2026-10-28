@@ -670,6 +670,10 @@ impl Core {
     /// One page of entries, newest first.
     pub async fn posts(&self, id: i64, q: &Query) -> Result<Listing, SiteError> {
         let _work = self.working().await;
+        self.posts_inner(id, q).await
+    }
+
+    pub(crate) async fn posts_inner(&self, id: i64, q: &Query) -> Result<Listing, SiteError> {
         let site = self.content_site(id)?;
         let page = q.page.unwrap_or(1).max(1);
         let status = q.status.clone().unwrap_or_else(|| ALL.into());
