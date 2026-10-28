@@ -35,6 +35,20 @@ test("shows every section in the rail, the sentence and the version", async () =
   expect(mockInvoke).toHaveBeenCalledWith("core_status");
 });
 
+test("a new version found at start is announced and stays until closed", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  serve();
+  const base = mockInvoke.getMockImplementation()!;
+  mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => (cmd === "app_update_check" ? "0.2.0" : base(cmd, args as never)));
+  render(<App />);
+  const note = "Monks Central 0.2.0 is ready. Install it in Settings, under Updates for Monks Central.";
+  // App mounts its own toast region next to the test setup's, so the note shows in both.
+  expect((await screen.findAllByText(note)).length).toBeGreaterThan(0);
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(screen.getAllByText(note).length).toBeGreaterThan(0);
+  vi.useRealTimers();
+});
+
 test("switches section from the rail", async () => {
   serve();
   render(<App />);

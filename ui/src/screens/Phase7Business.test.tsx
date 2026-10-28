@@ -147,3 +147,18 @@ test("text size is a slider that scales the whole app and is remembered", () => 
   fireEvent.change(slider, { target: { value: "100" } });
   expect(document.documentElement.style.fontSize).toBe("");
 });
+
+test("Monks Central checks for a new version on request and installs only on a click", async () => {
+  let ready: string | null = null;
+  const calls = core({ app_update_check: () => ready, app_update_install: () => Promise.reject("Couldn't install the new version: offline. This version keeps working.") });
+  render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
+  expect(await screen.findByText("You have the newest version of Monks Central.")).toBeInTheDocument();
+  ready = "0.2.0";
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
+  const install = await screen.findByRole("button", { name: "Install 0.2.0 and restart" });
+  expect(calls.some(([c]) => c === "app_update_install")).toBe(false);
+  fireEvent.click(install);
+  expect(await screen.findByText(/This version keeps working\./)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Install 0.2.0 and restart" })).toBeEnabled();
+});

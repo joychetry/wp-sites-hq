@@ -99,6 +99,11 @@ export default function App() {
 
   useEffect(() => {
     api.status().then(setStatus, (e) => setCoreError(String(e)));
+    // Offline or GitHub unreachable: say nothing; Settings checks on request.
+    api.updateCheck().then(
+      (v) => v && toast(`Monks Central ${v} is ready. Install it in Settings, under Updates for Monks Central.`, { tone: "info", stay: true }),
+      () => {},
+    );
   }, []);
 
   useEffect(() => {

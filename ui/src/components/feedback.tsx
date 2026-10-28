@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "./ui";
 import type { Tone } from "../api";
 
-type Toast = { id: number; text: string; tone: Tone | "info"; undo?: () => unknown };
+type Toast = { id: number; text: string; tone: Tone | "info"; undo?: () => unknown; stay?: boolean };
 let toasts: Toast[] = [];
 let nextId = 1;
 const subs = new Set<() => void>();
@@ -20,9 +20,9 @@ export const dismissAll = () => {
   emit();
 };
 
-/** Shows a short message at the bottom of the window. With `undo`, it offers an Undo button. */
-export function toast(text: string, opts: { tone?: Tone | "info"; undo?: () => unknown } = {}) {
-  const t = { id: nextId++, text, tone: opts.tone ?? "ok", undo: opts.undo };
+/** Shows a short message at the bottom of the window. With `undo`, it offers an Undo button; with `stay`, it waits to be closed. */
+export function toast(text: string, opts: { tone?: Tone | "info"; undo?: () => unknown; stay?: boolean } = {}) {
+  const t = { id: nextId++, text, tone: opts.tone ?? "ok", undo: opts.undo, stay: opts.stay };
   toasts = [...toasts.slice(-2), t];
   emit();
   return t.id;
@@ -41,8 +41,8 @@ function ToastItem({ t }: { t: Toast }) {
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused) return;
-    // Errors and Undo stay until closed (or pushed out by newer ones), so there is time to read and reach them.
-    if (t.tone === "danger" || t.undo) return;
+    // Errors, Undo and news you act on later stay until closed (or pushed out by newer ones), so there is time to read and reach them.
+    if (t.tone === "danger" || t.undo || t.stay) return;
     const timer = setTimeout(() => dismiss(t.id), 5000);
     return () => clearTimeout(timer);
   }, [paused, t]);

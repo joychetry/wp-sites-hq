@@ -28,6 +28,7 @@ use serde_json::Value;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
+use tauri_plugin_updater::UpdaterExt;
 
 /// The in-process core, or why it couldn't start (shown in the window).
 struct AppCore(Result<Arc<Core>, String>);
@@ -670,6 +671,50 @@ fn app_settings_save(state: State<'_, AppCore>, settings: AppSettings) -> Res<Ap
         .map_err(|e| e.to_string())
 }
 
+/// The check failed: offline, GitHub down, or no release published yet.
+fn update_unreachable(e: tauri_plugin_updater::Error) -> String {
+    eprintln!("Monks Central update check: {e}");
+    "Couldn't reach the Monks Central releases on GitHub. Check your internet connection and try again later.".into()
+}
+
+/// A newer Monks Central on GitHub Releases, if there is one.
+#[tauri::command]
+async fn app_update_check(app: AppHandle) -> Res<Option<String>> {
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(update_unreachable)?;
+    Ok(update.map(|u| u.version))
+}
+
+/// Download the new version, check its signature (the public key in
+/// tauri.conf.json), install it and start it.
+#[tauri::command]
+async fn app_update_install(app: AppHandle, state: State<'_, AppCore>) -> Res<()> {
+    let Some(update) = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(update_unreachable)?
+    else {
+        return Err("You have the newest version.".into());
+    };
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|e| {
+            format!("Couldn't install the new version: {e}. This version keeps working.")
+        })?;
+    // Site work in progress finishes before the restart.
+    if let Ok(core) = core(&state) {
+        core.finish().await;
+    }
+    app.restart()
+}
+
 /// Save to the Downloads folder and return where it went.
 fn save_download(name: &str, bytes: &[u8]) -> Res<String> {
     paths::downloads()
@@ -954,6 +999,7 @@ fn main() {
     let background = core.clone().ok();
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppCore(core))
         .on_window_event(|window, event| {
             // With a tray, closing the window keeps the sites watched.
@@ -1058,6 +1104,8 @@ fn main() {
             cost_delete,
             app_settings_get,
             app_settings_save,
+            app_update_check,
+            app_update_install,
             sites_export,
             sites_import,
             file_show,

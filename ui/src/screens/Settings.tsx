@@ -4,6 +4,7 @@ import { ColorInput, FilePicker, Menu, Slider } from "../components/controls";
 import { useEffect, useState } from "react";
 import { api, type AppSettings, type GscStatus, type Imported } from "../api";
 import { Button } from "../components/ui";
+import { toast } from "../components/feedback";
 import { setTextSize, textSize, type Density, type ThemeChoice } from "../theme";
 
 /** What an import did, in a sentence or two. */
@@ -210,6 +211,48 @@ function Choice<T extends string>({ label, value, options, onChange }: {
   );
 }
 
+/** New versions come from GitHub Releases, signed; nothing installs without a click. */
+function AppUpdate() {
+  const [state, setState] = useState<{ busy?: "check" | "install"; ready?: string | null }>({});
+  const check = async () => {
+    setState({ busy: "check" });
+    try {
+      const ready = await api.updateCheck();
+      setState({ ready });
+      if (!ready) toast("You have the newest version of Monks Central.");
+    } catch (e) {
+      setState({});
+      toast(String(e), { tone: "danger" });
+    }
+  };
+  const install = async () => {
+    setState({ ...state, busy: "install" });
+    try {
+      await api.updateInstall();
+    } catch (e) {
+      setState({ ready: state.ready });
+      toast(String(e), { tone: "danger" });
+    }
+  };
+  return (
+    <section>
+      <h2>Updates for Monks Central</h2>
+      <p>New versions come from the Monks Central releases on GitHub. Each one is signed, and Monks Central checks the signature before it installs anything. Installing one restarts the app; your sites and settings stay.</p>
+      <div className="row">
+        {state.ready ? (
+          <Button kind="primary" disabled={!!state.busy} onClick={install}>
+            {state.busy === "install" ? "Installing…" : `Install ${state.ready} and restart`}
+          </Button>
+        ) : (
+          <Button disabled={!!state.busy} onClick={check}>
+            {state.busy === "check" ? "Checking…" : "Check for a new version"}
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function TextSize() {
   const [pct, setPct] = useState(textSize);
   return (
@@ -271,6 +314,7 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
           />
         </section>
         <TextSize />
+        <AppUpdate />
         <Reports />
         <YourData />
       </div>

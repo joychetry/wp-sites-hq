@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Monks Central",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "identifier": "com.classicmonks.monks-central",
   "build": {
     "frontendDist": "../../ui/dist",
@@ -10,19 +10,62 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
-    "windows": [{ "title": "Monks Central", "width": 1200, "height": 800 }],
+    "windows": [
+      {
+        "title": "Monks Central",
+        "width": 1200,
+        "height": 800
+      }
+    ],
     "security": {
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:"
     }
   },
   "bundle": {
-    "active": false,
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "externalBin": [
+      "binaries/monks"
+    ],
+    "publisher": "Classic Monks",
+    "homepage": "https://github.com/joychetry/monks-central",
+    "copyright": "Copyright (C) 2026 Classic Monks. GPL-3.0-or-later.",
+    "license": "GPL-3.0-or-later",
+    "licenseFile": "../../LICENSE",
+    "category": "Utility",
+    "shortDescription": "Every WordPress site you run, in one app",
+    "longDescription": "Manage many WordPress sites from one app on your computer: updates, plugins, themes, content, people, monitoring and AI agents. Free, open source, nothing to host.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "section": "web"
+      },
+      "rpm": {
+        "release": "1"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg3NzZDNzc3NEUwMURCRjAKUldUdzJ3Rk9kOGQyaDkyS2pTUE1qUllzTnRSZWlLZkNMV21wdVNPZUpNeFZLN3UxN0hTU0NTTUQK",
+      "endpoints": [
+        "https://github.com/joychetry/monks-central/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

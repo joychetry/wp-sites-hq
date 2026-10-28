@@ -416,6 +416,10 @@ export const api = {
   saveCost: (cost: Cost) => invoke<Cost>("cost_save", { cost }),
   deleteCost: (id: number) => invoke<void>("cost_delete", { id }),
   appSettings: () => invoke<AppSettings>("app_settings_get"),
+  /** The newer version on GitHub Releases, or null when this one is the newest. */
+  updateCheck: () => invoke<string | null>("app_update_check"),
+  /** Downloads, checks the signature, installs and restarts. */
+  updateInstall: () => invoke<void>("app_update_install"),
   saveAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_settings_save", { settings }),
   /** Saves into Downloads; returns the file's path. */
   exportSites: (csv: boolean) => invoke<string>("sites_export", { csv }),

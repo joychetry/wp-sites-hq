@@ -583,6 +583,10 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(null);
     case "app_settings_get":
       return r(APP);
+    case "app_update_check":
+      return r(fixture === "update" ? "0.2.0" : null);
+    case "app_update_install":
+      return r(null);
     case "app_settings_save":
       APP = args.settings as AppSettings;
       GSC = { ...GSC, on: APP.search_console };
