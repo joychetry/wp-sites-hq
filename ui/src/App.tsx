@@ -98,7 +98,6 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
 
 export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
-  // An editor with unsaved changes asks before the page changes.
   // Anything that would close the editor asks first while it has unsaved changes.
   const guarded = (go: () => void) => (leaveGuard.ask ? leaveGuard.ask(go) : go());
   const setSection = (s: Section) => guarded(() => setSectionNow(s));
