@@ -243,7 +243,7 @@ const OUTCOME: Record<Entry["outcome"], string> = { done: "", failed: "It failed
 const FEED = 6;
 
 /** The design's feed sentence: "You turned on AI agent access", "An AI agent ran <b>Update post</b>". */
-function said(r: Entry) {
+export function said(r: Entry) {
   const [verb] = r.what.split(" ");
   // The log keeps past-tense phrases ("Turned on ...", "Proposed a plan: ...") and tool or job names ("update-post", "Update Yoast SEO").
   if (r.what.includes(" ") && /ed$/.test(verb)) return `${WHO[r.actor]}${r.actor === "agent_confirmed" ? "," : ""} ${r.what.charAt(0).toLowerCase()}${r.what.slice(1)}`;

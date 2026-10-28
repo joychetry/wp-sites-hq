@@ -503,24 +503,6 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .toggles h3 { margin: 0; padding: var(--sp-4) var(--pad) var(--sp-2); font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); background: var(--panel); border-bottom: 1px solid var(--line); }
 .toggles .input { width: 160px; }
 
-/* AI: agents' plans, and how to connect an app */
-.plan-card { padding: var(--sp-4) var(--pad); border-bottom: 1px solid var(--line); max-width: 880px; }
-.plan-card h2 { margin: 0 0 var(--sp-1); font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; }
-.plan-card .plan-list { margin: var(--sp-3) 0; }
-.plan-card .row { justify-content: flex-end; }
-.connect { padding: var(--sp-4) var(--pad); max-width: 760px; }
-.connect h2 { margin: 0 0 var(--sp-2); font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; }
-.connect h3 { margin: var(--sp-5) 0 var(--sp-2); font-size: var(--fs); font-weight: 600; }
-.connect p, .connect li { color: var(--text-2); }
-.connect ul { padding-left: var(--sp-5); }
-.connect code { font-family: var(--mono); font-size: var(--fs-sm); color: var(--text); }
-.connect .code { display: flex; align-items: center; gap: var(--sp-3); padding: 10px 10px 10px var(--sp-4); background: #0b0b0b; color: #ededed; border: 1px solid var(--line); border-radius: var(--radius); }
-.connect .code code { color: inherit; }
-.connect .code .btn { background: transparent; color: inherit; border-color: #5a5a5a; }
-.connect .code .btn:hover:not(:disabled) { background: #222222; }
-.connect .code :focus-visible { outline-color: #3dbf82; }
-.connect .code code { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-
 /* Design page patterns (docs/design/redesign: mc-page). A screen that lays out its own cards uses
    .scroll.page, then a filter row (.filters), cards (.card) and an optional side column (.split-r). */
 .stack { display: grid; gap: var(--sp-4); align-content: start; min-width: 0; }

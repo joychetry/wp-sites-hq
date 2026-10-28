@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Search everything: sites, plugins, themes and clients at once from what Monks
 // Central already knows, then posts and pages on every site (plan Phase 7).
+import "../styles/screens/search.css";
 import { useEffect, useState } from "react";
 import { api, type Client, type ContentFound, type Site, type SiteInventory } from "../api";
-import { Button } from "../components/ui";
+import { SearchInput } from "../components/controls";
+import { SiteTile, initial } from "../components/SiteTile";
+import { Button, Glyph, Kbd } from "../components/ui";
 import { STATUS_LABEL } from "./Content";
 
 export type Local = { kind: "Sites" | "Plugins" | "Themes" | "Clients"; key: string; label: string; detail: string; siteId?: number };
@@ -44,6 +47,23 @@ export function localHits(query: string, sites: Site[], inventory: Map<number, S
 }
 
 const GO: Record<Local["kind"], string> = { Sites: "Open on Sites", Plugins: "Show on Plugins", Themes: "Show on Themes", Clients: "Open Clients" };
+const ONE: Record<Local["kind"], string> = { Sites: "Site", Plugins: "Plugin", Themes: "Theme", Clients: "Client" };
+const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+
+type Kind = "All" | "Pages" | "Posts" | Local["kind"];
+
+/** The words with what was searched for picked out, as the design's results do. */
+function Marked({ text, term }: { text: string; term: string }) {
+  const at = text.toLowerCase().indexOf(term.toLowerCase());
+  if (!term || at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark>{text.slice(at, at + term.length)}</mark>
+      {text.slice(at + term.length)}
+    </>
+  );
+}
 
 type Props = {
   sites: Site[];
@@ -55,6 +75,7 @@ type Props = {
 export function Search({ sites, inventory, query: first, onGo }: Props) {
   const [typed, setTyped] = useState(first);
   const [query, setQuery] = useState(first);
+  const [show, setShow] = useState<Kind>("All");
   const [clients, setClients] = useState<Client[]>([]);
   const [found, setFound] = useState<ContentFound | null>(null);
   const [searching, setSearching] = useState(false);
@@ -66,6 +87,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
   useEffect(() => {
     setFound(null);
     setError(null);
+    setShow("All");
     if (query.trim().length < 2) return;
     let live = true;
     setSearching(true);
@@ -79,103 +101,132 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
   }, [query]);
 
   const local = localHits(query, sites, inventory, clients);
-  const name = (id: number) => sites.find((s) => s.id === id)?.name ?? "a removed site";
-  const groups = (["Sites", "Plugins", "Themes", "Clients"] as const).map((k) => [k, local.filter((h) => h.kind === k)] as const).filter(([, l]) => l.length);
+  const site = (id: number) => sites.find((s) => s.id === id);
+  const name = (id: number) => site(id)?.name ?? "a removed site";
+  const hits = (found?.hits ?? []).map((h) => ({ ...h, kind: (h.post_type === "page" ? "Pages" : "Posts") as Kind }));
+  const count = (k: Kind) => [...hits, ...local].filter((h) => k === "All" || h.kind === k).length;
+  const kinds = (["All", "Pages", "Posts", "Sites", "Plugins", "Themes", "Clients"] as Kind[]).filter((k) => k === "All" || count(k) > 0);
+  const on = new Set([...hits.map((h) => h.site_id), ...local.flatMap((h) => (h.siteId ? [h.siteId] : []))]).size;
+  const shown = (k: Kind) => show === "All" || show === k;
 
   return (
-    <div className="scroll">
+    <div className="scroll page search">
       <form
-        className="bar"
+        className="srch-go"
         role="search"
         onSubmit={(e) => {
           e.preventDefault();
           setQuery(typed.trim());
         }}
       >
-        <input className="input" aria-label="Search everything" placeholder="A site, plugin, theme, client, post or page" value={typed} onChange={(e) => setTyped(e.target.value)} />
-        <Button kind="primary" type="submit" disabled={typed.trim().length < 2}>
+        <SearchInput aria-label="Search everything" placeholder="A site, plugin, theme, client, post or page" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <Button kind="primary" className="disc" type="submit" disabled={typed.trim().length < 2}>
           Search
+          <span className="btn-disc">
+            <Glyph name="arrow" />
+          </span>
         </Button>
       </form>
       {query.trim().length < 2 ? (
-        <div className="empty">
-          <h2>Search every site at once.</h2>
-          <p>Sites, plugins, themes and clients show straight away. Posts and pages are looked up on each site.</p>
+        <div className="card">
+          <div className="empty">
+            <h2>Search every site at once.</h2>
+            <p>Sites, plugins, themes and clients show straight away. Posts and pages are looked up on each site.</p>
+          </div>
         </div>
       ) : (
         <>
-          <p className="legend" id="search-legend">
-            <span>
-              Results for <b>{query}</b>. Plugins and themes are as last read from each site.
+          <div className="filters">
+            <div className="segmented inline" role="group" aria-label="Show results">
+              {kinds.map((k) => (
+                <button key={k} type="button" aria-pressed={show === k} onClick={() => setShow(k)}>
+                  {k}
+                  <small>{count(k)}</small>
+                </button>
+              ))}
+            </div>
+            <span className="end dim" id="search-legend">
+              {plural(count("All"), "result")} on {plural(on, "site")}
             </span>
-          </p>
-          {groups.length === 0 && <p className="dim">No sites, plugins, themes or clients match.</p>}
-          {groups.map(([kind, list]) => (
-            <section key={kind} aria-label={kind}>
-              <h2 className="sect">{kind}</h2>
-              <ul className="plain">
-                {list.map((h) => (
-                  <li key={h.key} className="row">
-                    <span className="grow">
-                      <b>{h.label}</b> <span className="dim">{h.detail}</span>
+          </div>
+          <section className="card" aria-label={`Results for ${query}`}>
+            <ul className="fixes" aria-label="Results" aria-describedby="search-legend">
+              {hits
+                .filter((h) => shown(h.kind))
+                .map((h) => (
+                  <li key={`${h.site_id}-${h.id}`} className="fix">
+                    <span className="tile neutral" aria-hidden="true">
+                      <Glyph name={h.kind === "Pages" ? "file" : "edit"} />
                     </span>
-                    <Button small aria-label={`${GO[kind]}: ${h.label}`} onClick={() => onGo(kind, h.siteId)}>
-                      {GO[kind]}
-                    </Button>
+                    <div>
+                      <b>{h.title ? <Marked text={h.title} term={query} /> : "(no title)"}</b>
+                      <span>
+                        {h.kind === "Pages" ? "Page" : "Post"} · {name(h.site_id)} · {STATUS_LABEL[h.status] ?? h.status}
+                      </span>
+                    </div>
+                    {h.link.startsWith("https://") && (
+                      <Button small aria-label={`View ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
+                        <Glyph name="external" />
+                        View on {name(h.site_id)}
+                      </Button>
+                    )}
                   </li>
                 ))}
-              </ul>
-            </section>
-          ))}
-          <section aria-label="Posts and pages">
-            <h2 className="sect">Posts and pages</h2>
-            <div role="status">{searching && <p className="dim">Asking every site…</p>}</div>
-            {error && <p className="alert danger">{error}</p>}
-            {found && found.hits.length === 0 && <p className="dim">No posts or pages match on any site.</p>}
-            {found && found.hits.length > 0 && (
-              <table className="t" aria-label="Posts and pages found" aria-describedby="search-legend">
-                <thead>
-                  <tr>
-                    <th scope="col">Title</th>
-                    <th scope="col">Site</th>
-                    <th scope="col">Kind</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">
-                      <span className="sr-only">Open</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {found.hits.map((h) => (
-                    <tr key={`${h.site_id}-${h.id}`}>
-                      <td className="name cut" data-tip={h.title}>
-                        {h.title || "(no title)"}
-                      </td>
-                      <td>{name(h.site_id)}</td>
-                      <td>{h.post_type === "page" ? "Page" : "Post"}</td>
-                      <td>
-                        <span className="tag">{STATUS_LABEL[h.status] ?? h.status}</span>
-                      </td>
-                      <td>
-                        {h.link.startsWith("https://") && (
-                          <Button small aria-label={`View ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
-                            View
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {found && found.failed.length > 0 && (
-              <p className="alert">
-                Not searched: {found.failed.map(([id, why]) => `${name(id)} (${why})`).join("; ")}
+              {local
+                .filter((h) => shown(h.kind))
+                .map((h) => {
+                  const s = h.siteId ? site(h.siteId) : undefined;
+                  return (
+                    <li key={h.key} className="fix">
+                      {s ? (
+                        <SiteTile site={s} />
+                      ) : h.kind === "Clients" ? (
+                        <span className="tile neutral" aria-hidden="true">
+                          <Glyph name="briefcase" />
+                        </span>
+                      ) : (
+                        <span className="ptile" aria-hidden="true">
+                          {initial(h.label)}
+                        </span>
+                      )}
+                      <div>
+                        <b>
+                          <Marked text={h.label} term={query} />
+                        </b>
+                        <span>
+                          {ONE[h.kind]} · {h.detail}
+                        </span>
+                      </div>
+                      <Button small aria-label={`${GO[h.kind]}: ${h.label}`} onClick={() => onGo(h.kind, h.siteId)}>
+                        {GO[h.kind]}
+                      </Button>
+                    </li>
+                  );
+                })}
+            </ul>
+            <div role="status">{searching && <p className="quiet">Asking every site for posts and pages…</p>}</div>
+            {error && (
+              <p className="callout danger">
+                <Glyph name="x-circle" />
+                <span>{error}</span>
               </p>
             )}
+            {found && found.hits.length === 0 && <p className="quiet">{local.length ? "No posts or pages match on any site." : "Nothing matches on any site: no sites, plugins, themes, clients, posts or pages."}</p>}
           </section>
+          {found && found.failed.length > 0 && (
+            <p className="callout warning">
+              <Glyph name="alert" />
+              <span>Not searched: {found.failed.map(([id, why]) => `${name(id)} (${why})`).join("; ")}</span>
+            </p>
+          )}
         </>
       )}
+      <p className="callout">
+        <Glyph name="command" />
+        <span>
+          <b>Faster from anywhere:</b> press <Kbd>Ctrl K</Kbd> to search sites, pages and actions without leaving the page you're on.
+        </span>
+      </p>
     </div>
   );
 }

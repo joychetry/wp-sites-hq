@@ -14,7 +14,8 @@ type Props = {
   icon?: ReactNode;
   /** A centred dialog instead of the side sheet. */
   dialog?: boolean;
-  footer: ReactNode;
+  /** The foot's buttons; a dialog that only shows something may have none. */
+  footer?: ReactNode;
   onClose: () => void;
   children: ReactNode;
 };
@@ -66,7 +67,7 @@ export function Sheet({ title, intro, steps, icon, dialog, footer, onClose, chil
           </button>
         </header>
         <div className="content">{children}</div>
-        <footer>{footer}</footer>
+        {footer && <footer>{footer}</footer>}
       </aside>
     </>
   );

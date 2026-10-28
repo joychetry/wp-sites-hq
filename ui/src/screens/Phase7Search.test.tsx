@@ -37,10 +37,13 @@ test("search shows local results and posts from each site, and names sites it co
   });
   const go = vi.fn();
   render(<Search sites={[A, B]} inventory={inv} query="beta" onGo={go} />);
-  const table = await screen.findByRole("table", { name: "Posts and pages found" });
-  const row = within(table).getByRole("row", { name: /Beta launch/ });
-  expect(within(row).getByText("Page")).toBeInTheDocument();
-  expect(within(row).getByText("Scheduled")).toBeInTheDocument();
+  const list = screen.getByRole("list", { name: "Results" });
+  const row = await waitFor(() => {
+    const li = within(list).getAllByRole("listitem").find((l) => l.textContent?.includes("Beta launch"));
+    expect(li).toBeDefined();
+    return li!;
+  });
+  expect(row).toHaveTextContent("Page · Alpha · Scheduled");
   fireEvent.click(within(row).getByRole("button", { name: "View Beta launch on Alpha" }));
   expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://alpha.test/beta", site: 1 });
   expect(screen.getByText("Not searched: Beta (No answer.)")).toBeInTheDocument();
@@ -53,13 +56,12 @@ test("a new search runs on submit, and a short one asks for more", async () => {
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "clients_list" ? [] : { hits: [], failed: [] }));
   render(<Search sites={[A]} inventory={inv} query="" onGo={() => {}} />);
   expect(screen.getByRole("heading", { name: "Search every site at once." })).toBeInTheDocument();
-  const box = screen.getByRole("textbox", { name: "Search everything" });
+  const box = screen.getByRole("searchbox", { name: "Search everything" });
   fireEvent.change(box, { target: { value: "a" } });
   expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
   fireEvent.change(box, { target: { value: "zz" } });
   fireEvent.submit(box.closest("form")!);
-  expect(await screen.findByText("No posts or pages match on any site.")).toBeInTheDocument();
-  expect(screen.getByText("No sites, plugins, themes or clients match.")).toBeInTheDocument();
+  expect(await screen.findByText("Nothing matches on any site: no sites, plugins, themes, clients, posts or pages.")).toBeInTheDocument();
 });
 
 test("the palette offers to search everything once two letters are typed", () => {
