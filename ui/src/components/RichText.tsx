@@ -243,12 +243,16 @@ export function InlineText({ label, html, pre, heading, onChange }: { label: str
   const el = useRef<HTMLElement>(null);
   const ed = useRef<Tiny | null>(null);
   const starting = useRef(false);
+  const gone = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
   useEffect(() => {
     el.current?.replaceChildren(safeHtml(html));
     return () => {
+      gone.current = true;
       ed.current?.remove();
       ed.current = null;
     };
@@ -258,6 +262,7 @@ export function InlineText({ label, html, pre, heading, onChange }: { label: str
   const start = () => {
     if (starting.current || !el.current) return;
     starting.current = true;
+    setBusy(true);
     const target = el.current;
     load()
       .then((tinymce) =>
@@ -283,21 +288,37 @@ export function InlineText({ label, html, pre, heading, onChange }: { label: str
         }),
       )
       .then(([e]) => {
-        ed.current = e ?? null;
-      });
+        // Started just as the block went away (a reload): nothing may stay behind on the page.
+        if (gone.current) e?.remove();
+        else ed.current = e ?? null;
+      })
+      .catch((e) => {
+        if (gone.current) return;
+        starting.current = false;
+        setFailed(String(e));
+      })
+      .finally(() => !gone.current && setBusy(false));
   };
 
   const Tag = pre ? "pre" : "p";
   return (
-    <Tag
-      ref={el as never}
-      className={`blk-text${heading ? " heading" : ""}`}
-      role="textbox"
-      aria-multiline="true"
-      aria-label={label}
-      tabIndex={0}
-      onFocus={start}
-      onPointerDown={start}
-    />
+    <>
+      <Tag
+        ref={el as never}
+        className={`blk-text${heading ? " heading" : ""}`}
+        role="textbox"
+        aria-multiline="true"
+        aria-label={label}
+        aria-busy={busy || undefined}
+        tabIndex={0}
+        onFocus={start}
+        onPointerDown={start}
+      />
+      {failed && (
+        <p className="alert danger" role="alert">
+          The editor didn't open: {failed}
+        </p>
+      )}
+    </>
   );
 }
