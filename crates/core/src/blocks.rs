@@ -291,6 +291,10 @@ pub fn apply(s: &str, edits: &[(usize, String)]) -> Result<String, BlockError> {
         if !b.name.is_empty() && (html.contains("<!--") || html.contains("-->")) {
             return Err(BlockError::Comment);
         }
+        // Two edits to one block would cut the body at a place the first edit moved.
+        if spans.iter().any(|(span, _)| *span == b.span) {
+            return Err(BlockError::NotEditable);
+        }
         spans.push((b.span, html.as_str()));
     }
     spans.sort_by_key(|(span, _)| std::cmp::Reverse(span.0));
@@ -371,6 +375,11 @@ mod tests {
         assert_eq!(
             apply(PAGE, &[(99, "x".into())]),
             Err(BlockError::NotEditable)
+        );
+        assert_eq!(
+            apply(PAGE, &[(1, "ééé".into()), (1, "x".into())]),
+            Err(BlockError::NotEditable),
+            "one block, two edits"
         );
         assert_eq!(
             apply(PAGE, &[(1, "a <!-- /wp:paragraph --> b".into())]),
