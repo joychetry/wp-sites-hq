@@ -161,7 +161,15 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .t th:last-child, .t td:last-child { padding-right: var(--pad); }
 .t tbody tr:last-child td { border-bottom: 0; }
 .t .r { text-align: right; }
-.t td.m { font: 500 var(--fs-sm) var(--mono); color: var(--text); }
+.t td.m, .t td > .m { font: 500 var(--fs-sm) var(--mono); color: var(--text); }
+/* A quieter second line in a cell (Sites: tags under the name, when the status was checked, PHP under WordPress). */
+.t td > .cut, .t .sub { display: block; }
+.t td > .st, .t td > .m { vertical-align: top; }
+.t .sub { font: 400 var(--fs-xs)/1.2 var(--sans); color: var(--text-3); }
+.t .sub .tag { line-height: 1.1; padding-block: 0; }
+/* A column that takes the room the others leave and cuts what doesn't fit (the full text is in the tooltip). */
+.t th.fill { width: 100%; }
+.t td.fill > * { width: 0; min-width: 100%; }
 .t tbody tr { cursor: default; }
 .t tbody tr:hover td { background: var(--panel); }
 .t tr.sel td { background: var(--sel); }

@@ -244,8 +244,9 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 .bar-progress { height: 6px; border-radius: 3px; }
 .bar-progress span { border-radius: 3px; transition: width 300ms var(--ease); }
 
-/* Between 900 and 1200px wide: a narrower rail and inspector, so tables keep their room */
-@media (max-width: 1200px) {
+/* Between 900 and 1300px wide: a narrower rail and inspector, so tables keep their room
+   (switching at 1200 left a 1201px window 100px less table than a 1200px one). */
+@media (max-width: 1300px) {
   :root { --rail: 216px; --inspector: 288px; }
   .top, .body { padding-inline: var(--sp-5); }
   .bar .srch { width: 240px; }

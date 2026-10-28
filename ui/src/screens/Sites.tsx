@@ -189,8 +189,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               <Status tone="danger">Down</Status>
               <Status tone="unknown">Not checked yet</Status>
               <span>
-                Point at a name for its address. WordPress and PHP are the versions each site runs. Last checked is when
-                Monks Central last asked the site.
+                Point at a name for its address. Tags are under the name, and under the status is when Monks Central last
+                asked the site. Versions are WordPress, with PHP under it.
               </span>
             </p>
             <table
@@ -208,14 +208,11 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                   <th style={{ width: 34 }}>
                     <span className="sr-only">Selected</span>
                   </th>
-                  <th>Site</th>
-                    <th>Status</th>
+                  <th className="fill">Site</th>
+                  <th>Status</th>
                   <th>Group</th>
-                  <th>WordPress</th>
-                  <th>PHP</th>
+                  <th>Versions</th>
                   <th>Connection</th>
-                  <th>Tags</th>
-                  <th>Last checked</th>
                 </tr>
               </thead>
               <tbody>
@@ -244,28 +241,42 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                           }}
                         />
                       </td>
-                      <td className="name cut" data-tip={`${s.name}, ${s.url.replace(/^https?:\/\//, "")}`}>
-                        {s.name}
+                      <td className="fill">
+                        <b className="name cut" data-tip={`${s.name}, ${s.url.replace(/^https?:\/\//, "")}`}>
+                          {s.name}
+                        </b>
+                        {s.tags.length > 0 && (
+                          <small className="sub cut" data-tip={s.tags.join(", ")}>
+                            <span className="tag">{s.tags[0]}</span>
+                            {s.tags.length > 1 && (
+                              <>
+                                {" "}
+                                +{s.tags.length - 1}
+                                <span className="sr-only"> more tags</span>
+                              </>
+                            )}
+                          </small>
+                        )}
                       </td>
                       <td>
                         <Status tone={st.tone}>{st.label}</Status>
                         {slow(s) && <span className="dim">, slow</span>}
+                        <small className="sub">{s.checked_at ? `checked ${ago(s.checked_at)}` : "never checked"}</small>
                       </td>
-                      <td>{s.group ?? <span className="dim">none</span>}</td>
-                      <td className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "not known"}</td>
-                      <td className={s.php_version ? "m" : "dim"}>{s.php_version?.split(".").slice(0, 2).join(".") ?? "not known"}</td>
-                      <td>{s.mode === "basic" ? "Basic mode" : "Classic Monks"}</td>
-                      <td data-tip={s.tags.join(", ")}>
-                        {s.tags.length > 0 && <span className="tag">{s.tags[0]}</span>}
-                        {s.tags.length > 1 && (
-                          <span className="dim">
-                            {" "}
-                            +{s.tags.length - 1}
-                            <span className="sr-only"> more tags</span>
+                      <td>
+                        {s.group ? (
+                          <span className="cut" data-tip={s.group}>
+                            {s.group}
                           </span>
+                        ) : (
+                          <span className="dim">none</span>
                         )}
                       </td>
-                      <td>{ago(s.checked_at)}</td>
+                      <td>
+                        <span className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "not known"}</span>
+                        <small className="sub">PHP {s.php_version?.split(".").slice(0, 2).join(".") ?? "not known"}</small>
+                      </td>
+                      <td>{s.mode === "basic" ? "Basic mode" : "Classic Monks"}</td>
                     </tr>
                   );
                 })}

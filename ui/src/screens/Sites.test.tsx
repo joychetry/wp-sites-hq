@@ -95,7 +95,7 @@ test("a connection with no tools says so in the table and offers Sign in again",
 
 test("the legend explains the status shapes and the columns", () => {
   render(<Harness />);
-  expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Healthy.*Down.*Not checked yet.*Last checked is when/);
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Healthy.*Down.*Not checked yet.*when Monks Central last asked/);
 });
 
 test("Space on a row's checkbox is left to that checkbox; rows say selected only when they are", () => {
