@@ -750,7 +750,8 @@ export function Media({ sites }: { sites: Site[] }) {
             {body}
             {items && items.length > 0 && !blocked && !error && (
               <div className="card-foot">
-                <span className="count">
+                {/* Read out after Load more, so the new items are noticed. */}
+                <span className="count" aria-live="polite">
                   {items.length} of {lib!.total === 1 ? "1 item" : `${lib!.total} items`}
                 </span>
                 {more && (

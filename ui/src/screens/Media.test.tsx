@@ -210,6 +210,16 @@ test("a slow site's library never shows under the site picked after it", async (
   expect(screen.getByRole("form", { name: "Details of beta-photo" })).toBeInTheDocument();
 });
 
+test("Load more adds the next page and the count says so out loud", async () => {
+  const page = (p: number) => ({ items: p === 1 ? [item(1, "first")] : [item(2, "second")], total: 2, allowed: {}, limit: 1_000_000 });
+  core({ media_list: (a) => page((a.query as { page: number }).page ?? 1) });
+  render(<Media sites={[CM]} />);
+  const count = await screen.findByText("1 of 2 items");
+  expect(count).toHaveAttribute("aria-live", "polite");
+  fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+  expect(await screen.findByText("2 of 2 items")).toHaveAttribute("aria-live", "polite");
+});
+
 test("the picker keeps only the newest search's answer", async () => {
   let slow: (v: unknown) => void = () => {};
   const lib = (items: Item[]) => ({ items, total: items.length, allowed: {}, limit: 1_000_000 });
