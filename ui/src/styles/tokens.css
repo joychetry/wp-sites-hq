@@ -25,7 +25,12 @@
   --warn-bg: #faefd9;
   --danger-bg: #fbe8e5;
   --shadow: 0 16px 50px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--line-2);
+  --shadow-sm: 0 1px 2px rgba(25, 24, 22, 0.06);
+  --shadow-pop: 0 10px 30px rgba(25, 24, 22, 0.14), 0 2px 6px rgba(25, 24, 22, 0.06), 0 0 0 1px var(--line-2);
   --scrim: rgba(0, 0, 0, 0.35);
+  /* The tick in a checkbox: drawn in --bg on --text. */
+  --tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5' fill='none' stroke='%23fbfaf7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8h8' stroke='%23fbfaf7' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
 
   /* Rail: ink. Dark in both themes; see docs/ux/README.md. */
   --rail-bg: #1c1b19;
@@ -65,9 +70,12 @@
   --sp-7: 48px;
 
   /* Shape and rhythm. Rows are comfortable; [data-density="compact"] tightens them. */
-  --radius-sm: 3px;
-  --radius: 5px;
-  --radius-lg: 8px;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  /* Motion: short and calm; prefers-reduced-motion turns it off (base.css). */
+  --dur: 140ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --row: 40px;
   --control: 32px;
   --control-sm: 28px;
@@ -103,7 +111,11 @@
   --warn-bg: #2a1f0b;
   --danger-bg: #2c1110;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line-2);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-2);
   --scrim: rgba(0, 0, 0, 0.55);
+  --tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5' fill='none' stroke='%230d0d0d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8h8' stroke='%230d0d0d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
   --rail-bg: var(--panel);
   --rail-raise: var(--raise);
   --rail-field: var(--bg);

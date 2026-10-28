@@ -46,6 +46,8 @@ const pairs = (fgs: string[], bgs: string[], min: number) => fgs.flatMap((fg) =>
 const PAIRS = [
   ...pairs(["--text", "--text-2", "--text-3"], ["--bg", "--panel", "--raise", "--sel"], TEXT),
   ...pairs(["--ok", "--warn", "--danger"], ["--bg", "--panel", "--sel", "--raise"], TEXT),
+  // Inverted: primary buttons, tooltips and the ticked checkbox draw --bg on --text.
+  ["--bg", "--text", TEXT],
   ["--ok", "--ok-bg", TEXT],
   ["--warn", "--warn-bg", TEXT],
   ["--danger", "--danger-bg", TEXT],
