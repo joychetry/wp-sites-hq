@@ -1052,7 +1052,7 @@ async fn pagespeed_run(state: State<'_, AppCore>, id: i64) -> Res<PageSpeed> {
 /// Open a link from an outside feed (a vulnerability report) in the browser.
 #[tauri::command]
 fn link_open(state: State<'_, AppCore>, url: String, site: Option<i64>) -> Res<()> {
-    if !url.starts_with("https://") {
+    if !link_scheme_ok(&url, site) {
         return Err("Only https links open from Monks Central.".into());
     }
     // A site's own link must point at that site.
