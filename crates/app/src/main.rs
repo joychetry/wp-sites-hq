@@ -77,6 +77,12 @@ fn sites_list(state: State<'_, AppCore>) -> Res<Vec<Site>> {
     core(&state)?.sites().map_err(|e| e.to_string())
 }
 
+/// The site's icon as a `data:` URL, or null.
+#[tauri::command]
+fn site_icon(state: State<'_, AppCore>, id: i64) -> Res<Option<String>> {
+    Ok(core(&state)?.site_icon(id))
+}
+
 #[tauri::command]
 fn groups_list(state: State<'_, AppCore>) -> Res<Vec<String>> {
     core(&state)?.groups().map_err(|e| e.to_string())
@@ -1065,6 +1071,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             core_status,
             sites_list,
+            site_icon,
             groups_list,
             site_add_oauth,
             site_add_basic,
