@@ -415,15 +415,17 @@ impl Core {
         if v["updated"][name] != on {
             return Err(plain("The site didn't change that feature."));
         }
-        self.undo_row(id, "update-features", name).await
+        self.undo_row(id, "update-features", name, None).await
     }
 
-    /// The newest undoable activity row for this tool that touched `key`.
+    /// The newest undoable activity row for this tool that touched `key` (on `post_id`, when
+    /// the key is shared between entries, as ACF field keys are).
     pub(crate) async fn undo_row(
         &self,
         id: i64,
         tool: &str,
         key: &str,
+        post_id: Option<i64>,
     ) -> Result<Option<i64>, SiteError> {
         if !has_tool(&self.site(id)?, "list-ai-activity") {
             return Ok(None);
@@ -442,6 +444,7 @@ impl Core {
             .find(|r| {
                 r["can_undo"] == true
                     && r["status"] == "ok"
+                    && post_id.is_none_or(|p| r["input"]["post_id"].as_i64() == Some(p))
                     && r["input"]
                         .as_object()
                         .into_iter()
@@ -490,7 +493,7 @@ impl Core {
             json!({ "settings": { name: value } }),
         )
         .await?;
-        self.undo_row(id, "update-settings", name).await
+        self.undo_row(id, "update-settings", name, None).await
     }
 
     /// One page of the site's Classic Monks activity log, newest first.

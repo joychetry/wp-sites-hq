@@ -928,7 +928,12 @@ impl Core {
             .await?;
         Ok(AcfSaved {
             values: out["values"].clone(),
-            undo: self.undo_row(id, "update-acf-fields", &first).await?,
+            // The save happened: a failed activity lookup only loses the Undo.
+            undo: self
+                .undo_row(id, "update-acf-fields", &first, Some(post_id))
+                .await
+                .ok()
+                .flatten(),
         })
     }
 
@@ -1915,6 +1920,15 @@ mod tests {
         let acf = core.acf_fields(s.id, p.id).await.unwrap().unwrap();
         assert_eq!(acf["groups"][0]["fields"][0]["value"], "Fresh daily");
         assert_eq!(acf["groups"][0]["fields"][1]["value"], "");
+        // Field keys are shared between entries: Undo is never another entry's save.
+        let one = serde_json::Map::from_iter([("field_tag".to_string(), json!("A"))]);
+        let a = core.save_acf(s.id, p.id, one.clone()).await.unwrap();
+        core.save_acf(s.id, parent.id, one).await.unwrap();
+        let row = core
+            .undo_row(s.id, "update-acf-fields", "field_tag", Some(p.id))
+            .await
+            .unwrap();
+        assert_eq!(row, a.undo);
         let ro = serde_json::Map::from_iter([("field_flex".to_string(), json!([]))]);
         let e = core.save_acf(s.id, p.id, ro).await.unwrap_err().to_string();
         assert!(e.contains("can only be changed in WordPress"), "{e}");
