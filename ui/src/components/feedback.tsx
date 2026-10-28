@@ -28,13 +28,22 @@ export function toast(text: string, opts: { tone?: Tone | "info"; undo?: () => u
   return t.id;
 }
 
+// A focused button goes with its toast, so focus goes back to the open sheet or the content, not to the page.
+const close = (id: number) => {
+  if (document.activeElement?.closest(".toasts")) {
+    const sheet = document.querySelector<HTMLElement>('[aria-modal="true"]');
+    (sheet?.querySelector<HTMLElement>("input, textarea, button") ?? document.getElementById("content"))?.focus();
+  }
+  dismiss(id);
+};
+
 function ToastItem({ t }: { t: Toast }) {
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused) return;
-    // Long enough to read and reach Undo; errors stay until closed.
-    if (t.tone === "danger") return;
-    const timer = setTimeout(() => dismiss(t.id), t.undo ? 8000 : 5000);
+    // Errors and Undo stay until closed (or pushed out by newer ones), so there is time to read and reach them.
+    if (t.tone === "danger" || t.undo) return;
+    const timer = setTimeout(() => dismiss(t.id), 5000);
     return () => clearTimeout(timer);
   }, [paused, t]);
   return (
@@ -46,14 +55,14 @@ function ToastItem({ t }: { t: Toast }) {
           type="button"
           className="btn sm"
           onClick={() => {
-            dismiss(t.id);
+            close(t.id);
             t.undo!();
           }}
         >
           Undo
         </button>
       )}
-      <button type="button" className="icon-btn" aria-label="Close the message" onClick={() => dismiss(t.id)}>
+      <button type="button" className="icon-btn" aria-label="Close the message" onClick={() => close(t.id)}>
         ×
       </button>
     </li>

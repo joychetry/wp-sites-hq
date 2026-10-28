@@ -271,3 +271,87 @@ test("tooltip: shows on keyboard focus and is tied to its element", () => {
   fireEvent.keyDown(b, { key: "Escape" });
   expect(b).not.toHaveAttribute("aria-describedby");
 });
+
+test("date: a month on from the 31st stays in the next month, and a picked day clears the error", () => {
+  function T() {
+    const [v, setV] = useState("2026-01-31");
+    return <DateInput type="date" aria-label="Paid on" value={v} onChange={(e) => setV(e.target.value)} />;
+  }
+  render(<T />);
+  const box = screen.getByRole("textbox", { name: "Paid on: date" });
+  fireEvent.change(box, { target: { value: "xyz" } });
+  fireEvent.blur(box);
+  expect(box).toHaveAttribute("aria-invalid", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Choose the paid on from a calendar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+  expect(screen.getByRole("dialog", { name: "February 2026" })).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByRole("grid"), { key: "PageUp" });
+  fireEvent.keyDown(screen.getByRole("grid"), { key: "PageUp" });
+  expect(screen.getByRole("dialog", { name: "December 2025" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "28 December 2025" }));
+  expect(box).toHaveValue("28 Dec 2025");
+  expect(box).not.toHaveAttribute("aria-invalid");
+});
+
+test("date and time: passing through the time box changes nothing, so the seconds stay", () => {
+  const seen: string[] = [];
+  render(<DateInput type="datetime-local" aria-label="Publish" value="2026-10-28T09:30:15" onChange={(e) => seen.push(e.target.value)} />);
+  const time = screen.getByRole("textbox", { name: "Publish: time" });
+  fireEvent.focus(time);
+  fireEvent.blur(time);
+  expect(seen).toEqual([]);
+});
+
+test("number: letters or a value past the limits say so when you leave the box", () => {
+  function T() {
+    const [v, setV] = useState("5");
+    return <NumberInput aria-label="Days" min={1} max={30} value={v} onChange={(e) => setV(e.target.value)} />;
+  }
+  render(<T />);
+  const box = screen.getByRole("spinbutton", { name: "Days" });
+  fireEvent.change(box, { target: { value: "12a" } });
+  expect(box).not.toHaveAttribute("aria-invalid");
+  fireEvent.blur(box);
+  expect(box).toHaveAttribute("aria-invalid", "true");
+  expect(box).toHaveAccessibleDescription("Write a number from 1 to 30.");
+  fireEvent.change(box, { target: { value: "12" } });
+  fireEvent.blur(box);
+  expect(box).not.toHaveAttribute("aria-invalid");
+});
+
+test("tags: removing a chip keeps focus in the tag box", () => {
+  function T() {
+    const [v, setV] = useState(["shop", "eu"]);
+    return <TagInput label="Tags" value={v} onChange={setV} />;
+  }
+  render(<T />);
+  const remove = screen.getByRole("button", { name: "Remove tag shop" });
+  remove.focus();
+  fireEvent.click(remove);
+  expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Tags" }));
+});
+
+test("toast: a message with Undo stays until it is closed; a plain one goes", () => {
+  vi.useFakeTimers();
+  try {
+    act(() => {
+      toast("Saved.");
+      toast("Approved.", { undo: () => {} });
+    });
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(screen.queryByText("Saved.")).toBeNull();
+    expect(screen.getByText("Approved.")).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("select: inside a dialog, its list opens inside that dialog", () => {
+  render(
+    <div role="dialog" aria-modal="true" aria-label="Add a user">
+      <Pick />
+    </div>,
+  );
+  fireEvent.keyDown(screen.getByRole("combobox", { name: "Fruit" }), { key: "ArrowDown" });
+  expect(within(screen.getByRole("dialog", { name: "Add a user" })).getByRole("listbox")).toBeInTheDocument();
+});

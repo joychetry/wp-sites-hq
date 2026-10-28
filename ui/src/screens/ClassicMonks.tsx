@@ -267,7 +267,8 @@ function Settings({ site, onDone, round }: Part) {
       <ul className="toggles" aria-label="Settings" aria-describedby="settings-legend">
         {data.map((s) => {
           const head = s.tab !== tab ? (tab = s.tab) : null;
-          const changed = valueOf(s) !== (s.value == null ? "" : String(s.value));
+          // A number box with letters in it would save as nothing at all.
+          const changed = valueOf(s) !== (s.value == null ? "" : String(s.value)) && (s.control !== "number" || Number.isFinite(Number(valueOf(s))));
           return [
             head && (
               <li key={`h-${head}`} className="head">

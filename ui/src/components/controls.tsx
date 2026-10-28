@@ -46,9 +46,13 @@ function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: 
     place();
     addEventListener("resize", place);
     addEventListener("scroll", place, true);
+    // A box that grows (chips wrapping to a new line) moves the list with it.
+    const grow = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    if (anchor.current) grow?.observe(anchor.current);
     return () => {
       removeEventListener("resize", place);
       removeEventListener("scroll", place, true);
+      grow?.disconnect();
     };
   }, [anchor, open, width]);
   return style;
@@ -81,7 +85,8 @@ export function Popover({ anchor, open, onClose, width, className, children }: P
     <div ref={ref} className={cx("pop", className)} style={style}>
       {children}
     </div>,
-    document.body,
+    // Inside an open sheet, so WebKit doesn't hide the list from screen readers as outside the dialog.
+    anchor.current?.closest<HTMLElement>('[aria-modal="true"]') ?? document.body,
   );
 }
 
@@ -266,6 +271,9 @@ export function Combobox({ suggestions, onPick, onChange, onKeyDown, className, 
   const term = String(rest.value ?? "").trim().toLowerCase();
   const hits = suggestions.filter((s) => s.toLowerCase().includes(term) && s.toLowerCase() !== term).slice(0, 50);
   const shown = open && hits.length > 0;
+  useEffect(() => {
+    if (shown && active >= 0) document.getElementById(`${list}-${active}`)?.scrollIntoView?.({ block: "nearest" });
+  }, [shown, active, list]);
   const fill = (s: string) => {
     if (onPick) onPick(s);
     else onChange?.(changed(s) as never);
@@ -355,17 +363,29 @@ export function MultiSelect<T extends string | number>({ label, options, value, 
   const box = useRef<HTMLDivElement>(null);
   const list = useId();
   const hits = options.filter((o) => o.label.toLowerCase().includes(q.trim().toLowerCase()));
-  const toggle = (v: T) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+  const chosen = new Set(value);
+  const byValue = new Map(options.map((o) => [o.value, o]));
+  const toggle = (v: T) => onChange(chosen.has(v) ? value.filter((x) => x !== v) : [...value, v]);
+  useEffect(() => {
+    if (open) document.getElementById(`${list}-${active}`)?.scrollIntoView?.({ block: "nearest" });
+  }, [open, active, list]);
   return (
     <div className="multi" ref={box}>
       {value.length > 0 && (
         <ul className="chips" aria-label={`${label}: chosen`}>
           {value.map((v) => {
-            const o = options.find((x) => x.value === v);
+            const o = byValue.get(v);
             return (
               <li key={String(v)} className="tag">
                 {o?.label ?? String(v)}
-                <button type="button" aria-label={`Remove ${o?.label ?? v}`} onClick={() => toggle(v)}>
+                <button
+                  type="button"
+                  aria-label={`Remove ${o?.label ?? v}`}
+                  onClick={() => {
+                    box.current?.querySelector("input")?.focus();
+                    toggle(v);
+                  }}
+                >
                   ×
                 </button>
               </li>
@@ -418,7 +438,7 @@ export function MultiSelect<T extends string | number>({ label, options, value, 
               key={String(o.value)}
               id={`${list}-${i}`}
               role="option"
-              aria-selected={value.includes(o.value)}
+              aria-selected={chosen.has(o.value)}
               aria-disabled={o.disabled || undefined}
               className={cx(i === active && "on")}
               onMouseDown={(e) => e.preventDefault()}
@@ -467,7 +487,9 @@ function Calendar({ value, max, onPick, onClose }: { value: string; max?: string
   start.setDate(1 - ((top.getDay() + 6) % 7));
   const weeks = [...Array(6)].map((_, w) => [...Array(7)].map((_, d) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + d)));
   const over = (d: Date) => !!max && iso(d) > max.slice(0, 10);
-  const move = (days: number, months = 0) => setFocus((f) => new Date(f.getFullYear(), f.getMonth() + months, f.getDate() + days));
+  // A month on from the 31st is the last day of the next month, not a day in the one after.
+  const move = (days: number, months = 0) =>
+    setFocus((f) => new Date(f.getFullYear(), f.getMonth() + months, Math.min(f.getDate(), new Date(f.getFullYear(), f.getMonth() + months + 1, 0).getDate()) + days));
   // Focus follows the day on open and on grid keys; the month buttons keep theirs.
   const follow = useRef(true);
   useEffect(() => {
@@ -697,7 +719,10 @@ function DayField({ value, onChange, label, disabled }: { value: string; onChang
   const [draft, setDraft] = useState(dayLabel(value));
   const [bad, setBad] = useState(false);
   const err = useId();
-  useEffect(() => setDraft(dayLabel(value)), [value]);
+  useEffect(() => {
+    setDraft(dayLabel(value));
+    setBad(false);
+  }, [value]);
   const commit = () => {
     if (!draft.trim()) return value && onChange("");
     const d = parseDate(draft);
@@ -742,7 +767,10 @@ export function parseTime(s: string): string | null {
 function TimeField({ value, onChange, label, disabled }: { value: string; onChange: (t: string) => void; label: string; disabled?: boolean }) {
   const [draft, setDraft] = useState(value);
   const [bad, setBad] = useState(false);
-  useEffect(() => setDraft(value), [value]);
+  useEffect(() => {
+    setDraft(value);
+    setBad(false);
+  }, [value]);
   const by = (mins: number) => {
     const [h, m] = (parseTime(draft) ?? "09:00").split(":").map(Number);
     const t = (((h * 60 + m + mins) % 1440) + 1440) % 1440;
@@ -764,7 +792,8 @@ function TimeField({ value, onChange, label, disabled }: { value: string; onChan
       onBlur={() => {
         const t = parseTime(draft);
         setBad(!t);
-        if (t) onChange(t);
+        // Only a real change: the box shows hours and minutes, so passing through must not drop the seconds.
+        if (t && t !== value) onChange(t);
       }}
       onKeyDown={(e) => {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -788,33 +817,55 @@ export function NumberInput({ value, onChange, min, max, step: by, className, ty
     onChange?.(changed(String(Number(n.toFixed(6)))) as never);
   };
   const name = rest["aria-label"] ?? "the number";
+  const [left, setLeft] = useState(false);
+  const err = useId();
+  const n = Number(value);
+  const bad =
+    left && value !== "" && value != null && (!Number.isFinite(n) || (min != null && min !== "" && n < Number(min)) || (max != null && max !== "" && n > Number(max)));
+  const limits = min != null && min !== "" && max != null && max !== "" ? ` from ${min} to ${max}` : "";
   return (
-    <span className={cx("num-in", className?.includes("sm") && "sm")}>
-      <button type="button" className="icon-btn" tabIndex={-1} aria-label={`Less ${name}`} disabled={rest.disabled} onClick={() => nudge(-1)}>
-        −
-      </button>
-      <input
-        {...rest}
-        className={cx("input", className)}
-        inputMode="decimal"
-        role="spinbutton"
-        aria-valuenow={value === "" || value == null || isNaN(Number(value)) ? undefined : Number(value)}
-        aria-valuemin={min == null || min === "" ? undefined : Number(min)}
-        aria-valuemax={max == null || max === "" ? undefined : Number(max)}
-        value={value}
-        onChange={onChange}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-            e.preventDefault();
-            nudge(e.key === "ArrowUp" ? 1 : -1);
-          }
-          rest.onKeyDown?.(e);
-        }}
-      />
-      <button type="button" className="icon-btn" tabIndex={-1} aria-label={`More ${name}`} disabled={rest.disabled} onClick={() => nudge(1)}>
-        +
-      </button>
-    </span>
+    <>
+      <span className={cx("num-in", className?.includes("sm") && "sm")}>
+        <button type="button" className="icon-btn" tabIndex={-1} aria-label={`Less ${name}`} disabled={rest.disabled} onClick={() => nudge(-1)}>
+          −
+        </button>
+        <input
+          {...rest}
+          className={cx("input", className)}
+          inputMode="decimal"
+          role="spinbutton"
+          aria-valuenow={value === "" || value == null || isNaN(Number(value)) ? undefined : Number(value)}
+          aria-valuemin={min == null || min === "" ? undefined : Number(min)}
+          aria-valuemax={max == null || max === "" ? undefined : Number(max)}
+          value={value}
+          aria-invalid={bad || undefined}
+          aria-describedby={bad ? err : rest["aria-describedby"]}
+          onChange={(e) => {
+            setLeft(false);
+            onChange?.(e);
+          }}
+          onBlur={(e) => {
+            setLeft(true);
+            rest.onBlur?.(e);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              e.preventDefault();
+              nudge(e.key === "ArrowUp" ? 1 : -1);
+            }
+            rest.onKeyDown?.(e);
+          }}
+        />
+        <button type="button" className="icon-btn" tabIndex={-1} aria-label={`More ${name}`} disabled={rest.disabled} onClick={() => nudge(1)}>
+          +
+        </button>
+      </span>
+      {bad && (
+        <span id={err} className="err">
+          Write a number{limits}.
+        </span>
+      )}
+    </>
   );
 }
 
@@ -871,7 +922,15 @@ export function TagInput({ label, value, onChange, suggestions = [] }: { label: 
       {value.map((t) => (
         <span key={t} className="tag">
           {t}
-          <button type="button" aria-label={`Remove tag ${t}`} onClick={() => onChange(value.filter((x) => x !== t))}>
+          <button
+            type="button"
+            aria-label={`Remove tag ${t}`}
+            onClick={(e) => {
+              // The button goes with the chip; focus stays in the tag box instead of falling to the page.
+              (e.currentTarget.closest(".tagin")?.querySelector("input") as HTMLInputElement | null)?.focus();
+              onChange(value.filter((x) => x !== t));
+            }}
+          >
             ×
           </button>
         </span>
@@ -952,7 +1011,7 @@ export function ColorInput({ value, onChange, label }: { value: string; onChange
               style={{ background: c }}
               aria-label={c}
               aria-pressed={c === value}
-              autoFocus={c === value}
+              autoFocus={c === value || (!SWATCHES.includes(value) && c === SWATCHES[0])}
               onClick={() => {
                 onChange(c);
                 setOpen(false);
