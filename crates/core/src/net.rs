@@ -419,14 +419,18 @@ mod tests {
         assert!(explain_status(&reply).unwrap().contains("had an error"));
     }
 
+    /// A port that refuses connections. Bound but never listening, so it stays ours and no
+    /// other test can take it while the socket lives (a dropped listener could be reused).
+    fn closed_port() -> (tokio::net::TcpSocket, u16) {
+        let socket = tokio::net::TcpSocket::new_v4().unwrap();
+        socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+        let port = socket.local_addr().unwrap().port();
+        (socket, port)
+    }
+
     #[tokio::test]
     async fn a_write_that_never_left_is_marked_so() {
-        let port = TcpListener::bind("127.0.0.1:0")
-            .await
-            .unwrap()
-            .local_addr()
-            .unwrap()
-            .port();
+        let (_socket, port) = closed_port();
         let http = client().unwrap();
         let err = send(&Limits::default(), "a", Retry::Write, || {
             http.post(format!("http://127.0.0.1:{port}/"))
@@ -463,12 +467,7 @@ mod tests {
 
     #[tokio::test]
     async fn closed_port_says_could_not_reach() {
-        let port = TcpListener::bind("127.0.0.1:0")
-            .await
-            .unwrap()
-            .local_addr()
-            .unwrap()
-            .port();
+        let (_socket, port) = closed_port();
         let err = get_status(&client().unwrap(), &format!("http://127.0.0.1:{port}/"))
             .await
             .unwrap_err();
