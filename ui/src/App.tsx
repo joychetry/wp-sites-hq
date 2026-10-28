@@ -80,6 +80,7 @@ export default function App() {
   const { sites, error, reload } = useSites();
   const { inventory } = useInventory();
   const { plans } = usePlans();
+  const livePlans = (plans ?? []).filter((p) => !p.expired).length;
   const { reports } = useSecurity();
   const monitors = useMonitors();
   const [sheet, setSheet] = useState<SheetState | null>(null);
@@ -175,7 +176,7 @@ export default function App() {
       label: density === "compact" ? "Use comfortable rows" : "Use compact rows",
       run: () => setDensity(density === "compact" ? "comfortable" : "compact"),
     },
-    ...(plans ?? []).map((p) => ({
+    ...(plans ?? []).filter((p) => !p.expired).map((p) => ({
       id: `plan-${p.id}`,
       group: "Actions",
       label: `Review the AI agent's plan: ${p.title}`,
@@ -348,9 +349,9 @@ export default function App() {
                     </svg>
                     {s}
                     {s === "Sites" && down > 0 && <span className="n alert">{down} down</span>}
-                    {s === "AI" && (plans?.length ?? 0) > 0 && (
+                    {s === "AI" && livePlans > 0 && (
                       <span className="n alert">
-                        {plans!.length}
+                        {livePlans}
                         <span className="sr-only"> to confirm</span>
                       </span>
                     )}

@@ -97,7 +97,7 @@ fn tools() -> Value {
         {
             "name": "plan_status",
             "title": "Follow a plan",
-            "description": "Whether a plan from plan_changes is still waiting for the person, was declined, is running, or finished, with each change's result.",
+            "description": "Whether a plan from plan_changes is still waiting for the person, was declined, expired (unanswered for 7 days), is running, or finished, with each change's result.",
             "inputSchema": { "type": "object", "properties": { "plan_id": { "type": "integer" } }, "required": ["plan_id"], "additionalProperties": false },
             "annotations": { "readOnlyHint": true, "openWorldHint": false },
         },
@@ -125,6 +125,8 @@ fn site_summary(s: &Value) -> Value {
 fn plan_summary(p: &Value) -> Value {
     let state = if !p["declined_at"].is_null() {
         "declined: the person turned it down, nothing changed"
+    } else if p["expired"] == true {
+        "expired: nobody confirmed it within 7 days, it will never run; plan it again if still needed"
     } else if p["confirmed_at"].is_null() {
         "waiting for the person to confirm it in the Monks Central app"
     } else if p["finished_at"].is_null() {
@@ -418,5 +420,16 @@ mod tests {
             ]
         );
         assert_eq!(seen.lock().unwrap()[2].1["arguments"]["id"], 3);
+    }
+
+    #[test]
+    fn an_expired_plan_says_it_never_runs() {
+        let p = json!({ "expired": true, "confirmed_at": null, "declined_at": null, "items": [] });
+        assert!(
+            plan_summary(&p)["state"]
+                .as_str()
+                .unwrap()
+                .starts_with("expired")
+        );
     }
 }

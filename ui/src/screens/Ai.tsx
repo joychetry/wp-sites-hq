@@ -37,8 +37,9 @@ export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
   const [tab, setTab] = useState<Tab>("plans");
   // Results float as toasts, so nothing above the plans moves under the pointer.
   const setNote = (n: Note) => toast(n.text, { tone: n.ok ? "ok" : "danger" });
+  const live = plans.filter((p) => !p.expired).length;
   const tabs: [Tab, string][] = [
-    ["plans", plans.length ? `Plans to confirm (${plans.length})` : "Plans to confirm"],
+    ["plans", live ? `Plans to confirm (${live})` : "Plans to confirm"],
     ["access", "Agent access"],
     ["activity", "Activity"],
     ["connect", "Connect an AI app"],
@@ -88,7 +89,7 @@ function Plans({ plans, onNote, onWatch, focusPlan }: PlansProps) {
       if (confirm) onWatch(await api.confirmPlan(plan.id));
       else {
         await api.declinePlan(plan.id);
-        onNote({ text: `Declined "${plan.title}". Nothing changed.`, ok: true });
+        onNote({ text: plan.expired ? `Removed "${plan.title}". Nothing changed.` : `Declined "${plan.title}". Nothing changed.`, ok: true });
       }
     } catch (e) {
       onNote({ text: String(e), ok: false });
@@ -107,7 +108,8 @@ function Plans({ plans, onNote, onWatch, focusPlan }: PlansProps) {
             {p.title}
           </h2>
           <p className="why">
-            Proposed by an AI agent {ago(p.created_at)}. {plural(p.items.length, "change")} on {plural(sitesIn(p), "site")}.
+            {p.expired && <Status tone="unknown">Expired</Status>} Proposed by an AI agent {ago(p.created_at)}. {plural(p.items.length, "change")} on {plural(sitesIn(p), "site")}.
+            {p.expired && " Nobody confirmed it within 7 days, so it will never run. Ask the AI app to plan it again if you still want it."}
           </p>
           <ul className="plan-list confirm" aria-label={`Changes in ${p.title}`}>
             {p.items.map((i) => (
@@ -120,12 +122,20 @@ function Plans({ plans, onNote, onWatch, focusPlan }: PlansProps) {
             ))}
           </ul>
           <div className="row">
-            <Button disabled={busy === p.id} aria-label={`Decline ${p.title}`} onClick={() => decide(p, false)}>
-              Decline
-            </Button>
-            <Button kind="primary" disabled={busy === p.id} aria-label={`Confirm and run ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
-              {busy === p.id ? "Starting…" : `Confirm and run ${plural(p.items.length, "change")}`}
-            </Button>
+            {p.expired ? (
+              <Button disabled={busy === p.id} aria-label={`Remove ${p.title}`} onClick={() => decide(p, false)}>
+                Remove
+              </Button>
+            ) : (
+              <>
+                <Button disabled={busy === p.id} aria-label={`Decline ${p.title}`} onClick={() => decide(p, false)}>
+                  Decline
+                </Button>
+                <Button kind="primary" disabled={busy === p.id} aria-label={`Confirm and run ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
+                  {busy === p.id ? "Starting…" : `Confirm and run ${plural(p.items.length, "change")}`}
+                </Button>
+              </>
+            )}
           </div>
         </section>
       ))}

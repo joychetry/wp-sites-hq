@@ -217,6 +217,11 @@ test("an AI agent's plan is confirmed from the keyboard and its progress shows",
   const sheet = page.getByRole("dialog", { name: /^Update WooCommerce on 3 sites/ });
   await expect(sheet.getByText(/^Finished\./)).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "Update WooCommerce on 3 sites" })).toHaveCount(0);
+  // An expired plan has no Confirm: it only goes away.
+  await expect(page.getByRole("button", { name: /^Confirm and run .*Turn off Akismet/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Remove Turn off Akismet on Portfolio" }).focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "No plans are waiting." })).toBeVisible();
 });
 

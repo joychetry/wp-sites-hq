@@ -18,6 +18,7 @@ const PLAN: Job = {
   proposed_by: "agent",
   confirmed_at: null,
   declined_at: null,
+  expired: false,
   items: [
     { id: 1, site_id: 1, site_name: "Alpha", action: { do: "update_plugin", plugin: "woocommerce/woocommerce.php" }, label: "Update WooCommerce", from_version: "10.2.0", to_version: "10.3.0", state: "waiting", message: "" },
     { id: 2, site_id: 2, site_name: "Beta", action: { do: "update_plugin", plugin: "woocommerce/woocommerce.php" }, label: "Update WooCommerce", from_version: "10.1.0", to_version: "10.3.0", state: "waiting", message: "" },
@@ -75,6 +76,20 @@ test("declining says nothing changed, and an error is shown in words", async () 
   core({ plan_confirm: () => Promise.reject("This plan isn't waiting any more: it was confirmed or declined already.") });
   fireEvent.click(screen.getByRole("button", { name: `Confirm and run 2 changes: ${PLAN.title}` }));
   expect(await screen.findByText(/isn't waiting any more/)).toBeInTheDocument();
+});
+
+test("an expired plan says it never runs and can only be removed", async () => {
+  const calls = core();
+  const old = { ...PLAN, id: 8, title: "Old plan", created_at: PLAN.created_at - 8 * 86400, expired: true };
+  render(<Ai sites={[]} plans={[old, PLAN]} onWatch={() => {}} />);
+  expect(screen.getByRole("tab", { name: "Plans to confirm (1)" })).toBeInTheDocument();
+  const card = screen.getByRole("region", { name: "Old plan" });
+  expect(within(card).getByText("Expired")).toBeInTheDocument();
+  expect(within(card).getByText(/so it will never run/)).toBeInTheDocument();
+  expect(within(card).queryByRole("button", { name: /Confirm/ })).toBeNull();
+  fireEvent.click(within(card).getByRole("button", { name: "Remove Old plan" }));
+  expect(await screen.findByText('Removed "Old plan". Nothing changed.')).toBeInTheDocument();
+  expect(calls).toContainEqual(["plan_decline", { id: 8 }]);
 });
 
 test("no plans says nothing runs without you", () => {

@@ -198,6 +198,7 @@ function job(over: Partial<Job> = {}): Job {
     proposed_by: "human",
     confirmed_at: 0,
     declined_at: null,
+    expired: false,
     items: [
       { id: 1, site_id: 1, site_name: "Alpha", action: ROWS[0].change.action, label: "Update WooCommerce", from_version: "10.2.0", to_version: "10.3.0", state: "done", message: "Updated." },
       { id: 2, site_id: 2, site_name: "Beta", action: ROWS[1].change.action, label: "Update WooCommerce", from_version: "10.2.0", to_version: "10.3.0", state: "failed", message: "The site took too long to answer." },

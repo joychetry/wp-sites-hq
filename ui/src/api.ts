@@ -179,6 +179,8 @@ export type Job = {
   proposed_by: "human" | "agent";
   confirmed_at: number | null;
   declined_at: number | null;
+  /** An agent's plan nobody answered within 7 days. It never runs; you can only remove it. */
+  expired: boolean;
   items: JobItem[];
 };
 

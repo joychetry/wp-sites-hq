@@ -197,6 +197,7 @@ function startJob(title: string, changes: Change[]): Job {
     proposed_by: "human",
     confirmed_at: now,
     declined_at: null,
+    expired: false,
     items: changes.map((c, i) => ({
       id: i + 1,
       site_id: c.site_id,
@@ -248,6 +249,17 @@ let PLANS: Job[] =
     ? []
     : [
         {
+          id: 49,
+          title: "Turn off Akismet on Portfolio",
+          created_at: now - 8 * 86400,
+          finished_at: null,
+          proposed_by: "agent",
+          confirmed_at: null,
+          declined_at: null,
+          expired: true,
+          items: [{ ...planItem(4, 6, "Portfolio", "5.5"), action: { do: "deactivate_plugin", plugin: "akismet/akismet.php" }, label: "Turn off Akismet Anti-spam: Spam Protection", to_version: null }],
+        },
+        {
           id: 50,
           title: "Update WooCommerce on 3 sites",
           created_at: now - 240,
@@ -255,6 +267,7 @@ let PLANS: Job[] =
           proposed_by: "agent",
           confirmed_at: null,
           declined_at: null,
+          expired: false,
           items: [planItem(1, 1, "MC A", "10.2.0"), planItem(2, 2, "Corner Bakery", "10.1.0"), planItem(3, 6, "Portfolio", "10.2.0")],
         },
       ];

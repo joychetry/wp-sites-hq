@@ -678,6 +678,8 @@ pub struct Job {
     /// When a person confirmed it. An agent's plan waits until then.
     pub confirmed_at: Option<i64>,
     pub declined_at: Option<i64>,
+    /// An agent's plan nobody answered within [`PLAN_TTL`]. It never runs.
+    pub expired: bool,
     pub items: Vec<JobItem>,
 }
 
@@ -687,6 +689,12 @@ pub const NEEDS_APPROVAL: &str =
 
 /// Most changes one plan may hold.
 pub const PLAN_MAX: usize = 200;
+
+/// How long an agent's plan waits for a person (7 days); after that it expires.
+pub const PLAN_TTL: i64 = 7 * 86_400;
+
+const PLAN_EXPIRED: &str = "This plan expired: nobody confirmed it within 7 days, so it will \
+     never run. Ask the AI app to plan it again if you still want it.";
 
 /// Why an agent's plan was refused for what it asks.
 pub const AGENT_PLAN_ONLY: &str = "An AI agent's plan can only update, roll back, turn on or off, \
@@ -731,9 +739,11 @@ fn job_items(conn: &Connection, job: i64) -> rusqlite::Result<Vec<JobItem>> {
 
 fn get_job(conn: &Connection, id: i64) -> rusqlite::Result<Option<Job>> {
     conn.query_row(
-        "SELECT id, title, created_at, finished_at, proposed_by, confirmed_at, declined_at
+        "SELECT id, title, created_at, finished_at, proposed_by, confirmed_at, declined_at,
+                proposed_by = 'agent' AND confirmed_at IS NULL AND declined_at IS NULL
+                AND created_at <= unixepoch() - ?2
          FROM jobs WHERE id = ?1",
-        [id],
+        params![id, PLAN_TTL],
         |r| {
             Ok(Job {
                 id: r.get(0)?,
@@ -743,6 +753,7 @@ fn get_job(conn: &Connection, id: i64) -> rusqlite::Result<Option<Job>> {
                 proposed_by: Actor::parse(&r.get::<_, String>(4)?),
                 confirmed_at: r.get(5)?,
                 declined_at: r.get(6)?,
+                expired: r.get(7)?,
                 items: Vec::new(),
             })
         },
@@ -994,13 +1005,20 @@ impl Core {
         Ok(job)
     }
 
-    /// The person in the app turns an agent's plan down. Nothing runs.
+    /// The person in the app turns an agent's plan down, or clears an expired
+    /// one. Nothing runs.
     pub fn decline_plan(&self, id: i64) -> Result<Job, SiteError> {
+        let expired = self.job(id).is_ok_and(|j| j.expired);
         let job = self.decide_plan(id, "declined_at")?;
+        let what = if expired {
+            "Removed the expired plan"
+        } else {
+            "Declined the plan"
+        };
         self.record(
             Actor::Human,
             None,
-            &format!("Declined the plan: {}", job.title),
+            &format!("{what}: {}", job.title),
             Outcome::Done,
             "Proposed by an AI agent. Nothing changed.",
         );
@@ -1010,21 +1028,26 @@ impl Core {
 
     /// Mark a waiting plan confirmed or declined, once.
     fn decide_plan(&self, id: i64, column: &'static str) -> Result<Job, SiteError> {
-        let finished = if column == "declined_at" {
-            ", finished_at = unixepoch()"
+        // Only a plan still in time can be confirmed; any unanswered one can be declined.
+        let (finished, in_time) = if column == "declined_at" {
+            (", finished_at = unixepoch()", String::new())
         } else {
-            ""
+            ("", format!("AND created_at > unixepoch() - {PLAN_TTL}"))
         };
         let n = self.db(|c| {
             c.execute(
                 &format!(
                     "UPDATE jobs SET {column} = unixepoch(){finished} WHERE id = ?1
-                     AND proposed_by = 'agent' AND confirmed_at IS NULL AND declined_at IS NULL"
+                     AND proposed_by = 'agent' AND confirmed_at IS NULL AND declined_at IS NULL
+                     {in_time}"
                 ),
                 [id],
             )
         })?;
         if n == 0 {
+            if self.job(id).is_ok_and(|j| j.expired) {
+                return Err(plain(PLAN_EXPIRED));
+            }
             return Err(plain(
                 "This plan isn't waiting any more: it was confirmed or declined already.",
             ));
@@ -1032,7 +1055,8 @@ impl Core {
         self.job(id)
     }
 
-    /// Agents' plans waiting for a person, oldest first.
+    /// Agents' plans waiting for a person, oldest first. Expired ones stay
+    /// listed (marked `expired`) until a person removes them.
     pub fn waiting_plans(&self) -> Result<Vec<Job>, SiteError> {
         let ids: Vec<i64> = self.db(|c| {
             let mut stmt = c.prepare_cached(
@@ -2298,6 +2322,26 @@ mod tests {
         assert!(declined.declined_at.is_some() && declined.finished_at.is_some());
         assert!(core.confirm_plan(plan.id).await.is_err());
         assert!(core.decline_plan(plan.id).is_err());
+        // A plan nobody answers in 7 days expires: listed as expired, never runnable.
+        let old = core
+            .propose_plan("Old", vec![change("WooCommerce")])
+            .unwrap();
+        assert!(!old.expired);
+        core.db(|c| {
+            c.execute(
+                "UPDATE jobs SET created_at = unixepoch() - ?2 WHERE id = ?1",
+                params![old.id, PLAN_TTL + 1],
+            )
+        })
+        .unwrap();
+        let waiting = core.waiting_plans().unwrap();
+        assert!(waiting.iter().any(|j| j.id == old.id && j.expired));
+        let err = core.confirm_plan(old.id).await.unwrap_err();
+        assert_eq!(err.to_string(), PLAN_EXPIRED);
+        assert!(core.job(old.id).unwrap().confirmed_at.is_none());
+        let removed = core.decline_plan(old.id).unwrap();
+        assert!(!removed.expired && removed.declined_at.is_some());
+        assert!(core.waiting_plans().unwrap().is_empty());
         tokio::time::sleep(Duration::from_millis(100)).await;
         assert!(!site.state().calls.iter().any(|(t, _)| t == "update-plugin"));
         // A person's own job is theirs in the log.
@@ -2315,6 +2359,10 @@ mod tests {
         assert!(
             log.iter()
                 .any(|e| e.what == "Declined the plan: Plan from an AI agent")
+        );
+        assert!(
+            log.iter()
+                .any(|e| e.what == "Removed the expired plan: Old")
         );
         let older = core.activity_log(Some(log[0].id)).unwrap();
         assert_eq!(older.len(), log.len() - 1);
