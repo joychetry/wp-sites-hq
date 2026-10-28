@@ -53,7 +53,7 @@ fn tools() -> Value {
         {
             "name": "plan_changes",
             "title": "Plan changes on many sites",
-            "description": "Propose plugin, theme or WordPress changes on one or more sites, as one plan. Nothing changes until the person confirms the plan in the Monks Central app (AI); you cannot confirm it. Tell them it is waiting there, then follow it with plan_status.",
+            "description": "Propose plugin, theme or WordPress changes on one or more sites, as one plan. Any connected site can be in a plan, with or without AI agent access: once confirmed, it runs as the person. Nothing changes until the person confirms the plan in the Monks Central app (AI); you cannot confirm it. Tell them it is waiting there, then follow it with plan_status.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
