@@ -38,6 +38,15 @@
 //!   set-feature <url> <option name> <on|off>   prints the activity row that undoes it
 //!   undo <url> <activity row id>
 //!   activity <url> | approvals <url> | settings <url>
+//!   agent-access <url> <studio site path>  give AI agents their own connection:
+//!                       the consent form with "operator" left unticked
+//!   agent-access-off <url>
+//!   plans | log        agents' plans waiting for a person; Monks Central's activity log
+//!
+//! These two need no core of their own, so they also run while the app is open:
+//!   approve <studio site path> <approve url>   the person approves on the site's
+//!                       own approve page, signed in as the site's admin
+//!   socket <method> [params JSON]   call the running core's socket, as an agent does
 //!
 //! The browser step is played by this program: a login cookie made with
 //! `studio wp` (no password is handled), then the site's real consent form,
@@ -63,6 +72,24 @@ async fn main() -> Res<()> {
     let home = paths::data_dir()?;
     if std::env::var_os("MONKS_HOME").is_none() {
         return Err("set MONKS_HOME to the data folder to use".into());
+    }
+    match args.first().map(String::as_str) {
+        Some("approve") => return approve(&args[1], &args[2]).await,
+        Some("socket") => {
+            let params = match args.get(2) {
+                Some(p) => serde_json::from_str(p)?,
+                None => serde_json::Value::Null,
+            };
+            match monks_core::ipc::call(&home, &args[1], params).await {
+                Ok(v) => println!("{}", serde_json::to_string_pretty(&v)?),
+                Err(monks_core::ipc::ClientError::Rpc(e)) => {
+                    println!("refused: {} ({})", e.message, e.code)
+                }
+                Err(e) => println!("failed: {e}"),
+            }
+            return Ok(());
+        }
+        _ => {}
     }
     let keychain = vault::os_keychain().map_err(|e| e.to_string());
     if args.first().map(String::as_str) == Some("forget-key") {
@@ -341,6 +368,42 @@ async fn main() -> Res<()> {
             Ok(())
         }
         "login-check" => login_check(&core, arg(1)?).await,
+        "agent-access" => {
+            let id = site_id(&core, arg(1)?)?;
+            let s = core
+                .add_agent_access(id, browser_as(&core, arg(2)?, false)?)
+                .await?;
+            println!("{}: AI agent access {}", s.name, s.agent_access);
+            Ok(())
+        }
+        "agent-access-off" => {
+            let s = core.remove_agent_access(site_id(&core, arg(1)?)?).await?;
+            println!("{}: AI agent access {}", s.name, s.agent_access);
+            Ok(())
+        }
+        "plans" => show(&core.waiting_plans()?),
+        "log" => {
+            for e in core.activity_log(None)?.iter().rev() {
+                println!(
+                    "  #{:<4} {:<16} {:<20} {:<9} {}{}",
+                    e.id,
+                    format!("{:?}", e.actor),
+                    if e.site_name.is_empty() {
+                        "-"
+                    } else {
+                        &e.site_name
+                    },
+                    format!("{:?}", e.outcome),
+                    e.what,
+                    if e.detail.is_empty() {
+                        String::new()
+                    } else {
+                        format!("  ({})", e.detail)
+                    }
+                );
+            }
+            Ok(())
+        }
         "agent" => {
             match core.agent_call(arg(1)?, arg(2)?, json!({})).await {
                 Ok(_) => println!("agent call ran"),
@@ -517,12 +580,21 @@ fn print_job(job: &Job) {
 
 /// Plays the person in the browser: signed in as the site's admin, ticks operator.
 fn browser(core: &Arc<Core>, wp_path: &str) -> Res<impl FnOnce(&str) -> std::io::Result<()>> {
+    browser_as(core, wp_path, true)
+}
+
+/// The same, ticking "operator" or (for AI agents' connection) leaving it unticked.
+fn browser_as(
+    core: &Arc<Core>,
+    wp_path: &str,
+    operator: bool,
+) -> Res<impl FnOnce(&str) -> std::io::Result<()> + use<>> {
     let cookie = login_cookie(wp_path)?;
     let c = core.clone();
     Ok(move |auth_url: &str| {
         let auth_url = auth_url.to_string();
         tokio::spawn(async move {
-            if let Err(e) = consent(&auth_url, &cookie).await {
+            if let Err(e) = consent(&auth_url, &cookie, operator).await {
                 eprintln!("consent failed: {e}");
                 c.cancel_sign_in();
             }
@@ -624,7 +696,7 @@ echo LOGGED_IN_COOKIE, '=', wp_generate_auth_cookie( $u->ID, $exp, 'logged_in', 
 /// Load the consent page as the signed-in admin, tick every tool group and
 /// operator, press Connect,
 /// then follow the redirect back to the app's loopback.
-async fn consent(auth_url: &str, cookie: &str) -> Res<()> {
+async fn consent(auth_url: &str, cookie: &str, tick_operator: bool) -> Res<()> {
     let http = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
@@ -636,9 +708,14 @@ async fn consent(auth_url: &str, cookie: &str) -> Res<()> {
             None => break r.text().await?,
         }
     };
-    let operator = page.contains("name=\"operator\"");
+    let shown = page.contains("name=\"operator\"");
+    let operator = shown && tick_operator;
     if operator {
         println!("consent page: shows \"This is my Monks Central app (operator)\"; ticking it");
+    } else if shown {
+        println!(
+            "consent page: shows \"This is my Monks Central app (operator)\"; leaving it unticked"
+        );
     } else {
         println!("consent page: no operator checkbox (this Classic Monks predates it)");
     }
@@ -682,6 +759,54 @@ async fn consent(auth_url: &str, cookie: &str) -> Res<()> {
         .to_string();
     // Back to the app, without the site's cookie.
     reqwest::get(back).await?;
+    Ok(())
+}
+
+/// The person opens the site's approve page, signed in as the admin, and presses Approve.
+async fn approve(wp_path: &str, approve_url: &str) -> Res<()> {
+    let cookie = login_cookie(wp_path)?;
+    let http = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
+    let page = http
+        .get(approve_url)
+        .header(COOKIE, &cookie)
+        .send()
+        .await?
+        .text()
+        .await?;
+    let at = page
+        .find("value=\"cm_ai_decide\"")
+        .ok_or("the approve page has no decision form (already decided, or expired?)")?;
+    let start = page[..at].rfind("<form").ok_or("no form")?;
+    let form_html = &page[start..start + page[start..].find("</form>").ok_or("no form end")?];
+    let action = attr(form_html, "action").ok_or("no form action")?;
+    let mut form: Vec<(String, String)> = inputs(form_html)
+        .into_iter()
+        .filter(|(t, _, _)| t == "hidden")
+        .map(|(_, n, v)| (n, v))
+        .collect();
+    let what = page
+        .find("cm-ai-approve__json")
+        .map(|i| &page[i..])
+        .and_then(|p| p.find('>').map(|j| &p[j + 1..]))
+        .and_then(|p| p.find("</pre>").map(|k| unescape(&p[..k])))
+        .unwrap_or_default();
+    println!(
+        "approve page: asks to approve {}",
+        what.split_whitespace().collect::<Vec<_>>().join(" ")
+    );
+    form.push(("decision".into(), "approve".into()));
+    let r = http
+        .post(absolute(approve_url, &action)?)
+        .header(COOKIE, &cookie)
+        .form(&form)
+        .send()
+        .await?;
+    println!(
+        "approve page: pressed Approve, the site answered {}",
+        r.status()
+    );
     Ok(())
 }
 
