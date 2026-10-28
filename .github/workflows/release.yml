@@ -1,0 +1,72 @@
+name: Release
+
+# A version tag (v0.1.0) builds unsigned installers on all three systems and
+# puts them in a draft GitHub release with latest.json for the in-app updater.
+# Nothing is published until a person publishes the draft. Needs the repo
+# secret TAURI_SIGNING_PRIVATE_KEY (the updater key; its password, if any, in
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD). See docs/release/checklist.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  installers:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux (AppImage, deb, rpm)
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - name: macOS Apple silicon (dmg)
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macOS Intel (dmg)
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: Windows (msi, setup exe)
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Tauri system packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: npm ci
+        working-directory: ui
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ matrix.target }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: .
+          tauriScript: bash scripts/bundle.sh
+          args: --target ${{ matrix.target }}
+          tagName: ${{ github.ref_name }}
+          releaseName: Monks Central ${{ github.ref_name }}
+          releaseBody: Unsigned beta installers. How to install and open them, see docs/install.md.
+          releaseDraft: true
+          prerelease: true
+          includeUpdaterJson: true
