@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Pick an item from a site's media library, or upload one picked on this computer and use it
 // (the featured image now; the post editor's Add media and ACF fields later).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, fileBase64, type Library, type Media, type Site } from "../api";
 import { FilePicker, SearchInput } from "./controls";
 import { Progress, toast } from "./feedback";
@@ -77,15 +77,19 @@ export function MediaPicker({ site, kind = "image", use = "Use", cancel = "Cance
   const [sending, setSending] = useState<string | null>(null);
   const sent = useProgress();
 
+  // Only the newest search's answer is shown (an older one must not replace or join it).
+  const asked = useRef(0);
   const load = useCallback(
     (p: number) => {
+      const n = ++asked.current;
       api.media(site.id, { page: p, search, kind }).then(
         (l) => {
+          if (n !== asked.current) return;
           setLib((old) => (p === 1 ? l : { ...l, items: [...(old?.items ?? []), ...l.items] }));
           setPage(p);
           setError(null);
         },
-        (e) => setError(String(e)),
+        (e) => n === asked.current && setError(String(e)),
       );
     },
     [site.id, search, kind],

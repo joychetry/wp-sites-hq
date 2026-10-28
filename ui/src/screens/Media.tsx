@@ -404,17 +404,22 @@ export function Media({ sites }: { sites: Site[] }) {
   const [upOpen, setUpOpen] = useState(false);
   const items = lib?.items ?? null;
 
+  // Only the newest request's answer is shown: a slow site's library must never appear under
+  // another site, where its ids would be edited, replaced or trashed on that site.
+  const asked = useRef(0);
   const load = useCallback(
     (p: number, keep = false) => {
+      const n = ++asked.current;
       if (current == null || blocked) return;
       if (p === 1 && !keep) setLib(null);
       api.media(current, { page: p, search, kind: type, month }).then(
         (l) => {
+          if (n !== asked.current) return;
           setLib((old) => (p === 1 ? l : { ...l, items: [...(old?.items ?? []), ...l.items] }));
           setPage(p);
           setError(null);
         },
-        (e) => setError(String(e)),
+        (e) => n === asked.current && setError(String(e)),
       );
     },
     [current, blocked, search, type, month],

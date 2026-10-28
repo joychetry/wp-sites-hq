@@ -196,6 +196,33 @@ test("Basic mode edits details but says why it can't replace or trash", async ()
   expect(screen.queryByText("Used in")).toBeNull();
 });
 
+test("a slow site's library never shows under the site picked after it", async () => {
+  let slow: (v: unknown) => void = () => {};
+  const lib = (items: Item[]) => ({ items, total: items.length, allowed: {}, limit: 1_000_000 });
+  core({ media_list: (a) => (a.id === 1 ? new Promise((r) => (slow = r)) : lib([item(9, "beta-photo")])) });
+  render(<Media sites={[CM, BASIC]} />);
+  await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("media_list", expect.objectContaining({ id: 1 })));
+  choose(screen.getByRole("combobox", { name: "Site" }), "2");
+  expect(await screen.findByRole("form", { name: "Details of beta-photo" })).toBeInTheDocument();
+  slow(lib([item(5, "door")]));
+  await new Promise((r) => setTimeout(r, 20));
+  expect(screen.queryByRole("form", { name: "Details of door" })).toBeNull();
+  expect(screen.getByRole("form", { name: "Details of beta-photo" })).toBeInTheDocument();
+});
+
+test("the picker keeps only the newest search's answer", async () => {
+  let slow: (v: unknown) => void = () => {};
+  const lib = (items: Item[]) => ({ items, total: items.length, allowed: {}, limit: 1_000_000 });
+  core({ media_list: (a) => ((a.query as { search: string }).search === "" ? new Promise((r) => (slow = r)) : lib([item(9, "cake")])) });
+  render(<MediaPicker site={CM} onPick={() => {}} onCancel={() => {}} />);
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "cake" } });
+  fireEvent.submit(screen.getByRole("search"));
+  expect(await screen.findByRole("button", { name: "Use cake" })).toBeInTheDocument();
+  slow(lib([item(5, "door")]));
+  await new Promise((r) => setTimeout(r, 20));
+  expect(screen.queryByRole("button", { name: "Use door" })).toBeNull();
+});
+
 test("the picker uses a library image, or uploads a new one and uses it", async () => {
   const calls = core();
   const pick = vi.fn();
