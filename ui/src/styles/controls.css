@@ -8,7 +8,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 /* Motion: hover, press and focus settle quickly */
 .btn, .input, .navitem, .chip, .cell, .icon-btn, .tabs [role="tab"], .segmented button, .lb li, .day, .swatch, .box::before,
-input[type="checkbox"], input[type="radio"], .t td, .linkish, .link, .search, .scope {
+input[type="checkbox"], input[type="radio"], .t td, .linkish, .link, .kbar, .scope, .themes button {
   transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease),
     box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease), opacity var(--dur) var(--ease), background-position var(--dur) var(--ease);
 }
@@ -201,17 +201,8 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 .dt-err { width: 100%; margin: 0; }
 .bar .tabs { border: 0; padding: 0; margin-block: calc(-1 * var(--sp-2)); }
 
-/* Shell polish: rail icons, a quieter foot, a top bar that sits above scrolling content */
-.nav-ico { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
-.navitem[aria-current] .nav-ico { opacity: 1; }
-.navitem { height: 32px; }
-.navgroup { padding-top: var(--sp-4); }
-.rail .foot { gap: var(--sp-1); }
-.rail .foot button { margin-top: var(--sp-1); }
-.rail .foot button:hover { background: var(--raise); color: var(--text); }
-.search:hover { border-color: var(--line-ui); color: var(--text-2); }
-.top { background: var(--bg); }
-.crumb { letter-spacing: -0.01em; }
+/* Sidebar icons: a 17px line drawing per item, so the sidebar can be scanned by shape as well as by word */
+.nav-ico { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Empty states: one picture for all of them, unless they bring their own */
 .empty { padding-top: var(--sp-7); }
@@ -246,6 +237,7 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 /* Between 900 and 1200px wide: a narrower rail and inspector, so tables keep their room */
 @media (max-width: 1200px) {
   :root { --rail: 216px; --inspector: 288px; }
+  .top, .body { padding-inline: var(--sp-5); }
   .bar .srch { width: 240px; }
 }
 @media (max-width: 900px) {

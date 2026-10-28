@@ -23,7 +23,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-test("shows every section in the rail, the sentence and the version", async () => {
+test("shows every section in the sidebar, the sentence and the version", async () => {
   serve();
   render(<App />);
   const nav = screen.getByRole("navigation", { name: "Main" });
@@ -31,7 +31,7 @@ test("shows every section in the rail, the sentence and the version", async () =
     expect(within(nav).getByRole("button", { name: new RegExp(`^${s}`) })).toBeInTheDocument();
   }
   expect(screen.getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
-  expect(await screen.findByRole("heading", { name: "Both sites are healthy." })).toBeInTheDocument();
+  expect(await screen.findByText("Both sites are healthy.")).toBeInTheDocument();
   expect(screen.getByText("Version 0.0.1")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("core_status");
 });
@@ -68,7 +68,7 @@ test("shows the core error in plain words", async () => {
 test("Ctrl K opens the palette and runs a command", async () => {
   serve();
   render(<App />);
-  await screen.findByRole("heading", { name: "Both sites are healthy." });
+  await screen.findByText("Both sites are healthy.");
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });
   const input = screen.getByRole("combobox", { name: "Command" });
   fireEvent.change(input, { target: { value: "central test" } });
@@ -78,14 +78,13 @@ test("Ctrl K opens the palette and runs a command", async () => {
   expect(screen.getByRole("complementary", { name: "Monks Central Test details" })).toBeInTheDocument();
 });
 
-test("the theme follows the system, then light, then dark", async () => {
+test("the theme is the system's until light or dark is picked", async () => {
   serve();
   render(<App />);
-  const btn = screen.getByRole("button", { name: "Theme: same as my computer" });
+  expect(screen.getByRole("button", { name: "Theme: same as my computer" })).toHaveAttribute("aria-pressed", "true");
   expect(document.documentElement.dataset.theme).toBe("light");
-  fireEvent.click(btn);
-  fireEvent.click(screen.getByRole("button", { name: "Theme: light" }));
-  expect(screen.getByRole("button", { name: "Theme: dark" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Theme: dark" }));
+  expect(screen.getByRole("button", { name: "Theme: dark" })).toHaveAttribute("aria-pressed", "true");
   expect(document.documentElement.dataset.theme).toBe("dark");
   expect(localStorage.getItem("mc-theme")).toBe("dark");
 });
@@ -93,9 +92,9 @@ test("the theme follows the system, then light, then dark", async () => {
 test("the scope switcher narrows to a group", async () => {
   serve([site({ group: "Clients" }), site({ id: 2, name: "Own", url: "https://own.local" })]);
   render(<App />);
-  await screen.findByRole("heading", { name: "Both sites are healthy." });
+  await screen.findByText("Both sites are healthy.");
   choose(screen.getByRole("combobox", { name: "Sites to show" }), "Clients");
-  expect(screen.getByRole("heading", { name: "Your one site is healthy." })).toBeInTheDocument();
+  expect(screen.getByText("Your one site is healthy.")).toBeInTheDocument();
 });
 
 test("rows are comfortable until Settings picks compact, and it is remembered", async () => {
@@ -113,7 +112,7 @@ test("rows are comfortable until Settings picks compact, and it is remembered", 
 test("the palette logs in to a site's dashboard where the connection can", async () => {
   serve([site({ capabilities: { operator: true, abilities: ["create-login-link"] } }), site({ id: 2, name: "Plain" })]);
   render(<App />);
-  await screen.findByRole("heading", { name: "Both sites are healthy." });
+  await screen.findByText("Both sites are healthy.");
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });
   const input = screen.getByRole("combobox", { name: "Command" });
   fireEvent.change(input, { target: { value: "dashboard" } });

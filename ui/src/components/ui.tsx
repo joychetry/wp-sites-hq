@@ -19,6 +19,35 @@ export function Logo() {
   );
 }
 
+/** Line drawings on a 16px grid, round caps, drawn in currentColor (the design's icon set). */
+const GLYPHS = {
+  refresh: "M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3.5H10",
+  search: "M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM10.3 10.3 14 14",
+  clock: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 4.5V8l2.5 1.5",
+  monitor: "M2 3h12v8H2zM5.5 14h5M8 11v3",
+  sun: "M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3 3l1 1M12 12l1 1M3 13l1-1M12 4l1-1",
+  moon: "M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z",
+  plus: "M8 3v10M3 8h10",
+  arrow: "M3 8h10M9 4l4 4-4 4",
+  sparkle: "M8 1.5l1.5 5 5 1.5-5 1.5-1.5 5-1.5-5-5-1.5 5-1.5z",
+  download: "M8 2v8.5M4.5 7 8 10.5 11.5 7M2.5 13.5h11",
+  shield: "M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z",
+  unplug: "M2 2l12 12M6 1.5v3M10 1.5v2M4 4.5h1.5M12 4.5v3a4 4 0 0 1-1 2.6M4.3 6.5A4 4 0 0 0 8 11.5c.6 0 1.1-.1 1.6-.3M8 11.5v3",
+  login: "M9.5 2.5h3v11h-3M2 8h8M7 5l3 3-3 3",
+  globe: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM1.5 8h13M8 1.5c2.2 2.2 2.2 10.8 0 13M8 1.5c-2.2 2.2-2.2 10.8 0 13",
+  message: "M2 3h12v8H6.5L3.5 14v-3H2z",
+  alert: "M8 2.2 14.3 13.5H1.7zM8 6.8v2.9M8 11.6v.1",
+};
+export type GlyphName = keyof typeof GLYPHS;
+
+export function Glyph({ name }: { name: GlyphName }) {
+  return (
+    <svg className="glyph" viewBox="0 0 16 16" aria-hidden="true">
+      <path d={GLYPHS[name]} />
+    </svg>
+  );
+}
+
 export function Kbd({ children }: { children: ReactNode }) {
   return <span className="kbd">{children}</span>;
 }
@@ -60,7 +89,7 @@ export function Status({ tone, children }: { tone: Tone | "info"; children: Reac
 }
 
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  kind?: "primary" | "danger";
+  kind?: "primary" | "danger" | "soft";
   small?: boolean;
   keys?: string;
 };

@@ -32,7 +32,6 @@ test("needs attention offers the right next step", () => {
   expect(panel).not.toHaveTextContent("Fine");
   expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { level: 2, name: "One site is down. One needs a look. The other two are fine." })).toBeInTheDocument();
 });
 
 test("a connection with no tools says so and offers to sign in again; slow is only a note", () => {
@@ -47,7 +46,6 @@ test("a connection with no tools says so and offers to sign in again; slow is on
   screen.getByRole("button", { name: "Sign in again" }).click();
   expect(onSignInAgain).toHaveBeenCalledWith(1);
   expect(panel).toHaveTextContent("Slow site. Slow: the home page took 4.2 s. It still works.");
-  expect(screen.getByRole("heading", { level: 2, name: "One needs a look. The other one is fine." })).toBeInTheDocument();
 });
 
 test("a new user gets three steps, then next steps that can be hidden for good", () => {

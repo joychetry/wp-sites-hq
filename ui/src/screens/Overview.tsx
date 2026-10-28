@@ -29,7 +29,7 @@ export function summary(sites: Site[]): { lead: string; rest: string } {
   return { lead: parts.join(" "), rest };
 }
 
-function attention(s: Site): string | null {
+export function attention(s: Site): string | null {
   if (s.sign_in_again) return "The saved sign-in can't be used. Sign in again.";
   if (s.health === "down" || s.health === "warning") return s.health_detail || "Needs a look.";
   if (noTools(s)) return NO_TOOLS;
@@ -153,7 +153,6 @@ function NextSteps({ sites, onGo, onAdd }: { sites: Site[]; onGo: NonNullable<Pr
 }
 
 export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd, onGo }: Props) {
-  const { lead, rest } = summary(sites);
   const tone = (t: string) => sites.filter((s) => siteStatus(s).tone === t).length;
   const cm = sites.filter((s) => s.mode === "classic_monks").length;
   const approvals = sites.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
@@ -161,9 +160,6 @@ export function Overview({ sites, onOpen, onCheck, onSignInAgain, onAdd, onGo }:
   const slows = sites.filter(slow);
   return (
     <div className="scroll">
-      <h2 className="sentence">
-        {lead} {rest && <span className="dim">{rest}</span>}
-      </h2>
       {sites.length === 0 ? (
         <Welcome onAdd={onAdd} onGo={onGo} />
       ) : (
