@@ -7,7 +7,8 @@
 #   TARGET=aarch64-apple-darwin scripts/bundle.sh --target aarch64-apple-darwin
 #
 # Linux: AppImage, .deb and .rpm. macOS: .app and .dmg. Windows: .msi and
-# setup .exe. Output: target/release/bundle/. Unsigned (plan D7).
+# setup .exe. Output: target/release/bundle/. Not code-signed (plan D7); the
+# macOS .app is ad-hoc signed so macOS offers Open Anyway, not "damaged".
 #
 # Update files (.sig) are signed only when TAURI_SIGNING_PRIVATE_KEY is set
 # (the key itself, or a path to it); without it Tauri builds the installers and

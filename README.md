@@ -19,26 +19,30 @@ The builds aren't code-signed yet, so macOS and Windows warn you the first time;
 Anyway, Windows SmartScreen, Linux AppImage, .deb and .rpm). The app updates
 itself from GitHub Releases, and checks each update's signature first.
 
-### macOS says "Monks Central is damaged and can't be opened"
+### macOS says Apple could not verify Monks Central
 
-The app isn't damaged. macOS shows this for an app that isn't signed by an
-Apple-registered developer and was downloaded with a browser. To open it:
+The macOS build is ad-hoc signed, not signed by an Apple-registered developer,
+so the first open is blocked once. To open it:
 
-1. Click **Cancel** (not "Move to Bin").
-2. Open the `.dmg` and drag **Monks Central** into **Applications**.
-3. Open **Terminal** and run:
+1. Drag **Monks Central** from the `.dmg` into **Applications** and open it.
+   When macOS says it could not verify the app, click **Done**.
+2. Open **System Settings > Privacy & Security**, scroll down to **Security**
+   and click **Open Anyway** next to "Monks Central was blocked". Confirm with
+   your password or Touch ID.
 
-   ```bash
-   xattr -cr "/Applications/Monks Central.app"
-   ```
+If macOS instead says "Monks Central is damaged and can't be opened" (older
+builds, or a download that lost its signature), the app isn't damaged. Click
+**Cancel** (not "Move to Bin"), then run this in **Terminal** and open it again:
 
-   This removes the "downloaded from the internet" mark macOS put on the app.
-4. Open Monks Central as usual. You only need to do this once per download.
+```bash
+xattr -cr "/Applications/Monks Central.app"
+```
 
+This removes the "downloaded from the internet" mark macOS put on the app.
 If it still won't open, run
 `codesign -dv "/Applications/Monks Central.app" 2>&1 | head -5` and include
 what it prints in an [issue](https://github.com/joychetry/monks-central/issues).
-Signed and notarised macOS builds will remove this step.
+Signed and notarised macOS builds will remove these steps.
 
 Your sites need WordPress 7.1 or newer. With the
 [Classic Monks](https://classicmonks.com) plugin on a site you get everything;

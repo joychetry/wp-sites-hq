@@ -33,6 +33,15 @@ Your sites need WordPress 7.1 or newer.
 You do this once per version. On macOS 15 (Sequoia) and newer, Control-click >
 Open no longer skips the warning; System Settings is the only way.
 
+The macOS build is ad-hoc signed, which is what lets macOS offer **Open
+Anyway**. If it says "Monks Central is damaged and can't be opened" instead
+(older builds, or a download that lost its signature), the app isn't damaged:
+click **Cancel**, run this in **Terminal**, then open it again.
+
+```sh
+xattr -cr "/Applications/Monks Central.app"
+```
+
 The first time Monks Central saves a site, macOS asks whether it may use your
 keychain. Click **Always Allow**. Because the app isn't signed, macOS asks
 again once after each update.
