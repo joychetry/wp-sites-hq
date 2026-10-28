@@ -602,16 +602,20 @@ fn wrap(text: &str, size: f32, bold: bool, max: f32) -> Vec<String> {
         } else {
             line = next;
         }
-        // A word wider than the line is cut.
-        while width(&line, size, bold) > max && line.chars().count() > 1 {
-            let mut cut = line.chars().count() - 1;
-            while cut > 1 && width(&line.chars().take(cut).collect::<String>(), size, bold) > max {
-                cut -= 1;
+        // A word wider than the line is cut, in one pass (a site's 64 KB title stays quick).
+        if width(&line, size, bold) > max {
+            let scale = size / 1000.0 * if bold { 1.06 } else { 1.0 };
+            let (mut piece, mut used) = (String::new(), 0.0);
+            for c in line.chars() {
+                let w = glyph(c) * scale;
+                if used + w > max && !piece.is_empty() {
+                    lines.push(std::mem::take(&mut piece));
+                    used = 0.0;
+                }
+                piece.push(c);
+                used += w;
             }
-            let head: String = line.chars().take(cut).collect();
-            let tail: String = line.chars().skip(cut).collect();
-            lines.push(head);
-            line = tail;
+            line = piece;
         }
     }
     lines.push(line);
@@ -629,7 +633,18 @@ fn pdf_text(s: &str) -> String {
             }
             ' '..='~' => c as u8,
             '\u{20ac}' => 0x80,
+            '\u{201a}' => 0x82,
+            '\u{0192}' => 0x83,
+            '\u{201e}' => 0x84,
             '\u{2026}' => 0x85,
+            '\u{2020}' => 0x86,
+            '\u{2021}' => 0x87,
+            '\u{02c6}' => 0x88,
+            '\u{2030}' => 0x89,
+            '\u{0160}' => 0x8a,
+            '\u{2039}' => 0x8b,
+            '\u{0152}' => 0x8c,
+            '\u{017d}' => 0x8e,
             '\u{2018}' => 0x91,
             '\u{2019}' => 0x92,
             '\u{201c}' => 0x93,
@@ -637,6 +652,13 @@ fn pdf_text(s: &str) -> String {
             '\u{2022}' => 0x95,
             '\u{2013}' => 0x96,
             '\u{2014}' => 0x97,
+            '\u{02dc}' => 0x98,
+            '\u{2122}' => 0x99,
+            '\u{0161}' => 0x9a,
+            '\u{203a}' => 0x9b,
+            '\u{0153}' => 0x9c,
+            '\u{017e}' => 0x9e,
+            '\u{0178}' => 0x9f,
             '\u{a0}'..='\u{ff}' => c as u32 as u8,
             _ => b'?',
         };
@@ -929,6 +951,22 @@ mod tests {
             "x",
         );
         assert!(!String::from_utf8_lossy(&quiet).contains("Monks Central"));
+    }
+
+    #[test]
+    fn long_words_wrap_quickly_and_winansi_has_its_marks() {
+        assert_eq!(
+            pdf_text("WooCommerce\u{2122} \u{2030} \u{0153}"),
+            "WooCommerce\\231 \\211 \\234"
+        );
+        // A site's 64 KB title with no spaces is cut into lines at once, none too wide.
+        let title = "W".repeat(64 * 1024);
+        let started = std::time::Instant::now();
+        let lines = wrap(&title, 11.0, false, 400.0);
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        assert_eq!(lines.concat(), title);
+        assert!(lines.iter().all(|l| width(l, 11.0, false) <= 400.0));
+        assert_eq!(wrap("a bb", 11.0, false, 1.0), ["a", "b", "b"]);
     }
 
     #[test]
