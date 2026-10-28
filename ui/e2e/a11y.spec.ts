@@ -221,7 +221,7 @@ test("an AI agent's plan is confirmed from the keyboard and its progress shows",
   await expect(page.getByRole("button", { name: /^Confirm and run .*Turn off Akismet/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Remove Turn off Akismet on Portfolio" }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { name: "No plans are waiting." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No plans waiting" })).toBeVisible();
 });
 
 test("the palette opens an agent's plan with focus on it, two Tabs from Confirm", async ({ page }) => {
@@ -278,11 +278,12 @@ test("a monthly report is made and opened from the keyboard", async ({ page }) =
 
 test("AI agent access is turned on from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-access")!, "light");
-  await page.getByRole("button", { name: "Turn on access for Portfolio" }).focus();
-  await page.keyboard.press("Enter");
+  const access = page.getByRole("tabpanel").getByRole("switch", { name: "Access for Portfolio" });
+  await access.focus();
+  await page.keyboard.press("Space");
   await expect(page.getByText(/leave "This is my Monks Central app \(operator\)" unticked/)).toBeVisible();
   await expect(page.getByText("AI agents can change Portfolio now. The site asks you to approve each change.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Turn off access for Portfolio" })).toBeVisible();
+  await expect(access).toBeChecked();
 });
 
 test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({ page }) => {
@@ -361,7 +362,7 @@ test("a rolled back update shows why, and only the failed change is offered agai
 test("a long reason in the activity log wraps, so Result stays in view", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai-activity")!, "light");
   const sideways = await page.evaluate(() => {
-    let el = document.querySelector('table[aria-label="Activity"]')!.parentElement;
+    let el = document.querySelector('ul[aria-label="Activity"]')!.parentElement;
     while (el && el.scrollWidth <= el.clientWidth) el = el.parentElement;
     return el?.tagName ?? null;
   });

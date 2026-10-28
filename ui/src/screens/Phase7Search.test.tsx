@@ -44,7 +44,7 @@ test("search shows local results and posts from each site, and names sites it co
     return li!;
   });
   expect(row).toHaveTextContent("Page · Alpha · Scheduled");
-  fireEvent.click(within(row).getByRole("button", { name: "View Beta launch on Alpha" }));
+  fireEvent.click(within(row).getByRole("button", { name: "View on Alpha: Beta launch" }));
   expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://alpha.test/beta", site: 1 });
   expect(screen.getByText("Not searched: Beta (No answer.)")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Open on Sites: Beta" }));

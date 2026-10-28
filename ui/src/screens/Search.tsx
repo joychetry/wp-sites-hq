@@ -179,7 +179,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                       </Button>
                     )}
                     {h.link.startsWith("https://") && (
-                      <Button small aria-label={`View ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
+                      <Button small aria-label={`View on ${name(h.site_id)}: ${h.title || "(no title)"}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
                         <Glyph name="external" />
                         View on {name(h.site_id)}
                       </Button>
