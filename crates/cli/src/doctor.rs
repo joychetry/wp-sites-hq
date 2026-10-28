@@ -140,8 +140,21 @@ pub async fn run(
 
 fn keychain_and_vault(kc: &CredentialStore, home: &Path, store: Option<&Store>) -> Check {
     let home = home.canonicalize().unwrap_or_else(|_| home.to_path_buf());
-    let key = match vault::load_or_create_master_key(kc, &home) {
-        Ok(k) => k,
+    // Only the holder of the core lock may make the key: a running core could be making
+    // its own right now, and two keys would leave one's records unreadable.
+    let key = match monks_core::lock::CoreLock::acquire(&home) {
+        Ok(_lock) => vault::load_or_create_master_key(kc, &home).map(Some),
+        Err(_) => vault::load_master_key(kc, &home),
+    };
+    let key = match key {
+        Ok(Some(k)) => k,
+        Ok(None) => {
+            return check(
+                Level::Ok,
+                "Keychain",
+                "reachable; the master key is made when the first site is added",
+            );
+        }
         Err(e) => return check(Level::Fail, "Keychain", e.to_string()),
     };
     let Some(store) = store else {

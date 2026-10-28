@@ -78,6 +78,20 @@ pub fn load_or_create_master_key(
     }
 }
 
+/// Read the master key without ever making one: `None` if there is none yet. For
+/// tools that run beside a core, which alone makes the key (under the core lock).
+pub fn load_master_key(
+    keychain: &CredentialStore,
+    home: &Path,
+) -> Result<Option<MasterKey>, VaultError> {
+    let entry = keychain.build(KEYCHAIN_SERVICE, &keychain_account(home), None)?;
+    match entry.get_secret() {
+        Ok(bytes) => master_key(Zeroizing::new(bytes)).map(Some),
+        Err(KeyringError::NoEntry) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
 fn master_key(bytes: Zeroizing<Vec<u8>>) -> Result<MasterKey, VaultError> {
     let key: [u8; KEY_LEN] = bytes
         .as_slice()
@@ -189,9 +203,14 @@ mod tests {
     #[test]
     fn master_key_is_created_once_and_reused() {
         let kc = mock_keychain();
+        // Reading alone never makes one.
+        assert!(load_master_key(&*kc, HOME.as_ref()).unwrap().is_none());
+        assert!(load_master_key(&*kc, HOME.as_ref()).unwrap().is_none());
         let a = load_or_create_master_key(&*kc, HOME.as_ref()).unwrap();
         let b = load_or_create_master_key(&*kc, HOME.as_ref()).unwrap();
         assert_eq!(*a.0, *b.0);
+        let read = load_master_key(&*kc, HOME.as_ref()).unwrap().unwrap();
+        assert_eq!(*read.0, *a.0);
         assert_ne!(*a.0, [0u8; KEY_LEN]);
     }
 
