@@ -117,3 +117,22 @@ test("bundles are made and edited in the sheet", async () => {
   fireEvent.click(within(box).getByRole("button", { name: "Close without saving" }));
   expect(within(box).getByRole("button", { name: "New bundle" })).toBeInTheDocument();
 });
+
+test("deleting a bundle asks first, and a failed delete keeps it open", async () => {
+  const calls = core({
+    bundle_delete: () => {
+      throw new Error("The database is busy.");
+    },
+  });
+  render(<Install sites={[A]} inventory={INV} onClose={vi.fn()} onPlan={vi.fn()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Edit the New shop bundle" }));
+  const box = screen.getByRole("group", { name: "Or a bundle" });
+  fireEvent.click(within(box).getByRole("button", { name: "Delete the bundle" }));
+  expect(calls.some((c) => c[0] === "bundle_delete")).toBe(false);
+  expect(within(box).getByText(/Delete the New shop bundle\?/)).toBeInTheDocument();
+  fireEvent.click(within(box).getByRole("button", { name: "Keep it" }));
+  fireEvent.click(within(box).getByRole("button", { name: "Delete the bundle" }));
+  fireEvent.click(within(box).getByRole("button", { name: "Delete the bundle" }));
+  expect(await within(box).findByText(/The database is busy/)).toBeInTheDocument();
+  expect(within(box).getByRole("textbox", { name: "Bundle name" })).toHaveValue("New shop");
+});

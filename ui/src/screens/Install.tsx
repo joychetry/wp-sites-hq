@@ -71,12 +71,14 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
   const [editing, setEditing] = useState<Bundle | null>(null);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const load = () => api.bundles().then(setList, (e) => setError(String(e)));
   useEffect(() => {
     load();
   }, []);
   const edit = (b: Bundle) => {
     setEditing(b);
+    setDeleting(false);
     setText(b.plugins.map((p) => p.source).join("\n"));
     setError(null);
   };
@@ -90,9 +92,14 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
     }
   };
   const remove = async () => {
-    await api.deleteBundle(editing!.id).catch((e) => setError(String(e)));
-    setEditing(null);
-    load();
+    try {
+      await api.deleteBundle(editing!.id);
+      setEditing(null);
+      load();
+    } catch (e) {
+      setError(String(e));
+    }
+    setDeleting(false);
   };
   return (
     <fieldset className="field" style={{ marginTop: 24 }}>
@@ -109,20 +116,33 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
             <textarea className="input mono" rows={5} placeholder={"woocommerce\nwordpress-seo\nhttps://example.com/my-plugin.zip"} value={text} onChange={(e) => setText(e.target.value)} />
             <small>WordPress.org slugs (the end of the plugin's address there), or https links to zips.</small>
           </label>
-          <div className="row">
-            {editing.id > 0 && (
+          {deleting ? (
+            <div className="row">
+              <span className="sum">Delete the {editing.name} bundle? Sites keep the plugins it installed.</span>
+              <span className="grow" />
+              <Button small onClick={() => setDeleting(false)}>
+                Keep it
+              </Button>
               <Button small kind="danger" onClick={remove}>
                 Delete the bundle
               </Button>
-            )}
-            <span className="grow" />
-            <Button small onClick={() => setEditing(null)}>
-              Close without saving
-            </Button>
-            <Button small kind="primary" disabled={!editing.name.trim() || !text.trim()} onClick={save}>
-              Save the bundle
-            </Button>
-          </div>
+            </div>
+          ) : (
+            <div className="row">
+              {editing.id > 0 && (
+                <Button small kind="danger" onClick={() => setDeleting(true)}>
+                  Delete the bundle
+                </Button>
+              )}
+              <span className="grow" />
+              <Button small onClick={() => setEditing(null)}>
+                Close without saving
+              </Button>
+              <Button small kind="primary" disabled={!editing.name.trim() || !text.trim()} onClick={save}>
+                Save the bundle
+              </Button>
+            </div>
+          )}
         </>
       ) : (
         <>
