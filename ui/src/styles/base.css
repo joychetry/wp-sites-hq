@@ -40,7 +40,7 @@ button:disabled { cursor: default; opacity: 0.55; }
 .btn.disc { padding-right: 5px; }
 .btn-disc { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--green); color: var(--on-green); flex: none; }
 [data-theme="dark"] .btn-disc { background: rgba(255, 255, 255, 0.18); }
-.btn-disc .glyph { width: 13px; height: 13px; stroke-width: 1.8; }
+.btn-disc .glyph { width: 13px; height: 13px; }
 .field { display: grid; gap: 6px; margin: 0 0 var(--sp-4); }
 .field > span { font-size: var(--fs-sm); color: var(--text); font-weight: 600; }
 .field small { color: var(--text-3); font-size: var(--fs-sm); }
@@ -74,23 +74,25 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 /* Shell: sidebar on the left, top bar, page head, then the screen as a card on the ground */
 .app { display: grid; grid-template-columns: var(--rail) 1fr; height: 100vh; }
 .label, .navgroup { font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
-.glyph { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.glyph { width: 16px; height: 16px; flex: none; stroke-linecap: round; stroke-linejoin: round; }
 .rail { background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-3); gap: 2px; overflow: auto; }
-.brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; margin: 0 0 var(--sp-4); }
+.brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; margin: 0 0 18px; }
 .brand .mark { width: 30px; height: 30px; }
 .brand p { margin: 0; font: 600 1.0625rem/1.2 var(--display); letter-spacing: -0.02em; color: var(--text); }
 .brand small { display: block; font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0; color: var(--text-3); }
-.scope-field { display: grid; gap: var(--sp-1); padding: 0 2px; margin-bottom: var(--sp-3); }
+.scope-field { display: grid; gap: var(--sp-1); padding: 0 2px; margin-bottom: 16px; }
 .scope-field .label { padding-left: 6px; }
 .scope { width: 100%; font-weight: 500; }
-.navgroup { padding: var(--sp-4) var(--sp-3) var(--sp-1); margin: 0; }
+.scope.sm { height: var(--field-sm); border-radius: 9px; font-size: var(--fs-sm); padding-right: 8px; }
+.navgroup { padding: 14px var(--sp-3) var(--sp-1); margin: 0; }
+.navitem .glyph, .navitem .mark { width: 17px; height: 17px; }
 .rail ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .navitem { display: flex; width: 100%; align-items: center; min-height: var(--control); padding: 0 10px 0 var(--sp-3); border-radius: 8px; color: var(--text-2); gap: 10px; border: 0; background: none; text-align: left; font-weight: 500; }
 .navitem .n { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--panel); color: var(--text-2); font: 600 var(--fs-xs)/1 var(--mono); }
 .navitem .n.alert { margin: 0 0 0 auto; padding: 0 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); }
 .navitem:hover { background: var(--panel); color: var(--text); }
 .navitem[aria-current] { background: var(--sel); color: var(--brand-text); font-weight: 600; }
-.navitem[aria-current] .nav-ico { color: var(--accent); }
+.navitem[aria-current] > .glyph { color: var(--accent); }
 .navitem[aria-current] .n { background: var(--green); color: var(--on-green); }
 .rail .foot { margin-top: auto; padding-top: var(--sp-4); display: grid; gap: var(--sp-3); }
 .rail .foot p { margin: 0; }
@@ -108,7 +110,9 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .top { min-height: 64px; flex: none; border-bottom: 1px solid var(--line); background: var(--bg); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3) var(--sp-4); padding: var(--sp-3) var(--sp-6); }
 .fresh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
 .fresh b { color: var(--text); font-weight: 600; }
-.fresh .link { color: var(--brand-text); font-weight: 600; }
+.fresh .link.go { color: var(--brand-text); font-weight: 600; text-decoration: none; }
+.fresh .link.quiet { color: var(--text-2); text-decoration: none; }
+.fresh .link:hover { text-decoration: underline; }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--sel); flex: none; }
 .top-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
 .kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 24vw, 300px); max-width: 100%; height: 38px; padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
@@ -117,7 +121,9 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); gap: var(--sp-5) 0; padding: 28px var(--sp-6) var(--sp-5); }
 .body > :not(.phead):not(.insp) { grid-column: 1; }
 .phead { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-4) var(--sp-5); }
-.phead > div { display: grid; gap: 6px; min-width: 0; max-width: 760px; }
+.phead > div:first-child { display: grid; gap: 6px; min-width: 0; max-width: 760px; }
+.phead-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.phead-acts:empty { display: none; }
 .phead h1 { margin: 0; font: 600 var(--fs-xl)/1.2 var(--display); letter-spacing: -0.025em; color: var(--text); }
 .phead p { margin: 0; font-size: var(--fs-md); color: var(--text-2); }
 /* The screen is a card on the ground; Overview lays out its own cards. */
@@ -284,8 +290,22 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .site { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .site b { display: block; font-weight: 600; }
 .site small { display: block; font: 400 var(--fs-xs) var(--mono); color: var(--text-3); }
-.fav { display: inline-grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--btn-ink); color: var(--btn-on-ink); font: 600 var(--fs-xs)/1 var(--display); }
-[data-theme="dark"] .fav { background: var(--tint-2); color: var(--text); }
+/* A site's tile (components/SiteTile.tsx): its favicon on a white square, or a monogram in one of four inks. */
+.fav { display: inline-grid; place-items: center; width: 30px; height: 30px; flex: none; overflow: hidden; border-radius: 8px; background: var(--btn-ink); color: var(--btn-on-ink); font: 600 var(--fs-xs)/1 var(--display); }
+.fav.m1 { background: #015433; color: #ffffff; }
+.fav.m2 { background: #8a5a00; color: #ffffff; }
+.fav.m3 { background: #45524b; color: #ffffff; }
+.fav.pic { background: #ffffff; box-shadow: inset 0 0 0 1px var(--line); }
+.fav img { width: 20px; height: 20px; object-fit: contain; }
+.fav.sm { width: 24px; height: 24px; border-radius: 6px; }
+.fav.sm img { width: 16px; height: 16px; }
+.fav.lg { width: 44px; height: 44px; border-radius: 10px; font-size: var(--fs-md); }
+.fav.lg img { width: 28px; height: 28px; }
+[data-theme="dark"] .fav { background: #2e2e2e; color: #ededed; }
+[data-theme="dark"] .fav.m1 { background: #3a3a3a; }
+[data-theme="dark"] .fav.m2 { background: #474747; }
+[data-theme="dark"] .fav.m3 { background: #242424; box-shadow: inset 0 0 0 1px #3a3a3a; }
+[data-theme="dark"] .fav.pic { background: #ededed; box-shadow: none; }
 .dist { padding: var(--sp-4) 20px var(--sp-1); }
 .dist h3 { font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); margin: 0; }
 .seg { display: flex; height: 8px; gap: 3px; margin: var(--sp-2) 0; }
@@ -461,6 +481,56 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .connect .code .btn:hover:not(:disabled) { background: #222222; }
 .connect .code :focus-visible { outline-color: #3dbf82; }
 .connect .code code { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* Design page patterns (docs/design/redesign: mc-page). A screen that lays out its own cards uses
+   .scroll.page, then a filter row (.filters), cards (.card) and an optional side column (.split-r). */
+.stack { display: grid; gap: var(--sp-4); align-content: start; min-width: 0; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.filters .srch { flex: 1 1 200px; max-width: 280px; }
+.filters .end { margin-left: auto; }
+.segmented.inline { display: inline-flex; flex-wrap: wrap; margin: 0; }
+.segmented.inline button { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.segmented small { font: 600 var(--fs-xs)/1 var(--mono); color: var(--text-3); }
+.segmented button[aria-pressed="true"] small { color: var(--brand-text); }
+.g2, .g3, .g4 { display: grid; gap: var(--sp-4); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.split-r { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--sp-4); align-items: start; }
+.card-body { padding: 20px; display: grid; gap: var(--sp-4); }
+/* The inspector's head: the thing's tile, its name, a mono line under it, and Close. */
+.insp > .ihead { display: flex; align-items: flex-start; gap: var(--sp-3); padding: 18px 20px; }
+.ihead > div { flex: 1; min-width: 0; display: grid; gap: var(--sp-1); }
+.ihead h2 { margin: 0; }
+.ihead small { font: 400 var(--fs-xs)/1.4 var(--mono); color: var(--text-3); }
+/* Definition rows: a quiet name on the left, the value on the right */
+.dl { display: grid; margin: 0; }
+.dl > div { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 10px 0; border-top: 1px solid var(--line); font-size: var(--fs-sm); }
+.dl > div:first-child { border-top: 0; }
+.dl dt { color: var(--text-3); }
+.dl dd { margin: 0; color: var(--text); font-weight: 500; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+/* Callouts: a well with an icon; warning, danger and ok (green) grounds */
+.callout { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; margin: 0; padding: var(--sp-3) 14px; border-radius: 12px; background: var(--panel); color: var(--text-2); font-size: var(--fs-sm); line-height: 1.45; }
+.callout > .glyph { width: 18px; height: 18px; margin-top: 1px; }
+.callout b { color: var(--text); font-weight: 600; }
+.callout.warning { background: var(--warn-bg); color: var(--text); }
+.callout.warning > .glyph { color: var(--warn); }
+.callout.danger { background: var(--danger-bg); color: var(--text); }
+.callout.danger > .glyph { color: var(--danger); }
+.callout.ok { background: var(--tint); color: var(--text); }
+.callout.ok > .glyph { color: var(--brand-text); }
+/* A plugin's or theme's tile: a letter in the well */
+.ptile { display: inline-grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); color: var(--text-2); font: 600 var(--fs-xs)/1 var(--display); }
+.ptile.sm { width: 24px; height: 24px; border-radius: 6px; }
+/* A version change: old in the quiet ink, an arrow, the new one bold green */
+.vto { display: inline-flex; align-items: center; gap: 6px; font: 500 var(--fs-sm) var(--mono); color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vto s { color: var(--text-3); text-decoration: none; }
+.vto .glyph { width: 12px; height: 12px; color: var(--text-3); }
+.vto b { color: var(--brand-text); font-weight: 600; }
+@media (max-width: 1100px) {
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split-r { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* Motion off when the OS asks for less */
 @media (prefers-reduced-motion: reduce) {

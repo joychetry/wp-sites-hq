@@ -39,6 +39,8 @@ export type Site = {
   agent_access: boolean;
   client_id: number | null;
   client: string | null;
+  /** Changes when the site's cached favicon changes; null when it has none. */
+  icon: string | null;
 };
 
 export type Client = { id: number; name: string; email: string; notes: string };
@@ -408,6 +410,7 @@ export const api = {
   plansWaiting: () => invoke<Job[]>("plans_waiting"),
   confirmPlan: (id: number) => invoke<Job>("plan_confirm", { id }),
   declinePlan: (id: number) => invoke<Job>("plan_decline", { id }),
+  siteIcon: (id: number) => invoke<string | null>("site_icon", { id }),
   activityLog: (before?: number) => invoke<Entry[]>("activity_list", { before }),
   clients: () => invoke<Client[]>("clients_list"),
   saveClient: (client: Client) => invoke<Client>("client_save", { client }),

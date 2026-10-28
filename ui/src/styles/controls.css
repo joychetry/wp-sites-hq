@@ -207,7 +207,6 @@ body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
 .bar .tabs { border: 0; padding: 0; margin-block: calc(-1 * var(--sp-2)); }
 
 /* Sidebar icons: a 17px line drawing per item, so the sidebar can be scanned by shape as well as by word */
-.nav-ico { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Empty states: one picture for all of them, unless they bring their own */
 /* Centred, the way the design draws first runs and errors */

@@ -80,6 +80,7 @@ function site(over: Partial<Site>): Site {
     agent_access: false,
     client_id: null,
     client: null,
+    icon: null,
     ...over,
   };
 }

@@ -32,7 +32,7 @@ test("shows every section in the sidebar, the sentence and the version", async (
   }
   expect(screen.getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
   expect(await screen.findByText("Both sites are healthy.")).toBeInTheDocument();
-  expect(screen.getByText("Version 0.0.1")).toBeInTheDocument();
+  expect(screen.getByText("v0.0.1")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("core_status");
 });
 

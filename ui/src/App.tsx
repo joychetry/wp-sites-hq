@@ -2,9 +2,9 @@
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { useEffect, useMemo, useState } from "react";
-import { ago, api, hasTool, siteStatus, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { ago, api, hasTool, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
-import { Button, Glyph, Kbd, Logo, type GlyphName } from "./components/ui";
+import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { attention, Overview, summary } from "./screens/Overview";
@@ -41,26 +41,26 @@ const GROUPS = [
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
 
-// One line drawing per rail item, 16px, so the rail can be scanned by shape as well as by word.
-const NAV_ICONS: Record<(typeof SECTIONS)[number], string> = {
-  Overview: "M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5H9z",
-  Sites: "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM1.5 8h13M8 1.5c2.2 2.2 2.2 10.8 0 13M8 1.5c-2.2 2.2-2.2 10.8 0 13",
-  Updates: "M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3.5H10",
-  Plugins: "M6 1.5v3M10 1.5v3M4 4.5h8v3a4 4 0 0 1-8 0zM8 11.5v3",
-  Themes: "M2.5 2.5h11v11h-11zM2.5 6h11M6 6v7.5",
-  Content: "M4 1.5h5.5l3 3v10H4zM9.5 1.5v3h3M6 8h4.5M6 10.5h4.5",
-  Media: "M2 3h12v10H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 6.2v.1",
-  Users: "M8 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM2.5 14.5c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5",
-  Comments: "M2 3h12v8H6.5L3.5 14v-3H2z",
-  "Classic Monks": "M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM5.5 9.5c1.4 1.4 3.6 1.4 5 0M8 5.4v.2",
-  Monitoring: "M1.5 8.5h3l1.5-4 3 7 1.5-3h4",
-  Security: "M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z",
-  Clients: "M2 5h12v8.5H2zM5.5 5V3h5v2M2 9h12",
-  Store: "M3 5h10l-.8 9.5H3.8zM5.5 5a2.5 2.5 0 0 1 5 0",
-  Reports: "M2.5 13.5h11M4.5 11V7.5M8 11V3.5M11.5 11V6",
-  AI: "M8 1.5l1.5 5 5 1.5-5 1.5-1.5 5-1.5-5-5-1.5 5-1.5z",
-  Settings: "M2.5 4.5h11M2.5 11.5h11M5.5 2.5v4M10.5 9.5v4",
-  Search: "M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM10.3 10.3 14 14",
+// One of the design's line icons per sidebar item (Classic Monks shows its own mark).
+const NAV_ICONS: Record<(typeof SECTIONS)[number], GlyphName | null> = {
+  Overview: "dashboard",
+  Sites: "globe",
+  Updates: "download",
+  Plugins: "plug",
+  Themes: "palette",
+  Content: "file",
+  Media: "image",
+  Users: "users",
+  Comments: "message",
+  "Classic Monks": null,
+  Monitoring: "activity",
+  Security: "shield",
+  Clients: "briefcase",
+  Store: "bag",
+  Reports: "chart",
+  AI: "sparkle",
+  Settings: "gear",
+  Search: "search",
 };
 type Section = (typeof SECTIONS)[number];
 const LABEL: Partial<Record<Section, string>> = { Search: "Search everything" };
@@ -118,6 +118,7 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [adding, setAdding] = useState<{ again?: Site } | null>(null);
   const [checking, setChecking] = useState(false);
+  const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
   const { choice, setChoice } = useTheme();
   const { density, setDensity } = useDensity();
 
@@ -154,11 +155,30 @@ export default function App() {
   const needs = scoped.filter((s) => attention(s)).length;
   const { lead, rest } = summary(scoped);
   const sentence = rest ? `${lead} ${rest}` : lead;
-  const down = all.filter((s) => siteStatus(s).tone === "danger").length;
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
   const vulnerable = (reports ?? []).reduce((n, r) => n + r.vulnerabilities.length, 0);
+  const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
+  const ofKind = (k: string) => new Set(waiting.filter((w) => w.kind === k).map((w) => w.name)).size;
+  // The design's sidebar counts: what waits on each page, amber where something is wrong.
+  const counts: Partial<Record<Section, { n: number; say: string; alert?: boolean }>> = Object.fromEntries(
+    (
+      [
+        ["Overview", needs, "need attention", true],
+        ["Sites", scoped.length, scoped.length === 1 ? "site" : "sites"],
+        ["Updates", waiting.length, "waiting"],
+        ["Plugins", ofKind("Plugin"), "with an update waiting"],
+        ["Themes", ofKind("Theme"), "with an update waiting"],
+        ["Classic Monks", approvals, "waiting for approval"],
+        ["Monitoring", offline, "down", true],
+        ["Security", vulnerable, "known vulnerabilities", true],
+        ["AI", livePlans, "to confirm"],
+      ] as const
+    )
+      .filter(([, n]) => n > 0)
+      .map(([s, n, say, alert]) => [s, { n, say, alert }]),
+  );
 
   const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
     setSheet({ title, rows, start, danger });
@@ -366,11 +386,11 @@ export default function App() {
           <span className="label" aria-hidden="true">
             Sites to show
           </span>
-          <Select className="scope" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
+          <Select className="scope sm" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
             <option value="">All sites ({all.length})</option>
             {groups.map((g) => (
               <option key={g} value={g}>
-                {g} ({all.filter((s) => s.group === g).length})
+                Group: {g}
               </option>
             ))}
           </Select>
@@ -387,44 +407,12 @@ export default function App() {
                     aria-current={s === section ? "page" : undefined}
                     onClick={() => setSection(s)}
                   >
-                    <svg className="nav-ico" viewBox="0 0 16 16" aria-hidden="true">
-                      <path d={NAV_ICONS[s]} />
-                    </svg>
+                    {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
                     {LABEL[s] ?? s}
-                    {s === "Overview" && needs > 0 && (
-                      <span className="n alert">
-                        {needs}
-                        <span className="sr-only"> need attention</span>
-                      </span>
-                    )}
-                    {s === "Sites" &&
-                      (down > 0 ? (
-                        <span className="n alert">{down} down</span>
-                      ) : (
-                        <span className="n">
-                          {scoped.length}
-                          <span className="sr-only"> sites</span>
-                        </span>
-                      ))}
-                    {s === "AI" && livePlans > 0 && (
-                      <span className="n alert">
-                        {livePlans}
-                        <span className="sr-only"> to confirm</span>
-                      </span>
-                    )}
-                    {s === "Monitoring" && offline > 0 && (
-                      <span className="n alert">{offline} down</span>
-                    )}
-                    {s === "Security" && vulnerable > 0 && (
-                      <span className="n alert">
-                        {vulnerable}
-                        <span className="sr-only"> known vulnerabilities</span>
-                      </span>
-                    )}
-                    {s === "Updates" && waiting.length > 0 && (
-                      <span className="n">
-                        {waiting.length}
-                        <span className="sr-only"> waiting</span>
+                    {counts[s] && (
+                      <span className={counts[s].alert ? "n alert" : "n"}>
+                        {counts[s].n}
+                        <span className="sr-only"> {counts[s].say}</span>
                       </span>
                     )}
                   </button>
@@ -449,7 +437,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            {status && <span className="ver">Version {status.version}</span>}
+            {status && <span className="ver">v{status.version}</span>}
           </div>
         </div>
       </nav>
@@ -470,7 +458,7 @@ export default function App() {
               {needs > 0 && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <button type="button" className="link" onClick={() => setSection("Sites")}>
+                  <button type="button" className={section === "Overview" ? "link go" : "link quiet"} onClick={() => setSection("Sites")}>
                     {needs === 1 ? "1 site needs attention" : `${needs} sites need attention`}
                   </button>
                 </>
@@ -484,12 +472,20 @@ export default function App() {
               <Kbd>Ctrl K</Kbd>
             </button>
             {sites && sites.length > 0 && (
-              <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
-                {checking ? "Checking…" : "Check all sites now"}
-                <span className="btn-disc">
+              section === "Overview" ? (
+                <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
+                  {checking ? "Checking…" : "Check all sites now"}
+                  <span className="btn-disc">
+                    <Glyph name="refresh" />
+                  </span>
+                </Button>
+              ) : (
+                // The page head holds this page's main action, so checking steps back to a plain button.
+                <Button disabled={checking} onClick={checkAll}>
                   <Glyph name="refresh" />
-                </span>
-              </Button>
+                  {checking ? "Checking…" : "Check all sites now"}
+                </Button>
+              )
             )}
           </div>
         </header>
@@ -499,14 +495,16 @@ export default function App() {
               <h1>{LABEL[section] ?? section}</h1>
               <p>{section === "Overview" && all.length > 0 ? sentence : ABOUT[section]}</p>
             </div>
-            {section === "Overview" && all.length > 0 && (
-              <Button keys="A" onClick={() => setAdding({})}>
-                <Glyph name="plus" />
-                Add a site
-              </Button>
-            )}
+            <div className="phead-acts" ref={setHeadSlot}>
+              {section === "Overview" && all.length > 0 && (
+                <Button keys="A" onClick={() => setAdding({})}>
+                  <Glyph name="plus" />
+                  Add a site
+                </Button>
+              )}
+            </div>
           </header>
-          {body}
+          <HeadSlot.Provider value={headSlot}>{body}</HeadSlot.Provider>
         </main>
       </div>
       {palette && (
