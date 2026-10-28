@@ -123,6 +123,11 @@ impl Core {
         args: Value,
     ) -> Result<Value, SiteError> {
         let site = self.find_site(site)?;
+        // A login link signs in as the app's own user: it is never an agent's, even
+        // if the site marks the tool read-only or approves it.
+        if tool == "create-login-link" {
+            return Err(plain("Login links are only made in the Monks Central app."));
+        }
         if site.mode != Mode::ClassicMonks || !has_tool(&site, tool) {
             return Err(plain(format!("{} has no {tool} tool.", site.name)));
         }
@@ -224,6 +229,17 @@ mod tests {
                 .await,
             Err(SiteError::NeedsApproval { .. })
         ));
+
+        // Never a login link, approved or not.
+        let err = core
+            .agent_call(&s.url, "create-login-link", json!({}))
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Login links are only made in the Monks Central app."
+        );
+        assert_eq!(called(&site, "create-login-link"), 0);
 
         // Reads still use the app's grant, with no approval.
         let host = s.url.split_once("://").unwrap().1.to_string();
