@@ -306,7 +306,10 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Content")(page);
       await page.getByRole("button", { name: "Monks test fields post" }).click();
-      await page.getByRole("region", { name: "Monks test fields" }).scrollIntoViewIfNeeded();
+      await page.getByRole("region", { name: "Monks test fields" }).evaluate((e) => {
+        const s = e.closest(".scroll")!;
+        s.scrollTop += e.getBoundingClientRect().top - s.getBoundingClientRect().top;
+      });
       await page.getByRole("textbox", { name: "Email" }).waitFor();
     },
   },
