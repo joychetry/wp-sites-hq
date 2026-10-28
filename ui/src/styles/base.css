@@ -189,7 +189,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .box::before { content: ""; width: 18px; height: 18px; border: 1.5px solid var(--line-ui); border-radius: 5px; background: var(--bg); box-sizing: border-box; }
 
 /* Inspector: a card beside the screen */
-.insp { grid-column: 2; grid-row: 2; margin-left: var(--sp-4); width: var(--inspector); min-height: 0; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+/* The design's drawer: a floating card with the float shadow */
+.insp { grid-column: 2; grid-row: 2; margin-left: var(--sp-4); width: var(--inspector); min-height: 0; align-self: start; max-height: 100%; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-float); }
 .insp header { padding: 18px var(--pad) var(--sp-4); border-bottom: 1px solid var(--line); }
 .insp h2 { margin: 0 0 2px; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .acts { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); flex-wrap: wrap; }
@@ -531,6 +532,24 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
   .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .split-r { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Buttons the design adds: full width, ghost (no border), a danger word on a ghost */
+.btn.block { width: 100%; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn.ghost:hover:not(:disabled) { background: var(--panel); border-color: transparent; color: var(--text); }
+.btn.danger-text, .btn.danger-text:hover:not(:disabled) { color: var(--danger); }
+.btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.field-label { display: block; margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+.row.nowrap { flex-wrap: nowrap; gap: 6px; }
+.rowacts { display: flex; justify-content: flex-end; align-items: center; gap: 2px; white-space: nowrap; }
+/* A connection: the Classic Monks mark or a link icon, then its name */
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; }
+.conn .mark, .conn .glyph { width: 16px; height: 16px; }
+/* A callout that is also a link: the whole well is the button, "Review ->" at its end */
+.callout.go { width: 100%; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; border: 0; text-align: left; font: inherit; font-size: var(--fs-sm); }
+.callout.go:hover { background: var(--tint-2); }
+.golink { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--brand-text); font-weight: 600; }
+.golink .glyph { width: 13px; height: 13px; }
 
 /* Motion off when the OS asks for less */
 @media (prefers-reduced-motion: reduce) {

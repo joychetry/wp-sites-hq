@@ -317,6 +317,7 @@ export default function App() {
         setFocusId={setFocusId}
         onAdd={() => setAdding({})}
         onSignInAgain={(s) => setAdding({ again: s })}
+        onUpdates={() => setSection("Updates")}
       />
     );
   } else if (section === "Updates") {

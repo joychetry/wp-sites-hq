@@ -4,8 +4,11 @@
 import { dismiss, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, connectionLabel, hasTool, NO_TOOLS, noTools, siteStatus, slow, type Site, type Tone } from "../api";
-import { Button, Kbd, Status } from "../components/ui";
+import { ago, api, connectionLabel, hasTool, NO_TOOLS, noTools, siteStatus, slow, useInventory, type Site } from "../api";
+import { Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
+import { SiteTile } from "../components/SiteTile";
+import { updatesOf } from "./Updates";
+import "../styles/screens/sites.css";
 
 type Props = {
   sites: Site[];
@@ -14,9 +17,22 @@ type Props = {
   setFocusId: (id: number | null) => void;
   onAdd: () => void;
   onSignInAgain: (site: Site) => void;
+  onUpdates?: () => void;
 };
 
-type StatusFilter = "any" | Exclude<Tone, "unknown">;
+type StatusFilter = "any" | "attention" | "danger" | "ok";
+
+// The design's tabs, plus Down on its own (a filter the app had before the redesign).
+const FILTERS: [StatusFilter, string][] = [
+  ["any", "All"],
+  ["attention", "Needs attention"],
+  ["danger", "Down"],
+  ["ok", "Up"],
+];
+const matches = (s: Site, f: StatusFilter) => {
+  const tone = siteStatus(s).tone;
+  return f === "any" || tone === f || (f === "attention" && (tone === "warning" || tone === "danger"));
+};
 type ModeFilter = "any" | Site["mode"];
 
 /** Typing in a field, or a dialog is open: leave the keys alone. */
@@ -33,7 +49,8 @@ function busyKeys(e: KeyboardEvent) {
   );
 }
 
-export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain }: Props) {
+export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain, onUpdates }: Props) {
+  const { inventory } = useInventory();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("any");
   const [mode, setMode] = useState<ModeFilter>("any");
@@ -46,9 +63,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return sites.filter((s) => {
-      const st = siteStatus(s).tone;
       return (
-        (status === "any" || st === status) &&
+        matches(s, status) &&
         (mode === "any" || s.mode === mode) &&
         (!q || [s.name, s.url, s.group ?? "", ...s.tags].some((v) => v.toLowerCase().includes(q)))
       );
@@ -106,40 +122,37 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
     return () => document.removeEventListener("keydown", onKey);
   });
 
-  const chip = <T extends string>(label: string, value: T, set: (v: T) => void, options: [T, string][]) => {
-    const i = options.findIndex(([v]) => v === value);
-    const [, text] = options[i];
-    return (
-      <button
-        type="button"
-        className={`chip ${value !== options[0][0] ? "on" : ""}`}
-        onClick={() => set(options[(i + 1) % options.length][0])}
-        aria-label={`${label}: ${text}. Change`}
-      >
-        <b>{label}</b> {text}
-      </button>
-    );
-  };
+  const host = (s: Site) => s.url.replace(/^https?:\/\//, "");
+  const count = (f: StatusFilter) => sites.filter((s) => matches(s, f)).length;
+  const modes: [ModeFilter, string][] = [
+    ["any", "Connection and group"],
+    ["classic_monks", "Classic Monks"],
+    ["basic", "Basic mode"],
+  ];
+  const modeAt = modes.findIndex(([m]) => m === mode);
 
   return (
     <>
-      <div className="scroll">
-        <div className="bar">
-          {chip("Status", status, setStatus, [
-            ["any", "any"],
-            ["ok", "healthy"],
-            ["warning", "needs a look"],
-            ["danger", "down"],
-          ])}
-          {chip("Connection", mode, setMode, [
-            ["any", "any"],
-            ["classic_monks", "Classic Monks"],
-            ["basic", "Basic mode"],
-          ])}
-          <span className="grow" />
+      <HeadActions>
+        <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
+          Add a site
+          <span className="btn-disc">
+            <Glyph name="plus" />
+          </span>
+        </Button>
+      </HeadActions>
+      <div className="scroll page sites">
+        <div className="filters">
+          <div className="segmented inline" role="group" aria-label="Show sites">
+            {FILTERS.map(([f, label]) => (
+              <button key={f} type="button" aria-pressed={status === f} onClick={() => setStatus(f)}>
+                {label}
+                <small>{count(f)}</small>
+              </button>
+            ))}
+          </div>
           <SearchInput
             ref={filter}
-            className="sm"
             placeholder="Filter by name, address, group or tag"
             aria-label="Filter sites"
             aria-keyshortcuts="/"
@@ -152,47 +165,49 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               } else if (e.key === "Enter" || e.key === "ArrowDown") table.current?.focus();
             }}
           />
-          <Button small onClick={onAdd} keys="A">
-            Add a site
-          </Button>
-        </div>
-        {rows.length === 0 ? (
-          <div className="empty">
-            {sites.length === 0 ? (
-              <>
-                <h2>No sites yet.</h2>
-                <p>Add a site with Classic Monks for full control, or any WordPress 7.1 site in Basic mode.</p>
-                <Button kind="primary" keys="A" onClick={onAdd}>
-                  Add a site
-                </Button>
-              </>
+          <button
+            type="button"
+            className={`chip ${mode !== "any" ? "on" : ""}`}
+            onClick={() => setMode(modes[(modeAt + 1) % modes.length][0])}
+            aria-label={`${mode === "any" ? "Connection and group" : `Connection ${modes[modeAt][1]}`}, change`}
+          >
+            <Glyph name="sliders" />
+            {mode === "any" ? (
+              "Connection and group"
             ) : (
               <>
-                <p>No site matches these filters.</p>
-                <Button
-                  onClick={() => {
-                    setQuery("");
-                    setStatus("any");
-                    setMode("any");
-                  }}
-                >
-                  Clear the filters
-                </Button>
+                Connection <b>{modes[modeAt][1]}</b>
               </>
             )}
-          </div>
-        ) : (
-          <>
-            <p className="legend" id="sites-legend">
-              <Status tone="ok">Healthy</Status>
-              <Status tone="warning">Needs a look, sign in again or no tools yet</Status>
-              <Status tone="danger">Down</Status>
-              <Status tone="unknown">Not checked yet</Status>
-              <span>
-                Point at a name for its address. Tags are under the name, and under the status is when Monks Central last
-                asked the site. Versions are WordPress, with PHP under it.
-              </span>
-            </p>
+          </button>
+        </div>
+        <section className="card" aria-label="All sites">
+          {rows.length === 0 ? (
+            <div className="empty">
+              {sites.length === 0 ? (
+                <>
+                  <h2>No sites yet.</h2>
+                  <p>Add a site with Classic Monks for full control, or any WordPress 7.1 site in Basic mode.</p>
+                  <Button kind="primary" keys="A" onClick={onAdd}>
+                    Add a site
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p>No site matches these filters.</p>
+                  <Button
+                    onClick={() => {
+                      setQuery("");
+                      setStatus("any");
+                      setMode("any");
+                    }}
+                  >
+                    Clear the filters
+                  </Button>
+                </>
+              )}
+            </div>
+          ) : (
             <table
               ref={table}
               className="t"
@@ -205,26 +220,47 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             >
               <thead>
                 <tr>
-                  <th style={{ width: 34 }}>
-                    <span className="sr-only">Selected</span>
+                  <th className="tick">
+                    <button
+                      type="button"
+                      className="box"
+                      role="checkbox"
+                      aria-checked={rows.every((r) => selected.has(r.id)) ? true : rows.some((r) => selected.has(r.id)) ? "mixed" : false}
+                      aria-label="Tick every site shown"
+                      onClick={() =>
+                        setSelected((sel) => {
+                          const all = rows.every((r) => sel.has(r.id));
+                          const next = new Set(sel);
+                          for (const r of rows) {
+                            if (all) next.delete(r.id);
+                            else next.add(r.id);
+                          }
+                          return next;
+                        })
+                      }
+                    />
                   </th>
                   <th className="fill">Site</th>
                   <th>Status</th>
-                  <th>Group</th>
-                  <th>Versions</th>
+                  <th>WordPress</th>
                   <th>Connection</th>
+                  <th className="acts-col">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((s) => {
                   const st = siteStatus(s);
                   const on = selected.has(s.id);
+                  const core = inventory?.get(s.id)?.inventory.wordpress_update;
+                  const again = s.sign_in_again || noTools(s);
                   return (
                     <tr
                       key={s.id}
                       id={`site-${s.id}`}
                       data-id={s.id}
-                      className={[on && "sel", s.id === focus?.id && "focus"].filter(Boolean).join(" ")}
+                      className={[on && "sel", s.id === focus?.id && "focus", again && "warn"].filter(Boolean).join(" ")}
                       aria-selected={on}
                       onClick={() => setFocusId(s.id)}
                     >
@@ -242,80 +278,135 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                         />
                       </td>
                       <td className="fill">
-                        <b className="name cut" data-tip={`${s.name}, ${s.url.replace(/^https?:\/\//, "")}`}>
-                          {s.name}
-                        </b>
-                        {s.tags.length > 0 && (
-                          <small className="sub cut" data-tip={s.tags.join(", ")}>
-                            <span className="tag">{s.tags[0]}</span>
-                            {s.tags.length > 1 && (
-                              <>
-                                {" "}
-                                +{s.tags.length - 1}
-                                <span className="sr-only"> more tags</span>
-                              </>
-                            )}
-                          </small>
-                        )}
-                      </td>
-                      <td>
-                        <Status tone={st.tone}>{st.label}</Status>
-                        {slow(s) && <span className="dim">, slow</span>}
-                        <small className="sub">{s.checked_at ? `checked ${ago(s.checked_at)}` : "never checked"}</small>
-                      </td>
-                      <td>
-                        {s.group ? (
-                          <span className="cut" data-tip={s.group}>
-                            {s.group}
+                        <span className="site" data-tip={`${s.name}, ${host(s)}${s.tags.length ? `. Tags: ${s.tags.join(", ")}` : ""}`}>
+                          <SiteTile site={s} />
+                          <span>
+                            <b className="cut">{s.name}</b>
+                            <small className="cut">{host(s)}</small>
                           </span>
-                        ) : (
-                          <span className="dim">none</span>
-                        )}
+                        </span>
                       </td>
                       <td>
-                        <span className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "not known"}</span>
-                        <small className="sub">PHP {s.php_version?.split(".").slice(0, 2).join(".") ?? "not known"}</small>
+                        <span className={`st pill ${st.tone}`}>
+                          <Icon tone={st.tone} />
+                          {st.label}
+                          {slow(s) && ", slow"}
+                        </span>
                       </td>
-                      <td>{s.mode === "basic" ? "Basic mode" : "Classic Monks"}</td>
+                      <td>
+                        <span className="row nowrap">
+                          <span className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "not known"}</span>
+                          {core && (
+                            <span className="tag ok" data-tip={`WordPress ${core} is waiting`}>
+                              <Glyph name="arrow-up" />
+                              {core}
+                              <span className="sr-only"> waiting</span>
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="conn">
+                          {s.mode === "basic" ? <Glyph name="link" /> : <Logo />}
+                          {s.mode === "basic" ? "Basic" : "Classic Monks"}
+                        </span>
+                      </td>
+                      <td className="acts-col">
+                        {/* Mouse shortcuts; the keyboard reaches the same actions in the panel (R, and its buttons). */}
+                        <span className="rowacts">
+                          {again ? (
+                            <Button small tabIndex={-1} onClick={() => onSignInAgain(s)}>
+                              <Glyph name="login" />
+                              Sign in again
+                            </Button>
+                          ) : s.health === "down" ? (
+                            <Button small tabIndex={-1} onClick={() => check([s.id])}>
+                              <Glyph name="refresh" />
+                              Check again
+                            </Button>
+                          ) : (
+                            <>
+                              {hasTool(s, "create-login-link") && (
+                                <button
+                                  type="button"
+                                  className="icon-btn"
+                                  tabIndex={-1}
+                                  aria-label={`Log in to the ${s.name} dashboard`}
+                                  data-tip="Log in to the dashboard"
+                                  onClick={() => api.login(s.id).catch((e) => toast(String(e), { tone: "danger" }))}
+                                >
+                                  <Glyph name="login" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="icon-btn"
+                                tabIndex={-1}
+                                aria-label={`Open ${s.name} in the browser`}
+                                data-tip="Open the site"
+                                onClick={() => api.open(s.id).catch((e) => toast(String(e), { tone: "danger" }))}
+                              >
+                                <Glyph name="external" />
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </>
-        )}
-        {/* Under the table and stuck to the bottom: ticking a row never moves the rows. */}
-        {picked.length > 0 && (
-          <div className="selbar" role="region" aria-label="Selection">
-            <b>{picked.length} selected</b>
-            <Button small kind="primary" keys="R" onClick={() => check(picked.map((s) => s.id))}>
-              Check now
-            </Button>
-            <Combobox
-              className="input sm"
-              style={{ width: 180 }}
-              suggestions={groups}
-              placeholder="Put in a group"
-              aria-label="Group for the selected sites"
-              value={groupFor}
-              onChange={(e) => setGroupFor(e.target.value)}
-              onKeyDown={async (e) => {
-                const g = groupFor.trim();
-                // An empty box never ungroups the whole selection; one Enter at a time.
-                if (e.key !== "Enter" || !g || grouping) return;
-                setGrouping(true);
-                const failed = (await Promise.all(picked.map((s) => api.setGroup(s.id, g).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
-                setGrouping(false);
-                setGroupFor("");
-                if (failed) toast(`${failed} of ${picked.length} sites didn't move to ${g}.`, { tone: "danger" });
-                else toast(`Put ${picked.length === 1 ? "1 site" : `${picked.length} sites`} in ${g}.`);
-              }}
-            />
-            <Button small onClick={() => setSelected(new Set())} keys="Esc">
-              Clear selection
-            </Button>
-          </div>
-        )}
+          )}
+          <p className="card-foot" id="sites-legend">
+            <span className="dim">
+              Showing {rows.length} of {sites.length} {sites.length === 1 ? "site" : "sites"}.
+            </span>
+            <span className="keys dim">
+              <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> tick · <Kbd>/</Kbd> filter · <Kbd>R</Kbd> check the open site ·{" "}
+              <Kbd>A</Kbd> add a site
+            </span>
+          </p>
+          {/* Under the table and stuck to the bottom: ticking a row never moves the rows. */}
+          {picked.length > 0 && (
+            <div className="selbar" role="region" aria-label="Selection">
+              <b>
+                {picked.length} {picked.length === 1 ? "site" : "sites"} ticked
+              </b>
+              <label className="row">
+                <span>Move to group</span>
+                <Combobox
+                  className="input sm"
+                  style={{ width: 170 }}
+                  suggestions={groups}
+                  placeholder="Choose a group"
+                  aria-label="Group for the selected sites"
+                  value={groupFor}
+                  onChange={(e) => setGroupFor(e.target.value)}
+                  onKeyDown={async (e) => {
+                    const g = groupFor.trim();
+                    // An empty box never ungroups the whole selection; one Enter at a time.
+                    if (e.key !== "Enter" || !g || grouping) return;
+                    setGrouping(true);
+                    const failed = (await Promise.all(picked.map((s) => api.setGroup(s.id, g).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
+                    setGrouping(false);
+                    setGroupFor("");
+                    if (failed) toast(`${failed} of ${picked.length} sites didn't move to ${g}.`, { tone: "danger" });
+                    else toast(`Put ${picked.length === 1 ? "1 site" : `${picked.length} sites`} in ${g}.`);
+                  }}
+                />
+              </label>
+              <Button small className="ghost" keys="R" onClick={() => check(picked.map((s) => s.id))}>
+                <Glyph name="refresh" />
+                Check them now
+              </Button>
+              <span className="grow" />
+              <Button small className="ghost" onClick={() => setSelected(new Set())} keys="Esc">
+                Clear selection
+              </Button>
+            </div>
+          )}
+        </section>
       </div>
       {focus && (
         <Inspector
@@ -323,8 +414,10 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           site={focus}
           groups={groups}
           allTags={[...new Set(sites.flatMap((x) => x.tags))].sort()}
+          updates={updatesOf(focus, inventory?.get(focus.id))}
           onCheck={() => check([focus.id])}
           onSignInAgain={() => onSignInAgain(focus)}
+          onUpdates={onUpdates}
           onRemoved={(text, ok) => {
             toast(text, { tone: ok ? "ok" : "warning" });
             setFocusId(null);
@@ -339,12 +432,23 @@ type InspectorProps = {
   site: Site;
   groups: string[];
   allTags: string[];
+  updates: { kind: string }[];
   onCheck: () => void;
   onSignInAgain: () => void;
+  onUpdates?: () => void;
   onRemoved: (message: string, signedOut: boolean) => void;
 };
 
-function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved }: InspectorProps) {
+/** "3 plugin updates", "1 core update and 2 plugin updates". */
+function waitingWords(updates: { kind: string }[]) {
+  const by = new Map<string, number>();
+  for (const u of updates) by.set(u.kind, (by.get(u.kind) ?? 0) + 1);
+  const name: Record<string, string> = { WordPress: "core", Plugin: "plugin", Theme: "theme", Translations: "translation" };
+  const parts = [...by].map(([k, n]) => `${n} ${name[k] ?? k.toLowerCase()} ${n === 1 ? "update" : "updates"}`);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
+}
+
+function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, onUpdates, onRemoved }: InspectorProps) {
   const [group, setGroup] = useState(s.group ?? "");
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState(false);
@@ -360,6 +464,8 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
   const caps = s.capabilities;
   const abilities = Array.isArray(caps.abilities) ? caps.abilities.length : 0;
   const modules = caps.modules && typeof caps.modules === "object" ? (caps.modules as Record<string, boolean>) : null;
+  const again = s.sign_in_again || noTools(s);
+  const canLogin = hasTool(s, "create-login-link") && !s.sign_in_again;
 
   const run = async (f: () => Promise<unknown>) => {
     try {
@@ -374,98 +480,138 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
   };
 
   return (
-    <aside className="insp" aria-label={`${s.name} details`}>
-      <header>
-        <h2>{s.name}</h2>
-        <span className="mono dim">{s.url.replace(/^https?:\/\//, "")}</span>
-        <div className="acts">
-          {(s.sign_in_again || noTools(s)) && (
-            <Button small kind="primary" onClick={onSignInAgain}>
-              Sign in again
+    <aside className="insp site-pane" aria-label={`${s.name} details`}>
+      <header className="ihead">
+        <SiteTile site={s} size="lg" />
+        <div>
+          <h2>{s.name}</h2>
+          <small>
+            {s.url.replace(/^https?:\/\//, "")}
+            {s.client && ` · ${s.client}`}
+          </small>
+        </div>
+        <span className={`st pill ${st.tone}`}>
+          <Icon tone={st.tone} />
+          {st.label}
+        </span>
+      </header>
+      <section>
+        {again ? (
+          <Button kind="primary" className="disc block" onClick={onSignInAgain}>
+            Sign in again
+            <span className="btn-disc">
+              <Glyph name="login" />
+            </span>
+          </Button>
+        ) : (
+          canLogin && (
+            <Button kind="primary" className="disc block" onClick={() => run(() => api.login(s.id))}>
+              Log in to the dashboard
+              <span className="btn-disc">
+                <Glyph name="arrow" />
+              </span>
             </Button>
-          )}
+          )
+        )}
+        <div className="btn-grid">
           <Button small onClick={() => api.open(s.id).catch((e) => setError(String(e)))}>
+            <Glyph name="external" />
             Open the site
           </Button>
-          {hasTool(s, "create-login-link") && !s.sign_in_again && (
-            <Button small onClick={() => run(() => api.login(s.id))}>
-              Log in to the dashboard
-            </Button>
-          )}
           <Button small onClick={onCheck} keys="R">
+            <Glyph name="refresh" />
             Check now
           </Button>
         </div>
-      </header>
-      <section>
-        <h3>Health</h3>
-        <dl className="kv">
-          <dt>Status</dt>
-          <dd>
-            <Status tone={st.tone}>{st.label}</Status>
-          </dd>
-          <dt>Detail</dt>
-          <dd>
-            {s.sign_in_again ? (
-              "The saved sign-in can't be used. Sign in again."
-            ) : slow(s) ? (
-              <Status tone="info">{s.health_detail} It still works.</Status>
-            ) : (
-              s.health_detail || "Not checked yet."
-            )}
-          </dd>
-          <dt>Checked</dt>
-          <dd>{ago(s.checked_at)}</dd>
-        </dl>
-      </section>
-      <section>
-        <h3>Versions</h3>
-        <dl className="kv">
-          <dt>WordPress</dt>
-          <dd className={s.wp_version ? "mono" : undefined}>{s.wp_version ?? "not known"}</dd>
-          <dt>PHP</dt>
-          <dd className={s.php_version ? "mono" : undefined}>{s.php_version ?? "not known"}</dd>
-          <dt>Classic Monks</dt>
-          <dd className={s.cm_version ? "mono" : undefined}>{s.cm_version ?? (s.mode === "basic" ? "not used" : "not known")}</dd>
-          <dt>Connection</dt>
-          <dd>{connectionLabel(s)}</dd>
+        <dl className="dl">
+          <div>
+            <dt>WordPress</dt>
+            <dd className={s.wp_version ? "m" : undefined}>{s.wp_version ?? "not known"}</dd>
+          </div>
+          <div>
+            <dt>PHP</dt>
+            <dd className={s.php_version ? "m" : undefined}>{s.php_version ?? "not known"}</dd>
+          </div>
+          <div>
+            <dt>Classic Monks</dt>
+            <dd className={s.cm_version ? "m" : undefined}>{s.cm_version ?? (s.mode === "basic" ? "not used" : "not known")}</dd>
+          </div>
+          <div>
+            <dt>Connection</dt>
+            <dd>{connectionLabel(s)}</dd>
+          </div>
           {s.mode === "basic" && (
-            <>
+            <div>
               <dt>Signed in as</dt>
               <dd>{s.username}</dd>
-            </>
+            </div>
           )}
+          <div>
+            <dt>Last checked</dt>
+            <dd>{ago(s.checked_at)}</dd>
+          </div>
+          <div>
+            <dt>Detail</dt>
+            <dd>
+              {s.sign_in_again ? (
+                "The saved sign-in can't be used. Sign in again."
+              ) : slow(s) ? (
+                <Status tone="info">{s.health_detail} It still works.</Status>
+              ) : (
+                s.health_detail || "Not checked yet."
+              )}
+            </dd>
+          </div>
         </dl>
+        {updates.length > 0 && onUpdates && (
+          <button type="button" className="callout ok go" onClick={onUpdates}>
+            <Glyph name="download" />
+            <span>
+              <b>{waitingWords(updates)}</b> waiting
+            </span>
+            <span className="golink">
+              Review
+              <Glyph name="arrow" />
+            </span>
+          </button>
+        )}
       </section>
       <section>
         <h3>What Monks Central can do here</h3>
         {s.mode === "basic" ? (
-          <p style={{ margin: 0, color: "var(--text-2)" }}>
+          <p className="dim-2">
             Content, users, comments and the plugin list through WordPress itself. Updates, one-click login and Classic
             Monks modules need Classic Monks.
           </p>
         ) : noTools(s) ? (
-          <p className="alert" style={{ margin: 0 }}>
-            {NO_TOOLS}
+          <p className="callout warning">
+            <Glyph name="alert" />
+            <span>{NO_TOOLS}</span>
           </p>
         ) : (
-          <dl className="kv">
-            <dt>Tools</dt>
-            <dd>
-              {abilities} {abilities === 1 ? "tool" : "tools"} this app may use
-            </dd>
-            <dt>Access</dt>
-            <dd>
-              {caps.operator === true
-                ? "Full, ticked on the site"
-                : caps.operator === false
-                  ? "Limited: changes may wait for approval on the site"
-                  : "Not known"}
-            </dd>
-            <dt>Approvals</dt>
-            <dd>{caps.approvals === true ? "The site can ask before a change" : "Not on this site"}</dd>
+          <dl className="dl">
+            <div>
+              <dt>Tools</dt>
+              <dd>
+                {abilities} {abilities === 1 ? "tool" : "tools"} this app may use
+              </dd>
+            </div>
+            <div>
+              <dt>Access</dt>
+              <dd>
+                {caps.operator === true
+                  ? "Full, ticked on the site"
+                  : caps.operator === false
+                    ? "Limited: changes may wait for approval on the site"
+                    : "Not known"}
+              </dd>
+            </div>
+            <div>
+              <dt>Approvals</dt>
+              <dd>{caps.approvals === true ? "The site can ask before a change" : "Not on this site"}</dd>
+            </div>
             {modules && (
-              <>
+              <div>
                 <dt>Modules on</dt>
                 <dd>
                   {Object.entries(modules)
@@ -473,23 +619,25 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
                     .map(([m]) => m)
                     .join(", ") || "none"}
                 </dd>
-              </>
+              </div>
             )}
           </dl>
         )}
         {caps.degraded === true && !noTools(s) && (
-          <p className="alert" style={{ margin: "10px 0 0" }}>
-            This Classic Monks is older. Update it on the site for every feature.
+          <p className="callout warning">
+            <Glyph name="alert" />
+            <span>This Classic Monks is older. Update it on the site for every feature.</span>
           </p>
         )}
       </section>
       <section>
-        <h3>
-          <label htmlFor="insp-group">Group</label>
-        </h3>
+        <h3>Organise</h3>
+        <label className="field-label" htmlFor="insp-group">
+          Group
+        </label>
         <Combobox
           id="insp-group"
-          className="input sm"
+          className="input"
           suggestions={groups}
           placeholder="No group"
           value={group}
@@ -497,11 +645,9 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
           onBlur={saveGroup}
           onKeyDown={(e) => e.key === "Enter" && saveGroup()}
         />
-      </section>
-      <section>
-        <h3>
+        <p className="field-label" aria-hidden="true">
           Tags
-        </h3>
+        </p>
         <TagInput
           label="Tags"
           value={tags}
@@ -516,51 +662,49 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
         <h3>
           <label htmlFor="insp-note">Notes</label>
         </h3>
-        <textarea
-          id="insp-note"
-          className="input"
-          placeholder="Write a note about this site"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-        <div className="acts" style={{ marginTop: 6 }}>
-          <Button
-            small
-            disabled={!note.trim()}
-            onClick={() => run(() => api.addNote(s.id, note).then(() => setNote("")))}
-          >
-            Add the note
-          </Button>
-        </div>
         {s.notes.length > 0 && (
-          <ul className="ulist notes" style={{ marginTop: 8 }}>
+          <ul className="site-notes">
             {s.notes.map((n) => (
               <li key={n.id}>
-                <p>{n.body}</p>
-                <span className="row dim" style={{ fontSize: "var(--fs-sm)" }}>
-                  {ago(n.added_at)}
-                  <button
-                    type="button"
-                    className="btn sm"
-                    style={{ marginLeft: "auto" }}
-                    disabled={deleting === n.id}
-                    onClick={async () => {
-                      setDeleting(n.id);
-                      await run(async () => {
-                        await api.deleteNote(s.id, n.id);
-                        // Undo writes the note again (with today's date).
-                        toast(`Deleted the note on ${s.name}.`, { undo: () => run(() => api.addNote(s.id, n.body)) });
-                      });
-                      setDeleting(null);
-                    }}
-                  >
-                    Delete note
-                  </button>
-                </span>
+                <div>
+                  <b>{n.body}</b>
+                  <small>{ago(n.added_at)}</small>
+                </div>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Delete note"
+                  data-tip="Delete note"
+                  disabled={deleting === n.id}
+                  onClick={async () => {
+                    setDeleting(n.id);
+                    await run(async () => {
+                      await api.deleteNote(s.id, n.id);
+                      // Undo writes the note again (with today's date).
+                      toast(`Deleted the note on ${s.name}.`, { undo: () => run(() => api.addNote(s.id, n.body)) });
+                    });
+                    setDeleting(null);
+                  }}
+                >
+                  <Glyph name="trash" />
+                </button>
               </li>
             ))}
           </ul>
         )}
+        <textarea
+          id="insp-note"
+          className="input"
+          placeholder="Anything to remember about this site"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <div>
+          <Button small disabled={!note.trim()} onClick={() => run(() => api.addNote(s.id, note).then(() => setNote("")))}>
+            <Glyph name="plus" />
+            Add the note
+          </Button>
+        </div>
       </section>
       <section>
         {confirm ? (
@@ -594,14 +738,12 @@ function Inspector({ site: s, groups, allTags, onCheck, onSignInAgain, onRemoved
             </div>
           </div>
         ) : (
-          <Button small kind="danger" onClick={() => setConfirm(true)}>
+          <Button small className="ghost danger-text" onClick={() => setConfirm(true)}>
+            <Glyph name="trash" />
             Remove from Monks Central
           </Button>
         )}
       </section>
-      <p className="note">
-        <Kbd>J</Kbd> <Kbd>K</Kbd> move between sites, <Kbd>X</Kbd> select, <Kbd>/</Kbd> filter, <Kbd>R</Kbd> check now
-      </p>
     </aside>
   );
 }

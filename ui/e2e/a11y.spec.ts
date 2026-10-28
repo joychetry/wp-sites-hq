@@ -62,7 +62,7 @@ test("the Sites table works from the keyboard", async ({ page }) => {
   await page.keyboard.press("j");
   await expect(page.getByRole("complementary", { name: "Corner Bakery details" })).toBeVisible();
   await page.keyboard.press("x");
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
   await page.keyboard.press("Escape");
   await page.keyboard.press("/");
   await expect(page.getByRole("searchbox", { name: "Filter sites" })).toBeFocused();
@@ -386,11 +386,11 @@ test("results never move the rows: ticking sites, a check, a feature and its Und
   const portfolio = page.getByRole("checkbox", { name: "Select Portfolio" });
   const before = await y(portfolio);
   await page.getByRole("checkbox", { name: "Select MC A" }).click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
   expect(await y(portfolio)).toBe(before);
   await portfolio.click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 selected");
-  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /Check now/ }).click();
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 sites ticked");
+  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /Check them now/ }).click();
   expect(await y(portfolio)).toBe(before);
 
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");

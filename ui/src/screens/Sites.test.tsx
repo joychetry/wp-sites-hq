@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Sites } from "./Sites";
 import { Select } from "../components/controls";
@@ -8,6 +8,8 @@ import { site } from "../test-fixtures";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 const mockInvoke = vi.mocked(invoke);
 afterEach(() => mockInvoke.mockReset());
+// The inventory read (useInventory) and anything a test does not set up answer with nothing.
+beforeEach(() => mockInvoke.mockImplementation(async () => []));
 
 const SITES = [
   site({ id: 1, name: "Alpha" }),
@@ -22,7 +24,7 @@ function Harness() {
 test("table, statuses and the inspector for the focused site", () => {
   render(<Harness />);
   expect(screen.getAllByRole("row")).toHaveLength(4);
-  expect(screen.getByText("Basic mode")).toBeInTheDocument();
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("Basic");
   expect(screen.getAllByText("Sign in again").length).toBeGreaterThan(0);
   expect(screen.getByRole("complementary", { name: "Alpha details" })).toHaveTextContent("Full, ticked on the site");
 });
@@ -38,7 +40,7 @@ test("keys: j moves, x selects, / filters, a adds", () => {
   rerender(<Sites sites={SITES} groups={[]} focusId={2} setFocusId={vi.fn()} onAdd={onAdd} onSignInAgain={vi.fn()} />);
   expect(screen.getByRole("complementary", { name: "Beta details" })).toBeInTheDocument();
   fireEvent.keyDown(document, { key: "x" });
-  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("1 selected");
+  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("1 site ticked");
   fireEvent.keyDown(document, { key: "/" });
   expect(screen.getByRole("searchbox", { name: "Filter sites" })).toHaveFocus();
   fireEvent.change(screen.getByRole("searchbox", { name: "Filter sites" }), { target: { value: "gam" } });
@@ -77,7 +79,7 @@ test("tags, notes and group go to the core", async () => {
 test("a site that needs a sign-in offers it", () => {
   const onSignInAgain = vi.fn();
   render(<Sites sites={SITES} groups={[]} focusId={3} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={onSignInAgain} />);
-  fireEvent.click(screen.getByRole("button", { name: "Sign in again" }));
+  fireEvent.click(within(screen.getByRole("complementary")).getByRole("button", { name: "Sign in again" }));
   expect(onSignInAgain).toHaveBeenCalledWith(SITES[2]);
 });
 
@@ -89,13 +91,13 @@ test("a connection with no tools says so in the table and offers Sign in again",
   const insp = screen.getByRole("complementary", { name: "Empty details" });
   expect(insp).toHaveTextContent("Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.");
   expect(insp).not.toHaveTextContent("older");
-  fireEvent.click(screen.getByRole("button", { name: "Sign in again" }));
+  fireEvent.click(within(insp).getByRole("button", { name: "Sign in again" }));
   expect(onSignInAgain).toHaveBeenCalledWith(empty);
 });
 
-test("the legend explains the status shapes and the columns", () => {
+test("the table's foot says how many show and which keys work", () => {
   render(<Harness />);
-  expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Healthy.*Down.*Not checked yet.*when Monks Central last asked/);
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Showing 3 of 3 sites.*move.*tick.*filter.*check the open site.*add a site/);
 });
 
 test("Space on a row's checkbox is left to that checkbox; rows say selected only when they are", () => {
@@ -107,7 +109,7 @@ test("Space on a row's checkbox is left to that checkbox; rows say selected only
   fireEvent.click(beta);
   expect(screen.getByRole("row", { selected: true })).toHaveTextContent("Beta");
   fireEvent.keyDown(screen.getByRole("grid", { name: "Sites" }), { key: " " });
-  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("2 selected");
+  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("2 sites ticked");
 });
 
 test("one-click login shows only where the connection can make a login link", async () => {
