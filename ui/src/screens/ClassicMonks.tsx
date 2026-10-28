@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, cmBlocked, hasTool, useInventory, type Activity, type ActivityRow, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
 import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Status } from "../components/ui";
+import { Sheet } from "../components/Sheet";
 
 type Tab = "features" | "settings" | "activity" | "approvals" | "reports";
 const TABS: [Tab, string, string][] = [
@@ -474,10 +475,12 @@ function Change({ row, busy, onUndo }: { row: ActivityRow; busy: boolean; onUndo
   );
 }
 
-/** Undo one logged change; the screen reads the site again. */
+/** Undo one logged change once you say so (the design's "Undo this change?"); the screen reads the site again. */
 function useUndo(site: Site, onDone: (d: Done) => void) {
   const [busy, setBusy] = useState<number | null>(null);
-  const undo = async (r: ActivityRow) => {
+  const [asking, setAsking] = useState<ActivityRow | null>(null);
+  const run = async (r: ActivityRow) => {
+    setAsking(null);
     setBusy(r.id);
     try {
       await api.undo(site.id, r.id);
@@ -488,12 +491,40 @@ function useUndo(site: Site, onDone: (d: Done) => void) {
       setBusy(null);
     }
   };
-  return { busy, undo };
+  const ask = asking && (
+    <Sheet
+      dialog
+      title={`Undo this change on ${site.name}?`}
+      intro="Classic Monks puts back what this change replaced, and logs the undo too."
+      onClose={() => setAsking(null)}
+      footer={
+        <>
+          <Button onClick={() => setAsking(null)}>Keep it</Button>
+          <Button kind="primary" className="disc" onClick={() => run(asking)}>
+            Undo
+            <span className="btn-disc">
+              <Glyph name="undo" />
+            </span>
+          </Button>
+        </>
+      }
+    >
+      <dl className="kv cm-undo">
+        <dt>Change</dt>
+        <dd>{asking.summary || toolLabel(asking.tool)}</dd>
+        <dt>Made by</dt>
+        <dd>
+          {whoOf(asking.who)} · {when(asking.time)}
+        </dd>
+      </dl>
+    </Sheet>
+  );
+  return { busy, undo: setAsking, ask };
 }
 
 function Recent({ site, onDone, round, onAll }: Part & { onAll: () => void }) {
   const { data } = useRead<Activity>(() => api.activity(site.id, 1), [site.id, round]);
-  const { busy, undo } = useUndo(site, onDone);
+  const { busy, undo, ask } = useUndo(site, onDone);
   const rows = data?.rows.slice(0, 3) ?? [];
   return (
     <section className="card" aria-labelledby="cm-recent-t">
@@ -513,6 +544,7 @@ function Recent({ site, onDone, round, onAll }: Part & { onAll: () => void }) {
           ))}
         </ul>
       )}
+      {ask}
     </section>
   );
 }
@@ -520,7 +552,7 @@ function Recent({ site, onDone, round, onAll }: Part & { onAll: () => void }) {
 function Log({ site, onDone, round }: Part) {
   const [page, setPage] = useState(1);
   const { data, error, load } = useRead<Activity>(() => api.activity(site.id, page), [site.id, page, round]);
-  const { busy, undo } = useUndo(site, onDone);
+  const { busy, undo, ask } = useUndo(site, onDone);
   if (error) return <Failed what="The activity log" error={error} retry={load} />;
   if (!data) return <Loading label={`Reading the activity log on ${site.name}…`} />;
   if (data.rows.length === 0)
@@ -550,6 +582,7 @@ function Log({ site, onDone, round }: Part) {
       <p className="card-foot note" id="activity-legend">
         Newest first, in the site's own time. Undo puts back what a change replaced; not every change can be undone.
       </p>
+      {ask}
     </section>
   );
 }

@@ -34,7 +34,7 @@ const PAGES: [page: string, board: string, screens: string[]][] = [
   ["d04-plugins-install", "d04-plugins-install-bundles-roll-back", ["install", "install-bundle", "plugins-rollback"]],
   ["d05-content-flows", "d05-content-editors-history-bulk-trash-publish", ["content-editor", "content-history", "content-bulk", "content-trash", "publish-many"]],
   ["d06-users-clients", "d06-users-and-clients-add-delete-edit", ["users-add", "users-delete", "client-edit"]],
-  ["d07-classic-monks-tabs", "d07-classic-monks-settings-activity-approvals-reports", ["classic-monks-settings", "classic-monks-activity", "classic-monks-approvals", "classic-monks-reports"]],
+  ["d07-classic-monks-tabs", "d07-classic-monks-settings-activity-approvals-reports", ["classic-monks-settings", "classic-monks-activity", "classic-monks-undo-ask", "classic-monks-approvals", "classic-monks-reports"]],
   ["d08-ai-states", "d08-ai-running-empty-activity-connect", ["ai-confirmed", "ai-none", "ai-activity", "ai-connect"]],
   ["d09-store-settings", "d09-store-and-settings-product-change-search-console-toasts", ["store-change", "settings-search-console", "classic-monks-undo"]],
   ["d10-palette", "d10-anywhere-command-palette", ["palette"]],
@@ -51,7 +51,7 @@ for (const [name, board, screens] of PAGES) {
       test.skip(board === "component-sidebar" && theme === "dark", "the sidebar board is light only");
       const design = `../docs/design/redesign/screens/${theme}-${board}-full.png`;
       // Pages render as tall as their design board, so the whole page compares, not just the first 900px.
-      const tall = /^\d/.test(board) ? 1320 : 900;
+      const tall = /^\d|sidebar/.test(board) ? 1320 : 900;
       await page.setViewportSize({ width: 1440, height: tall });
       const shots: string[] = [];
       for (const s of screens) {

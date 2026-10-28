@@ -290,6 +290,10 @@ describe("Classic Monks", () => {
     const table = await screen.findByRole("list", { name: "Activity" });
     expect(within(table).getByText("Update features")).toBeInTheDocument();
     fireEvent.click(within(table).getByRole("button", { name: /^Undo/ }));
+    // Nothing changes until the dialog's Undo; Keep it would leave it.
+    const ask = screen.getByRole("dialog", { name: "Undo this change on Alpha?" });
+    expect(calls.some(([c]) => c === "cm_undo")).toBe(false);
+    fireEvent.click(within(ask).getByRole("button", { name: "Undo" }));
     expect(await screen.findByText("Undone: Update features on Alpha.")).toBeInTheDocument();
 
     fireEvent.click(within(tabs).getByRole("tab", { name: "Waiting for approval" }));

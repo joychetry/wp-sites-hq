@@ -197,6 +197,15 @@ export const SCREENS: Screen[] = [
     },
   },
   {
+    name: "classic-monks-undo-ask",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
+      await page.getByRole("list", { name: "Activity" }).getByRole("button", { name: /^Undo/ }).first().click();
+      await page.getByRole("dialog", { name: /^Undo this change/ }).waitFor();
+    },
+  },
+  {
     name: "classic-monks-approvals",
     open: async (page) => {
       await nav("Classic Monks")(page);
