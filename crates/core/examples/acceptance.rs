@@ -46,6 +46,12 @@
 //!                      and changed files, and print what each scan found
 //!   monitors           load every home page, look up domains, print each site's monitors
 //!   pagespeed <url>    Google PageSpeed for a public site
+//!   publish <title> <body file> <url>...   one job: publish the same post on those sites
+//!   search <words>     posts and pages on every site
+//!   client <name> <url>...                 make the client (or find it) and give it the sites
+//!   report <month> <out dir> <client name> a client's monthly report as HTML and PDF
+//!   cm-reports <url> | store <url>         Classic Monks' reports; the store and its products
+//!   zip <url> <zip file> <plugin|theme>    stage a zip and install it (off) as a job
 //!
 //! These two need no core of their own, so they also run while the app is open:
 //!   approve <studio site path> <approve url>   the person approves on the site's
@@ -516,6 +522,109 @@ async fn main() -> Res<()> {
         "activity" => show(&core.activity(site_id(&core, arg(1)?)?, 1).await?),
         "approvals" => show(&core.approvals(site_id(&core, arg(1)?)?).await?),
         "settings" => show(&core.settings(site_id(&core, arg(1)?)?).await?),
+        "publish" => {
+            let body = std::fs::read_to_string(arg(2)?)?;
+            let action = Action::PublishPost {
+                post_type: "post".into(),
+                title: arg(1)?.into(),
+                body,
+                status: "publish".into(),
+                date: None,
+                terms: Default::default(),
+            };
+            let mut changes = Vec::new();
+            for url in &args[3..] {
+                changes.push(Change {
+                    site_id: site_id(&core, url)?,
+                    action: action.clone(),
+                });
+            }
+            let job = core
+                .start_job(
+                    &format!("Publish {} on {} sites", arg(1)?, changes.len()),
+                    changes,
+                )
+                .await?;
+            print_job(&wait(&core, job.id).await?);
+            Ok(())
+        }
+        "search" => show(&core.search_content(arg(1)?).await?),
+        "client" => {
+            let name = arg(1)?;
+            let c = match core
+                .clients()?
+                .into_iter()
+                .find(|c| c.name.eq_ignore_ascii_case(name))
+            {
+                Some(c) => c,
+                None => core.save_client(&monks_core::business::Client {
+                    id: 0,
+                    name: name.into(),
+                    email: String::new(),
+                    notes: String::new(),
+                })?,
+            };
+            for url in &args[2..] {
+                core.set_site_client(site_id(&core, url)?, Some(c.id))?;
+            }
+            println!(
+                "client {} has {} sites",
+                c.name,
+                core.sites()?
+                    .iter()
+                    .filter(|s| s.client_id == Some(c.id))
+                    .count()
+            );
+            Ok(())
+        }
+        "report" => {
+            let name = arg(3)?;
+            let c = core
+                .clients()?
+                .into_iter()
+                .find(|c| c.name.eq_ignore_ascii_case(name))
+                .ok_or("no such client")?;
+            let ask = monks_core::report::ReportAsk {
+                client_id: Some(c.id),
+                site_ids: vec![],
+                month: arg(1)?.into(),
+            };
+            let r = core.client_report(&ask, Path::new(arg(2)?)).await?;
+            println!(
+                "sites {}\nhtml {}\npdf {}\nnotes {:?}",
+                r.sites, r.html, r.pdf, r.notes
+            );
+            Ok(())
+        }
+        "cm-reports" => show(&core.cm_reports(site_id(&core, arg(1)?)?, 30).await?),
+        "store" => {
+            let id = site_id(&core, arg(1)?)?;
+            show(&core.store_overview(id, 30, None).await?)?;
+            show(&core.products(id, &Default::default()).await?)
+        }
+        "zip" => {
+            let file = Path::new(arg(2)?);
+            let name = file
+                .file_name()
+                .and_then(|n| n.to_str())
+                .ok_or("bad file name")?;
+            let staged = core.stage_zip(name, &std::fs::read(file)?)?;
+            let change = Change {
+                site_id: site_id(&core, arg(1)?)?,
+                action: Action::InstallZip {
+                    file: staged.file,
+                    name: name.into(),
+                    kind: arg(3)?.into(),
+                    activate: false,
+                    overwrite: false,
+                },
+            };
+            let job = core
+                .start_job(&format!("Install {name}"), vec![change])
+                .await?;
+            print_job(&wait(&core, job.id).await?);
+            Ok(())
+        }
         other => Err(format!("unknown command {other}").into()),
     }
 }
