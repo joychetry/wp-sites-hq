@@ -4,6 +4,33 @@ All notable changes to Monks Central. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org).
 
+## [0.2.0] - 2026-10-28
+
+A new look on every page, pictures for sites, plugins and themes, and fixes for
+Windows, macOS and the release build.
+
+### Design
+- Joy's design on every page: a light sidebar, the Figtree typeface, a green
+  accent, and new layouts for Sites, Overview, Updates, Plugins and Themes,
+  Content, People, Reports, Monitoring, Security, AI, Store and Settings.
+
+### Pictures
+- Site favicons, found on each check and kept in the data folder.
+- WordPress.org plugin icons and theme screenshots in every tile and report
+  row that shows a plugin or theme.
+
+### Fixes
+- Windows: the background core no longer holds the output of `monks status`,
+  so AI apps that run `monks` over MCP don't hang.
+- macOS: the app is now ad-hoc signed, so a downloaded copy shows the normal
+  "Apple could not verify" message with Open Anyway in System Settings, not
+  "damaged". The `xattr -cr` step stays as a fallback.
+
+### Build
+- CI runs on Linux, macOS and Windows.
+- The release build writes the updater file once, after every installer is
+  uploaded, and makes a normal release, so the in-app updater finds it.
+
 ## [0.1.0] - 2026-10-28
 
 The first public beta. Unsigned installers for macOS, Windows and Linux.
@@ -54,4 +81,5 @@ The first public beta. Unsigned installers for macOS, Windows and Linux.
   before it installs.
 - The `monks` command line is installed with the app.
 
+[0.2.0]: https://github.com/joychetry/monks-central/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/joychetry/monks-central/releases/tag/v0.1.0

@@ -2743,7 +2743,7 @@ dependencies = [
 
 [[package]]
 name = "monks-central"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "monks-core",
  "open",
@@ -2757,7 +2757,7 @@ dependencies = [
 
 [[package]]
 name = "monks-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "keyring-core",
@@ -2770,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "monks-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "apple-native-keyring-store",
  "axum",
