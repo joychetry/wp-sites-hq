@@ -290,22 +290,14 @@ impl Core {
                 "Security".into(),
                 if r.vulnerabilities.is_empty() && r.abandoned.is_empty() && changed == 0 {
                     // A check that didn't answer is not a clean bill.
-                    let how = if r.notes.is_empty() { "checked" } else { "partly checked" };
+                    let how = if r.notes.is_empty() {
+                        "checked"
+                    } else {
+                        "partly checked"
+                    };
                     format!("No known problems, {how} {}", paths::day(r.checked_at))
                 } else {
-                    format!(
-                        "{} known vulnerabilit{}, {} abandoned plugin{}, changed files in {} place{}",
-                        r.vulnerabilities.len(),
-                        if r.vulnerabilities.len() == 1 {
-                            "y"
-                        } else {
-                            "ies"
-                        },
-                        r.abandoned.len(),
-                        if r.abandoned.len() == 1 { "" } else { "s" },
-                        changed,
-                        if changed == 1 { "" } else { "s" },
-                    )
+                    problems(r.vulnerabilities.len(), r.abandoned.len(), changed)
                 },
             ));
         }
@@ -883,6 +875,30 @@ pub fn pdf(doc: &[Block], s: &AppSettings, title: &str) -> Vec<u8> {
     out
 }
 
+/// The security line's problems, naming only those found.
+fn problems(vulns: usize, abandoned: usize, changed: usize) -> String {
+    let n = |n: usize, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
+    [
+        (
+            vulns,
+            n(vulns, "known vulnerability", "known vulnerabilities"),
+        ),
+        (
+            abandoned,
+            n(abandoned, "abandoned plugin", "abandoned plugins"),
+        ),
+        (
+            changed,
+            format!("changed files in {}", n(changed, "place", "places")),
+        ),
+    ]
+    .into_iter()
+    .filter(|(count, _)| *count > 0)
+    .map(|(_, text)| text)
+    .collect::<Vec<_>>()
+    .join(", ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1158,5 +1174,15 @@ mod tests {
             .await
             .is_err()
         );
+    }
+
+    #[test]
+    fn the_security_line_names_only_what_was_found() {
+        assert_eq!(problems(1, 0, 0), "1 known vulnerability");
+        assert_eq!(
+            problems(2, 1, 3),
+            "2 known vulnerabilities, 1 abandoned plugin, changed files in 3 places"
+        );
+        assert_eq!(problems(0, 0, 1), "changed files in 1 place");
     }
 }
