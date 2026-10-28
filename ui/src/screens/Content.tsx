@@ -55,7 +55,7 @@ export function SitePick({ sites, value, onChange }: { sites: Site[]; value: num
   );
 }
 
-type Open = { postId?: number };
+type Open = { siteId: number; postId?: number };
 
 type Bulk = "publish" | "draft" | "trash" | "untrash";
 const BULK: Record<Bulk, { button: string; title: string; danger?: boolean }> = {
@@ -104,6 +104,7 @@ export function Content({ sites, onPlan }: Props) {
   const [list, setList] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<Open | null>(null);
+  useEffect(() => setOpen((o) => (o && o.siteId !== current ? null : o)), [current]);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   // The entry the editor was opened from gets focus back when it closes.
   const back = useRef<number | null>(null);
@@ -174,7 +175,9 @@ export function Content({ sites, onPlan }: Props) {
     );
   }
 
-  if (open && site && type) {
+  // Only on the site it was opened on: when that site leaves the list, the editor closes, and
+  // never shows the same id on the next site.
+  if (open && site && type && open.siteId === site.id) {
     return (
       <Editor
         key={open.postId ?? "new"}
@@ -333,7 +336,7 @@ export function Content({ sites, onPlan }: Props) {
                           el.focus();
                         }
                       }}
-                      onClick={() => setOpen({ postId: p.id })}
+                      onClick={() => setOpen({ siteId: site!.id, postId: p.id })}
                     >
                       {p.title || "(no title)"}
                     </button>
@@ -380,7 +383,7 @@ export function Content({ sites, onPlan }: Props) {
           </Button>
         )}
         {type && !blocked && (
-          <Button kind="primary" className="disc" onClick={() => setOpen({})}>
+          <Button kind="primary" className="disc" onClick={() => setOpen({ siteId: site!.id })}>
             New {type.singular.toLowerCase()}
             <span className="btn-disc">
               <Glyph name="plus" />

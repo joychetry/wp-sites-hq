@@ -201,6 +201,19 @@ test("nothing can be typed while a save is on its way, and focus comes back afte
   await waitFor(() => expect(screen.getByRole("textbox", { name: "Title" })).toHaveFocus());
 });
 
+test("an open editor closes when its site leaves the list, and never opens the same id on the next site", async () => {
+  const GAMMA = site({ id: 3, name: "Gamma", capabilities: { operator: true, abilities: ["list-post-types"] } });
+  const calls = core();
+  const view = render(<Content sites={[CM, GAMMA]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  expect(await screen.findByRole("heading", { name: "Edit page on Alpha" })).toBeInTheDocument();
+  view.rerender(<Content sites={[GAMMA]} />);
+  expect(await screen.findByRole("table", { name: "Pages" })).toBeInTheDocument();
+  await new Promise((r) => setTimeout(r, 20));
+  expect(screen.queryByRole("heading", { name: /^Edit page/ })).toBeNull();
+  expect(calls.filter((c) => c[0] === "content_get").map((c) => c[1].id)).toEqual([1]);
+});
+
 test("leaving with unsaved changes asks first", async () => {
   core();
   render(<Content sites={[CM]} />);

@@ -99,7 +99,9 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
 export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
   // An editor with unsaved changes asks before the page changes.
-  const setSection = (s: Section) => (leaveGuard.ask ? leaveGuard.ask(() => setSectionNow(s)) : setSectionNow(s));
+  // Anything that would close the editor asks first while it has unsaved changes.
+  const guarded = (go: () => void) => (leaveGuard.ask ? leaveGuard.ask(go) : go());
+  const setSection = (s: Section) => guarded(() => setSectionNow(s));
   const sectionRef = useRef(section);
   sectionRef.current = section;
   // Messages belong to the screen they came from; on another screen they would only cover it.
@@ -426,7 +428,7 @@ export default function App() {
           <span className="label" aria-hidden="true">
             Sites to show
           </span>
-          <Select className="scope sm" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Sites to show">
+          <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
             <option value="">All sites ({all.length})</option>
             {groups.map((g) => (
               <option key={g} value={g}>

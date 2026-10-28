@@ -3,7 +3,7 @@
 // keyboard and zoom checks axe can't do. Serious and critical issues fail.
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { SCREENS, show } from "./screens";
+import { choose, SCREENS, show } from "./screens";
 
 for (const s of SCREENS) {
   for (const theme of ["light", "dark"]) {
@@ -146,6 +146,13 @@ test("leaving with unsaved changes asks, from Back and from the rail", async ({ 
   const ask = page.getByRole("dialog", { name: "Leave without saving?" });
   await page.keyboard.press("Escape");
   await expect(ask).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Our winter menu");
+  // The rail's Sites to show filter could hide the entry's site: it asks too, and Keep editing keeps both.
+  const scope = page.getByRole("combobox", { name: "Sites to show" });
+  await choose(scope, { name: "Group: Personal" });
+  await expect(ask).toBeVisible();
+  await ask.getByRole("button", { name: "Keep editing" }).click();
+  await expect(scope).toContainText("All sites");
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Our winter menu");
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Media/ }).click();
   await expect(ask).toBeVisible();
