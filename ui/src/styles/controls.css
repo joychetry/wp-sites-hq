@@ -201,6 +201,13 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 ::-webkit-scrollbar-thumb { background: var(--line-2); border: 3px solid transparent; background-clip: padding-box; border-radius: 8px; min-height: 32px; }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--line-ui); }
 ::-webkit-scrollbar-corner { background: transparent; }
+/* The sidebar's scrollbar is thin and shows while the pointer or focus is in it; its gutter stays, so nothing shifts. */
+@media (min-width: 901px) {
+  .rail { scrollbar-gutter: stable; padding-right: calc(var(--sp-3) - 8px); }
+  .rail::-webkit-scrollbar { width: 8px; }
+  .rail::-webkit-scrollbar-thumb { background-color: transparent; border-width: 2px; }
+  .rail:hover::-webkit-scrollbar-thumb, .rail:focus-within::-webkit-scrollbar-thumb { background-color: var(--line-2); }
+}
 @supports not selector(::-webkit-scrollbar) {
   * { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
 }
