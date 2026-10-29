@@ -67,6 +67,18 @@ export type AppSettings = {
   white_label: boolean;
   search_console: boolean;
   agentedseo: boolean;
+  auto_update: boolean;
+};
+/** A newer Monks Central; `notes` is plain text from the release's CHANGELOG section. */
+export type AppUpdateFound = { version: string; notes: string; date: number | null };
+export type AppUpdate = {
+  current: string;
+  checked_at: number | null;
+  found: AppUpdateFound | null;
+  /** Downloaded and its signature checked. */
+  ready: boolean;
+  /** Bytes so far and the total, while downloading. */
+  progress: [number, number | null] | null;
 };
 export type BundlePlugin = { source: string; name: string };
 export type Bundle = { id: number; name: string; plugins: BundlePlugin[] };
@@ -493,9 +505,13 @@ export const api = {
   deleteCost: (id: number) => invoke<void>("cost_delete", { id }),
   appSettings: () => invoke<AppSettings>("app_settings_get"),
   /** The newer version on GitHub Releases, or null when this one is the newest. */
-  updateCheck: () => invoke<string | null>("app_update_check"),
-  /** Downloads, checks the signature, installs and restarts. */
-  updateInstall: () => invoke<void>("app_update_install"),
+  updateStatus: () => invoke<AppUpdate>("app_update_status"),
+  updateCheck: () => invoke<AppUpdate>("app_update_check"),
+  /**
+   * Downloads if needed, checks the signature, installs and restarts. `whenIdle` (installing by itself) goes ahead
+   * only with the setting on, the download done and no site work running; `false` means not now.
+   */
+  updateInstall: (whenIdle = false) => invoke<boolean>("app_update_install", { whenIdle }),
   saveAppSettings: (settings: AppSettings) => invoke<AppSettings>("app_settings_save", { settings }),
   /** Saves into Downloads; returns the file's path. */
   exportSites: (csv: boolean) => invoke<string>("sites_export", { csv }),
@@ -582,6 +598,11 @@ function useLive<T>(load: () => Promise<T>, event: string) {
     };
   }, [reload, event]);
   return { data, error, reload };
+}
+
+/** New versions of Monks Central: checked at start and every six hours by the app itself. */
+export function useAppUpdate() {
+  return useLive(api.updateStatus, "app-update");
 }
 
 /** Every site's monitors, as last measured. */

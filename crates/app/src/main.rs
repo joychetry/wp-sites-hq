@@ -32,7 +32,8 @@ use serde_json::Value;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
-use tauri_plugin_updater::UpdaterExt;
+
+mod update;
 
 /// The in-process core, or why it couldn't start (shown in the window).
 struct AppCore(Result<Arc<Core>, String>);
@@ -884,48 +885,27 @@ fn app_settings_save(state: State<'_, AppCore>, settings: AppSettings) -> Res<Ap
         .map_err(|e| e.to_string())
 }
 
-/// The check failed: offline, GitHub down, or no release published yet.
-fn update_unreachable(e: tauri_plugin_updater::Error) -> String {
-    eprintln!("Monks Central update check: {e}");
-    "Couldn't reach the Monks Central releases on GitHub. Check your internet connection and try again later.".into()
+/// Current version, last check, the version found and its download.
+#[tauri::command]
+fn app_update_status(app: AppHandle) -> update::Status {
+    update::status(&app)
 }
 
-/// A newer Monks Central on GitHub Releases, if there is one.
+/// Look for a newer Monks Central on GitHub Releases now.
 #[tauri::command]
-async fn app_update_check(app: AppHandle) -> Res<Option<String>> {
-    let update = app
-        .updater()
-        .map_err(|e| e.to_string())?
-        .check()
-        .await
-        .map_err(update_unreachable)?;
-    Ok(update.map(|u| u.version))
+async fn app_update_check(app: AppHandle, state: State<'_, AppCore>) -> Res<update::Status> {
+    update::check(&app, core(&state).ok()).await
 }
 
-/// Download the new version, check its signature (the public key in
-/// tauri.conf.json), install it and start it.
+/// Install the new version (its signature checked against the public key in
+/// tauri.conf.json) and restart. `false`: not now, nothing was installed.
 #[tauri::command]
-async fn app_update_install(app: AppHandle, state: State<'_, AppCore>) -> Res<()> {
-    let Some(update) = app
-        .updater()
-        .map_err(|e| e.to_string())?
-        .check()
-        .await
-        .map_err(update_unreachable)?
-    else {
-        return Err("You have the newest version.".into());
-    };
-    update
-        .download_and_install(|_, _| {}, || {})
-        .await
-        .map_err(|e| {
-            format!("Couldn't install the new version: {e}. This version keeps working.")
-        })?;
-    // Site work in progress finishes before the restart.
-    if let Ok(core) = core(&state) {
-        core.finish().await;
-    }
-    app.restart()
+async fn app_update_install(
+    app: AppHandle,
+    state: State<'_, AppCore>,
+    when_idle: bool,
+) -> Res<bool> {
+    update::install(&app, core(&state).ok(), when_idle).await
 }
 
 /// Save to the Downloads folder and return where it went.
@@ -1235,6 +1215,7 @@ fn main() {
         )
         .manage(AppCore(core))
         .manage(Sending::default())
+        .manage(update::Updates::default())
         .on_window_event(|window, event| {
             // With a tray, closing the window keeps the sites watched.
             if let WindowEvent::CloseRequested { api, .. } = event
@@ -1255,6 +1236,16 @@ fn main() {
             }
         })
         .setup(move |app| {
+            // New versions: at start, then every six hours, window open or not.
+            let handle = app.handle().clone();
+            let core = background.clone();
+            tauri::async_runtime::spawn(update::every(update::EVERY, move || {
+                let (app, core) = (handle.clone(), core.clone());
+                async move {
+                    // Offline: quiet, the next round tries again.
+                    let _ = update::check(&app, core).await;
+                }
+            }));
             if let Some(core) = background {
                 let handle = app.handle().clone();
                 // No tray (no tray host on this desktop): closing the window quits, as before.
@@ -1352,6 +1343,7 @@ fn main() {
             cost_delete,
             app_settings_get,
             app_settings_save,
+            app_update_status,
             app_update_check,
             app_update_install,
             sites_export,

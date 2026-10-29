@@ -209,6 +209,12 @@ impl Core {
         std::mem::forget(self.work.write().await);
     }
 
+    /// Like `finish`, but only when no site work is running now: `None` while
+    /// something runs. Dropping the guard lets work start again.
+    pub fn try_finish(&self) -> Option<tokio::sync::RwLockWriteGuard<'_, ()>> {
+        self.work.try_write().ok()
+    }
+
     /// Hold while doing site work, so `finish` waits for it.
     pub(crate) async fn working(&self) -> tokio::sync::RwLockReadGuard<'_, ()> {
         self.work.read().await

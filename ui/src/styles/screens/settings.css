@@ -38,6 +38,13 @@
 .sheet.dialog:has(.lockline) .content { display: grid; gap: var(--sp-4); }
 .sheet.dialog:has(.lockline) .field { margin: 0; }
 
+/* Updates: facts as label and value, then the release notes as plain text */
+.upd-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px var(--sp-4); margin: 0; font-size: var(--fs-sm); }
+.upd-facts dt { color: var(--text-2); }
+.upd-facts dd { margin: 0; }
+.upd-notes { display: grid; gap: 6px; padding: var(--sp-3); border-radius: 12px; background: var(--panel); font-size: var(--fs-sm); }
+.upd-notes p { margin: 0; white-space: pre-wrap; max-height: 220px; overflow: auto; line-height: 19px; }
+
 @media (max-width: 1100px) {
   .setpage > .g2 { grid-template-columns: minmax(0, 1fr); }
 }

@@ -1486,6 +1486,18 @@ mod tests {
         (home, core)
     }
 
+    #[tokio::test]
+    async fn try_finish_waits_for_nothing_and_gives_way_to_running_work() {
+        let (_h, core) = core().await;
+        let work = core.working().await;
+        assert!(core.try_finish().is_none(), "site work is running");
+        drop(work);
+        let done = core.try_finish().expect("nothing runs");
+        drop(done);
+        // A dropped guard lets work start again.
+        drop(core.working().await);
+    }
+
     fn browser(url: &str) -> std::io::Result<()> {
         let url = url.to_string();
         tokio::spawn(async move { reqwest::get(url).await });

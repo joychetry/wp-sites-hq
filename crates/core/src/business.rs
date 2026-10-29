@@ -72,6 +72,8 @@ pub struct AppSettings {
     pub search_console: bool,
     /// Read SEO numbers from AgentedSEO on sites that have it.
     pub agentedseo: bool,
+    /// Download new versions of the app and install them when nothing is running.
+    pub auto_update: bool,
 }
 
 /// What moves in and out. Version 1.
@@ -930,6 +932,14 @@ mod tests {
             ("Good Monks", "#1f6feb")
         );
         assert_eq!(core.app_settings().unwrap(), saved);
+        // Installing updates by itself is off until turned on, then remembered.
+        assert!(!saved.auto_update);
+        let auto = AppSettings {
+            auto_update: true,
+            ..saved.clone()
+        };
+        assert!(core.save_app_settings(&auto).unwrap().auto_update);
+        assert!(core.app_settings().unwrap().auto_update);
         let bad = AppSettings {
             report_accent: "blue".into(),
             ..s

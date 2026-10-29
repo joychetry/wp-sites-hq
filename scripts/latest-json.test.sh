@@ -24,3 +24,27 @@ out=$("$here/latest-json.sh" "$tmp" 0.2.0 "$base" "Notes")
 rm "$tmp/Monks.Central_0.2.0_x64_en-US.msi.sig"
 "$here/latest-json.sh" "$tmp" 0.2.0 "$base" "Notes" >/dev/null 2>&1 && fail "a missing .sig must fail"
 echo "latest-json.sh: all checks passed"
+
+# The release notes in latest.json: one version's CHANGELOG section.
+cat > "$tmp/CHANGELOG.md" <<'MD'
+# Changelog
+
+## [0.2.0] - 2026-10-28
+
+A new look.
+
+### Fixed
+- Windows paths.
+
+## [0.1.0] - 2026-10-27
+
+First release.
+
+[0.2.0]: https://example.test/compare/v0.1.0...v0.2.0
+[0.1.0]: https://example.test/releases/tag/v0.1.0
+MD
+notes=$("$here/changelog-notes.sh" 0.2.0 "$tmp/CHANGELOG.md")
+[ "$notes" = $'A new look.\n\n### Fixed\n- Windows paths.' ] || fail "0.2.0 notes: $notes"
+[ "$("$here/changelog-notes.sh" 0.1.0 "$tmp/CHANGELOG.md")" = "First release." ] || fail "0.1.0 notes leave out the link lines"
+"$here/changelog-notes.sh" 0.3.0 "$tmp/CHANGELOG.md" >/dev/null 2>&1 && fail "a version without a section must fail"
+echo "changelog-notes.sh: all checks passed"

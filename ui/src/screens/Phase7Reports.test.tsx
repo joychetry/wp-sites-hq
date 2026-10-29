@@ -19,7 +19,7 @@ const SAVED = { html: "/d/rosa-report-2026-09.html", pdf: "/d/rosa-report-2026-0
 
 function core(clients = [{ id: 1, name: "Rosa", email: "", notes: "" }]) {
   const calls: [string, Record<string, unknown>][] = [];
-  let app: AppSettings = { report_name: "", report_footer: "", report_accent: "", white_label: false, search_console: false, agentedseo: false };
+  let app: AppSettings = { report_name: "", report_footer: "", report_accent: "", white_label: false, search_console: false, agentedseo: false, auto_update: false };
   let gsc = { on: false, client: false, connected: false };
   mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
     const a = (args ?? {}) as Record<string, unknown>;

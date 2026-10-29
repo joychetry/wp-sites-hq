@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { act, render, screen, fireEvent, within } from "@testing-library/react";
+import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import App, { SECTIONS } from "./App";
 import { site, choose } from "./test-fixtures";
+import { leaveGuard } from "./screens/Editor";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -36,17 +38,54 @@ test("shows every section in the sidebar, the sentence and the version", async (
   expect(mockInvoke).toHaveBeenCalledWith("core_status");
 });
 
-test("a new version found at start is announced and stays until closed", async () => {
+const upd = (over: object = {}) => ({ current: "0.1.0", checked_at: 1, found: null, ready: false, progress: null, ...over });
+const found = (version: string) => ({ version, notes: "- Faster", date: 1761696000 });
+
+test("a new version is announced once, stays until closed, however often the app checks", async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   serve();
   const base = mockInvoke.getMockImplementation()!;
-  mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => (cmd === "app_update_check" ? "0.2.0" : base(cmd, args as never)));
+  let status = upd({ found: found("0.2.0") });
+  mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => (cmd === "app_update_status" ? status : base(cmd, args as never)));
   render(<App />);
-  const note = "Monks Central 0.2.0 is ready. Install it in Settings, under Updates for Monks Central.";
+  const note = "Monks Central 0.2.0 is out.";
   // App mounts its own toast region next to the test setup's, so the note shows in both.
-  expect((await screen.findAllByText(note)).length).toBeGreaterThan(0);
+  const shown = (await screen.findAllByText(note)).length;
+  expect(screen.getAllByRole("button", { name: "See what's new" }).length).toBeGreaterThan(0);
   await vi.advanceTimersByTimeAsync(10_000);
-  expect(screen.getAllByText(note).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(note).length).toBe(shown);
+  // The six-hourly check finds the same version again: no second note.
+  const recheck = vi.mocked(listen).mock.calls.filter(([e]) => e === "app-update").at(-1)![1] as () => void;
+  await act(async () => recheck());
+  await act(async () => recheck());
+  expect(screen.getAllByText(note).length).toBe(shown);
+  status = upd({ found: found("0.3.0") });
+  await act(async () => recheck());
+  expect((await screen.findAllByText("Monks Central 0.3.0 is out.")).length).toBe(shown);
+  vi.useRealTimers();
+});
+
+test("installing by itself waits while the editor has unsaved changes, then tries each minute", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  serve();
+  const base = mockInvoke.getMockImplementation()!;
+  mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => {
+    if (cmd === "app_update_status") return upd({ found: found("0.2.0"), ready: true });
+    if (cmd === "app_update_install") return false;
+    return base(cmd, args as never);
+  });
+  const installs = () => mockInvoke.mock.calls.filter(([c]) => c === "app_update_install");
+  leaveGuard.ask = () => {};
+  render(<App />);
+  await screen.findAllByText("Monks Central 0.2.0 is out.");
+  await vi.advanceTimersByTimeAsync(120_000);
+  expect(installs()).toHaveLength(0);
+  leaveGuard.ask = null;
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(installs()).toEqual([["app_update_install", { whenIdle: true }]]);
+  // The core said not now (a job runs): it asks again a minute later.
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(installs()).toHaveLength(2);
   vi.useRealTimers();
 });
 

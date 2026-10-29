@@ -11,11 +11,16 @@ publish.workspace = true
 [dependencies]
 monks-core = { path = "../core" }
 open = "5"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
-tokio = { version = "1", features = ["sync"] }
+tokio = { version = "1", features = ["sync", "time"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt", "test-util"] }
 
 [lints]
 workspace = true
