@@ -6,7 +6,7 @@
 //! its SHA-256, so a plan holds no file paths and an agent can't point one at
 //! an arbitrary file.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use base64::Engine;
 use rusqlite::{OptionalExtension, params};
@@ -17,8 +17,11 @@ use sha2::{Digest, Sha256};
 use crate::Core;
 use crate::connect::{SiteError, plain};
 use crate::fleet::has_tool;
+use crate::net::{self, Retry};
 use crate::sites::Mode;
 
+/// The Monks Central plugin's release asset; its checksum is this name plus `.sha256`.
+const PLUGIN_ZIP: &str = "monks-central.zip";
 /// The largest zip Monks Central sends.
 pub const MAX_ZIP: usize = 64 * 1024 * 1024;
 /// Bytes per `install-zip` call, well under the site's 2 MB and post_max_size.
@@ -30,6 +33,17 @@ pub const NEEDS_CM_ZIP: &str =
     "Installing from a zip needs Classic Monks on the site. This site is in Basic mode.";
 pub const ALREADY_THERE: &str = "It's already installed on this site. To put this copy in its place, install it again with \u{201c}Replace it where it's already installed\u{201d} ticked.";
 pub const OLD_CM_ZIP: &str = "This site's Classic Monks can't install from a zip yet. Update Classic Monks on the site, then check it again.";
+
+const NO_RELEASE: &str = "Couldn't get the Monks Central plugin from GitHub. Check your internet connection and try again later.";
+const BAD_RELEASE: &str = "The newest Monks Central release on GitHub doesn't have a plugin zip with a SHA-256 checksum, so nothing was saved.";
+const BAD_SUM: &str = "The Monks Central plugin from GitHub doesn't match its published SHA-256 checksum, so it wasn't saved. Try again later.";
+
+/// The Monks Central plugin from its newest GitHub release, saved on this computer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PluginZip {
+    pub version: String,
+    pub path: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BundlePlugin {
@@ -249,6 +263,95 @@ impl Core {
             .decode(data)
             .map_err(|_| plain("The file didn't arrive whole. Choose it again."))?;
         self.stage_zip(name, &bytes)
+    }
+
+    /// Save the Monks Central plugin from its newest GitHub release in `dir`, only when
+    /// the zip's SHA-256 matches the checksum published with it (the release assets the
+    /// plugin's own updater reads). WordPress' REST API installs plugins from
+    /// WordPress.org only, so a Basic mode site gets it through its Upload Plugin page.
+    pub async fn save_monks_central(&self, dir: &Path) -> Result<PluginZip, SiteError> {
+        let feed = self.feeds.plugin_release.as_str();
+        let get = |url: String, accept: &'static str| async move {
+            net::send(&self.limits, "github.com", Retry::ReadOnly, || {
+                self.probe.get(&url).header(reqwest::header::ACCEPT, accept)
+            })
+            .await
+            .ok()
+            .filter(|r| r.status == 200)
+            .ok_or_else(|| plain(NO_RELEASE))
+        };
+        let release: Value = get(feed.into(), "application/vnd.github+json")
+            .await?
+            .json()
+            .ok_or_else(|| plain(NO_RELEASE))?;
+        let version = release["tag_name"]
+            .as_str()
+            .unwrap_or_default()
+            .trim_start_matches('v');
+        // Digits and dots only: the version goes into the file name.
+        let version_ok = !version.is_empty()
+            && version
+                .split('.')
+                .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()));
+        // Over https, or from the feed's own server (tests).
+        let feed_origin = reqwest::Url::parse(feed).map(|u| u.origin());
+        let asset = |name: &str| {
+            release["assets"]
+                .as_array()?
+                .iter()
+                .find(|a| a["name"] == name)?["browser_download_url"]
+                .as_str()
+                .filter(|u| {
+                    reqwest::Url::parse(u).is_ok_and(|u| {
+                        u.scheme() == "https"
+                            || feed_origin.as_ref().is_ok_and(|o| *o == u.origin())
+                    })
+                })
+                .map(String::from)
+        };
+        let (Some(zip), Some(sum), true, false, false) = (
+            asset(PLUGIN_ZIP),
+            asset(&format!("{PLUGIN_ZIP}.sha256")),
+            version_ok,
+            release["draft"] == true,
+            release["prerelease"] == true,
+        ) else {
+            return Err(plain(BAD_RELEASE));
+        };
+        let sum = get(sum, "application/octet-stream").await?;
+        // `sha256sum` output: the hex digest, then maybe the file name.
+        let want = String::from_utf8_lossy(&sum.body)
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        if want.len() != 64 || !want.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(plain(BAD_RELEASE));
+        }
+        let bytes = get(zip, "application/octet-stream").await?.body;
+        let got: String = Sha256::digest(&bytes)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        if got != want {
+            return Err(plain(BAD_SUM));
+        }
+        if bytes.len() > MAX_ZIP || !bytes.starts_with(b"PK\x03\x04") {
+            return Err(plain(BAD_RELEASE));
+        }
+        let path = dir.join(format!("monks-central-{version}.zip"));
+        std::fs::create_dir_all(dir)
+            .and_then(|()| std::fs::write(&path, &bytes))
+            .map_err(|e| {
+                plain(format!(
+                    "Couldn't save the plugin zip in {}: {e}",
+                    dir.display()
+                ))
+            })?;
+        Ok(PluginZip {
+            version: version.into(),
+            path: path.to_string_lossy().into(),
+        })
     }
 
     /// Send a staged zip to the site in chunks; the last one installs it.
@@ -572,5 +675,108 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         panic!("job {job} didn't finish");
+    }
+
+    /// A stand-in for GitHub: the release answer (made with the server's address), the zip and its checksum.
+    async fn github(release: impl FnOnce(&str) -> Value, zip: Vec<u8>, sum: String) -> String {
+        use axum::routing::get;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let release = release(&url);
+        let app = axum::Router::new()
+            .route("/latest", get(move || async move { axum::Json(release) }))
+            .route("/zip", get(move || async move { zip }))
+            .route("/sum", get(move || async move { sum }));
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        url
+    }
+
+    #[tokio::test]
+    async fn the_plugin_is_saved_only_when_its_checksum_matches() {
+        let zip = b"PK\x03\x04 the plugin".to_vec();
+        let hex: String = Sha256::digest(&zip)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        let release = |base: &str, extra: Value| {
+            let mut r = json!({
+                "tag_name": "v1.2.0",
+                "draft": false,
+                "prerelease": false,
+                "assets": [
+                    { "name": "monks-central.zip", "browser_download_url": format!("{base}/zip") },
+                    { "name": "monks-central.zip.sha256", "browser_download_url": format!("{base}/sum") },
+                ],
+            });
+            for (k, v) in extra.as_object().unwrap() {
+                r[k] = v.clone();
+            }
+            r
+        };
+        let save = |feed: String| async move {
+            let home = tempfile::tempdir().unwrap();
+            let opts = Options {
+                keychain: Ok(keyring_core::mock::Store::new().unwrap()),
+                feeds: crate::security::Feeds {
+                    plugin_release: format!("{feed}/latest"),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let core = Core::start(home.path(), opts).await.unwrap();
+            let out = core
+                .save_monks_central(&home.path().join("Downloads"))
+                .await;
+            (home, out)
+        };
+        // A matching `sha256sum` line: saved under the version's name.
+        let ok = github(
+            |b| release(b, json!({})),
+            zip.clone(),
+            format!("{hex}  monks-central.zip\n"),
+        )
+        .await;
+        let (home, out) = save(ok).await;
+        let out = out.unwrap();
+        assert_eq!(out.version, "1.2.0");
+        let saved = home.path().join("Downloads/monks-central-1.2.0.zip");
+        assert_eq!(out.path, saved.to_string_lossy());
+        assert_eq!(std::fs::read(&saved).unwrap(), zip);
+
+        // Another checksum: nothing saved.
+        let bad = github(|b| release(b, json!({})), zip.clone(), "0".repeat(64)).await;
+        let (home, out) = save(bad).await;
+        assert_eq!(out.unwrap_err().to_string(), BAD_SUM);
+        assert!(!home.path().join("Downloads").exists());
+
+        // A pre-release, a version that isn't one, or no checksum asset: refused.
+        for extra in [
+            json!({ "prerelease": true }),
+            json!({ "tag_name": "../../x" }),
+            json!({ "assets": [] }),
+        ] {
+            let feed = github(move |b| release(b, extra.clone()), zip.clone(), hex.clone()).await;
+            assert_eq!(save(feed).await.1.unwrap_err().to_string(), BAD_RELEASE);
+        }
+
+        // An asset on another plain-http server is never fetched.
+        let other = github(|b| release(b, json!({})), zip.clone(), hex.clone()).await;
+        let feed = github(
+            move |_| release(&other, json!({})),
+            zip.clone(),
+            hex.clone(),
+        )
+        .await;
+        assert_eq!(save(feed).await.1.unwrap_err().to_string(), BAD_RELEASE);
+
+        // GitHub away.
+        assert_eq!(
+            save("http://127.0.0.1:9".into())
+                .await
+                .1
+                .unwrap_err()
+                .to_string(),
+            NO_RELEASE
+        );
     }
 }

@@ -19,7 +19,7 @@ use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
 use monks_core::media::{self, Details, Library, Media, MediaQuery, Moved};
 use monks_core::monitor::{Monitor, PageSpeed};
-use monks_core::packages::{Bundle, Staged};
+use monks_core::packages::{Bundle, PluginZip, Staged};
 use monks_core::people::{Comments, NewUser, User, Users};
 use monks_core::report::{ReportAsk, Saved};
 use monks_core::security::Report;
@@ -149,6 +149,30 @@ async fn site_sign_in_again(
         }
     };
     done(&core, Some(id), "Signed in again", r)
+}
+
+/// Switch a site to the connection of the plugin installed on it (from Basic mode),
+/// keeping its group, tags and notes.
+#[tauri::command]
+async fn site_connect_plugin(state: State<'_, AppCore>, id: i64) -> Res<Site> {
+    let core = core(&state)?;
+    let r = core.sign_in_again_oauth(id, browser).await;
+    done(&core, Some(id), "Connected through the site's plugin", r)
+}
+
+/// The Monks Central plugin's newest release, checksum checked, saved in Downloads
+/// for the site's Upload Plugin page.
+#[tauri::command]
+async fn plugin_download(app: AppHandle, state: State<'_, AppCore>, id: i64) -> Res<PluginZip> {
+    let core = core(&state)?;
+    let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+    let r = core.save_monks_central(&dir).await;
+    done(
+        &core,
+        Some(id),
+        "Saved the Monks Central plugin in Downloads",
+        r,
+    )
 }
 
 #[tauri::command]
@@ -1282,6 +1306,8 @@ fn main() {
             site_add_basic,
             sign_in_cancel,
             site_sign_in_again,
+            site_connect_plugin,
+            plugin_download,
             site_remove,
             site_check,
             site_open,

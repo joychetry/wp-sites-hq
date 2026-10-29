@@ -37,6 +37,8 @@ pub struct Feeds {
     pub wordpress_org: String,
     /// Tests: a local server standing in for WordPress.org's image hosts.
     pub wordpress_org_images: Option<String>,
+    /// The Monks Central plugin's latest GitHub release (the API's `releases/latest`).
+    pub plugin_release: String,
 }
 
 impl Default for Feeds {
@@ -55,6 +57,11 @@ impl Default for Feeds {
                 "https://api.wordpress.org".into()
             },
             wordpress_org_images: None,
+            plugin_release: if cfg!(test) {
+                "http://127.0.0.1:9".into()
+            } else {
+                "https://api.github.com/repos/joychetry/monks-central-wp/releases/latest".into()
+            },
         }
     }
 }

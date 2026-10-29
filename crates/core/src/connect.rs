@@ -1663,6 +1663,24 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_basic_site_switches_to_the_plugin_connection() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = core
+            .add_site_basic(&site.url, "admin", "abcd efgh ijkl mnop qrst uvwx")
+            .await
+            .unwrap();
+        core.set_tags(s.id, &["client".into()]).unwrap();
+        // Monks Central installed on the site: sign in through it, same site row.
+        let s = core.sign_in_again_oauth(s.id, browser).await.unwrap();
+        assert_eq!(s.mode, Mode::ClassicMonks);
+        assert_eq!(s.tags, ["client"]);
+        assert_eq!(s.capabilities["plugin"]["name"], "Classic Monks Pro");
+        assert_eq!(s.health, Health::Ok, "{}", s.health_detail);
+        assert_eq!(core.sites().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
     async fn basic_mode() {
         let (_h, core) = core().await;
         let site = TestSite::start().await;
