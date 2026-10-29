@@ -573,6 +573,8 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 /* Two fields side by side in a sheet (board D06); each keeps its own help line under it */
 .g2.pair { gap: 0 var(--sp-3); align-items: start; }
 .btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+/* Labels too long for half the inspector: one button per row */
+.btn-grid.one { grid-template-columns: minmax(0, 1fr); }
 .field-label { display: block; margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
 .row.nowrap { flex-wrap: nowrap; gap: 6px; }
 .rowacts { display: flex; justify-content: flex-end; align-items: center; gap: 2px; white-space: nowrap; }

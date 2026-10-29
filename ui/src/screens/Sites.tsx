@@ -499,7 +499,7 @@ function GetPlugin({ site: s }: { site: Site }) {
           </span>
         </p>
       ) : null}
-      <div className="btn-grid">
+      <div className="btn-grid one">
         {saved ? (
           <Button small onClick={() => api.openLink(upload, s.id).catch(fail)}>
             <Glyph name="external" />
