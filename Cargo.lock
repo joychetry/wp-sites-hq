@@ -2747,11 +2747,13 @@ version = "0.3.0"
 dependencies = [
  "monks-core",
  "open",
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-notification",
  "tauri-plugin-updater",
+ "tempfile",
  "tokio",
 ]
 
