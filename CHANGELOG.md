@@ -4,6 +4,18 @@ All notable changes to Monks Central. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org).
 
+## [0.3.1] - 2026-10-29
+
+The app keeps itself up to date.
+
+### Updates
+- The app checks for updates when it starts and every 6 hours, and you can
+  also check from the tray.
+- An Install updates automatically setting, off by default. It installs only
+  when no site work or unsaved edit is open.
+- Release notes show in Settings and in the update message.
+- Update progress shows while the update downloads.
+
 ## [0.3.0] - 2026-10-29
 
 A media manager, a full-page post editor like classic WordPress, and three
@@ -133,6 +145,7 @@ The first public beta. Unsigned installers for macOS, Windows and Linux.
   before it installs.
 - The `monks` command line is installed with the app.
 
+[0.3.1]: https://github.com/joychetry/monks-central/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/joychetry/monks-central/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/joychetry/monks-central/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/joychetry/monks-central/releases/tag/v0.1.0
