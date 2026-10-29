@@ -62,6 +62,9 @@
 //!   report <month> <out dir> <client name> a client's monthly report as HTML and PDF
 //!   cm-reports <url> | store <url>         Classic Monks' reports; the store and its products
 //!   zip <url> <zip file> <plugin|theme>    stage a zip and install it (off) as a job
+//!   plugins            which plugin runs each site's connector, and the connector's version
+//!   plugin-download <dir>   the Monks Central plugin from its latest release, checksum checked
+//!                       (MONKS_PLUGIN_RELEASE points at another releases/latest address)
 //!
 //! These two need no core of their own, so they also run while the app is open:
 //!   approve <studio site path> <approve url>   the person approves on the site's
@@ -121,12 +124,17 @@ async fn main() -> Res<()> {
         println!("deleted keychain item {account}");
         return Ok(());
     }
+    let mut feeds = monks_core::security::Feeds::default();
+    // The plugin repository has no public release yet: a local stand-in serves one.
+    if let Ok(url) = std::env::var("MONKS_PLUGIN_RELEASE") {
+        feeds.plugin_release = url;
+    }
     let core = Core::start(
         &home,
         Options {
             headless: true,
             keychain,
-            ..Default::default()
+            feeds,
         },
     )
     .await?;
@@ -144,6 +152,22 @@ async fn main() -> Res<()> {
         "connect-basic" => {
             let password = std::fs::read_to_string(arg(3)?)?;
             report(core.add_site_basic(arg(1)?, arg(2)?, password.trim()).await)
+        }
+        "plugin-download" => show(&core.save_monks_central(Path::new(arg(1)?)).await?),
+        "plugins" => {
+            for s in core.sites()? {
+                let c = &s.capabilities;
+                println!(
+                    "{:<22} {:?}  plugin {} {}  connector {}  copies {}",
+                    s.name,
+                    s.mode,
+                    c["plugin"]["name"].as_str().unwrap_or("(not named)"),
+                    s.cm_version.as_deref().unwrap_or("-"),
+                    c["connector"]["version"].as_str().unwrap_or("-"),
+                    c["connector"]["hosts"]
+                );
+            }
+            Ok(())
         }
         "list" => {
             list(&core)?;
