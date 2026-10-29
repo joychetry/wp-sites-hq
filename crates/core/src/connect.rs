@@ -563,6 +563,8 @@ impl Core {
             caps["modules"] = hq["modules"].clone();
             caps["environment"] = hq["wordpress"]["environment"].clone();
             caps["pending_approvals"] = hq["pending_approvals"].clone();
+            caps["plugin"] = hq["plugin"].clone();
+            caps["connector"] = hq["connector"].clone();
         } else if names.contains(&"get-site-info") {
             let reply = self
                 .post_mcp(
@@ -1039,6 +1041,9 @@ impl Core {
                 };
                 d.capabilities["operator"] = hq["connection"]["operator"].clone();
                 d.capabilities["pending_approvals"] = hq["pending_approvals"].clone();
+                // Which plugin runs the connector changes when plugins are added or removed.
+                d.capabilities["plugin"] = hq["plugin"].clone();
+                d.capabilities["connector"] = hq["connector"].clone();
                 // Tools come and go with Classic Monks updates: keep the list current.
                 let list = self
                     .mcp(
@@ -1386,6 +1391,12 @@ mod tests {
         assert_eq!(s.name, "Test Site");
         assert_eq!(s.wp_version.as_deref(), Some("7.1.3"));
         assert_eq!(s.cm_version.as_deref(), Some("2.6.0-dev"));
+        assert_eq!(s.capabilities["plugin"]["name"], "Classic Monks Pro");
+        assert_eq!(s.capabilities["connector"]["version"], "1.1.0");
+        assert_eq!(
+            s.capabilities["connector"]["hosts"][1]["name"],
+            "Monks Central"
+        );
         assert_eq!(s.capabilities["operator"], true);
         assert_eq!(s.capabilities["degraded"], false);
         assert!(
@@ -1578,6 +1589,39 @@ mod tests {
         core.call_ability(s.id, "get-posts", json!({}))
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_check_sees_which_plugin_runs_the_connector() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = added(&core, &site).await;
+        // Classic Monks Pro removed: Monks Central's copy runs the same grant.
+        site.state().hq_plugin = json!({ "name": "Monks Central", "version": "1.0.0" });
+        site.state().hq_connector = json!({ "version": "1.1.0", "hosts": [
+            { "name": "Monks Central", "version": "1.0.0", "connector": "1.1.0" },
+        ] });
+        core.check_site(s.id).await;
+        let s = core.site(s.id).unwrap();
+        assert_eq!(s.health, Health::Ok, "{}", s.health_detail);
+        assert_eq!(s.cm_version.as_deref(), Some("1.0.0"));
+        assert_eq!(s.capabilities["plugin"]["name"], "Monks Central");
+        assert_eq!(
+            s.capabilities["connector"]["hosts"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        // A Classic Monks from before the library names neither.
+        site.state().hq_plugin = json!({ "version": "2.5.0" });
+        site.state().hq_connector = Value::Null;
+        core.check_site(s.id).await;
+        let s = core.site(s.id).unwrap();
+        assert_eq!(s.health, Health::Ok, "{}", s.health_detail);
+        assert_eq!(s.cm_version.as_deref(), Some("2.5.0"));
+        assert!(s.capabilities["plugin"]["name"].is_null());
+        assert!(s.capabilities["connector"].is_null());
     }
 
     #[tokio::test]

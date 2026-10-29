@@ -111,6 +111,10 @@ pub struct State {
     pub resets: Vec<i64>,
     /// Classic Monks as released (2.5.0): user, comment and feature tools only.
     pub released: bool,
+    /// `get-hq-status`'s plugin running the connector (name, version) and the
+    /// connector's version and copies; the connector library's shape.
+    pub hq_plugin: serde_json::Value,
+    pub hq_connector: serde_json::Value,
     /// The login link create-login-link hands out.
     pub login_link: Option<String>,
     /// Code -> (PKCE challenge, client).
@@ -217,6 +221,11 @@ impl Default for State {
             ],
             resets: Vec::new(),
             released: false,
+            hq_plugin: json!({ "name": "Classic Monks Pro", "version": "2.6.0-dev" }),
+            hq_connector: json!({ "version": "1.1.0", "hosts": [
+                { "name": "Classic Monks Pro", "version": "2.6.0-dev", "connector": "1.1.0" },
+                { "name": "Monks Central", "version": "1.0.0", "connector": "1.1.0" },
+            ] }),
             login_link: None,
             codes: HashMap::new(),
             clients: 0,
@@ -613,7 +622,8 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
         }
         Some("tools/call") if req["params"]["name"] == "get-hq-status" && !s.no_hq => {
             let status = json!({
-                "plugin": { "version": "2.6.0-dev" },
+                "plugin": s.hq_plugin,
+                "connector": s.hq_connector,
                 "wordpress": { "version": s.wp_version, "environment": "local" },
                 "php": { "version": "8.4.26" },
                 "mcp": { "approvals": true },
