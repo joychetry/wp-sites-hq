@@ -742,7 +742,10 @@ mod tests {
         let (home, out) = save(ok).await;
         let out = out.unwrap();
         assert_eq!(out.version, "1.2.0");
-        let saved = home.path().join("Downloads/monks-central-1.2.0.zip");
+        let saved = home
+            .path()
+            .join("Downloads")
+            .join("monks-central-1.2.0.zip");
         assert_eq!(out.path, saved.to_string_lossy());
         assert_eq!(std::fs::read(&saved).unwrap(), zip);
 
