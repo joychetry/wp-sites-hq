@@ -97,7 +97,9 @@ jobs:
       - uses: actions/checkout@v5
       - run: |
           gh release download "$TAG" --pattern '*.sig' --dir sigs
+          # The app shows "notes" under What's new: the tag's CHANGELOG section.
+          notes=$(scripts/changelog-notes.sh "${TAG#v}")
           scripts/latest-json.sh sigs "${TAG#v}" \
-            "https://github.com/$GH_REPO/releases/download/$TAG" "$NOTES" > latest.json
+            "https://github.com/$GH_REPO/releases/download/$TAG" "$notes" > latest.json
           cat latest.json
           gh release upload "$TAG" latest.json --clobber
