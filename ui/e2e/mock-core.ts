@@ -437,7 +437,7 @@ const post = (id: number, post_type: string, title: string, status: string, over
   },
   ...over,
 });
-let APP: AppSettings = { report_name: "Studio North", report_footer: "hello@studio-north.test", report_accent: "#1f6feb", white_label: false, search_console: false, agentedseo: false };
+let APP: AppSettings = { report_name: "Studio North", report_footer: "hello@studio-north.test", report_accent: "#1f6feb", white_label: false, search_console: false, agentedseo: false, auto_update: false };
 let GSC = { on: false, client: false, connected: false };
 const product = (id: number, name: string, regular_price: string, sale_price: string, stock_status: string, stock_quantity: number | null, sku = "", type = "simple"): Product => ({
   id, name, type, status: "publish", sku, price: sale_price || regular_price, regular_price, sale_price, stock_status, manage_stock: stock_quantity != null, stock_quantity, permalink: `https://mc-a.local/product/${id}`,
@@ -729,10 +729,17 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     }
     case "app_settings_get":
       return r(APP);
+    case "app_update_status":
     case "app_update_check":
-      return r(fixture === "update" ? "0.2.0" : null);
+      return r({
+        current: "0.1.0",
+        checked_at: Math.floor(Date.now() / 1000) - 600,
+        found: fixture === "update" ? { version: "0.2.0", notes: "### Media\n- Grid and list views.\n- Upload several files at once.", date: 1761696000 } : null,
+        ready: false,
+        progress: null,
+      });
     case "app_update_install":
-      return r(null);
+      return r(false);
     case "app_settings_save":
       APP = args.settings as AppSettings;
       GSC = { ...GSC, on: APP.search_console };

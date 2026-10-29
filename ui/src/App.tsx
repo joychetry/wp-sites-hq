@@ -2,7 +2,7 @@
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, hasTool, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { ago, api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
@@ -130,12 +130,36 @@ export default function App() {
 
   useEffect(() => {
     api.status().then(setStatus, (e) => setCoreError(String(e)));
-    // Offline or GitHub unreachable: say nothing; Settings checks on request.
-    api.updateCheck().then(
-      (v) => v && toast(`Monks Central ${v} is ready. Install it in Settings, under Updates for Monks Central.`, { tone: "info", stay: true }),
-      () => {},
-    );
   }, []);
+
+  // The app checks at start and every six hours; one note per new version, however often it checks.
+  const update = useAppUpdate().data;
+  const told = useRef<string | null>(null);
+  useEffect(() => {
+    const v = update?.found?.version;
+    if (!v || told.current === v) return;
+    told.current = v;
+    toast(`Monks Central ${v} is out.`, {
+      tone: "info",
+      stay: true,
+      action: {
+        label: "See what's new",
+        run: () => {
+          setSection("Settings");
+          setTimeout(() => document.getElementById("set-app")?.scrollIntoView({ block: "start" }), 50);
+        },
+      },
+    });
+  }, [update?.found?.version]);
+  // Installing by itself: once downloaded, try now and each minute after. Never over unsaved edits; the core
+  // also says no while the setting is off or a job or site change runs.
+  useEffect(() => {
+    if (!update?.ready) return;
+    const go = () => !leaveGuard.ask && api.updateInstall(true).catch(() => {});
+    go();
+    const t = setInterval(go, 60_000);
+    return () => clearInterval(t);
+  }, [update?.ready]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

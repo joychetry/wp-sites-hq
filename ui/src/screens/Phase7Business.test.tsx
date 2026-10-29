@@ -159,16 +159,52 @@ test("text size is a slider that scales the whole app and is remembered", () => 
 });
 
 test("Monks Central checks for a new version on request and installs only on a click", async () => {
-  let ready: string | null = null;
-  const calls = core({ app_update_check: () => ready, app_update_install: () => Promise.reject("Couldn't install the new version: offline. This version keeps working.") });
+  const status = (found: object | null) => ({ current: "0.1.0", checked_at: 1761696000, found, ready: false, progress: null as number[] | null });
+  let now = status(null);
+  const calls = core({
+    app_settings_get: () => ({ report_name: "", report_footer: "", report_accent: "", white_label: false, search_console: false, agentedseo: false, auto_update: false }),
+    app_update_status: () => now,
+    app_update_check: () => now,
+    app_update_install: () => Promise.reject("Couldn't install the new version: offline. This version keeps working."),
+  });
   render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
-  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
+  expect(await screen.findByText("0.1.0")).toBeInTheDocument();
+  expect(screen.getByText("None, you have the newest")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
   expect(await screen.findByText("You have the newest version of Monks Central.")).toBeInTheDocument();
-  ready = "0.2.0";
-  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
-  const install = await screen.findByRole("button", { name: "Install 0.2.0 and restart" });
+  // Notes are shown as text: markup in latest.json stays words on the screen.
+  now = { ...status({ version: "0.2.0", notes: "### Media\n- Grid view <img src=x onerror=alert(1)>", date: 1761696000 }), progress: [3145728, 10485760] };
+  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  const notes = await screen.findByRole("region", { name: "What's new in 0.2.0" });
+  expect(notes).toHaveTextContent("Media - Grid view <img src=x onerror=alert(1)>");
+  expect(notes.querySelector("img")).toBeNull();
+  expect(screen.getByText(/^0\.2\.0, released/)).toBeInTheDocument();
+  expect(screen.getByText(/Downloading 0\.2\.0: 3\.0 MB of 10\.0 MB/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Install 0.2.0 now" })).toBeDisabled();
+  now = { ...now, progress: null };
+  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Install 0.2.0 now" })).toBeEnabled());
   expect(calls.some(([c]) => c === "app_update_install")).toBe(false);
-  fireEvent.click(install);
+  fireEvent.click(screen.getByRole("button", { name: "Install 0.2.0 now" }));
   expect(await screen.findByText(/This version keeps working\./)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Install 0.2.0 and restart" })).toBeEnabled();
+  expect(calls.find(([c]) => c === "app_update_install")?.[1]).toEqual({ whenIdle: false });
+});
+
+test("installing updates automatically is off until switched on, then saved and the download starts", async () => {
+  let saved: Record<string, unknown> | null = null;
+  const calls = core({
+    app_settings_get: () => ({ report_name: "", report_footer: "", report_accent: "", white_label: false, search_console: false, agentedseo: false, auto_update: false }),
+    app_settings_save: (a) => (saved = a.settings as Record<string, unknown>),
+    app_update_status: () => ({ current: "0.1.0", checked_at: null, found: null, ready: false, progress: null }),
+    app_update_check: () => ({ current: "0.1.0", checked_at: 1, found: null, ready: false, progress: null }),
+  });
+  render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
+  const auto = await screen.findByRole("switch", { name: "Install updates automatically" });
+  expect(auto).not.toBeChecked();
+  expect(screen.getByText("Not yet")).toBeInTheDocument();
+  fireEvent.click(auto);
+  await waitFor(() => expect(saved?.auto_update).toBe(true));
+  expect(await screen.findByText("New versions now install by themselves when nothing is running.")).toBeInTheDocument();
+  await waitFor(() => expect(calls.some(([c]) => c === "app_update_check")).toBe(true));
+  expect(screen.getByRole("switch", { name: "Install updates automatically" })).toBeChecked();
 });

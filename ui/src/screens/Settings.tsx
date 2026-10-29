@@ -4,7 +4,8 @@
 import { ColorInput, FilePicker, Slider } from "../components/controls";
 import { useEffect, useState, type ReactNode } from "react";
 import "../styles/screens/settings.css";
-import { api, type AppSettings, type GscStatus, type Imported } from "../api";
+import { api, useAppUpdate, type AppSettings, type GscStatus, type Imported } from "../api";
+import { when } from "./Overview";
 import { Button, Glyph, type GlyphName } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { toast } from "../components/feedback";
@@ -297,43 +298,96 @@ function Choice<T extends string>({ label, value, options, onChange }: {
   );
 }
 
-/** New versions come from GitHub Releases, signed; nothing installs without a click. */
-function AppUpdate() {
-  const [state, setState] = useState<{ busy?: "check" | "install"; ready?: string | null }>({});
+const mb = (n: number) => `${(n / 1048576).toFixed(1)} MB`;
+
+/**
+ * New versions come from GitHub Releases, signed. Off by default a click installs; with "Install updates
+ * automatically" on, the app downloads in the background and installs when nothing is running (see App).
+ */
+function AppUpdate({ s, save, saving }: { s: AppSettings | null; save: ReportSettings["save"]; saving: boolean }) {
+  const { data: st, reload } = useAppUpdate();
+  const [busy, setBusy] = useState<"check" | "install" | null>(null);
   const check = async () => {
-    setState({ busy: "check" });
+    setBusy("check");
     try {
-      const ready = await api.updateCheck();
-      setState({ ready });
-      if (!ready) toast("You have the newest version of Monks Central.");
+      if (!(await api.updateCheck()).found) toast("You have the newest version of Monks Central.");
+      reload();
     } catch (e) {
-      setState({});
       fail(e);
+    } finally {
+      setBusy(null);
     }
   };
+  // A successful install restarts the app, so only a failure comes back.
   const install = async () => {
-    setState({ ...state, busy: "install" });
+    setBusy("install");
     try {
       await api.updateInstall();
     } catch (e) {
-      setState({ ready: state.ready });
       fail(e);
+    } finally {
+      setBusy(null);
     }
   };
+  const found = st?.found;
+  const progress = st?.progress;
   return (
     <Card icon="refresh" title="Updates for Monks Central" id="set-app">
       <p className="hint">
         New versions come from the Monks Central releases on GitHub. Each one is signed, and Monks Central checks the signature before it
-        installs anything. Installing one restarts the app; your sites and settings stay.
+        installs anything. It looks for one at start and every six hours. Installing restarts the app; your sites and settings stay.
       </p>
-      <div>
-        {state.ready ? (
-          <Button small kind="primary" disabled={!!state.busy} onClick={install}>
-            {state.busy === "install" ? "Installing…" : `Install ${state.ready} and restart`}
-          </Button>
-        ) : (
-          <Button small disabled={!!state.busy} onClick={check}>
-            {state.busy === "check" ? "Checking…" : "Check for a new version"}
+      <dl className="upd-facts">
+        <dt>This version</dt>
+        <dd>{st?.current ?? "…"}</dd>
+        <dt>Last checked</dt>
+        <dd>{st?.checked_at ? when(st.checked_at) : "Not yet"}</dd>
+        <dt>New version</dt>
+        <dd>{found ? found.version + (found.date ? `, released ${new Date(found.date * 1000).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}` : "") : "None, you have the newest"}</dd>
+      </dl>
+      {found && (
+        <section className="upd-notes" aria-label={`What's new in ${found.version}`}>
+          <b>What&rsquo;s new in {found.version}</b>
+          {/* Plain text: React escapes it, so nothing in latest.json can run as HTML. */}
+          <p>{found.notes.replace(/^#+\s*/gm, "").trim() || "This version has no notes."}</p>
+        </section>
+      )}
+      {progress && (
+        <p className="hint" aria-live="polite">
+          Downloading {found?.version}: {mb(progress[0])}
+          {progress[1] ? ` of ${mb(progress[1])}` : ""}
+        </p>
+      )}
+      {st?.ready && s?.auto_update && <p className="hint">Downloaded and checked. It installs when no job or site change is running and nothing is unsaved.</p>}
+      {s && (
+        <div className="dsrc">
+          <input
+            type="checkbox"
+            role="switch"
+            id="upd-auto"
+            aria-describedby="upd-auto-d"
+            checked={s.auto_update}
+            disabled={saving}
+            onChange={async (e) => {
+              const on = e.target.checked;
+              const ok = await save({ ...s, auto_update: on }, on ? "New versions now install by themselves when nothing is running." : "New versions now wait for your click.");
+              // Start the download now rather than at the next check.
+              if (ok && on) api.updateCheck().catch(() => {});
+            }}
+          />
+          <div>
+            <label htmlFor="upd-auto">Install updates automatically</label>
+            <span id="upd-auto-d">Downloads in the background, then installs and restarts when no job or site change is running and nothing is unsaved.</span>
+          </div>
+        </div>
+      )}
+      <div className="row acts-row">
+        <Button small disabled={!!busy} onClick={check}>
+          {busy === "check" ? "Checking…" : "Check now"}
+        </Button>
+        {found && (
+          <Button small kind="primary" disabled={!!busy || !!progress} onClick={install}>
+            {busy === "install" ? "Installing…" : `Install ${found.version} now`}
           </Button>
         )}
       </div>
@@ -401,7 +455,7 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
           </Card>
           {rs.s && <DataSources {...rs} s={rs.s} />}
           <YourData />
-          <AppUpdate />
+          <AppUpdate s={rs.s} save={rs.save} saving={rs.busy} />
         </div>
         {rs.s && <Reports {...rs} s={rs.s} />}
       </div>
