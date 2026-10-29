@@ -54,7 +54,7 @@ function unseen(sites: Site[], inventory: Map<number, SiteInventory>): [Site, st
     const inv = inventory.get(s.id);
     const why =
       blocked(s, inv) ??
-      (!inv!.inventory.updates_known ? "Basic mode can't see updates. They need Classic Monks on the site." : null) ??
+      (!inv!.inventory.updates_known ? "Basic mode can't see updates. They need Monks Central, Classic Monks or Classic Monks Pro on the site." : null) ??
       (inv!.inventory.needs_credentials
         ? "WordPress here needs FTP details to update, so its updates can't run from Monks Central."
         : null);

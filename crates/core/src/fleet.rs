@@ -1401,12 +1401,12 @@ impl Core {
             ),
             Action::InstallPlugin { .. } => {
                 return Err(plain(
-                    "Basic mode installs from WordPress.org only. Install Classic Monks on the site to install from a link.",
+                    "Basic mode installs from WordPress.org only. Install Monks Central, Classic Monks or Classic Monks Pro on the site to install from a link.",
                 ));
             }
             _ => {
                 return Err(plain(
-                    "Basic mode can't do this. It needs Classic Monks on the site.",
+                    "Basic mode can't do this. It needs Monks Central, Classic Monks or Classic Monks Pro on the site.",
                 ));
             }
         };
@@ -2171,7 +2171,11 @@ mod tests {
             "{:?}",
             job.items
         );
-        assert!(job.items[3].message.contains("needs Classic Monks"));
+        assert!(
+            job.items[3]
+                .message
+                .contains("needs Monks Central, Classic Monks or Classic Monks Pro")
+        );
         let inv = core.inventory_of(s.id).unwrap().unwrap();
         assert!(!inv.plugins[0].active);
         assert_eq!(inv.plugins.len(), 1, "installed, then deleted");

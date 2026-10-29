@@ -368,7 +368,7 @@ impl Core {
         let site = self.site(id)?;
         if site.mode != Mode::ClassicMonks {
             return Err(plain(
-                "One-click login needs Classic Monks on the site. Open the site and log in as usual.",
+                "One-click login needs Monks Central, Classic Monks or Classic Monks Pro on the site. Open the site and log in as usual.",
             ));
         }
         if !has_tool(&site, "create-login-link") {
@@ -652,7 +652,10 @@ mod tests {
             .await
             .unwrap();
         let e = core.login_link(basic.id).await.unwrap_err();
-        assert!(e.to_string().contains("needs Classic Monks"));
+        assert!(
+            e.to_string()
+                .contains("needs Monks Central, Classic Monks or Classic Monks Pro")
+        );
         assert!(core.features(basic.id).await.is_err());
 
         let old = TestSite::start().await;

@@ -392,7 +392,7 @@ impl Core {
     async fn reset_inner(&self, site: &Site, user_id: i64) -> Result<String, SiteError> {
         if site.mode == Mode::Basic {
             return Err(plain(
-                "A password reset email needs Classic Monks on the site. The person can use \"Lost your password?\" on the login screen.",
+                "A password reset email needs Monks Central, Classic Monks or Classic Monks Pro on the site. The person can use \"Lost your password?\" on the login screen.",
             ));
         }
         if !has_tool(site, "send-password-reset") {

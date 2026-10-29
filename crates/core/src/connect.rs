@@ -756,7 +756,7 @@ impl Core {
         let site = self.site(id)?;
         if site.mode != Mode::ClassicMonks {
             return Err(plain(
-                "This site is in Basic mode. That needs Classic Monks.",
+                "This site is in Basic mode. That needs Monks Central, Classic Monks or Classic Monks Pro on the site.",
             ));
         }
         let read_only = site.capabilities["read_only"]

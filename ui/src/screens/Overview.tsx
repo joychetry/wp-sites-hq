@@ -387,7 +387,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                 ["not checked", tone("unknown"), "k-off"],
               ]}
             />
-            <p className="stat-note">{plural(cm, "site")} with Classic Monks</p>
+            <p className="stat-note">{plural(cm, "site")} through a plugin</p>
           </Stat>
           <Stat label="Updates waiting" icon="download" n={waiting.length} unit={waiting.length ? `on ${plural(updateSites, "site")}` : "nothing waiting"}>
             <Mix

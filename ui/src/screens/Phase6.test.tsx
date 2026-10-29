@@ -89,11 +89,11 @@ describe("Security", () => {
 
   test("all clear, and scanning now", async () => {
     mockInvoke.mockResolvedValue(undefined);
-    const clean = { ...report, vulnerabilities: [], abandoned: [], checksums: null, notes: ["Checksums need Classic Monks on the site."] };
+    const clean = { ...report, vulnerabilities: [], abandoned: [], checksums: null, notes: ["Checksums need Monks Central, Classic Monks or Classic Monks Pro on the site."] };
     render(<Security sites={[A]} reports={[clean]} inventory={new Map()} onPlan={vi.fn()} />);
     expect(screen.getByText("No known problems on 1 site.", { exact: false })).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Sites with nothing known" })).getByText("Clear")).toBeInTheDocument();
-    expect(screen.getByText("Checksums need Classic Monks on the site.")).toBeInTheDocument();
+    expect(screen.getByText("Checksums need Monks Central, Classic Monks or Classic Monks Pro on the site.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Scan all sites now" }));
     expect(mockInvoke).toHaveBeenCalledWith("security_scan", { id: undefined });
     expect(await screen.findByRole("button", { name: "Scan all sites now" })).toBeEnabled();

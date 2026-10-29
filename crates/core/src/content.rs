@@ -44,8 +44,7 @@ const PER_PAGE: u32 = 20;
 /// The largest file "import from a link" downloads in Basic mode.
 const MAX_IMPORT: usize = 25 * 1024 * 1024;
 
-pub const NEEDS_CM_FIELDS: &str =
-    "Custom fields need Classic Monks on the site. This site is in Basic mode.";
+pub const NEEDS_CM_FIELDS: &str = "Custom fields need Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
 
 pub const OLD_CLASSIC_MONKS: &str = "This site's Classic Monks is older and has no content tools for Monks Central. Update Classic Monks on the site, then check it again.";
 
@@ -250,8 +249,7 @@ pub struct Revision {
     pub title: String,
 }
 
-pub const NEEDS_CM_HISTORY: &str =
-    "Revisions and the trash need Classic Monks on the site. This site is in Basic mode.";
+pub const NEEDS_CM_HISTORY: &str = "Revisions and the trash need Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
 
 pub(crate) fn text(v: &Value) -> String {
     match v {

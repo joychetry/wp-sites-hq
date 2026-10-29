@@ -467,7 +467,7 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
       : !nothing
         ? null
         : s.mode === "basic"
-          ? `Basic mode can't change ${plugin ? "this plugin here" : "themes"}. That needs Classic Monks on the site.`
+          ? `Basic mode can't change ${plugin ? "this plugin here" : "themes"}. That needs Monks Central, Classic Monks or Classic Monks Pro on the site.`
           : "This connection has no tools for this. Sign in again and tick the plugin and theme tool groups.";
 
   return (

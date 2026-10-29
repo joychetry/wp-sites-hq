@@ -571,7 +571,7 @@ const SECURITY: SecurityReport[] =
           vulnerabilities: [],
           abandoned: [{ id: "hello-dolly/hello.php", name: "Hello Dolly", version: "1.7.2", last_updated: null, closed: true, reason: "author-request" }],
           checksums: null,
-          notes: ["Checksums need Classic Monks on the site."],
+          notes: ["Checksums need Monks Central, Classic Monks or Classic Monks Pro on the site."],
         },
         { site_id: 6, checked_at: now - 2 * 3600, vulnerabilities: [], abandoned: [], checksums: { checked: 3, not_verifiable: [], changed: [] }, notes: [] },
       ];

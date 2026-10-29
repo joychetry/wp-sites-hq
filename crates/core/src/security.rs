@@ -392,7 +392,10 @@ impl Core {
         notes: &mut Vec<String>,
     ) -> Option<Checksums> {
         if site.mode == Mode::Basic {
-            notes.push("Checksums need Classic Monks on the site.".into());
+            notes.push(
+                "Checksums need Monks Central, Classic Monks or Classic Monks Pro on the site."
+                    .into(),
+            );
             return None;
         }
         if !has_tool(site, "verify-core-checksums") {

@@ -29,8 +29,7 @@ const CHUNK: usize = 1024 * 1024;
 /// Staged zips older than this are deleted.
 const KEEP_SECS: u64 = 7 * 86_400;
 
-pub const NEEDS_CM_ZIP: &str =
-    "Installing from a zip needs Classic Monks on the site. This site is in Basic mode.";
+pub const NEEDS_CM_ZIP: &str = "Installing from a zip needs Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
 pub const ALREADY_THERE: &str = "It's already installed on this site. To put this copy in its place, install it again with \u{201c}Replace it where it's already installed\u{201d} ticked.";
 pub const OLD_CM_ZIP: &str = "This site's Classic Monks can't install from a zip yet. Update Classic Monks on the site, then check it again.";
 
