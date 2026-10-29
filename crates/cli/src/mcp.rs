@@ -24,7 +24,7 @@ fn tools() -> Value {
         {
             "name": "sites_list",
             "title": "List sites",
-            "description": "Every site in Monks Central: its number, name, address, health, WordPress and Classic Monks versions, and whether AI agents may change it.",
+            "description": "Every site in Monks Central: its number, name, address, health, WordPress version, the plugin that connects it (Monks Central, Classic Monks or Classic Monks Pro) with its connector version, and whether AI agents may change it.",
             "inputSchema": { "type": "object", "properties": {}, "additionalProperties": false },
             "annotations": { "readOnlyHint": true, "openWorldHint": false },
         },
@@ -115,7 +115,9 @@ fn site_summary(s: &Value) -> Value {
         "health": s["health"],
         "health_detail": s["health_detail"],
         "wordpress": s["wp_version"],
-        "classic_monks": s["cm_version"],
+        // Monks Central, Classic Monks or Classic Monks Pro: whichever runs the connector.
+        "plugin": { "name": s["capabilities"]["plugin"]["name"], "version": s["cm_version"] },
+        "connector": s["capabilities"]["connector"]["version"],
         "group": s["group"],
         "tags": s["tags"],
         "agents_may_change": s["agent_access"],
@@ -421,6 +423,18 @@ mod tests {
             ]
         );
         assert_eq!(seen.lock().unwrap()[2].1["arguments"]["id"], 3);
+    }
+
+    #[test]
+    fn the_site_list_names_the_plugin_and_connector() {
+        let s = json!({ "cm_version": "0.1.0", "capabilities": {
+            "plugin": { "name": "Monks Central", "version": "0.1.0" }, "connector": { "version": "1.1.0" } } });
+        let out = site_summary(&s);
+        assert_eq!(
+            out["plugin"],
+            json!({ "name": "Monks Central", "version": "0.1.0" })
+        );
+        assert_eq!(out["connector"], "1.1.0");
     }
 
     #[test]
