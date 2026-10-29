@@ -4,7 +4,7 @@
 import { dismiss, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type Site } from "../api";
+import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type PluginZip, type Site } from "../api";
 import { Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { updatesOf } from "./Updates";
@@ -187,7 +187,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               {sites.length === 0 ? (
                 <>
                   <h2>No sites yet.</h2>
-                  <p>Add a site with Classic Monks for full control, or any WordPress 7.1 site in Basic mode.</p>
+                  <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
                   <Button kind="primary" keys="A" onClick={onAdd}>
                     Add a site
                   </Button>
@@ -448,6 +448,78 @@ function waitingWords(updates: { kind: string }[]) {
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
 }
 
+/** Basic mode: get the Monks Central plugin onto the site, then connect through it. */
+function GetPlugin({ site: s }: { site: Site }) {
+  const [busy, setBusy] = useState<null | "download" | "browser">(null);
+  const [saved, setSaved] = useState<PluginZip | null>(null);
+  const upload = `${s.url}/wp-admin/plugin-install.php?tab=upload`;
+  const fail = (e: unknown) => toast(String(e), { tone: "danger" });
+
+  const download = async () => {
+    setBusy("download");
+    try {
+      setSaved(await api.downloadPlugin(s.id));
+      await api.openLink(upload, s.id).catch(fail);
+    } catch (e) {
+      fail(e);
+    }
+    setBusy(null);
+  };
+  const connect = async () => {
+    setBusy("browser");
+    try {
+      const site = await api.connectPlugin(s.id);
+      toast(`${site.name} is connected through its plugin.`);
+    } catch (e) {
+      fail(e);
+      setBusy(null);
+    }
+  };
+
+  if (busy === "browser")
+    return (
+      <div className="row">
+        <span className="sum waiting" role="status">
+          Waiting for you in the browser
+        </span>
+        <Button small onClick={() => api.cancelSignIn()}>
+          Cancel the sign-in
+        </Button>
+      </div>
+    );
+  return (
+    <>
+      {saved ? (
+        <p className="callout ok" role="status">
+          <Glyph name="check" />
+          <span>
+            Monks Central {saved.version} is saved as <span className="m">{saved.path}</span>, checked against the SHA-256
+            published with it. On the site's Upload Plugin page, choose that file, press Install Now, then Activate Plugin.
+            WordPress lets apps install only from WordPress.org, so this one step is yours.
+          </span>
+        </p>
+      ) : null}
+      <div className="btn-grid">
+        {saved ? (
+          <Button small onClick={() => api.openLink(upload, s.id).catch(fail)}>
+            <Glyph name="external" />
+            Open the upload page
+          </Button>
+        ) : (
+          <Button small disabled={busy !== null} onClick={download}>
+            <Glyph name="download" />
+            {busy === "download" ? "Getting Monks Central…" : "Install Monks Central for me"}
+          </Button>
+        )}
+        <Button small kind={saved ? "primary" : undefined} disabled={busy !== null} onClick={connect}>
+          <Glyph name="login" />
+          Connect through the plugin
+        </Button>
+      </div>
+    </>
+  );
+}
+
 function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, onUpdates, onRemoved }: InspectorProps) {
   const [group, setGroup] = useState(s.group ?? "");
   const [note, setNote] = useState("");
@@ -586,10 +658,13 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
       <section>
         <h3>What Monks Central can do here</h3>
         {s.mode === "basic" ? (
-          <p className="dim-2">
-            Content, users, comments and the plugin list through WordPress itself. Updates, one-click login and Classic
-            Monks modules need Classic Monks.
-          </p>
+          <>
+            <p className="dim-2">
+              Content, users, comments and the plugin list through WordPress itself. Updates, one-click login and the rest
+              need one plugin on the site: Monks Central, Classic Monks or Classic Monks Pro. Any of them works.
+            </p>
+            <GetPlugin site={s} />
+          </>
         ) : noTools(s) ? (
           <p className="callout warning">
             <Glyph name="alert" />

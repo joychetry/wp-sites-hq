@@ -960,6 +960,14 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(null);
     case "link_open":
       return r(null);
+    case "plugin_download":
+      await new Promise((ok) => setTimeout(ok, 300));
+      return r({ version: "1.2.0", path: "/home/joy/Downloads/monks-central-1.2.0.zip" });
+    case "site_connect_plugin": {
+      const s = sites.find((x) => x.id === id)!;
+      Object.assign(s, { mode: "classic_monks", cm_version: "1.2.0", capabilities: { ...FLEET[0].capabilities, plugin: { name: "Monks Central", version: "1.2.0" } } });
+      return r({ ...s });
+    }
     case "monitors_list":
       return r(MONITORS);
     case "monitors_check":

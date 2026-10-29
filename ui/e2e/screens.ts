@@ -40,6 +40,15 @@ export const SCREENS: Screen[] = [
       await page.getByRole("gridcell", { name: /^Studio Blog / }).click();
     },
   },
+  {
+    name: "sites-basic-get-plugin",
+    open: async (page) => {
+      await nav("Sites")(page);
+      await page.getByRole("gridcell", { name: /^mc-c / }).click();
+      await page.getByRole("complementary").getByRole("button", { name: "Install Monks Central for me" }).click();
+      await page.getByRole("complementary").getByText(/is saved as/).waitFor();
+    },
+  },
   { name: "add-site", open: (page) => nav("Sites")(page).then(() => page.keyboard.press("a")) },
   {
     name: "add-site-basic",

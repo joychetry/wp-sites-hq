@@ -164,3 +164,50 @@ test("Enter in an empty group box leaves the selection's groups alone; a name mo
   fireEvent.keyDown(box, { key: "Enter" });
   expect(await screen.findByText("Put 1 site in Shops.")).toBeInTheDocument();
 });
+
+test("the inspector names the plugin running the connector and the spare copies", () => {
+  const sites = [
+    site({
+      id: 7,
+      name: "Both",
+      capabilities: {
+        operator: true,
+        abilities: ["get-hq-status"],
+        plugin: { name: "Classic Monks", version: "1.9.0" },
+        connector: { version: "1.1.0", hosts: [{ name: "Classic Monks", version: "1.9.0" }, { name: "Monks Central", version: "1.0.0" }] },
+      },
+      cm_version: "1.9.0",
+    }),
+    site({ id: 8, name: "Old", cm_version: "2.5.0", capabilities: { operator: true, abilities: ["get-hq-status"], plugin: { version: "2.5.0" } } }),
+  ];
+  const { rerender } = render(<Sites sites={sites} groups={[]} focusId={7} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+  let insp = screen.getByRole("complementary", { name: "Both details" });
+  expect(insp).toHaveTextContent("PluginClassic Monks Free 1.9.0, connector 1.1.0");
+  expect(insp).toHaveTextContent("Also on the siteMonks Central 1.0.0, not running");
+  expect(insp).toHaveTextContent("Classic Monks Free, full access");
+  rerender(<Sites sites={sites} groups={[]} focusId={8} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+  insp = screen.getByRole("complementary", { name: "Old details" });
+  expect(insp).toHaveTextContent("PluginClassic Monks 2.5.0, built-in connector");
+  expect(insp).not.toHaveTextContent("Also on the site");
+});
+
+test("Basic mode: install Monks Central for me saves the checked zip, opens the upload page, then connects", async () => {
+  mockInvoke.mockImplementation(async (c) =>
+    c === "plugin_download"
+      ? { version: "1.2.0", path: "/home/me/Downloads/monks-central-1.2.0.zip" }
+      : c === "site_connect_plugin"
+        ? site({ id: 2, name: "Beta" })
+        : c === "link_open"
+          ? null
+          : [],
+  );
+  render(<Sites sites={SITES} groups={[]} focusId={2} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+  const insp = screen.getByRole("complementary", { name: "Beta details" });
+  expect(insp).toHaveTextContent("Monks Central, Classic Monks or Classic Monks Pro. Any of them works.");
+  fireEvent.click(within(insp).getByRole("button", { name: "Install Monks Central for me" }));
+  await waitFor(() => expect(insp).toHaveTextContent("Monks Central 1.2.0 is saved as /home/me/Downloads/monks-central-1.2.0.zip, checked against the SHA-256"));
+  expect(mockInvoke).toHaveBeenCalledWith("plugin_download", { id: 2 });
+  expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://mc-a.local/wp-admin/plugin-install.php?tab=upload", site: 2 });
+  fireEvent.click(within(insp).getByRole("button", { name: "Connect through the plugin" }));
+  await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("site_connect_plugin", { id: 2 }));
+});

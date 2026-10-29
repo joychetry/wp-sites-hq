@@ -329,7 +329,7 @@ export default function App() {
             </Button>
           }
         >
-          <p>Add a site with Classic Monks for full control, or any WordPress 7.1 site in Basic mode.</p>
+          <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
         </Empty>
       </div>
     );

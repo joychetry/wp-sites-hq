@@ -270,9 +270,12 @@ export function AddSite({ again, onClose, onDone }: Props) {
                 <Logo />
               </span>
               <b>
-                Classic Monks <span className="tag ok">Recommended</span>
+                A Monks Central plugin <span className="tag ok">Recommended</span>
               </b>
-              <span>Sign in on the site once. Every tool works, including module features and undo.</span>
+              <span>
+                Monks Central, Classic Monks or Classic Monks Pro on the site. Any of them works. Sign in on the site once and
+                every tool works, including undo.
+              </span>
             </label>
             <label className="choice">
               <input className="sr-only" type="radio" name="mode" checked={basic} onChange={() => setMode("basic")} />

@@ -408,6 +408,10 @@ export const api = {
   addBasic: (url: string, username: string, password: string) =>
     invoke<Site>("site_add_basic", { url, username, password }),
   cancelSignIn: () => invoke<void>("sign_in_cancel"),
+  /** Switch a Basic mode site to the plugin installed on it, through the browser sign-in. */
+  connectPlugin: (id: number) => invoke<Site>("site_connect_plugin", { id }),
+  /** The Monks Central plugin's newest release, checksum checked, saved in Downloads. */
+  downloadPlugin: (id: number) => invoke<PluginZip>("plugin_download", { id }),
   signInAgain: (id: number, username?: string, password?: string) =>
     invoke<Site>("site_sign_in_again", { id, username, password }),
   remove: (id: number) => invoke<Removed>("site_remove", { id }),
