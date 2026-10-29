@@ -8,7 +8,7 @@ agents for 3 to 300 WordPress sites, from one desktop app on macOS, Windows and
 Linux. No account, no cloud, no per-site price: your sites and their keys stay
 on your computer ([privacy](PRIVACY.md)).
 
-Status: 0.2.0 beta.
+Status: 0.3.0 beta.
 
 ## Install
 
