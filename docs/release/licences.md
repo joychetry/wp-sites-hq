@@ -35,6 +35,7 @@ tools.
 
 No AGPL, no GPL-2.0-only, no SSPL, no unknown licence. MPL-2.0 is file-level
 copyleft and compatible with GPL-3.0; those files are used unmodified.
+TinyMCE is GPL-2.0-or-later (self-hosted, under its GPL licence key), which we take as GPL-3.0-or-later.
 
 **Fonts** bundled in the UI (`ui/src/fonts`) are under the SIL Open Font
 Licence, which allows bundling with GPL software.
