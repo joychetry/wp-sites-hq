@@ -740,11 +740,12 @@ export function pluginName(s: Site): string {
 }
 
 /** "Classic Monks Pro 2.6.0, connector 1.1.0", and the other plugins on the site that carry the
- * connector (only the newest copy runs). Null in Basic mode or before the first check. */
+ * connector (only the newest copy runs). Null in Basic mode. */
 export function connectorInfo(s: Site): { running: string; spare: string[] } | null {
-  if (s.mode === "basic" || !s.cm_version) return null;
+  if (s.mode === "basic") return null;
   const c = s.capabilities.connector as { version?: unknown; hosts?: Host[] } | undefined;
-  const plugin = `${pluginName(s)} ${s.cm_version}`;
+  // Classic Monks 2.5.0 and older report no version.
+  const plugin = s.cm_version ? `${pluginName(s)} ${s.cm_version}` : pluginName(s);
   if (typeof c?.version !== "string") return { running: `${plugin}, built-in connector`, spare: [] };
   const spare = (Array.isArray(c.hosts) ? c.hosts : [])
     .map((h) => hostName(h.name) && `${hostName(h.name)} ${String(h.version ?? "")}`.trim())

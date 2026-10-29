@@ -189,6 +189,10 @@ test("the inspector names the plugin running the connector and the spare copies"
   insp = screen.getByRole("complementary", { name: "Old details" });
   expect(insp).toHaveTextContent("PluginClassic Monks 2.5.0, built-in connector");
   expect(insp).not.toHaveTextContent("Also on the site");
+  // Classic Monks 2.5.0 has no get-hq-status, so no version.
+  const older = site({ id: 9, name: "Older", cm_version: null, capabilities: { operator: null, abilities: ["get-posts"], degraded: true } });
+  rerender(<Sites sites={[older]} groups={[]} focusId={9} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+  expect(screen.getByRole("complementary", { name: "Older details" })).toHaveTextContent("PluginClassic Monks, built-in connector");
 });
 
 test("Basic mode: install Monks Central for me saves the checked zip, opens the upload page, then connects", async () => {

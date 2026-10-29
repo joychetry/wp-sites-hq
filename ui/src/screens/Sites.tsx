@@ -607,7 +607,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           </div>
           <div>
             <dt>Plugin</dt>
-            <dd>{plugin?.running ?? (s.mode === "basic" ? "not used" : "not known")}</dd>
+            <dd>{plugin?.running ?? "not used"}</dd>
           </div>
           {!!plugin?.spare.length && (
             <div>
