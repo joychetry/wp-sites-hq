@@ -35,6 +35,7 @@ pub const ALREADY_THERE: &str = "It's already installed on this site. To put thi
 pub const OLD_CM_ZIP: &str = "This site's Classic Monks can't install from a zip yet. Update Classic Monks on the site, then check it again.";
 
 const NO_RELEASE: &str = "Couldn't get the Monks Central plugin from GitHub. Check your internet connection and try again later.";
+const NOT_RELEASED: &str = "There is no Monks Central release on GitHub yet. Try again later.";
 const BAD_RELEASE: &str = "The newest Monks Central release on GitHub doesn't have a plugin zip with a SHA-256 checksum, so nothing was saved.";
 const BAD_SUM: &str = "The Monks Central plugin from GitHub doesn't match its published SHA-256 checksum, so it wasn't saved. Try again later.";
 
@@ -276,9 +277,12 @@ impl Core {
                 self.probe.get(&url).header(reqwest::header::ACCEPT, accept)
             })
             .await
-            .ok()
-            .filter(|r| r.status == 200)
-            .ok_or_else(|| plain(NO_RELEASE))
+            .map_err(|_| plain(NO_RELEASE))
+            .and_then(|r| match r.status {
+                200 => Ok(r),
+                404 => Err(plain(NOT_RELEASED)),
+                _ => Err(plain(NO_RELEASE)),
+            })
         };
         let release: Value = get(feed.into(), "application/vnd.github+json")
             .await?
@@ -769,6 +773,16 @@ mod tests {
         .await;
         assert_eq!(save(feed).await.1.unwrap_err().to_string(), BAD_RELEASE);
 
+        // GitHub answers, but there is no release (or no asset): it says so.
+        let none = github(|_| json!({}), Vec::new(), String::new()).await;
+        assert_eq!(
+            save(format!("{none}/nothing"))
+                .await
+                .1
+                .unwrap_err()
+                .to_string(),
+            NOT_RELEASED
+        );
         // GitHub away.
         assert_eq!(
             save("http://127.0.0.1:9".into())
