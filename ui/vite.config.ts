@@ -18,5 +18,8 @@ export default defineConfig(({ mode }) => ({
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/test-setup.ts",
+    // Teardown in registration order: screens unmount before a file's afterEach resets the invoke mock,
+    // so a late effect never calls a bare mock (undefined.then).
+    sequence: { hooks: "list" },
   },
 }));
