@@ -150,7 +150,12 @@ export function Content({ sites, onPlan }: Props) {
     );
   }, [current, typeKey, status, search, page]);
   useEffect(() => load(), [load]);
-  useEffect(() => setPicked(new Set()), [list]);
+  // Cleared in the same render as the new list: an effect would land after the rows show and drop fresh ticks.
+  const [seen, setSeen] = useState(list);
+  if (seen !== list) {
+    setSeen(list);
+    setPicked(new Set());
+  }
   // A bulk job changed entries: read the page again, quietly.
   useEffect(() => {
     if (current == null || !typeKey) return;
