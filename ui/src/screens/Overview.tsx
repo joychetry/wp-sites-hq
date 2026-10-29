@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Overview: what needs you across the fleet (docs/design/redesign, board 01). The fleet sentence is
 // the page head's line; here are the stat cards, the fixes, your sites, the latest changes and versions.
-import { ago, api, NO_TOOLS, noTools, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
+import { ago, api, NO_TOOLS, noTools, pluginName, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
@@ -580,9 +580,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                 <Dist label="PHP" versions values={sites.map((s) => s.php_version?.split(".").slice(0, 2).join(".") ?? UNKNOWN)} />
                 <Dist
                   label="Connection"
-                  values={sites.map((s) =>
-                    s.mode === "basic" ? "Basic mode" : noTools(s) ? "Classic Monks, no tools" : s.capabilities.degraded ? "Classic Monks, older" : "Classic Monks",
-                  )}
+                  values={sites.map((s) => (s.mode === "basic" ? "Basic mode" : noTools(s) ? `${pluginName(s)}, no tools` : s.capabilities.degraded ? `${pluginName(s)}, older` : pluginName(s)))}
                 />
               </div>
             </section>

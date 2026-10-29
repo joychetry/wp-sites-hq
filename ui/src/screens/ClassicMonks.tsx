@@ -5,7 +5,7 @@ import "../styles/screens/classic-monks.css";
 import { Skeleton, toast } from "../components/feedback";
 import { Select, NumberInput, Tabs, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { api, cmBlocked, hasTool, useInventory, type Activity, type ActivityRow, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
+import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type ActivityRow, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
 import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
@@ -185,7 +185,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
                       <SiteTile site={site} />
                       <div>
                         <b>{site.name}</b>
-                        <small>{site.cm_version ? `Classic Monks ${site.cm_version}` : "Classic Monks"}</small>
+                        <small>{site.cm_version ? `${pluginName(site)} ${site.cm_version}` : pluginName(site)}</small>
                       </div>
                       {update && <span className="tag ok">{update} ready</span>}
                     </div>

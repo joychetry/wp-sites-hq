@@ -4,7 +4,7 @@
 import { dismiss, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, connectionLabel, hasTool, NO_TOOLS, noTools, siteStatus, slow, useInventory, type Site } from "../api";
+import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type Site } from "../api";
 import { Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { updatesOf } from "./Updates";
@@ -126,7 +126,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   const count = (f: StatusFilter) => sites.filter((s) => matches(s, f)).length;
   const modes: [ModeFilter, string][] = [
     ["any", "Connection and group"],
-    ["classic_monks", "Classic Monks"],
+    ["classic_monks", "Through a plugin"],
     ["basic", "Basic mode"],
   ];
   const modeAt = modes.findIndex(([m]) => m === mode);
@@ -308,7 +308,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       <td>
                         <span className="conn">
                           {s.mode === "basic" ? <Glyph name="link" /> : <Logo />}
-                          {s.mode === "basic" ? "Basic" : "Classic Monks"}
+                          {s.mode === "basic" ? "Basic" : pluginName(s)}
                         </span>
                       </td>
                       <td className="acts-col">
@@ -466,6 +466,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
   const modules = caps.modules && typeof caps.modules === "object" ? (caps.modules as Record<string, boolean>) : null;
   const again = s.sign_in_again || noTools(s);
   const canLogin = hasTool(s, "create-login-link") && !s.sign_in_again;
+  const plugin = connectorInfo(s);
 
   const run = async (f: () => Promise<unknown>) => {
     try {
@@ -533,9 +534,15 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
             <dd className={s.php_version ? "m" : undefined}>{s.php_version ?? "not known"}</dd>
           </div>
           <div>
-            <dt>Classic Monks</dt>
-            <dd className={s.cm_version ? "m" : undefined}>{s.cm_version ?? (s.mode === "basic" ? "not used" : "not known")}</dd>
+            <dt>Plugin</dt>
+            <dd>{plugin?.running ?? (s.mode === "basic" ? "not used" : "not known")}</dd>
           </div>
+          {!!plugin?.spare.length && (
+            <div>
+              <dt>Also on the site</dt>
+              <dd>{plugin.spare.join(", ")}, not running</dd>
+            </div>
+          )}
           <div>
             <dt>Connection</dt>
             <dd>{connectionLabel(s)}</dd>

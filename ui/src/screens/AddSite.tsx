@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Add a site (or sign one in again): Classic Monks OAuth in the browser, or
+// Add a site (or sign one in again): OAuth in the browser through the site's plugin
+// (Monks Central, Classic Monks or Classic Monks Pro), or
 // Basic mode with an application password.
 import { useState, type ReactNode } from "react";
-import { api, type Site } from "../api";
+import { api, pluginName, type Site } from "../api";
 import { Button, Glyph, Logo } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import "../styles/screens/addsite.css";
@@ -149,7 +150,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
         }
         intro={
           <span className="mono meta">
-            {host} · {basic ? "Basic mode" : "Classic Monks"}
+            {host} · {basic ? "Basic mode" : pluginName(again)}
           </span>
         }
         onClose={close}

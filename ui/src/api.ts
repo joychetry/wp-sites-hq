@@ -43,6 +43,9 @@ export type Site = {
   icon: string | null;
 };
 
+/** The Monks Central plugin saved on this computer. */
+export type PluginZip = { version: string; path: string };
+
 export type Client = { id: number; name: string; email: string; notes: string };
 export type Every = "month" | "year" | "once";
 /** A cost (hosting, a domain, a licence) or a charge (what the client pays), in cents. */
@@ -715,9 +718,34 @@ export function siteStatus(s: Site): { tone: Tone; label: string } {
 
 export function connectionLabel(s: Site): string {
   if (s.mode === "basic") return "Basic mode";
-  if (noTools(s)) return "Classic Monks, no tools";
-  if (s.capabilities.degraded === true) return "Classic Monks, older";
-  return s.capabilities.operator === true ? "Classic Monks, full access" : "Classic Monks";
+  const name = pluginName(s);
+  if (noTools(s)) return `${name}, no tools`;
+  if (s.capabilities.degraded === true) return `${name}, older`;
+  return s.capabilities.operator === true ? `${name}, full access` : name;
+}
+
+type Host = { name?: unknown; version?: unknown };
+
+/** Classic Monks Free calls itself Classic Monks. */
+const hostName = (name: unknown) => (name === "Classic Monks" ? "Classic Monks Free" : typeof name === "string" && name ? name : null);
+
+/** The plugin running the site's connector: Monks Central, Classic Monks Free or Classic Monks Pro.
+ * A Classic Monks from before the shared connector doesn't say which. */
+export function pluginName(s: Site): string {
+  return hostName((s.capabilities.plugin as Host | undefined)?.name) ?? "Classic Monks";
+}
+
+/** "Classic Monks Pro 2.6.0, connector 1.1.0", and the other plugins on the site that carry the
+ * connector (only the newest copy runs). Null in Basic mode or before the first check. */
+export function connectorInfo(s: Site): { running: string; spare: string[] } | null {
+  if (s.mode === "basic" || !s.cm_version) return null;
+  const c = s.capabilities.connector as { version?: unknown; hosts?: Host[] } | undefined;
+  const plugin = `${pluginName(s)} ${s.cm_version}`;
+  if (typeof c?.version !== "string") return { running: `${plugin}, built-in connector`, spare: [] };
+  const spare = (Array.isArray(c.hosts) ? c.hosts : [])
+    .map((h) => hostName(h.name) && `${hostName(h.name)} ${String(h.version ?? "")}`.trim())
+    .filter((h): h is string => !!h && !h.startsWith(`${pluginName(s)} `));
+  return { running: `${plugin}, connector ${c.version}`, spare };
 }
 
 /** "just now", "3 min ago", "2 hr ago", "4 days ago". */
