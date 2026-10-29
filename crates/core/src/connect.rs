@@ -407,7 +407,7 @@ impl Core {
     ) -> Result<(oauth::Discovery, OAuthClient, Tokens), SiteError> {
         let key = url.as_str();
         let d = oauth::discover(&self.http, &self.limits, url).await?.ok_or_else(|| {
-            plain("This site has no Classic Monks connection. Switch on AI > MCP in Classic Monks, or add the site in Basic mode with an application password.")
+            plain("This site has no Monks Central connection. Install Monks Central, Classic Monks or Classic Monks Pro on it and switch its connection on, or add the site in Basic mode with an application password.")
         })?;
         let client_id = oauth::register(&self.http, &self.limits, key, &d, client_name).await?;
         let pkce = oauth::pkce();
