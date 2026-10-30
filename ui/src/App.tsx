@@ -2,7 +2,7 @@
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
@@ -80,6 +80,21 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
   ["light", "sun", "Theme: light"],
   ["dark", "moon", "Theme: dark"],
 ];
+
+/** "just now", "5 min ago", "3 h ago", "yesterday", then a date. */
+export function shortAgo(unix: number, now = Date.now() / 1000): string {
+  const s = Math.max(0, now - unix);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  if (s < 2 * 86400) return "yesterday";
+  return `on ${new Date(unix * 1000).toLocaleDateString([], { day: "numeric", month: "short" })}`;
+}
+
+const checkedAt = (unix: number) => {
+  const d = new Date(unix * 1000);
+  return `${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} on ${d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}`;
+};
 
 export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
@@ -504,23 +519,28 @@ export default function App() {
           </div>
           {sites && sites.length > 0 && (
             <p className="fresh" role="status">
-              <span className="pulse" aria-hidden="true" />
               {checking ? (
-                "Checking all sites…"
+                <span className="pill">
+                  <span className="pulse on" aria-hidden="true" />
+                  Checking…
+                </span>
+              ) : lastCheck ? (
+                <span className="pill" title={`Last checked at ${checkedAt(lastCheck)}`}>
+                  <span className="pulse" aria-hidden="true" />
+                  <span aria-hidden="true">Checked {shortAgo(lastCheck)}</span>
+                  <span className="sr-only">Last checked at {checkedAt(lastCheck)}</span>
+                </span>
               ) : (
-                lastCheck && (
-                  <span>
-                    Last checked <b>{ago(lastCheck)}</b>
-                  </span>
-                )
+                <span className="pill">
+                  <span className="pulse" aria-hidden="true" />
+                  Not checked yet
+                </span>
               )}
               {needs > 0 && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <button type="button" className={section === "Overview" ? "link go" : "link quiet"} onClick={() => setSection("Sites")}>
-                    {needs === 1 ? "1 site needs attention" : `${needs} sites need attention`}
-                  </button>
-                </>
+                <button type="button" className="pill warning" aria-label={`${needs === 1 ? "1 site needs" : `${needs} sites need`} attention, open Sites`} onClick={() => setSection("Sites")}>
+                  {needs === 1 ? "1 needs attention" : `${needs} need attention`}
+                  <Glyph name="alert" />
+                </button>
               )}
             </p>
           )}

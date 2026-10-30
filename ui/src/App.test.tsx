@@ -2,7 +2,7 @@
 import { act, render, screen, fireEvent, within } from "@testing-library/react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import App, { SECTIONS } from "./App";
+import App, { SECTIONS, shortAgo } from "./App";
 import { site, choose } from "./test-fixtures";
 import { leaveGuard } from "./fleet";
 
@@ -95,6 +95,26 @@ test("switches section from the rail", async () => {
   fireEvent.click(screen.getByRole("button", { name: /^Sites/ }));
   expect(screen.getByRole("heading", { level: 1, name: /^Sites/ })).toBeInTheDocument();
   expect(await screen.findByRole("grid", { name: "Sites" })).toBeInTheDocument();
+});
+
+test("the top bar says when sites were checked and how many need attention, as pills", async () => {
+  serve([site(), site({ id: 2, health: "down", health_detail: "No answer." })]);
+  render(<App />);
+  expect(await screen.findByText("Checked 2 min ago")).toHaveAttribute("aria-hidden", "true");
+  expect(screen.getByText(/^Last checked at /)).toHaveClass("sr-only");
+  const go = screen.getByRole("button", { name: "1 site needs attention, open Sites" });
+  expect(go).toHaveTextContent("1 needs attention");
+  fireEvent.click(go);
+  expect(screen.getByRole("heading", { level: 1, name: /^Sites/ })).toBeInTheDocument();
+});
+
+test("short relative time: just now, minutes, hours, yesterday, then a date", () => {
+  const now = 1_800_000_000;
+  expect(shortAgo(now - 30, now)).toBe("just now");
+  expect(shortAgo(now - 300, now)).toBe("5 min ago");
+  expect(shortAgo(now - 3 * 3600, now)).toBe("3 h ago");
+  expect(shortAgo(now - 30 * 3600, now)).toBe("yesterday");
+  expect(shortAgo(now - 5 * 86400, now)).toMatch(/^on \S/);
 });
 
 test("shows the core error in plain words", async () => {
