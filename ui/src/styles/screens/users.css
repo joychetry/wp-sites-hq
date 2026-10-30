@@ -10,7 +10,6 @@
 .users .rowacts .icon-btn { width: 32px; height: 32px; color: var(--text-3); }
 .users .rowacts .icon-btn .glyph { width: 16px; height: 16px; }
 .users .card-foot .count { color: var(--text-3); font-size: var(--fs-sm); }
-.users .filters .srch { flex: 1 1 260px; max-width: 340px; }
 
 /* Sites the list can't fully show: a callout each, under the card. */
 .pnotes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }

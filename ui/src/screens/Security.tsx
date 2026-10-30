@@ -6,7 +6,8 @@ import { ago, api, type SecurityReport, type Site, type SiteInventory, type Vuln
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, slugOf } from "../components/PkgTile";
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
-import { toast } from "../components/feedback";
+import { Empty, toast } from "../components/feedback";
+import { Page } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
 
 const SEVERITY_TONE: Record<string, "danger" | "warning"> = { critical: "danger", high: "danger" };
@@ -78,10 +79,11 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
-        <p>Add a site to scan it for known vulnerabilities, abandoned plugins and changed files.</p>
-      </div>
+      <Page>
+        <Empty picture="sites" title="No sites yet.">
+          <p>Add a site to scan it for known vulnerabilities, abandoned plugins and changed files.</p>
+        </Empty>
+      </Page>
     );
   }
 
@@ -97,7 +99,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
   };
 
   return (
-    <div className="scroll page sec">
+    <Page className="sec">
       <HeadActions>
         <Button disabled={scanning} onClick={scan}>
           <Glyph name="shield" />
@@ -115,272 +117,270 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
       <span className="sr-only" role="status">
         {scanning ? "Scanning every site…" : Number.isFinite(oldest) ? `Scanned ${ago(oldest)}` : "Not scanned yet"}
       </span>
-      <div className="stack">
-        <section className="g3" aria-label="Security at a glance">
-          <div className={`stat ${vulns.length ? "alert" : ""}`}>
-            <h2 className="label">Open vulnerabilities</h2>
-            <p className="stat-n">
-              <strong>{vulns.length}</strong> {vulns.length ? `on ${plural(vulnSites, "site")}` : "known"}
-            </p>
-          </div>
-          <div className="stat">
-            <h2 className="label">Sites clear</h2>
-            <p className="stat-n">
-              <strong>{clear.length}</strong> of {sites.length}
-            </p>
-          </div>
-          <div className="stat">
-            <h2 className="label">Last scan</h2>
-            <p className="stat-n">
-              {/^\d/.test(lastN) ? (
-                <>
-                  <strong>{lastN}</strong> {lastUnit.join(" ")}
-                </>
-              ) : (
-                <strong>{[lastN, ...lastUnit].join(" ")}</strong>
-              )}
-            </p>
-          </div>
-        </section>
-        <div className="sec-split">
-          <div className="stack">
-            <h2 className="sr-only" id="sec-vulns">
-              Known vulnerabilities
-            </h2>
-            {cards.length === 0 ? (
-              <p className="callout ok">
-                <Glyph name="shield" />
-                <span>
-                  <b>No known vulnerabilities.</b> None in the versions your sites run.
-                </span>
-              </p>
+      <section className="g3" aria-label="Security at a glance">
+        <div className={`stat ${vulns.length ? "alert" : ""}`}>
+          <h2 className="label">Open vulnerabilities</h2>
+          <p className="stat-n">
+            <strong>{vulns.length}</strong> {vulns.length ? `on ${plural(vulnSites, "site")}` : "known"}
+          </p>
+        </div>
+        <div className="stat">
+          <h2 className="label">Sites clear</h2>
+          <p className="stat-n">
+            <strong>{clear.length}</strong> of {sites.length}
+          </p>
+        </div>
+        <div className="stat">
+          <h2 className="label">Last scan</h2>
+          <p className="stat-n">
+            {/^\d/.test(lastN) ? (
+              <>
+                <strong>{lastN}</strong> {lastUnit.join(" ")}
+              </>
             ) : (
-              <ul className="vulns" aria-labelledby="sec-vulns">
-                {cards.map((hits) => {
-                  const x = hits[0].x;
-                  const tone = x.severity ? (SEVERITY_TONE[x.severity] ?? "warning") : "";
-                  const kind = KIND[x.kind];
-                  const affected = new Set(hits.map(({ site }) => site.id));
-                  // Sites that run the same plugin without this vulnerability.
-                  const fine = scanned.flatMap((s) => {
-                    const p = x.kind === "plugin" && !affected.has(s.id) ? inventory.get(s.id)?.inventory.plugins.find((p) => p.id === x.id) : undefined;
-                    return p ? [`${s.name}, on ${p.version}`] : [];
-                  });
-                  const away = hits.filter(({ site }) => site.health === "down");
-                  const fixes = hits.map(({ site }) => fixFor(x, site)).filter(Boolean);
-                  return (
-                    <li key={`${x.kind}:${x.id}:${x.title}`} className={`card vuln ${tone}`}>
-                      <div className="card-body">
-                        <div className="vhead">
-                          <span className={`tile ${tone || "warning"}`}>
-                            <Glyph name="shield" />
+              <strong>{[lastN, ...lastUnit].join(" ")}</strong>
+            )}
+          </p>
+        </div>
+      </section>
+      <div className="sec-split">
+        <div className="stack">
+          <h2 className="sr-only" id="sec-vulns">
+            Known vulnerabilities
+          </h2>
+          {cards.length === 0 ? (
+            <p className="callout ok">
+              <Glyph name="shield" />
+              <span>
+                <b>No known vulnerabilities.</b> None in the versions your sites run.
+              </span>
+            </p>
+          ) : (
+            <ul className="vulns" aria-labelledby="sec-vulns">
+              {cards.map((hits) => {
+                const x = hits[0].x;
+                const tone = x.severity ? (SEVERITY_TONE[x.severity] ?? "warning") : "";
+                const kind = KIND[x.kind];
+                const affected = new Set(hits.map(({ site }) => site.id));
+                // Sites that run the same plugin without this vulnerability.
+                const fine = scanned.flatMap((s) => {
+                  const p = x.kind === "plugin" && !affected.has(s.id) ? inventory.get(s.id)?.inventory.plugins.find((p) => p.id === x.id) : undefined;
+                  return p ? [`${s.name}, on ${p.version}`] : [];
+                });
+                const away = hits.filter(({ site }) => site.health === "down");
+                const fixes = hits.map(({ site }) => fixFor(x, site)).filter(Boolean);
+                return (
+                  <li key={`${x.kind}:${x.id}:${x.title}`} className={`card vuln ${tone}`}>
+                    <div className="card-body">
+                      <div className="vhead">
+                        <span className={`tile ${tone || "warning"}`}>
+                          <Glyph name="shield" />
+                        </span>
+                        <div>
+                          <span className="row">
+                            <span className={`tag ${tone}`}>{x.severity ? x.severity[0].toUpperCase() + x.severity.slice(1) : "Not rated"}</span>
+                            <span className="meta named">
+                              {x.kind !== "wordpress" && <PkgTile kind={x.kind} slug={x.kind === "plugin" ? slugOf(x.id) : x.id} name={x.name} size="xs" />}
+                              {x.name}
+                              {x.kind !== "wordpress" && ` · ${kind}`}
+                            </span>
                           </span>
-                          <div>
-                            <span className="row">
-                              <span className={`tag ${tone}`}>{x.severity ? x.severity[0].toUpperCase() + x.severity.slice(1) : "Not rated"}</span>
-                              <span className="meta named">
-                                {x.kind !== "wordpress" && <PkgTile kind={x.kind} slug={x.kind === "plugin" ? slugOf(x.id) : x.id} name={x.name} size="xs" />}
-                                {x.name}
-                                {x.kind !== "wordpress" && ` · ${kind}`}
-                              </span>
-                            </span>
-                            <h3>{x.kind === "wordpress" ? "Vulnerability in WordPress" : `Vulnerability in a ${kind}: ${x.name}`}</h3>
-                            <p>{x.title}</p>
-                          </div>
-                        </div>
-                        <dl className="dl well">
-                          <div>
-                            <dt>Installed</dt>
-                            <dd className="m">{[...new Set(hits.map(({ x }) => x.installed))].join(", ")}</dd>
-                          </div>
-                          <div>
-                            <dt>Fixed in</dt>
-                            <dd className="m">{x.fixed_in ?? "Not yet"}</dd>
-                          </div>
-                          <div>
-                            <dt>Sites affected</dt>
-                            <dd>
-                              {hits.map(({ site, x }) => (
-                                <span key={site.id} className="conn">
-                                  <SiteTile site={site} size="sm" />
-                                  {site.name}, on {x.installed}
-                                </span>
-                              ))}
-                            </dd>
-                          </div>
-                          {fine.length > 0 && (
-                            <div>
-                              <dt>Not affected</dt>
-                              <dd>{fine.join("; ")}</dd>
-                            </div>
-                          )}
-                        </dl>
-                        {away.length > 0 && (
-                          <p className="callout warning">
-                            <Glyph name="unplug" />
-                            <span>
-                              <b>{away.map(({ site }) => site.name).join(", ")} couldn't be reached at the last check.</b> Check it again, then update once it answers.
-                            </span>
-                          </p>
-                        )}
-                        <div className="row acts">
-                          {fixes}
-                          {fixes.length === 0 && <span className="dim">{x.fixed_in ? `Fixed in ${x.fixed_in}, once the site offers that update` : "No fix yet"}</span>}
-                          {x.link && (
-                            <Button className="ghost" aria-label={`Read more about ${x.title}`} onClick={() => api.openLink(x.link!).catch((e) => setError(String(e)))}>
-                              <Glyph name="external" />
-                              Read more
-                            </Button>
-                          )}
+                          <h3>{x.kind === "wordpress" ? "Vulnerability in WordPress" : `Vulnerability in a ${kind}: ${x.name}`}</h3>
+                          <p>{x.title}</p>
                         </div>
                       </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+                      <dl className="dl well">
+                        <div>
+                          <dt>Installed</dt>
+                          <dd className="m">{[...new Set(hits.map(({ x }) => x.installed))].join(", ")}</dd>
+                        </div>
+                        <div>
+                          <dt>Fixed in</dt>
+                          <dd className="m">{x.fixed_in ?? "Not yet"}</dd>
+                        </div>
+                        <div>
+                          <dt>Sites affected</dt>
+                          <dd>
+                            {hits.map(({ site, x }) => (
+                              <span key={site.id} className="conn">
+                                <SiteTile site={site} size="sm" />
+                                {site.name}, on {x.installed}
+                              </span>
+                            ))}
+                          </dd>
+                        </div>
+                        {fine.length > 0 && (
+                          <div>
+                            <dt>Not affected</dt>
+                            <dd>{fine.join("; ")}</dd>
+                          </div>
+                        )}
+                      </dl>
+                      {away.length > 0 && (
+                        <p className="callout warning">
+                          <Glyph name="unplug" />
+                          <span>
+                            <b>{away.map(({ site }) => site.name).join(", ")} couldn't be reached at the last check.</b> Check it again, then update once it answers.
+                          </span>
+                        </p>
+                      )}
+                      <div className="row acts">
+                        {fixes}
+                        {fixes.length === 0 && <span className="dim">{x.fixed_in ? `Fixed in ${x.fixed_in}, once the site offers that update` : "No fix yet"}</span>}
+                        {x.link && (
+                          <Button className="ghost" aria-label={`Read more about ${x.title}`} onClick={() => api.openLink(x.link!).catch((e) => setError(String(e)))}>
+                            <Glyph name="external" />
+                            Read more
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
-            {abandoned.length > 0 && (
-              <section className="card" aria-labelledby="sec-abandoned">
-                <div className="card-head">
-                  <h2 id="sec-abandoned">Abandoned plugins</h2>
-                  <span className="dim">No release in two years, or closed</span>
-                </div>
-                <table className="t" aria-labelledby="sec-abandoned">
-                  <thead>
-                    <tr>
-                      <th scope="col">Site</th>
-                      <th scope="col">Plugin</th>
-                      <th scope="col">Installed</th>
-                      <th scope="col">Why</th>
+          {abandoned.length > 0 && (
+            <section className="card" aria-labelledby="sec-abandoned">
+              <div className="card-head">
+                <h2 id="sec-abandoned">Abandoned plugins</h2>
+                <span className="dim">No release in two years, or closed</span>
+              </div>
+              <table className="t" aria-labelledby="sec-abandoned">
+                <thead>
+                  <tr>
+                    <th scope="col">Site</th>
+                    <th scope="col">Plugin</th>
+                    <th scope="col">Installed</th>
+                    <th scope="col">Why</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {abandoned.map(({ site, x }) => (
+                    <tr key={`${site.id}:${x.id}`}>
+                      <td>
+                        <span className="site">
+                          <SiteTile site={site} size="sm" />
+                          <b>{site.name}</b>
+                        </span>
+                      </td>
+                      <td className="cut" data-tip={x.name}>
+                        <span className="site">
+                          <PkgTile kind="plugin" slug={slugOf(x.id)} name={x.name} size="sm" />
+                          {x.name}
+                        </span>
+                      </td>
+                      <td className="m">{x.version}</td>
+                      <td className="wrap">
+                        {x.closed
+                          ? `WordPress.org closed it${x.reason ? ` (${x.reason.replace(/-/g, " ")})` : ""}: it gets no more updates. Replace it.`
+                          : `No release since ${x.last_updated ? MONTH.format(x.last_updated * 1000) : "a long time"}. Look for a maintained one.`}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {abandoned.map(({ site, x }) => (
-                      <tr key={`${site.id}:${x.id}`}>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+
+          {changed.length > 0 && (
+            <section className="card" aria-labelledby="sec-files">
+              <div className="card-head">
+                <h2 id="sec-files">Files that differ from WordPress.org</h2>
+              </div>
+              <table className="t" aria-labelledby="sec-files">
+                <thead>
+                  <tr>
+                    <th scope="col">Site</th>
+                    <th scope="col">In</th>
+                    <th scope="col">Files</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {changed.map(({ site, x }) => {
+                    const files = [...x.modified.map((f) => `${f} (changed)`), ...x.missing.map((f) => `${f} (missing)`), ...x.added.map((f) => `${f} (extra)`)];
+                    return (
+                      <tr key={`${site.id}:${x.name}`}>
                         <td>
                           <span className="site">
                             <SiteTile site={site} size="sm" />
                             <b>{site.name}</b>
                           </span>
                         </td>
-                        <td className="cut" data-tip={x.name}>
-                          <span className="site">
-                            <PkgTile kind="plugin" slug={slugOf(x.id)} name={x.name} size="sm" />
-                            {x.name}
-                          </span>
-                        </td>
-                        <td className="m">{x.version}</td>
-                        <td className="wrap">
-                          {x.closed
-                            ? `WordPress.org closed it${x.reason ? ` (${x.reason.replace(/-/g, " ")})` : ""}: it gets no more updates. Replace it.`
-                            : `No release since ${x.last_updated ? MONTH.format(x.last_updated * 1000) : "a long time"}. Look for a maintained one.`}
+                        <td>{x.name}</td>
+                        <td className="wrap m">
+                          {files.slice(0, 5).join(", ")}
+                          {files.length > 5 && `, and ${files.length - 5} more`}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            )}
-
-            {changed.length > 0 && (
-              <section className="card" aria-labelledby="sec-files">
-                <div className="card-head">
-                  <h2 id="sec-files">Files that differ from WordPress.org</h2>
-                </div>
-                <table className="t" aria-labelledby="sec-files">
-                  <thead>
-                    <tr>
-                      <th scope="col">Site</th>
-                      <th scope="col">In</th>
-                      <th scope="col">Files</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {changed.map(({ site, x }) => {
-                      const files = [...x.modified.map((f) => `${f} (changed)`), ...x.missing.map((f) => `${f} (missing)`), ...x.added.map((f) => `${f} (extra)`)];
-                      return (
-                        <tr key={`${site.id}:${x.name}`}>
-                          <td>
-                            <span className="site">
-                              <SiteTile site={site} size="sm" />
-                              <b>{site.name}</b>
-                            </span>
-                          </td>
-                          <td>{x.name}</td>
-                          <td className="wrap m">
-                            {files.slice(0, 5).join(", ")}
-                            {files.length > 5 && `, and ${files.length - 5} more`}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </section>
-            )}
-          </div>
-
-          <div className="stack">
-            <section className="card" aria-labelledby="sec-clear">
-              <div className="card-head">
-                <h2 id="sec-clear">Sites with nothing known</h2>
-              </div>
-              {clear.length === 0 ? (
-                <p className="quiet">{scanned.length ? "Every scanned site has something to look at." : "No site scanned yet."}</p>
-              ) : (
-                <ul className="fixes">
-                  {clear.map((s) => {
-                    const inv = inventory.get(s.id)?.inventory;
-                    return (
-                      <li key={s.id} className="fix">
-                        <SiteTile site={s} />
-                        <div>
-                          <b>{s.name}</b>
-                          <span>{inv ? `${plural(inv.plugins.length + inv.themes.length, "plugin and theme", "plugins and themes")} scanned` : `Scanned ${ago(byId.get(s.id)!.checked_at)}`}</span>
-                        </div>
-                        <span className="st pill ok">
-                          <Icon tone="ok" />
-                          Clear
-                        </span>
-                      </li>
                     );
                   })}
-                </ul>
-              )}
+                </tbody>
+              </table>
             </section>
-            {notes.length > 0 && (
-              <section className="card" aria-label="Not checked">
-                <div className="card-head">
-                  <h2>Not checked</h2>
-                </div>
-                <ul className="fixes">
-                  {notes.map(([name, why], i) => {
-                    const s = named.find((s) => s.name === name)!;
-                    return (
-                      <li key={`${name}:${i}`} className="fix two">
-                        <SiteTile site={s} />
-                        <div>
-                          <b>{name}</b>
-                          <span>{why}</span>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
+          )}
+        </div>
+
+        <div className="stack">
+          <section className="card" aria-labelledby="sec-clear">
+            <div className="card-head">
+              <h2 id="sec-clear">Sites with nothing known</h2>
+            </div>
+            {clear.length === 0 ? (
+              <Empty small title={scanned.length ? "Every scanned site has something to look at." : "No site scanned yet."} />
+            ) : (
+              <ul className="fixes">
+                {clear.map((s) => {
+                  const inv = inventory.get(s.id)?.inventory;
+                  return (
+                    <li key={s.id} className="fix">
+                      <SiteTile site={s} />
+                      <div>
+                        <b>{s.name}</b>
+                        <span>{inv ? `${plural(inv.plugins.length + inv.themes.length, "plugin and theme", "plugins and themes")} scanned` : `Scanned ${ago(byId.get(s.id)!.checked_at)}`}</span>
+                      </div>
+                      <span className="st pill ok">
+                        <Icon tone="ok" />
+                        Clear
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
-            <p className="note" id="security-legend">
-              {scanned.length === 0
-                ? "Every site is scanned once a day while Monks Central runs."
-                : vulns.length + abandoned.length + changed.length === 0
-                  ? `No known problems on ${plural(scanned.length, "site")}.`
-                  : `${plural(vulns.length, "known vulnerability", "known vulnerabilities")}, ${plural(abandoned.length, "abandoned plugin")} and ${plural(changed.length, "changed install", "changed installs")} on ${plural(scanned.length, "site")}.`}{" "}
-              Vulnerabilities come from WPVulnerability, checked against the version each site runs. Sites are scanned once a day while Monks Central runs.
-            </p>
-          </div>
+          </section>
+          {notes.length > 0 && (
+            <section className="card" aria-label="Not checked">
+              <div className="card-head">
+                <h2>Not checked</h2>
+              </div>
+              <ul className="fixes">
+                {notes.map(([name, why], i) => {
+                  const s = named.find((s) => s.name === name)!;
+                  return (
+                    <li key={`${name}:${i}`} className="fix two">
+                      <SiteTile site={s} />
+                      <div>
+                        <b>{name}</b>
+                        <span>{why}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+          <p className="note" id="security-legend">
+            {scanned.length === 0
+              ? "Every site is scanned once a day while Monks Central runs."
+              : vulns.length + abandoned.length + changed.length === 0
+                ? `No known problems on ${plural(scanned.length, "site")}.`
+                : `${plural(vulns.length, "known vulnerability", "known vulnerabilities")}, ${plural(abandoned.length, "abandoned plugin")} and ${plural(changed.length, "changed install", "changed installs")} on ${plural(scanned.length, "site")}.`}{" "}
+            Vulnerabilities come from WPVulnerability, checked against the version each site runs. Sites are scanned once a day while Monks Central runs.
+          </p>
         </div>
       </div>
-    </div>
+    </Page>
   );
 }

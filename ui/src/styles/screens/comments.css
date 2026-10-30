@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Comments (board 09): the lists and a Site filter on the ground, then a card per comment, 1000px at most. */
-.comments > .stack { max-width: 1000px; }
+/* Comments (board 09): the lists and a Site filter on the ground, then a card per comment (a narrow Page). */
 .comments .inbox { list-style: none; margin: 0; padding: 0; }
 .comments .inbox > li { padding: 0; border: 1px solid var(--line); display: block; }
 .comments .cwho { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -18,7 +17,6 @@
 .comments .reply .field { margin: 0; }
 .comments .reply textarea { min-height: 84px; }
 .comments .reply .rowacts { justify-content: flex-end; }
-.comments .empty.card { max-width: none; }
 
 /* Sites the list can't fully show: a callout each, under the cards. */
 .pnotes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }

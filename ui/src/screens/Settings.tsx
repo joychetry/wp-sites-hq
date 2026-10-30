@@ -9,6 +9,7 @@ import { when } from "./Overview";
 import { Button, Glyph, type GlyphName } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { toast } from "../components/feedback";
+import { Page } from "../components/page";
 import { setTextSize, textSize, type Density, type ThemeChoice } from "../theme";
 
 /** What an import did, in a sentence or two. */
@@ -406,7 +407,7 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
   const [pct, setPct] = useState(textSize);
   const rs = useReportSettings();
   return (
-    <div className="scroll page setpage">
+    <Page className="setpage">
       <div className="g2">
         <div className="stack">
           <Card icon="sun" title="Look" id="set-look">
@@ -459,6 +460,6 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
         </div>
         {rs.s && <Reports {...rs} s={rs.s} />}
       </div>
-    </div>
+    </Page>
   );
 }

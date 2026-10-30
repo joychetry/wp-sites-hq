@@ -22,7 +22,6 @@
 .clients .card-head h2 .glyph { width: 16px; height: 16px; color: var(--text-2); }
 .clients .fix .tag { white-space: nowrap; }
 .clients .tile.sm .glyph { width: 14px; height: 14px; }
-.clients > .card.empty { max-width: 640px; }
 
 /* Client and cost sheets (board D06): notes 72px, amounts and currency in mono. */
 .input.notes-box { min-height: 72px; }
@@ -32,3 +31,6 @@
 .clients .stat-n .cut { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .clients .t th:first-child { width: 40%; }
 .clients .stat h2 { margin: 0; }
+/* The clients table, and what renews soon beside it */
+.cl-split { display: grid; grid-template-columns: minmax(0, 1fr) var(--inspector); gap: var(--page-gap); align-items: start; }
+@media (max-width: 1100px) { .cl-split { grid-template-columns: minmax(0, 1fr); } }

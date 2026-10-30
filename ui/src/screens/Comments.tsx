@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // One comment inbox for every site shown: approve, unapprove, spam, trash and reply (plan Phase 4).
 import "../styles/screens/comments.css";
-import { Skeleton, toast } from "../components/feedback";
+import { Empty, Skeleton, toast } from "../components/feedback";
+import { Page, Toolbar } from "../components/page";
 import { dayLabel, Menu } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Comment, type CommentState, type Moderation, type Site } from "../api";
@@ -85,10 +86,11 @@ export function Comments({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
-        <p>Add a site on Sites, then its comments show here.</p>
-      </div>
+      <Page narrow>
+        <Empty picture="sites" title="No sites yet.">
+          <p>Add a site on Sites, then its comments show here.</p>
+        </Empty>
+      </Page>
     );
   }
 
@@ -142,10 +144,11 @@ export function Comments({ sites }: { sites: Site[] }) {
     );
   } else if (rows.length === 0) {
     body = (
-      <div className="card empty">
-        <h2>{show === "pending" ? "No comments are waiting." : `No ${label} comments.`}</h2>
-        <p>{siteF != null ? "None on this site. Pick another site, or any site." : show === "pending" ? "New comments that need approval show here, from every site." : "Pick another list above."}</p>
-      </div>
+      <section className="card">
+        <Empty picture="inbox" title={show === "pending" ? "No comments are waiting." : `No ${label} comments.`}>
+          <p>{siteF != null ? "None on this site. Pick another site, or any site." : show === "pending" ? "New comments that need approval show here, from every site." : "Pick another list above."}</p>
+        </Empty>
+      </section>
     );
   } else {
     body = (
@@ -254,52 +257,50 @@ export function Comments({ sites }: { sites: Site[] }) {
   const siteName = usable.find((s) => s.id === siteF)?.name;
 
   return (
-    <div className="scroll page comments">
-      <div className="stack">
-        <div className="filters">
-          <div className="segmented inline" role="group" aria-label="Show">
-            {SHOW.map(([v, l]) => (
-              <button key={v} type="button" aria-pressed={v === show} onClick={() => setShow(v)}>
-                {l}
-                {v === show && loaded && loaded.total > 0 && <small>{loaded.total}</small>}
-              </button>
-            ))}
-          </div>
-          <span className="end" />
-          <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
-            Site: <b>{siteName ?? "Any"}</b>
-          </Menu>
+    <Page narrow className="comments">
+      <Toolbar>
+        <div className="segmented inline" role="group" aria-label="Show">
+          {SHOW.map(([v, l]) => (
+            <button key={v} type="button" aria-pressed={v === show} onClick={() => setShow(v)}>
+              {l}
+              {v === show && loaded && loaded.total > 0 && <small>{loaded.total}</small>}
+            </button>
+          ))}
         </div>
-        {body}
-        {loaded && (loaded.partial.length > 0 || loaded.failed.length > 0 || blocked.length > 0) && (
-          <ul className="pnotes" aria-label="Sites not fully shown">
-            {loaded.partial.map((p) => (
-              <li key={p.site.id} className="callout">
-                <Glyph name="info" />
-                <span>
-                  {p.site.name}: showing the newest {p.shown} of {p.total}. Deal with these to see the rest.
-                </span>
-              </li>
-            ))}
-            {loaded.failed.map((f) => (
-              <li key={f.site.id} className="callout warning">
-                <Glyph name="alert" />
-                <span>
-                  {f.site.name}: the comments didn't load. {f.error}
-                </span>
-              </li>
-            ))}
-            {blocked.map((s) => (
-              <li key={s.id} className="callout">
-                <Glyph name="info" />
-                <span>
-                  {s.name}: {peopleBlocked(s, "get-comments")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+        <span className="end" />
+        <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
+          Site: <b>{siteName ?? "Any"}</b>
+        </Menu>
+      </Toolbar>
+      {body}
+      {loaded && (loaded.partial.length > 0 || loaded.failed.length > 0 || blocked.length > 0) && (
+        <ul className="pnotes" aria-label="Sites not fully shown">
+          {loaded.partial.map((p) => (
+            <li key={p.site.id} className="callout">
+              <Glyph name="info" />
+              <span>
+                {p.site.name}: showing the newest {p.shown} of {p.total}. Deal with these to see the rest.
+              </span>
+            </li>
+          ))}
+          {loaded.failed.map((f) => (
+            <li key={f.site.id} className="callout warning">
+              <Glyph name="alert" />
+              <span>
+                {f.site.name}: the comments didn't load. {f.error}
+              </span>
+            </li>
+          ))}
+          {blocked.map((s) => (
+            <li key={s.id} className="callout">
+              <Glyph name="info" />
+              <span>
+                {s.name}: {peopleBlocked(s, "get-comments")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Page>
   );
 }
