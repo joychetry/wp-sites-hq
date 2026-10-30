@@ -103,7 +103,7 @@ test("the top bar says when sites were checked and how many need attention, as p
   expect(await screen.findByText("Checked 2 min ago")).toHaveAttribute("aria-hidden", "true");
   expect(screen.getByText(/^Last checked at /)).toHaveClass("sr-only");
   const go = screen.getByRole("button", { name: "1 site needs attention, open Sites" });
-  expect(go).toHaveTextContent("1 needs attention");
+  expect(go).toHaveTextContent(/^1 site needs attention/);
   fireEvent.click(go);
   expect(screen.getByRole("heading", { level: 1, name: /^Sites/ })).toBeInTheDocument();
 });

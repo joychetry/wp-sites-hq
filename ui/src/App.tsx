@@ -525,7 +525,7 @@ export default function App() {
                   Checking…
                 </span>
               ) : lastCheck ? (
-                <span className="pill" title={`Last checked at ${checkedAt(lastCheck)}`}>
+                <span className="pill" data-tip={`Last checked at ${checkedAt(lastCheck)}`}>
                   <span className="pulse" aria-hidden="true" />
                   <span aria-hidden="true">Checked {shortAgo(lastCheck)}</span>
                   <span className="sr-only">Last checked at {checkedAt(lastCheck)}</span>
@@ -537,8 +537,10 @@ export default function App() {
                 </span>
               )}
               {needs > 0 && (
-                <button type="button" className="pill warning" aria-label={`${needs === 1 ? "1 site needs" : `${needs} sites need`} attention, open Sites`} onClick={() => setSection("Sites")}>
-                  {needs === 1 ? "1 needs attention" : `${needs} need attention`}
+                <button type="button" className="pill warning" onClick={() => setSection("Sites")}>
+                  {/* The name keeps the visible words and adds "sites" and where it goes. */}
+                  {needs} {needs === 1 ? <><span className="sr-only">site</span> needs</> : <><span className="sr-only">sites</span> need</>} attention
+                  <span className="sr-only">, open Sites</span>
                   <Glyph name="alert" />
                 </button>
               )}
