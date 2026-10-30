@@ -493,9 +493,6 @@ export default function App() {
       <div className="main">
         <header className="top">
           <div className="scope-field">
-            <span className="label" aria-hidden="true">
-              Sites to show
-            </span>
             <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
               <option value="">All sites ({all.length})</option>
               {groups.map((g) => (
