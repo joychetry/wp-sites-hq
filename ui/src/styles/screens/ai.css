@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* AI (board 16, D08): tabs on the ground, plan cards beside the access and how-it-works cards */
-.scroll.page.ai { display: grid; gap: var(--sp-5); align-content: start; }
-.ai > .tabs { padding: 0; }
 .ai .tabs .cnt { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
 
 /* A plan: who asked in a well head, what changes per site, the decision in a well foot */
@@ -32,8 +30,6 @@
 .ai .card > .empty { padding: var(--sp-7) var(--sp-5); max-width: none; }
 .ai .empty h2 { font: 600 var(--fs-md)/1.4 var(--sans); }
 .ai .empty p { max-width: 46ch; }
-.empty-pic.ai-ok { display: grid; place-items: center; width: 52px; height: 52px; padding: 0; background: var(--tint); color: var(--brand-text); }
-.ai-ok .glyph { width: 22px; height: 22px; }
 
 /* Agent access: a site per row with its switch at the end */
 .access ul { list-style: none; margin: 0; padding: var(--sp-3) 20px; display: grid; gap: var(--sp-1); }

@@ -3,7 +3,8 @@
 // for you to confirm them; which sites agents may change; the activity log of
 // who did what; and how to connect an AI app with `monks mcp`.
 import "../styles/screens/ai.css";
-import { Skeleton, toast } from "../components/feedback";
+import { Empty, Skeleton, toast } from "../components/feedback";
+import { Page } from "../components/page";
 import { Tabs } from "../components/controls";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -58,7 +59,7 @@ export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
     { id: "activity", label: "Activity" },
   ];
   return (
-    <div className="scroll page ai">
+    <Page className="ai">
       <HeadActions>
         <Button onClick={() => setConnect(true)}>
           <Glyph name="link" />
@@ -80,7 +81,7 @@ export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
         </div>
       </div>
       {connect && <Connect onClose={() => setConnect(false)} />}
-    </div>
+    </Page>
   );
 }
 
@@ -93,13 +94,9 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
   if (plans.length === 0)
     return (
       <section className="card">
-        <div className="empty">
-          <span className="empty-pic ai-ok" aria-hidden="true">
-            <Glyph name="check" />
-          </span>
-          <h2>No plans waiting</h2>
+        <Empty picture="done" title="No plans waiting">
           <p>When an AI agent wants to change a site, its plan shows up here first. Nothing runs until you confirm it, and no AI app can confirm it for you.</p>
-        </div>
+        </Empty>
       </section>
     );
   const decide = async (plan: Job, confirm: boolean) => {
@@ -372,11 +369,9 @@ function Log() {
         <span className="dim">Everything done through Monks Central, newest first</span>
       </div>
       {error ? (
-        <div className="empty" role="alert">
-          <h2>The activity log didn't load.</h2>
+        <Empty alert title="The activity log didn't load." action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
-          <Button onClick={load}>Try again</Button>
-        </div>
+        </Empty>
       ) : !rows ? (
         <Skeleton label="Reading the activity log…" />
       ) : rows.length === 0 ? (

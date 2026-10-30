@@ -6,7 +6,8 @@ import { ago, api, blocked, siteStatus, type SecurityReport, type Site, type Sit
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
-import { toast } from "../components/feedback";
+import { Empty, toast } from "../components/feedback";
+import { Page, Toolbar } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
 import { planTitle, updatesOf, type Kind, type Row } from "../fleet";
 
@@ -170,8 +171,83 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
     );
   };
 
+  // The right column: what is waiting, security fixes first, and how to go back.
+  const side = (
+    <div className="stack updates-side">
+      <section className="stat" aria-label="What's waiting">
+        <div className="stat-top">
+          <h2 className="label">What's waiting</h2>
+        </div>
+        <p className="stat-n">
+          <strong>{rows.length}</strong> {rows.length ? `${rows.length === 1 ? "update" : "updates"} on ${plural(siteCount(rows), "site")}` : "nothing waiting"}
+        </p>
+        {rows.length > 0 && (
+          <>
+            <div
+              className="mix"
+              role="img"
+              aria-label={KINDS.slice(1)
+                .filter(([k]) => count(k as Kind) > 0)
+                .map(([k]) => `${count(k as Kind)} ${KEY_WORD[k as Kind][count(k as Kind) === 1 ? 0 : 1]}`)
+                .join(", ")}
+            >
+              {KINDS.slice(1).map(([k, , cls]) => count(k as Kind) > 0 && <i key={k} className={cls} style={{ flex: count(k as Kind) }} />)}
+            </div>
+            <ul className="mix-key">
+              {KINDS.slice(1).map(
+                ([k, , cls]) =>
+                  count(k as Kind) > 0 && (
+                    <li key={k} className={cls}>
+                      <i aria-hidden="true" />
+                      <b>{count(k as Kind)}</b> {KEY_WORD[k as Kind][count(k as Kind) === 1 ? 0 : 1]}
+                    </li>
+                  ),
+              )}
+            </ul>
+          </>
+        )}
+      </section>
+      {security.length > 0 && (
+        <section className="card upd-alert" aria-labelledby="upd-alert-t">
+          <div className="card-body">
+            <div className="row">
+              <span className="tile sm warning">
+                <Glyph name="alert" />
+              </span>
+              <b id="upd-alert-t">Action needed</b>
+              <span className="tag">{plural(security.length, "security fix", "security fixes")}</span>
+            </div>
+            <p className="dim">
+              {security.length === 1 ? "This update fixes a known vulnerability" : "These updates fix known vulnerabilities"}, from the last
+              security check. Run {security.length === 1 ? "it" : "them"} first.
+            </p>
+            <ul className="upd-fixes">
+              {security.map((r) => (
+                <li key={r.key}>
+                  <b>
+                    {r.name} {r.to}
+                  </b>{" "}
+                  on {r.site}
+                  <small>{r.vuln!.title}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+      <p className="callout">
+        <Glyph name="history" />
+        <span>
+          <b>A release misbehaves?</b> After each plugin update on a site with current Classic Monks, Monks Central checks that the
+          site still works and puts the old version back if it doesn't. To go back later, open the plugin in Plugins and choose an
+          older version.
+        </span>
+      </p>
+    </div>
+  );
+
   return (
-    <div className="scroll page updates">
+    <Page className="updates" side={side}>
       <HeadActions>
         <Button disabled={reading} onClick={readAgain}>
           <Glyph name="refresh" />
@@ -184,184 +260,108 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
           Update all {rows.length}
         </Button>
       </HeadActions>
-      <div className="split-r">
-        <div className="stack">
-          <div className="filters">
-            <div className="segmented inline" role="group" aria-label="Show">
-              {KINDS.filter(([k]) => k !== "Translations" || count("Translations") > 0).map(([k, label]) => (
-                <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>
-                  {label} <small>{k === "all" ? rows.length : count(k)}</small>
-                </button>
-              ))}
-            </div>
-            <label className="row check end">
-              <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} />
-              <span>Group by site</span>
-            </label>
-          </div>
-          <section className="card" aria-label="Pending updates">
-            {rows.length === 0 ? (
-              <div className="empty">
-                <h2>No updates waiting.</h2>
-                <p>
-                  {sites.length === 0
-                    ? "Add a site to see its updates here."
-                    : "Every site that Monks Central can read is up to date. Sites read their updates from WordPress.org about twice a day."}
-                </p>
-              </div>
-            ) : shown.length === 0 ? (
-              <p className="quiet">Nothing of this kind is waiting.</p>
-            ) : (
-              <table className="t" aria-label="Updates waiting">
-                <thead>
-                  <tr>
-                    <th className="tick">{box(shown.map((r) => r.key), "Select every update")}</th>
-                    <th>Update</th>
-                    <th>From → to</th>
-                    <th>Good to know</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {grouped
-                    ? groups.map(({ site, list }) => {
-                        const st = siteStatus(site);
-                        return (
-                          <Fragment key={site.id}>
-                            <tr className="grp">
-                              <td>{box(list.map((r) => r.key), `Select every update on ${site.name}`)}</td>
-                              <td colSpan={3}>
-                                <div className="item">
-                                  <SiteTile site={site} size="sm" />
-                                  <b>{site.name}</b>
-                                  <span className="dim">{plural(list.length, "update")}</span>
-                                  {st.tone !== "ok" && (
-                                    <>
-                                      <span className={`st pill ${st.tone}`}>
-                                        <Icon tone={st.tone} />
-                                        {st.label}
-                                      </span>
-                                      <span className="dim">From the last read, {ago(inventory.get(site.id)?.fetched_at ?? null)}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                            {list.map(row)}
-                          </Fragment>
-                        );
-                      })
-                    : shown.map(row)}
-                </tbody>
-              </table>
-            )}
-            {rows.length > 0 && (
-              // Always there, so ticking a row doesn't move anything.
-              <div className="card-foot">
-                <span className="dim grow" role="status">
-                  {reading
-                    ? "Reading every site…"
-                    : chosen.length
-                      ? `${plural(chosen.length, "update")} selected`
-                      : Number.isFinite(oldest)
-                        ? `Read ${ago(oldest)}`
-                        : ""}
-                </span>
-                <Button small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
-                  {chosen.length ? `Update ${chosen.length} selected` : "Update selected"}
-                </Button>
-              </div>
-            )}
-          </section>
-          {notes.length > 0 && (
-            <section className="card" aria-label="Sites not in this list">
-              <div className="card-head">
-                <h2>Not in this list</h2>
-                <span className="dim">{plural(notes.length, "site")}</span>
-              </div>
-              <ul className="unseen-list">
-                {notes.map(([s, why]) => (
-                  <li key={s.id}>
-                    <SiteTile site={s} size="sm" />
-                    <b>{s.name}</b>
-                    <span className="dim">{why}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+      <Toolbar>
+        <div className="segmented inline" role="group" aria-label="Show">
+          {KINDS.filter(([k]) => k !== "Translations" || count("Translations") > 0).map(([k, label]) => (
+            <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>
+              {label} <small>{k === "all" ? rows.length : count(k)}</small>
+            </button>
+          ))}
         </div>
-        <div className="stack">
-          <section className="stat" aria-label="What's waiting">
-            <div className="stat-top">
-              <h2 className="label">What's waiting</h2>
-            </div>
-            <p className="stat-n">
-              <strong>{rows.length}</strong> {rows.length ? `${rows.length === 1 ? "update" : "updates"} on ${plural(siteCount(rows), "site")}` : "nothing waiting"}
+        <label className="row check end">
+          <input type="checkbox" checked={grouped} onChange={(e) => setGrouped(e.target.checked)} />
+          <span>Group by site</span>
+        </label>
+      </Toolbar>
+      <section className="card" aria-label="Pending updates">
+        {rows.length === 0 ? (
+          <Empty picture="done" title="No updates waiting.">
+            <p>
+              {sites.length === 0
+                ? "Add a site to see its updates here."
+                : "Every site that Monks Central can read is up to date. Sites read their updates from WordPress.org about twice a day."}
             </p>
-            {rows.length > 0 && (
-              <>
-                <div
-                  className="mix"
-                  role="img"
-                  aria-label={KINDS.slice(1)
-                    .filter(([k]) => count(k as Kind) > 0)
-                    .map(([k]) => `${count(k as Kind)} ${KEY_WORD[k as Kind][count(k as Kind) === 1 ? 0 : 1]}`)
-                    .join(", ")}
-                >
-                  {KINDS.slice(1).map(([k, , cls]) => count(k as Kind) > 0 && <i key={k} className={cls} style={{ flex: count(k as Kind) }} />)}
-                </div>
-                <ul className="mix-key">
-                  {KINDS.slice(1).map(
-                    ([k, , cls]) =>
-                      count(k as Kind) > 0 && (
-                        <li key={k} className={cls}>
-                          <i aria-hidden="true" />
-                          <b>{count(k as Kind)}</b> {KEY_WORD[k as Kind][count(k as Kind) === 1 ? 0 : 1]}
-                        </li>
-                      ),
-                  )}
-                </ul>
-              </>
-            )}
-          </section>
-          {security.length > 0 && (
-            <section className="card upd-alert" aria-labelledby="upd-alert-t">
-              <div className="card-body">
-                <div className="row">
-                  <span className="tile sm warning">
-                    <Glyph name="alert" />
-                  </span>
-                  <b id="upd-alert-t">Action needed</b>
-                  <span className="tag">{plural(security.length, "security fix", "security fixes")}</span>
-                </div>
-                <p className="dim">
-                  {security.length === 1 ? "This update fixes a known vulnerability" : "These updates fix known vulnerabilities"}, from the last
-                  security check. Run {security.length === 1 ? "it" : "them"} first.
-                </p>
-                <ul className="upd-fixes">
-                  {security.map((r) => (
-                    <li key={r.key}>
-                      <b>
-                        {r.name} {r.to}
-                      </b>{" "}
-                      on {r.site}
-                      <small>{r.vuln!.title}</small>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </section>
-          )}
-          <p className="callout">
-            <Glyph name="history" />
-            <span>
-              <b>A release misbehaves?</b> After each plugin update on a site with current Classic Monks, Monks Central checks that the
-              site still works and puts the old version back if it doesn't. To go back later, open the plugin in Plugins and choose an
-              older version.
+          </Empty>
+        ) : shown.length === 0 ? (
+          <Empty small title="Nothing of this kind is waiting." />
+        ) : (
+          <table className="t" aria-label="Updates waiting">
+            <thead>
+              <tr>
+                <th className="tick">{box(shown.map((r) => r.key), "Select every update")}</th>
+                <th>Update</th>
+                <th>From → to</th>
+                <th>Good to know</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grouped
+                ? groups.map(({ site, list }) => {
+                    const st = siteStatus(site);
+                    return (
+                      <Fragment key={site.id}>
+                        <tr className="grp">
+                          <td>{box(list.map((r) => r.key), `Select every update on ${site.name}`)}</td>
+                          <td colSpan={3}>
+                            <div className="item">
+                              <SiteTile site={site} size="sm" />
+                              <b>{site.name}</b>
+                              <span className="dim">{plural(list.length, "update")}</span>
+                              {st.tone !== "ok" && (
+                                <>
+                                  <span className={`st pill ${st.tone}`}>
+                                    <Icon tone={st.tone} />
+                                    {st.label}
+                                  </span>
+                                  <span className="dim">From the last read, {ago(inventory.get(site.id)?.fetched_at ?? null)}</span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {list.map(row)}
+                      </Fragment>
+                    );
+                  })
+                : shown.map(row)}
+            </tbody>
+          </table>
+        )}
+        {rows.length > 0 && (
+          // Always there, so ticking a row doesn't move anything.
+          <div className="card-foot">
+            <span className="dim grow" role="status">
+              {reading
+                ? "Reading every site…"
+                : chosen.length
+                  ? `${plural(chosen.length, "update")} selected`
+                  : Number.isFinite(oldest)
+                    ? `Read ${ago(oldest)}`
+                    : ""}
             </span>
-          </p>
-        </div>
-      </div>
-    </div>
+            <Button small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
+              {chosen.length ? `Update ${chosen.length} selected` : "Update selected"}
+            </Button>
+          </div>
+        )}
+      </section>
+      {notes.length > 0 && (
+        <section className="card" aria-label="Sites not in this list">
+          <div className="card-head">
+            <h2>Not in this list</h2>
+            <span className="dim">{plural(notes.length, "site")}</span>
+          </div>
+          <ul className="unseen-list">
+            {notes.map(([s, why]) => (
+              <li key={s.id}>
+                <SiteTile site={s} size="sm" />
+                <b>{s.name}</b>
+                <span className="dim">{why}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </Page>
   );
 }

@@ -1,19 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Classic Monks (board 10, D07): the mark in the page head, the site picker, tabs, then the tab's cards beside the site's cards. */
+/* Classic Monks (board 10, D07): the mark in the page head, the site picker and tabs, the tab's cards beside the site's cards. */
 .phead > div.marked { grid-template-columns: 48px minmax(0, 1fr); column-gap: 14px; align-items: center; }
 .phead > div.marked > .mark { grid-row: span 2; width: 48px; height: 48px; }
 
-/* Site and Section pickers: a mono label beside the box; a site shows its tile. */
-.cm-pick { gap: var(--sp-2); }
-.cm-pick > span { font: 500 var(--fs-xs)/var(--lh-tight) var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
-.phead-acts .cm-pick .input { width: 180px; min-width: 0; }
-.cm .filters .cm-pick .input { width: 170px; min-width: 0; }
-.cm .filters .srch { flex: 1 1 220px; max-width: 320px; }
-.cm .filters .end { font-size: var(--fs-sm); color: var(--text-3); }
-.cm .filters .end b { color: var(--text); font-weight: 600; }
+/* Section count at the end of the Features toolbar */
+.cm .toolbar > .end { font-size: var(--fs-sm); color: var(--text-3); }
+.cm .toolbar > .end b { color: var(--text); font-weight: 600; }
+/* The side cards scroll on their own, like the tab beside them. */
+.cm-side { max-height: 100%; overflow: auto; }
 
-/* Tabs on the ground, the waiting count as a small pill */
-.cm > .stack > .tabs { padding: 0; }
+/* The waiting count on its tab: a small pill */
 .cm-n { display: inline-grid; place-items: center; min-width: 22px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
 
 /* Features: a mono label per section, then rows of a switch, the name and what it does */

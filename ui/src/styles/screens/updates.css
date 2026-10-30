@@ -15,8 +15,10 @@
 .updates .item small { display: block; font-size: var(--fs-xs); color: var(--text-3); }
 .updates .grp .item b { display: inline; }
 .updates .grp .dim { font-size: var(--fs-sm); }
-.updates .filters .check { padding: 0; flex-wrap: nowrap; }
-.updates .filters .check > span { flex: none; }
+.updates .toolbar .check { padding: 0; flex-wrap: nowrap; }
+.updates .toolbar .check > span { flex: none; }
+/* The side column scrolls on its own, like the main one. */
+.updates-side { max-height: 100%; overflow: auto; }
 .updates .card-foot .grow { flex: 1; font-size: var(--fs-sm); }
 .k-tr { --k: var(--text-3); }
 /* Action needed: the updates that fix a known vulnerability */

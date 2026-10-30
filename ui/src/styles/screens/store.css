@@ -1,10 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Store (board 14, D09): the site and period in the page head, a sales card, then the products card. */
+/* Store (board 14, D09): the site and period in the toolbar, a sales card, then the products card. */
 
-/* Site picker in the head: a mono label beside the box; the site shows its tile. */
-.phead-acts .store-pick { gap: var(--sp-2); }
-.phead-acts .store-pick > span { font: 500 var(--fs-xs)/var(--lh-tight) var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
-.phead-acts .store-pick .input { width: 160px; min-width: 0; }
 .store .card-head .pick > span { font: 500 var(--fs-xs)/var(--lh-tight) var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 .store .card-head .pick .input { width: 140px; min-width: 0; }
 .store .card-head .srch { flex: 0 1 240px; }

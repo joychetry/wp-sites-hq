@@ -10,6 +10,7 @@ import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
 import { attention } from "../fleet";
+import { Page } from "../components/page";
 
 export { attention, summary } from "../fleet";
 
@@ -339,226 +340,224 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
   const fixes = needs.length + (vulns.length ? 1 : 0) + (live.length ? 1 : 0) + (waiting.length ? 1 : 0);
   if (sites.length === 0)
     return (
-      <div className="scroll page">
+      <Page>
         <Welcome onAdd={onAdd} onGo={onGo} />
-      </div>
+      </Page>
     );
   return (
-    <div className="scroll page">
-      <div className="ov">
-        {onGo && <NextSteps sites={sites} onGo={onGo} onAdd={onAdd} />}
-        <div className="stats">
-          <Stat label="Sites" icon="globe" n={sites.length} unit={sites.length === 1 ? "site connected" : "sites connected"}>
-            <Mix
-              label="Sites"
-              parts={[
-                ["up", tone("ok"), "k-up"],
-                ["down", tone("danger"), "k-down"],
-                ["need a look", tone("warning"), "k-sign"],
-                ["not checked", tone("unknown"), "k-off"],
-              ]}
-            />
-            <p className="stat-note">{plural(cm, "site")} through a plugin</p>
-          </Stat>
-          <Stat label="Updates waiting" icon="download" n={waiting.length} unit={waiting.length ? `on ${plural(updateSites, "site")}` : "nothing waiting"}>
-            <Mix
-              label="Updates waiting"
-              parts={[
-                ["core", kinds("WordPress"), "k-core"],
-                [kinds("Plugin") === 1 ? "plugin" : "plugins", kinds("Plugin"), "k-plugin"],
-                [kinds("Theme") === 1 ? "theme" : "themes", kinds("Theme"), "k-theme"],
-                ["translations", kinds("Translations"), "k-off"],
-              ]}
-            />
-          </Stat>
-          <Stat label="Vulnerable plugins" icon="shield" tone="danger" n={vulns.length} unit={vulns.length ? (vulns.length === 1 ? "needs a fix" : "need a fix") : "none known"}>
-            <p className="stat-note">
-              {vulns.length === 0
-                ? "The last scan found none."
-                : `${vulns[0].name} on ${vulns[0].site}.${vulns[0].fixed_in ? ` Fixed in ${vulns[0].fixed_in}.` : ""}`}
-            </p>
-          </Stat>
-          <Stat label="Waiting on you" icon="message" tone="neutral" n={approvals + live.length} unit={approvals + live.length === 1 ? "decision" : "decisions"}>
-            <ul className="mix-key lines">
-              <li>
-                <b>{approvals}</b> {approvals === 1 ? "change" : "changes"} waiting for approval on sites
-              </li>
-              <li>
-                <b>{live.length}</b> AI {live.length === 1 ? "plan" : "plans"} to confirm
-              </li>
+    <Page className="ov">
+      {onGo && <NextSteps sites={sites} onGo={onGo} onAdd={onAdd} />}
+      <div className="stats">
+        <Stat label="Sites" icon="globe" n={sites.length} unit={sites.length === 1 ? "site connected" : "sites connected"}>
+          <Mix
+            label="Sites"
+            parts={[
+              ["up", tone("ok"), "k-up"],
+              ["down", tone("danger"), "k-down"],
+              ["need a look", tone("warning"), "k-sign"],
+              ["not checked", tone("unknown"), "k-off"],
+            ]}
+          />
+          <p className="stat-note">{plural(cm, "site")} through a plugin</p>
+        </Stat>
+        <Stat label="Updates waiting" icon="download" n={waiting.length} unit={waiting.length ? `on ${plural(updateSites, "site")}` : "nothing waiting"}>
+          <Mix
+            label="Updates waiting"
+            parts={[
+              ["core", kinds("WordPress"), "k-core"],
+              [kinds("Plugin") === 1 ? "plugin" : "plugins", kinds("Plugin"), "k-plugin"],
+              [kinds("Theme") === 1 ? "theme" : "themes", kinds("Theme"), "k-theme"],
+              ["translations", kinds("Translations"), "k-off"],
+            ]}
+          />
+        </Stat>
+        <Stat label="Vulnerable plugins" icon="shield" tone="danger" n={vulns.length} unit={vulns.length ? (vulns.length === 1 ? "needs a fix" : "need a fix") : "none known"}>
+          <p className="stat-note">
+            {vulns.length === 0
+              ? "The last scan found none."
+              : `${vulns[0].name} on ${vulns[0].site}.${vulns[0].fixed_in ? ` Fixed in ${vulns[0].fixed_in}.` : ""}`}
+          </p>
+        </Stat>
+        <Stat label="Waiting on you" icon="message" tone="neutral" n={approvals + live.length} unit={approvals + live.length === 1 ? "decision" : "decisions"}>
+          <ul className="mix-key lines">
+            <li>
+              <b>{approvals}</b> {approvals === 1 ? "change" : "changes"} waiting for approval on sites
+            </li>
+            <li>
+              <b>{live.length}</b> AI {live.length === 1 ? "plan" : "plans"} to confirm
+            </li>
+          </ul>
+        </Stat>
+      </div>
+      <div className="ov-split">
+        <div className="ov-col">
+          <section className="card" aria-label="Needs attention">
+            <div className="card-head">
+              <h2>
+                Needs attention {fixes > 0 && <span className="tag warning">{fixes}</span>}
+              </h2>
+              <span className="dim">Fix each one from here</span>
+            </div>
+            {fixes === 0 && <p className="quiet">Nothing needs you right now.</p>}
+            <ul className="fixes">
+              {needs.map((s) => {
+                const st = siteStatus(s);
+                const again = s.sign_in_again || noTools(s);
+                return (
+                  <Fix
+                    key={s.id}
+                    icon={s.health === "down" ? "unplug" : again ? "login" : "alert"}
+                    tone={st.tone === "danger" ? "danger" : "warning"}
+                    title={`${s.name}: ${st.tone === "ok" ? "Classic Monks is older" : st.label}`}
+                    action={
+                      again ? (
+                        <Button small onClick={() => onSignInAgain(s.id)}>
+                          Sign in again
+                        </Button>
+                      ) : s.health === "down" ? (
+                        <Button small onClick={() => onCheck(s.id)}>
+                          <Glyph name="refresh" />
+                          Check again
+                        </Button>
+                      ) : (
+                        <Button small onClick={() => onOpen(s.id)}>
+                          Open in Sites
+                        </Button>
+                      )
+                    }
+                  >
+                    {attention(s)}
+                  </Fix>
+                );
+              })}
+              {vulns.length > 0 && onGo && (
+                <Fix
+                  icon="shield"
+                  tone="danger"
+                  title={vulns.length === 1 ? `${vulns[0].name} ${vulns[0].installed} has a known vulnerability` : `${vulns.length} known vulnerabilities`}
+                  action={
+                    <Button small onClick={() => onGo("Security")}>
+                      Open Security
+                    </Button>
+                  }
+                >
+                  {vulns.length === 1
+                    ? `On ${vulns[0].site}.${vulns[0].fixed_in ? ` Fixed in ${vulns[0].fixed_in}.` : " No fix yet."}`
+                    : `On ${plural(new Set(vulns.map((v) => v.site)).size, "site")}. Security shows each one and its fix.`}
+                </Fix>
+              )}
+              {live.length > 0 && onGo && (
+                <Fix
+                  icon="sparkle"
+                  tone="ink"
+                  title={live.length === 1 ? `An AI agent wants to: ${live[0].title}` : `${live.length} AI agent plans are waiting`}
+                  action={
+                    <Button small onClick={() => onGo("AI")}>
+                      Review the plan{live.length === 1 ? "" : "s"}
+                    </Button>
+                  }
+                >
+                  {live.length === 1 ? `Asked ${ago(live[0].created_at)}. ` : ""}Nothing runs until you confirm.
+                </Fix>
+              )}
+              {waiting.length > 0 && onGo && (
+                <Fix
+                  icon="download"
+                  tone=""
+                  title={`${plural(waiting.length, "update is", "updates are")} waiting on ${plural(updateSites, "site")}`}
+                  action={
+                    <Button small kind="soft" onClick={() => onGo("Updates")}>
+                      Review updates
+                    </Button>
+                  }
+                >
+                  You review each change before it runs.
+                </Fix>
+              )}
             </ul>
-          </Stat>
-        </div>
-        <div className="ov-split">
-          <div className="ov-col">
-            <section className="card" aria-label="Needs attention">
-              <div className="card-head">
-                <h2>
-                  Needs attention {fixes > 0 && <span className="tag warning">{fixes}</span>}
-                </h2>
-                <span className="dim">Fix each one from here</span>
-              </div>
-              {fixes === 0 && <p className="quiet">Nothing needs you right now.</p>}
-              <ul className="fixes">
-                {needs.map((s) => {
+            {slows.map((s) => (
+              <p key={s.id} className="quiet">
+                <Status tone="info">Note</Status> {s.name}. {s.health_detail} It still works.
+              </p>
+            ))}
+          </section>
+          <section className="card" aria-labelledby="yours-t">
+            <div className="card-head">
+              <h2 id="yours-t">Your sites</h2>
+              {onGo && (
+                <button type="button" className="link" onClick={() => onGo("Sites")}>
+                  Open Sites
+                  <Glyph name="arrow" />
+                </button>
+              )}
+            </div>
+            <table className="t">
+              <caption className="sr-only">
+                {sites.length > SHOW_SITES ? `${SHOW_SITES} of your ${sites.length} sites, the ones that need you first` : "Your sites"}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Site</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">WordPress</th>
+                  <th scope="col" className="r">
+                    Uptime, 30 days
+                  </th>
+                  <th scope="col" className="r">
+                    Response
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {listed.map((s) => {
                   const st = siteStatus(s);
-                  const again = s.sign_in_again || noTools(s);
+                  const m = mon.get(s.id);
                   return (
-                    <Fix
-                      key={s.id}
-                      icon={s.health === "down" ? "unplug" : again ? "login" : "alert"}
-                      tone={st.tone === "danger" ? "danger" : "warning"}
-                      title={`${s.name}: ${st.tone === "ok" ? "Classic Monks is older" : st.label}`}
-                      action={
-                        again ? (
-                          <Button small onClick={() => onSignInAgain(s.id)}>
-                            Sign in again
-                          </Button>
-                        ) : s.health === "down" ? (
-                          <Button small onClick={() => onCheck(s.id)}>
-                            <Glyph name="refresh" />
-                            Check again
-                          </Button>
-                        ) : (
-                          <Button small onClick={() => onOpen(s.id)}>
-                            Open in Sites
-                          </Button>
-                        )
-                      }
-                    >
-                      {attention(s)}
-                    </Fix>
+                    <tr key={s.id} className={st.tone === "danger" || st.tone === "warning" ? "warn" : ""}>
+                      <td>
+                        <span className="site">
+                          <SiteTile site={s} />
+                          <span>
+                            <b>{s.name}</b>
+                            <small>{s.url.replace(/^https?:\/\//, "")}</small>
+                          </span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`st pill ${st.tone}`}>
+                          <Icon tone={st.tone} />
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className="m">{s.wp_version ?? <span className="dim">not known</span>}</td>
+                      <td className="m r">{pct(m?.uptime_month)}</td>
+                      <td className="m r">{m?.up ? `${m.ms} ms` : <span className="dim">none</span>}</td>
+                    </tr>
                   );
                 })}
-                {vulns.length > 0 && onGo && (
-                  <Fix
-                    icon="shield"
-                    tone="danger"
-                    title={vulns.length === 1 ? `${vulns[0].name} ${vulns[0].installed} has a known vulnerability` : `${vulns.length} known vulnerabilities`}
-                    action={
-                      <Button small onClick={() => onGo("Security")}>
-                        Open Security
-                      </Button>
-                    }
-                  >
-                    {vulns.length === 1
-                      ? `On ${vulns[0].site}.${vulns[0].fixed_in ? ` Fixed in ${vulns[0].fixed_in}.` : " No fix yet."}`
-                      : `On ${plural(new Set(vulns.map((v) => v.site)).size, "site")}. Security shows each one and its fix.`}
-                  </Fix>
-                )}
-                {live.length > 0 && onGo && (
-                  <Fix
-                    icon="sparkle"
-                    tone="ink"
-                    title={live.length === 1 ? `An AI agent wants to: ${live[0].title}` : `${live.length} AI agent plans are waiting`}
-                    action={
-                      <Button small onClick={() => onGo("AI")}>
-                        Review the plan{live.length === 1 ? "" : "s"}
-                      </Button>
-                    }
-                  >
-                    {live.length === 1 ? `Asked ${ago(live[0].created_at)}. ` : ""}Nothing runs until you confirm.
-                  </Fix>
-                )}
-                {waiting.length > 0 && onGo && (
-                  <Fix
-                    icon="download"
-                    tone=""
-                    title={`${plural(waiting.length, "update is", "updates are")} waiting on ${plural(updateSites, "site")}`}
-                    action={
-                      <Button small kind="soft" onClick={() => onGo("Updates")}>
-                        Review updates
-                      </Button>
-                    }
-                  >
-                    You review each change before it runs.
-                  </Fix>
-                )}
-              </ul>
-              {slows.map((s) => (
-                <p key={s.id} className="quiet">
-                  <Status tone="info">Note</Status> {s.name}. {s.health_detail} It still works.
-                </p>
-              ))}
-            </section>
-            <section className="card" aria-labelledby="yours-t">
-              <div className="card-head">
-                <h2 id="yours-t">Your sites</h2>
-                {onGo && (
-                  <button type="button" className="link" onClick={() => onGo("Sites")}>
-                    Open Sites
-                    <Glyph name="arrow" />
-                  </button>
-                )}
-              </div>
-              <table className="t">
-                <caption className="sr-only">
-                  {sites.length > SHOW_SITES ? `${SHOW_SITES} of your ${sites.length} sites, the ones that need you first` : "Your sites"}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Site</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">WordPress</th>
-                    <th scope="col" className="r">
-                      Uptime, 30 days
-                    </th>
-                    <th scope="col" className="r">
-                      Response
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {listed.map((s) => {
-                    const st = siteStatus(s);
-                    const m = mon.get(s.id);
-                    return (
-                      <tr key={s.id} className={st.tone === "danger" || st.tone === "warning" ? "warn" : ""}>
-                        <td>
-                          <span className="site">
-                            <SiteTile site={s} />
-                            <span>
-                              <b>{s.name}</b>
-                              <small>{s.url.replace(/^https?:\/\//, "")}</small>
-                            </span>
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`st pill ${st.tone}`}>
-                            <Icon tone={st.tone} />
-                            {st.label}
-                          </span>
-                        </td>
-                        <td className="m">{s.wp_version ?? <span className="dim">not known</span>}</td>
-                        <td className="m r">{pct(m?.uptime_month)}</td>
-                        <td className="m r">{m?.up ? `${m.ms} ms` : <span className="dim">none</span>}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </section>
-          </div>
-          <div className="ov-col">
-            <Feed onGo={onGo} />
-            <section className="card" aria-labelledby="versions-t">
-              <div className="card-head">
-                <h2 id="versions-t">Versions</h2>
-                <span className="dim">How many of your sites run each version</span>
-              </div>
-              <div className="dist">
-                <Dist label="WordPress" versions values={sites.map((s) => s.wp_version ?? UNKNOWN)} />
-                <Dist label="PHP" versions values={sites.map((s) => s.php_version?.split(".").slice(0, 2).join(".") ?? UNKNOWN)} />
-                <Dist
-                  label="Connection"
-                  values={sites.map((s) => (s.mode === "basic" ? "Basic mode" : noTools(s) ? `${pluginName(s)}, no tools` : s.capabilities.degraded ? `${pluginName(s)}, older` : pluginName(s)))}
-                />
-              </div>
-            </section>
-          </div>
+              </tbody>
+            </table>
+          </section>
         </div>
-        <p className="note">Monks Central checks your sites while it is open. Sites cannot send alerts to it on their own.</p>
+        <div className="ov-col">
+          <Feed onGo={onGo} />
+          <section className="card" aria-labelledby="versions-t">
+            <div className="card-head">
+              <h2 id="versions-t">Versions</h2>
+              <span className="dim">How many of your sites run each version</span>
+            </div>
+            <div className="dist">
+              <Dist label="WordPress" versions values={sites.map((s) => s.wp_version ?? UNKNOWN)} />
+              <Dist label="PHP" versions values={sites.map((s) => s.php_version?.split(".").slice(0, 2).join(".") ?? UNKNOWN)} />
+              <Dist
+                label="Connection"
+                values={sites.map((s) => (s.mode === "basic" ? "Basic mode" : noTools(s) ? `${pluginName(s)}, no tools` : s.capabilities.degraded ? `${pluginName(s)}, older` : pluginName(s)))}
+              />
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
+      <p className="note">Monks Central checks your sites while it is open. Sites cannot send alerts to it on their own.</p>
+    </Page>
   );
 }
