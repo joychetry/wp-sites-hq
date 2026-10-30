@@ -76,8 +76,8 @@ function ToastItem({ t }: { t: Toast }) {
             t.action!.run();
           }}
         >
-          {t.action.icon && <Glyph name={t.action.icon} />}
           {t.action.label}
+          {t.action.icon && <Glyph name={t.action.icon} />}
         </button>
       )}
       <button type="button" className="icon-btn" aria-label="Close the message" onClick={() => close(t.id)}>

@@ -70,10 +70,10 @@ function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
           <h2>Every WordPress site you look after, in one place</h2>
           <p>Monks Central checks your sites, keeps them updated and tells you what needs you. Add your first site to start.</p>
           <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
+            Add a site
             <span className="btn-disc">
               <Glyph name="plus" />
             </span>
-            Add a site
           </Button>
           <p className="dim or">
             or press <Kbd>A</Kbd>
@@ -416,8 +416,8 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                         </Button>
                       ) : s.health === "down" ? (
                         <Button small onClick={() => onCheck(s.id)}>
-                          <Glyph name="refresh" />
                           Check again
+                          <Glyph name="refresh" />
                         </Button>
                       ) : (
                         <Button small onClick={() => onOpen(s.id)}>

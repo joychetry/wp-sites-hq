@@ -157,10 +157,10 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
     <>
       <HeadActions>
         <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
+          Add a site
           <span className="btn-disc">
             <Glyph name="plus" />
           </span>
-          Add a site
         </Button>
       </HeadActions>
       <Page className="sites" side={side}>
@@ -193,7 +193,6 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             onClick={() => setMode(modes[(modeAt + 1) % modes.length][0])}
             aria-label={`${mode === "any" ? "Connection and group" : `Connection ${modes[modeAt][1]}`}, change`}
           >
-            <Glyph name="sliders" />
             {mode === "any" ? (
               "Connection and group"
             ) : (
@@ -201,6 +200,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 Connection <b>{modes[modeAt][1]}</b>
               </>
             )}
+            <Glyph name="sliders" />
           </button>
         </Toolbar>
         <section className="card" aria-label="All sites">
@@ -421,8 +421,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 />
               </label>
               <Button small className="ghost" keys="R" onClick={() => check(picked.map((s) => s.id))}>
-                <Glyph name="refresh" />
                 Check them now
+                <Glyph name="refresh" />
               </Button>
               <span className="grow" />
               <Button small className="ghost" onClick={() => setSelected(new Set())} keys="Esc">
@@ -510,18 +510,18 @@ function GetPlugin({ site: s }: { site: Site }) {
       <div className="btn-grid one">
         {saved ? (
           <Button small onClick={() => api.openLink(upload, s.id).catch(fail)}>
-            <Glyph name="external" />
             Open the upload page
+            <Glyph name="external" />
           </Button>
         ) : (
           <Button small disabled={busy !== null} onClick={download}>
-            <Glyph name="download" />
             {busy === "download" ? "Getting Monks Central…" : "Install Monks Central for me"}
+            <Glyph name="download" />
           </Button>
         )}
         <Button small kind={saved ? "primary" : undefined} disabled={busy !== null} onClick={connect}>
-          <Glyph name="login" />
           Connect through the plugin
+          <Glyph name="login" />
         </Button>
       </div>
     </>
@@ -579,29 +579,29 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
       <section>
         {again ? (
           <Button kind="primary" className="disc block" onClick={onSignInAgain}>
+            Sign in again
             <span className="btn-disc">
               <Glyph name="login" />
             </span>
-            Sign in again
           </Button>
         ) : (
           canLogin && (
             <Button kind="primary" className="disc block" onClick={() => run(() => api.login(s.id))}>
+              Log in to the dashboard
               <span className="btn-disc">
                 <Glyph name="arrow" />
               </span>
-              Log in to the dashboard
             </Button>
           )
         )}
         <div className="btn-grid">
           <Button small onClick={() => api.open(s.id).catch((e) => setError(String(e)))}>
-            <Glyph name="external" />
             Open the site
+            <Glyph name="external" />
           </Button>
           <Button small onClick={onCheck} keys="R">
-            <Glyph name="refresh" />
             Check now
+            <Glyph name="refresh" />
           </Button>
         </div>
         <dl className="dl">
@@ -791,8 +791,8 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         />
         <div>
           <Button small disabled={!note.trim()} onClick={() => run(() => api.addNote(s.id, note).then(() => setNote("")))}>
-            <Glyph name="plus" />
             Add the note
+            <Glyph name="plus" />
           </Button>
         </div>
       </section>
@@ -829,8 +829,8 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           </div>
         ) : (
           <Button small className="ghost danger-text" onClick={() => setConfirm(true)}>
-            <Glyph name="trash" />
             Remove from Monks Central
+            <Glyph name="trash" />
           </Button>
         )}
       </section>

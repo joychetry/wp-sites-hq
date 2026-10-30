@@ -161,8 +161,8 @@ export function Users({ sites }: { sites: Site[] }) {
                       </Button>
                       {l.users!.can_reset && (
                         <Button small className="ghost" aria-label={`Send password reset to ${who} on ${l.site.name}`} onClick={() => reset(l.site, u)}>
-                          <Glyph name="mail" />
                           Send password reset
+                          <Glyph name="mail" />
                         </Button>
                       )}
                       <button type="button" className="icon-btn" aria-label={`Delete ${who} from ${l.site.name}`} data-tip="Delete" onClick={() => setAction({ kind: "delete", site: l.site, user: u, roles })}>
@@ -192,10 +192,10 @@ export function Users({ sites }: { sites: Site[] }) {
     <Page className="users">
       <HeadActions>
         <Button kind="primary" className="disc" disabled={usable.length === 0} onClick={() => setAction({ kind: "add" })}>
+          Add a user
           <span className="btn-disc">
             <Glyph name="plus" />
           </span>
-          Add a user
         </Button>
       </HeadActions>
       <form
@@ -306,10 +306,10 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
             Cancel
           </Button>
           <Button kind="primary" className="disc" disabled={busy || !username.trim() || !email.trim() || !info} onClick={save}>
+            {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
             <span className="btn-disc">
               <Glyph name="plus" />
             </span>
-            {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
           </Button>
         </>
       }
@@ -391,10 +391,10 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
             Cancel
           </Button>
           <Button kind="primary" className="disc" disabled={busy || role === user.role} onClick={save}>
+            {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
             <span className="btn-disc">
               <Glyph name="check" />
             </span>
-            {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
           </Button>
         </>
       }
@@ -458,8 +458,8 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
             Cancel
           </Button>
           <Button kind="danger" className="solid" disabled={busy || !to} onClick={save}>
-            <Glyph name="trash" />
             {busy ? "Deleting…" : `Delete ${who}`}
+            <Glyph name="trash" />
           </Button>
         </>
       }

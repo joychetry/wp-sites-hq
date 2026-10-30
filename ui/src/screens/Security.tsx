@@ -92,8 +92,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
     const fix = fixOf(x, site, inventory.get(site.id));
     return fix ? (
       <Button key={site.id} kind="soft" aria-label={`Update to ${fix.to} on ${site.name}`} onClick={() => onPlan(`Update ${x.name} on ${site.name}`, [fix])}>
-        <Glyph name="download" />
         Update to {fix.to} on {site.name}
+        <Glyph name="download" />
       </Button>
     ) : null;
   };
@@ -102,15 +102,15 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
     <Page className="sec">
       <HeadActions>
         <Button disabled={scanning} onClick={scan}>
-          <Glyph name="shield" />
           {scanning ? "Scanning…" : "Scan all sites now"}
+          <Glyph name="shield" />
         </Button>
         {uniqueFixes.length > 0 && (
           <Button kind="primary" className="disc" onClick={() => onPlan(`Fix ${plural(uniqueFixes.length, "vulnerable plugin")}`, uniqueFixes)}>
+            Update {plural(uniqueFixes.length, "vulnerable plugin")}
             <span className="btn-disc">
               <Glyph name="arrow" />
             </span>
-            Update {plural(uniqueFixes.length, "vulnerable plugin")}
           </Button>
         )}
       </HeadActions>
@@ -229,8 +229,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                         {fixes.length === 0 && <span className="dim">{x.fixed_in ? `Fixed in ${x.fixed_in}, once the site offers that update` : "No fix yet"}</span>}
                         {x.link && (
                           <Button className="ghost" aria-label={`Read more about ${x.title}`} onClick={() => api.openLink(x.link!).catch((e) => setError(String(e)))}>
-                            <Glyph name="external" />
                             Read more
+                            <Glyph name="external" />
                           </Button>
                         )}
                       </div>

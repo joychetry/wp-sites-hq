@@ -86,10 +86,10 @@ export function Monitoring({ sites, monitors }: Props) {
     <Page className="mon">
       <HeadActions>
         <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
+          {checking ? "Loading…" : "Load every home page now"}
           <span className="btn-disc">
             <Glyph name="refresh" />
           </span>
-          {checking ? "Loading…" : "Load every home page now"}
         </Button>
       </HeadActions>
       <p className="callout ok">
@@ -249,14 +249,14 @@ export function Monitoring({ sites, monitors }: Props) {
                   <td className="r">
                     {isDown ? (
                       <Button small disabled={checking} aria-label={`${checking ? "Checking…" : "Check again"}: ${s.name}`} onClick={checkAll}>
-                        <Glyph name="refresh" />
                         {checking ? "Checking…" : "Check again"}
+                        <Glyph name="refresh" />
                       </Button>
                     ) : (
                       m?.public !== false && (
                         <Button small className="ghost" aria-label={`${runWord(running === s.id, !!ps)} on ${s.name}`} onClick={() => pageSpeed(s)}>
-                          <Glyph name="zap" />
                           {runWord(running === s.id, !!ps)}
+                          <Glyph name="zap" />
                         </Button>
                       )
                     )}

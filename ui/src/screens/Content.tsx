@@ -278,9 +278,9 @@ export function Content({ sites, onPlan }: Props) {
             <b>{chosen.length === 0 ? "None ticked" : chosen.length === 1 ? "1 entry ticked" : `${chosen.length} entries ticked`}</b>
             {actions.map((a) => (
               <Button key={a} small disabled={chosen.length === 0} onClick={() => bulk(a)}>
-                {a === "trash" && <Glyph name="trash" />}
                 {BULK[a].button}
                 {chosen.length > 0 && ` (${chosen.length})`}
+                {a === "trash" && <Glyph name="trash" />}
               </Button>
             ))}
             <span className="grow" />
@@ -384,16 +384,16 @@ export function Content({ sites, onPlan }: Props) {
       <HeadActions>
         {onPlan && (
           <Button onClick={() => setMany(true)}>
-            <Glyph name="copy" />
             Publish on several sites
+            <Glyph name="copy" />
           </Button>
         )}
         {type && !blocked && (
           <Button kind="primary" className="disc" onClick={() => setOpen({ siteId: site!.id })}>
+            New {type.singular.toLowerCase()}
             <span className="btn-disc">
               <Glyph name="plus" />
             </span>
-            New {type.singular.toLowerCase()}
           </Button>
         )}
       </HeadActions>

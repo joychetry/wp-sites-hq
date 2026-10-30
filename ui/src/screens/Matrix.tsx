@@ -225,17 +225,17 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
       <HeadActions>
         {onInstall && (
           <Button onClick={onInstall}>
-            <Glyph name="plus" />
             Install a plugin
+            <Glyph name="plus" />
           </Button>
         )}
         <Button kind="primary" className={waiting ? "disc" : undefined} disabled={waiting === 0} onClick={() => onPlan(updateLabel, updateRows(), "plan")}>
+          {updateLabel}
           {waiting > 0 && (
             <span className="btn-disc">
               <Glyph name="arrow" />
             </span>
           )}
-          {updateLabel}
         </Button>
       </HeadActions>
       <Page className="mx" side={side}>
@@ -427,38 +427,38 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
           className="disc"
           onClick={() => onRun(`Update ${name} on ${s.name}`, one(plugin ? { do: "update_plugin", plugin: id } : { do: "update_theme", theme: id }))}
         >
+          Update to {item.update}
           <span className="btn-disc">
             <Glyph name="arrow" />
           </span>
-          Update to {item.update}
         </Button>,
       );
     if (plugin && !item.active && can(s, "activate_plugin"))
       acts.push(
         <Button key="act" small onClick={() => onRun(`Activate ${name} on ${s.name}`, one({ do: "activate_plugin", plugin: id }))}>
-          <Glyph name="power" />
           Activate
+          <Glyph name="power" />
         </Button>,
       );
     if (plugin && item.active && can(s, "deactivate_plugin"))
       acts.push(
         <Button key="deact" small onClick={() => onPlan(`Deactivate ${name} on ${s.name}`, row(`Deactivate ${name}`, { do: "deactivate_plugin", plugin: id }), "confirm", true)}>
-          <Glyph name="power" />
           Deactivate
+          <Glyph name="power" />
         </Button>,
       );
     if (!plugin && !item.active && can(s, "activate_theme"))
       acts.push(
         <Button key="use" small onClick={() => onPlan(`Use ${name} on ${s.name}`, row(`Use the ${name} theme`, { do: "activate_theme", theme: id }), "confirm")}>
-          <Glyph name="palette" />
           Use this theme
+          <Glyph name="palette" />
         </Button>,
       );
   } else if (plugin && can(s, "install_plugin")) {
     acts.push(
       <Button key="inst" small kind="primary" onClick={() => onRun(`Install ${name} on ${s.name}`, one({ do: "install_plugin", source: slugOf(id), activate: false }))}>
-        <Glyph name="download" />
         Install here
+        <Glyph name="download" />
       </Button>,
     );
   }
@@ -566,8 +566,8 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
           <div className="mx-foot">
             {roll && (
               <Button small className="ghost" onClick={() => setRolling(true)}>
-                <Glyph name="history" />
                 Choose an older version
+                <Glyph name="history" />
               </Button>
             )}
             {canDelete && (
@@ -583,8 +583,8 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
                   )
                 }
               >
-                <Glyph name="trash" />
                 Delete
+                <Glyph name="trash" />
               </Button>
             )}
           </div>
@@ -650,10 +650,10 @@ function RollBack({ site: s, id, name, item, canAuto, onClose, onPick }: RollBac
         <>
           <Button onClick={onClose}>Close without changes</Button>
           <Button kind="primary" className="disc" disabled={!pick} onClick={go}>
+            Roll back {name}
             <span className="btn-disc">
               <Glyph name="history" />
             </span>
-            Roll back {name}
           </Button>
         </>
       }

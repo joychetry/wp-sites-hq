@@ -143,10 +143,10 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
               </div>
               <div>
                 <Button kind="primary" className="disc" disabled={!ready || busy} onClick={make}>
+                  {busy ? "Making the report…" : "Make the report"}
                   <span className="btn-disc">
                     <Glyph name="arrow" />
                   </span>
-                  {busy ? "Making the report…" : "Make the report"}
                 </Button>
               </div>
             </div>
@@ -171,18 +171,18 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
                   <p className="dim">Saved as PDF and HTML in Downloads.</p>
                   <div className="row">
                     <Button small kind="soft" onClick={() => open(saved.pdf)}>
-                      <Glyph name="file" />
                       Open the PDF
+                      <Glyph name="file" />
                     </Button>
                     <Button small onClick={() => open(saved.html)}>
-                      <Glyph name="globe" />
                       Open the HTML
+                      <Glyph name="globe" />
                     </Button>
                   </div>
                   <div>
                     <button type="button" className="link quiet" onClick={() => api.showFile(saved.pdf).catch((e) => setError(String(e)))}>
-                      <Glyph name="folder" />
                       Show in folder
+                      <Glyph name="folder" />
                     </button>
                   </div>
                   {saved.notes.length > 0 && (

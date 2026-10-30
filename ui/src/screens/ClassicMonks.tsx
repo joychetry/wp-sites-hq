@@ -429,8 +429,8 @@ function Settings({ site, onDone, round }: Part) {
                 {(s.description || s.section) && <small>{s.description || s.section}</small>}
               </div>
               <Button kind={changed ? "soft" : undefined} disabled={!changed || busy === s.name} aria-label={`Save ${s.label}`} onClick={() => save(s)}>
-                {changed && <Glyph name="check" />}
                 {busy === s.name ? "Saving…" : `Save ${s.label}`}
+                {changed && <Glyph name="check" />}
               </Button>
             </li>,
           ];
@@ -461,8 +461,8 @@ function Change({ row, busy, onUndo }: { row: ActivityRow; busy: boolean; onUndo
       </div>
       {row.can_undo ? (
         <Button small className="ghost" disabled={busy} aria-label={`Undo ${what} at ${row.time}`} onClick={onUndo}>
-          <Glyph name="undo" />
           {busy ? "Undoing…" : "Undo"}
+          <Glyph name="undo" />
         </Button>
       ) : (
         <Status tone={tone}>{word}</Status>
@@ -497,10 +497,10 @@ function useUndo(site: Site, onDone: (d: Done) => void) {
         <>
           <Button onClick={() => setAsking(null)}>Keep it</Button>
           <Button kind="primary" className="disc" onClick={() => run(asking)}>
+            Undo
             <span className="btn-disc">
               <Glyph name="undo" />
             </span>
-            Undo
           </Button>
         </>
       }
@@ -614,8 +614,8 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
               </span>
             </div>
             <Button small aria-label={`Approve or decline on the site: ${toolLabel(a.tool)}`} onClick={() => open(a)}>
-              <Glyph name="external" />
               Approve or decline on the site
+              <Glyph name="external" />
             </Button>
           </li>
         ))}

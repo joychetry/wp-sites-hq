@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // @vitest-environment node
 // The one type scale and the one page system: every CSS size comes from a token, nothing is under 12px,
-// and no screen file brings back its own page layout or an icon after a button's words.
+// and no screen file brings back its own page layout or an icon before a button's words.
 import { readdirSync, readFileSync } from "node:fs";
 
 const dir = new URL("./styles/", import.meta.url);
@@ -52,9 +52,11 @@ describe("page system", () => {
     expect(tsx.filter(([, s]) => /"scroll page|className="filters|"split-r"/.test(s)).map(([f]) => f)).toEqual([]);
   });
 
-  it("puts a button's icon before its words", () => {
-    // A disc that closes a button (`</span>\n</Button>`) after its words is the old, reversed order.
-    const bad = tsx.filter(([, s]) => /\n\s*[^<\s{][^\n]*[^>(\s]\n\s*<span className="btn-disc">/.test(s)).map(([f]) => f);
+  it("puts a button's icon after its words", () => {
+    // An icon (a Glyph, a conditional Glyph or the disc) that opens a button with words after it is the old, reversed order.
+    const ICON = /(<span className="btn-disc">\s*<Glyph[^>]*\/>\s*<\/span>|\{[^{}]*&&\s*<Glyph[^>]*\/>\}|<Glyph[^>]*\/>)\s*[^\s<}):]/g;
+    const opensButton = (s: string, at: number) => /^<(Button|button)\b/.test(s.slice(s.lastIndexOf("<", at - 1)));
+    const bad = tsx.flatMap(([f, s]) => [...s.matchAll(ICON)].filter((m) => opensButton(s, m.index)).map(() => f));
     expect(bad).toEqual([]);
   });
 });

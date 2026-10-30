@@ -305,8 +305,8 @@ export default function App() {
           <b>Nothing was changed.</b> Close Monks Central and open it again. If it keeps happening, restart the computer.
         </p>
         <Button onClick={() => location.reload()}>
-          <Glyph name="refresh" />
           Try again
+          <Glyph name="refresh" />
         </Button>
         <p className="mono dim detail">{coreError}</p>
       </div>
@@ -322,8 +322,8 @@ export default function App() {
           <b>Nothing was changed.</b> Try again; if it keeps happening, close Monks Central and open it again.
         </p>
         <Button onClick={reload}>
-          <Glyph name="refresh" />
           Try again
+          <Glyph name="refresh" />
         </Button>
         <p className="mono dim detail">{error}</p>
       </div>
@@ -533,8 +533,8 @@ export default function App() {
             {sites && sites.length > 0 && (
               // The page head holds each page's main action, so this is the same plain button on every page.
               <Button disabled={checking} onClick={checkAll}>
-                <Glyph name="refresh" />
                 {checking ? "Checking…" : "Check all sites now"}
+                <Glyph name="refresh" />
               </Button>
             )}
           </div>
@@ -549,8 +549,8 @@ export default function App() {
             <div className="phead-acts" ref={setHeadSlot}>
               {section === "Overview" && all.length > 0 && (
                 <Button keys="A" onClick={() => setAdding({})}>
-                  <Glyph name="plus" />
                   Add a site
+                  <Glyph name="plus" />
                 </Button>
               )}
             </div>

@@ -73,12 +73,12 @@ function YourData() {
       </p>
       <div className="row acts-row">
         <Button small disabled={busy} onClick={() => exportAs(false)}>
-          <Glyph name="download" />
           Export as JSON
+          <Glyph name="download" />
         </Button>
         <Button small disabled={busy} onClick={() => exportAs(true)}>
-          <Glyph name="download" />
           Export as CSV
+          <Glyph name="download" />
         </Button>
         <FilePicker label="Import a JSON or CSV file" accept=".json,.csv,application/json,text/csv" disabled={busy} onFile={importFile} />
       </div>
@@ -153,10 +153,10 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
       </div>
       <div>
         <Button kind="primary" className="disc" disabled={busy} onClick={() => save(s)}>
+          Save report settings
           <span className="btn-disc">
             <Glyph name="check" />
           </span>
-          Save report settings
         </Button>
       </div>
     </Card>
@@ -249,10 +249,10 @@ function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: 
                   if (await run(async () => setGsc(await api.gscSetClient(client.id, client.secret)), "Saved your Google client.")) setSetup(false);
                 }}
               >
+                Save the client
                 <span className="btn-disc">
                   <Glyph name="check" />
                 </span>
-                Save the client
               </Button>
             </>
           }
@@ -291,8 +291,8 @@ function Choice<T extends string>({ label, value, options, onChange }: {
     <div className="segmented inline" role="group" aria-label={label}>
       {options.map(([v, text, icon]) => (
         <button key={v} type="button" aria-pressed={v === value} onClick={() => onChange(v)}>
-          {icon && <Glyph name={icon} />}
           {text}
+          {icon && <Glyph name={icon} />}
         </button>
       ))}
     </div>

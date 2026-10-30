@@ -250,14 +250,14 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
     <Page className="updates" side={side}>
       <HeadActions>
         <Button disabled={reading} onClick={readAgain}>
-          <Glyph name="refresh" />
           Read every site again
+          <Glyph name="refresh" />
         </Button>
         <Button kind="primary" className="disc" disabled={rows.length === 0} onClick={() => onPlan(planTitle(rows), rows)}>
+          Update all {rows.length}
           <span className="btn-disc">
             <Glyph name="arrow" />
           </span>
-          Update all {rows.length}
         </Button>
       </HeadActions>
       <Toolbar>

@@ -148,10 +148,10 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
       >
         <SearchInput aria-label="Search everything" placeholder="A site, plugin, theme, client, post or page" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <Button kind="primary" className="disc" type="submit" disabled={typed.trim().length < 2}>
+          Search
           <span className="btn-disc">
             <Glyph name="arrow" />
           </span>
-          Search
         </Button>
       </form>
       {query.trim().length < 2 ? (
@@ -192,14 +192,14 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                     </div>
                     {site(h.site_id) && !contentBlocked(site(h.site_id)!) && (
                       <Button small className="ghost" aria-label={`Edit ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => edit(site(h.site_id)!, h.post_type, h.id)}>
-                        <Glyph name="edit" />
                         Edit
+                        <Glyph name="edit" />
                       </Button>
                     )}
                     {h.link.startsWith("https://") && (
                       <Button small aria-label={`View on ${name(h.site_id)}: ${h.title || "(no title)"}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
-                        <Glyph name="external" />
                         View on {name(h.site_id)}
+                        <Glyph name="external" />
                       </Button>
                     )}
                   </li>

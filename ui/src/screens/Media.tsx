@@ -298,8 +298,8 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
           <div className="row nowrap">
             <input id="media-url" className="input sm mono" readOnly value={item.url} onFocus={(e) => e.target.select()} />
             <Button small onClick={copy}>
-              <Glyph name="copy" />
               Copy
+              <Glyph name="copy" />
             </Button>
           </div>
         </div>
@@ -364,8 +364,8 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
               )}
               {canUndo && !replacing && (
                 <Button onClick={undoReplace}>
-                  <Glyph name="undo" />
                   Undo the replace
+                  <Glyph name="undo" />
                 </Button>
               )}
             </>
@@ -374,8 +374,8 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
           )}
         </div>
         <Button className="quiet" onClick={() => api.openLink(item.url).catch((e) => toast(String(e), { tone: "danger" }))}>
-          <Glyph name="external" />
           Open the file
+          <Glyph name="external" />
         </Button>
       </div>
     </section>
@@ -566,8 +566,8 @@ export function Media({ sites }: { sites: Site[] }) {
           <div className="bulk" role="group" aria-label="Change the ticked items">
             <b>{ticked.size === 0 ? "None ticked" : ticked.size === 1 ? "1 item ticked" : `${ticked.size} items ticked`}</b>
             <Button small disabled={ticked.size === 0} onClick={trash}>
-              <Glyph name="trash" />
               Move to the trash{ticked.size > 0 && ` (${ticked.size})`}
+              <Glyph name="trash" />
             </Button>
             <span className="grow" />
             <Button small keys="Esc" disabled={ticked.size === 0} onClick={() => setTicked(new Set())}>
@@ -646,10 +646,10 @@ export function Media({ sites }: { sites: Site[] }) {
       {site && !blocked && (
         <HeadActions>
           <Button kind="primary" className="disc" aria-expanded={upOpen} onClick={() => setUpOpen(!upOpen)}>
+            Upload files
             <span className="btn-disc">
               <Glyph name="upload" />
             </span>
-            Upload files
           </Button>
         </HeadActions>
       )}
@@ -722,10 +722,10 @@ export function Media({ sites }: { sites: Site[] }) {
               </div>
               <div>
                 <Button className="disc" type="submit" disabled={importing || !link.trim()}>
+                  {importing ? "Importing…" : "Import the image"}
                   <span className="btn-disc">
                     <Glyph name="download" />
                   </span>
-                  {importing ? "Importing…" : "Import the image"}
                 </Button>
               </div>
             </div>

@@ -36,8 +36,8 @@ button:disabled { cursor: default; opacity: 0.55; }
 .btn.danger { color: var(--danger); }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
 .btn.sm { height: var(--control-sm); padding: 0 var(--sp-3); font-size: var(--fs-sm); gap: 6px; }
-/* A round disc at the start of a pill holds its icon (the design's cm-btn__disc); the words follow it. */
-.btn.disc { padding-left: 5px; }
+/* A round disc at the end of a pill holds its icon (the design's cm-btn__disc), after the words. */
+.btn.disc { padding-right: 5px; }
 .btn-disc { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--green); color: var(--on-green); flex: none; }
 [data-theme="dark"] .btn-disc { background: rgba(255, 255, 255, 0.18); }
 .btn-disc .glyph { width: 13px; height: 13px; }

@@ -185,8 +185,8 @@ export function Comments({ sites }: { sites: Site[] }) {
                   <div className="rowacts">
                     {show !== "approved" && (
                       <Button small kind="soft" disabled={busy === k} aria-label={`Approve ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "approve")}>
-                        <Glyph name="check" />
                         Approve
+                        <Glyph name="check" />
                       </Button>
                     )}
                     {show === "approved" && (
@@ -201,8 +201,8 @@ export function Comments({ sites }: { sites: Site[] }) {
                     )}
                     {show !== "trash" && (
                       <Button small className="ghost" disabled={busy === k} aria-label={`Move to the trash: ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "trash")}>
-                        <Glyph name="trash" />
                         Move to the trash
+                        <Glyph name="trash" />
                       </Button>
                     )}
                     {(show === "pending" || show === "approved") && (
@@ -215,8 +215,8 @@ export function Comments({ sites }: { sites: Site[] }) {
                           setReply("");
                         }}
                       >
-                        <Glyph name="reply" />
                         Reply
+                        <Glyph name="reply" />
                       </Button>
                     )}
                   </div>
@@ -238,10 +238,10 @@ export function Comments({ sites }: { sites: Site[] }) {
                           Cancel
                         </Button>
                         <Button small kind="primary" className="disc" type="submit" disabled={busy === k || !reply.trim()}>
+                          {busy === k ? "Sending…" : "Send the reply"}
                           <span className="btn-disc">
                             <Glyph name="arrow" />
                           </span>
-                          {busy === k ? "Sending…" : "Send the reply"}
                         </Button>
                       </div>
                     </form>

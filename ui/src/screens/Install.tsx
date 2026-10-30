@@ -119,16 +119,16 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
                 Keep it
               </Button>
               <Button small kind="danger" onClick={remove}>
-                <Glyph name="trash" />
                 Delete the bundle
+                <Glyph name="trash" />
               </Button>
             </div>
           ) : (
             <div className="row ins-acts">
               {editing.id > 0 && (
                 <Button small kind="danger" onClick={() => setDeleting(true)}>
-                  <Glyph name="trash" />
                   Delete the bundle
+                  <Glyph name="trash" />
                 </Button>
               )}
               <span className="grow" />
@@ -136,10 +136,10 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
                 Close without saving
               </Button>
               <Button small kind="primary" className="disc" disabled={!editing.name.trim() || !text.trim()} onClick={save}>
+                Save the bundle
                 <span className="btn-disc">
                   <Glyph name="check" />
                 </span>
-                Save the bundle
               </Button>
             </div>
           )}
@@ -175,8 +175,8 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
           </ul>
           <div>
             <Button small className="ghost" onClick={() => edit({ id: 0, name: "", plugins: [] })}>
-              <Glyph name="plus" />
               New bundle
+              <Glyph name="plus" />
             </Button>
           </div>
         </>

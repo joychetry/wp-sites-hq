@@ -62,8 +62,8 @@ export function Ai({ sites, plans, onWatch, focusPlan }: Props) {
     <Page className="ai">
       <HeadActions>
         <Button onClick={() => setConnect(true)}>
-          <Glyph name="link" />
           Connect an AI app
+          <Glyph name="link" />
         </Button>
       </HeadActions>
       <Tabs label="Show" idBase="ai" tabs={tabs} value={tab} onChange={setTab} />
@@ -196,10 +196,10 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
                     Decline
                   </Button>
                   <Button kind="primary" className="disc" disabled={busy === p.id} aria-label={`Confirm and run ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
+                    {busy === p.id ? "Starting…" : `Confirm and run ${plural(p.items.length, "change")}`}
                     <span className="btn-disc">
                       <Glyph name="check" />
                     </span>
-                    {busy === p.id ? "Starting…" : `Confirm and run ${plural(p.items.length, "change")}`}
                   </Button>
                 </>
               )}
@@ -439,8 +439,8 @@ function Connect({ onClose }: { onClose: () => void }) {
           <span className="label">Claude Code</span>
           <code className="code">{CLAUDE}</code>
           <Button small onClick={() => copy(CLAUDE, "the Claude Code command")}>
-            <Glyph name="copy" />
             Copy
+            <Glyph name="copy" />
           </Button>
         </div>
         <div className="snip">
@@ -449,8 +449,8 @@ function Connect({ onClose }: { onClose: () => void }) {
             {SNIPPET}
           </code>
           <Button small onClick={() => copy(CONFIG, "the settings")}>
-            <Glyph name="copy" />
             Copy
+            <Glyph name="copy" />
           </Button>
         </div>
         <p className="callout">

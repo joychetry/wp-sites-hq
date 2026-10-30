@@ -118,8 +118,8 @@ function FieldsEdit({ meta, value, owned, onChange }: { meta: Record<string, unk
           <input className="input" aria-label="New field name" placeholder="New field name" value={key} onChange={(e) => setKey(e.target.value)} />
           <input className="input" aria-label="New field value" placeholder="New field value" value={val} onChange={(e) => setVal(e.target.value)} />
           <Button onClick={add} disabled={!key.trim() || key.trim().startsWith("_")}>
-            <Glyph name="plus" />
             Add the field
+            <Glyph name="plus" />
           </Button>
         </div>
         {key.trim().startsWith("_") && <small className="why danger">Names starting with an underscore belong to plugins and can't be set here.</small>}
@@ -156,8 +156,8 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
   if (!open) {
     return (
       <Button small onClick={show}>
-        <Glyph name="history" />
         Show earlier versions
+        <Glyph name="history" />
       </Button>
     );
   }
@@ -591,8 +591,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
       <Page className="ed-page">
         <div className="ed-top">
           <Button onClick={onClose}>
-            <Glyph name="arrow" />
             {back ?? `Back to ${type.label.toLowerCase()}`}
+            <Glyph name="arrow" />
           </Button>
         </div>
         <Empty alert title={`This ${noun} didn't open.`}>
@@ -646,8 +646,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
     <Page className="ed-page">
       <div className="ed-top">
         <Button onClick={leave}>
-          <Glyph name="arrow" />
           {back ?? `Back to ${type.label.toLowerCase()}`}
+          <Glyph name="arrow" />
         </Button>
         <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>
@@ -722,8 +722,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               )}
               {post && post.preview_link && (
                 <Button small onClick={() => api.openLink(post.preview_link, site.id).catch((e) => toast(String(e), { tone: "danger" }))}>
-                  <Glyph name="external" />
                   Preview
+                  <Glyph name="external" />
                 </Button>
               )}
             </div>
@@ -739,10 +739,10 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
                 </Button>
               ) : (
                 <Button kind="primary" className="disc" disabled={saving || (live && !dirty) || (!isNew && !post)} onClick={() => save(primaryTo)}>
+                  {saving ? "Saving…" : primary}
                   <span className="btn-disc">
                     <Glyph name="check" />
                   </span>
-                  {saving ? "Saving…" : primary}
                 </Button>
               )}
             </div>
@@ -769,8 +769,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               ) : (
                 <div className="row wrap">
                   <Button small onClick={() => setPicking(true)}>
-                    <Glyph name="image" />
                     {image.id ? "Change the image" : "Choose an image"}
+                    <Glyph name="image" />
                   </Button>
                   {image.id > 0 && (
                     <Button small className="quiet" onClick={() => setImage({ id: 0, url: null })}>
@@ -858,8 +858,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             <>
               <Button onClick={() => setTrashing(false)}>Keep it</Button>
               <Button kind="danger" className="solid" disabled={saving} onClick={trash}>
-                <Glyph name="trash" />
                 {saving ? "Moving…" : "Move it to the trash"}
+                <Glyph name="trash" />
               </Button>
             </>
           }
