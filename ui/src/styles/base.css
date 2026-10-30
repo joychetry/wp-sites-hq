@@ -118,9 +118,9 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .fresh .link:hover { text-decoration: underline; }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--sel); flex: none; }
 .top-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
-.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 24vw, 300px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
-.kbar span:nth-child(2) { flex: 1; }
-.kbar:hover { border-color: var(--line-2); color: var(--text-2); }
+.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 24vw, 300px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--radius-control); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
+.kbar span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kbar:hover { border-color: var(--line-ui); color: var(--text-2); }
 .body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--head-gap) 0; padding: 28px var(--sp-6) var(--sp-5); }
 .phead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-4) var(--sp-5); }
 .phead > div:first-child { display: grid; gap: 6px; min-width: 0; max-width: 760px; }
@@ -325,7 +325,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 
 /* Side sheet over the page: the design's drawer and dialog */
 .scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 20; }
-.sheet { position: fixed; top: 12px; right: 12px; bottom: 12px; width: var(--sheet); max-width: calc(100vw - 24px); background: var(--bg); border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 21; overflow: hidden; }
+.sheet { position: fixed; top: 12px; right: 12px; bottom: 12px; width: var(--sheet); max-width: calc(100vw - 24px); background: var(--bg); border-radius: var(--radius-xl); box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 21; overflow: hidden; }
 /* Head: title, a quiet line, an optional stepper, and Close at the top right */
 .sheet > header { display: flex; align-items: flex-start; gap: var(--sp-3); padding: 20px var(--sp-4) var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line); }
 .sheet > header > div { flex: 1; min-width: 0; display: grid; gap: var(--sp-1); }
@@ -340,7 +340,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .sheet footer .btn:not(.primary):not(.danger):hover:not(:disabled) { background: var(--bg); color: var(--text); }
 .sheet footer .sum { margin-right: auto; color: var(--text-2); }
 /* The design's centred dialog (Add a site, Sign in again): no head line, the body flows from the head. */
-.sheet.dialog { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-float); }
+.sheet.dialog { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-float); }
 .sheet.dialog > header { padding: 20px var(--sp-5) var(--sp-4) 24px; border-bottom: 0; }
 .sheet.dialog > header > .tile { margin-top: 2px; }
 .sheet.dialog .content { padding: var(--sp-1) 24px 20px; }
@@ -496,15 +496,17 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .toggles .input { width: 160px; }
 
 /* The page system (components/page.tsx): Page, Toolbar, SidePanel. Cards, tables and empty states sit in it. */
-.page { min-width: 0; min-height: 0; overflow: auto; display: grid; gap: var(--page-gap); align-content: start; }
+/* Rows are as tall as their content: in a scrolling grid an auto row can otherwise shrink to nothing. */
+.page { min-width: 0; min-height: 0; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
 .page.narrow { max-width: 1000px; width: 100%; }
-.page.with-side { grid-template-columns: minmax(0, 1fr) var(--inspector); align-items: start; overflow: hidden; }
-.page-main { min-width: 0; min-height: 0; max-height: 100%; overflow: auto; display: grid; gap: var(--page-gap); align-content: start; }
+.page.with-side { grid-template-columns: minmax(0, 1fr) var(--inspector); grid-template-rows: minmax(0, 1fr); align-content: stretch; align-items: start; overflow: hidden; }
+.page-main { min-width: 0; min-height: 0; max-height: 100%; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
 .stack { display: grid; gap: var(--page-gap); align-content: start; min-width: 0; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .toolbar > .end { margin-left: auto; }
 .toolbar .srch { flex: 1 1 160px; max-width: 320px; }
-.toolbar .btn, .toolbar .input, .toolbar .chip, .toolbar .dt-btn, .toolbar .dt-cal { height: var(--control); border-radius: var(--radius-control); }
+/* Toolbars and the top bar: one height and one pill shape for every control in the row */
+.toolbar .btn, .toolbar .input, .toolbar .chip, .toolbar .dt-btn, .toolbar .dt-cal, .top .input { height: var(--control); border-radius: var(--radius-control); }
 .toolbar .select { width: auto; min-width: 160px; max-width: 260px; }
 .toolbar .segmented { margin: 0; }
 .toolbar .label { white-space: nowrap; }
@@ -560,6 +562,10 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .vto b { color: var(--brand-text); font-weight: 600; }
 @media (max-width: 1100px) {
   .split-r { grid-template-columns: minmax(0, 1fr); }
+  /* The right panel drops below the content, so tables keep their width; the whole page scrolls. */
+  .page.with-side { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; overflow: auto; }
+  .page.with-side > .page-main, .page.with-side > .insp { overflow: visible; max-height: none; }
+  .page.with-side > .insp { width: auto; }
 }
 
 /* Buttons the design adds: full width, ghost (no border), a danger word on a ghost */
@@ -602,7 +608,7 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
   .main, .body { height: auto; }
   .body { display: flex; flex-direction: column; padding: var(--sp-4); }
   .insp { width: auto; max-height: none; }
-  .page.with-side { display: grid; grid-template-columns: minmax(0, 1fr); overflow: visible; }
+  .page.with-side { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: visible; }
   .page, .page-main { overflow: visible; max-height: none; }
   .top { padding: var(--sp-2) var(--sp-4); }
   .kbar { width: 100%; }
