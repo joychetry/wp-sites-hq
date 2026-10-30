@@ -198,9 +198,10 @@ const PICTURES: Record<string, ReactNode> = {
 };
 
 /** An empty or error state: a picture, a heading, plain words and the next step. */
-export function Empty({ picture, title, children, action, alert }: { picture?: keyof typeof PICTURES; title: string; children?: ReactNode; action?: ReactNode; alert?: boolean }) {
+/** `small`: inside a card or the side panel, a quieter size. */
+export function Empty({ picture, title, children, action, alert, small }: { picture?: keyof typeof PICTURES; title: string; children?: ReactNode; action?: ReactNode; alert?: boolean; small?: boolean }) {
   return (
-    <div className="empty" role={alert ? "alert" : undefined}>
+    <div className={small ? "empty sm" : "empty"} role={alert ? "alert" : undefined}>
       {picture && (
         <svg className="empty-pic" viewBox="0 0 32 32" aria-hidden="true">
           {PICTURES[picture]}

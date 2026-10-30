@@ -75,14 +75,17 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .app { display: grid; grid-template-columns: var(--rail) 1fr; height: 100vh; }
 .label, .navgroup { font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 .glyph { width: 16px; height: 16px; flex: none; stroke-linecap: round; stroke-linejoin: round; }
-.rail { background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-3); gap: 2px; overflow: auto; }
-.brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; margin: 0 0 18px; }
+.rail { background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; height: 100vh; }
+/* The brand and the foot stay put; only the nav between them scrolls. */
+.rail > .brand { flex: none; margin: var(--sp-4) var(--sp-3) var(--sp-2); }
+.rail-nav { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 2px; padding: 0 var(--sp-3) var(--sp-3); }
+.brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; }
 .brand .mark { width: 30px; height: 30px; }
 .brand p { margin: 0; font: 600 var(--fs-md)/var(--lh-tight) var(--display); letter-spacing: -0.02em; color: var(--text); }
 .brand small { display: block; font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0; color: var(--text-3); }
-.scope-field { display: grid; gap: var(--sp-1); padding: 0 2px; margin-bottom: 16px; }
-.scope-field .label { padding-left: 6px; }
-.scope { width: 100%; font-weight: 500; }
+/* "Sites to show" in the top bar: its label, then the group select */
+.scope-field { display: inline-flex; align-items: center; gap: var(--sp-2); margin: 0; }
+.scope { width: auto; min-width: 168px; max-width: 260px; font-weight: 500; }
 .scope.sm { height: var(--control-sm); font-size: var(--fs-sm); padding-right: 8px; }
 .navgroup { padding: 14px var(--sp-3) var(--sp-1); margin: 0; }
 .navitem .glyph, .navitem .mark { width: 17px; height: 17px; }
@@ -94,7 +97,7 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .navitem[aria-current] { background: var(--sel); color: var(--brand-text); font-weight: 600; }
 .navitem[aria-current] > .glyph { color: var(--accent); }
 .navitem[aria-current] .n { background: var(--green); color: var(--on-green); }
-.rail .foot { margin-top: auto; padding-top: var(--sp-4); display: grid; gap: var(--sp-3); }
+.rail .foot { flex: none; padding: var(--sp-3) var(--sp-3) var(--sp-4); border-top: 1px solid var(--line); display: grid; gap: var(--sp-3); }
 .rail .foot p { margin: 0; }
 .next { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: var(--sp-2); padding: 10px var(--sp-3); border-radius: var(--radius); background: var(--panel); color: var(--text-2); font-size: var(--fs-xs); line-height: 1.4; }
 .next .glyph { margin-top: 1px; color: var(--accent); }
@@ -118,9 +121,8 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 24vw, 300px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
 .kbar span:nth-child(2) { flex: 1; }
 .kbar:hover { border-color: var(--line-2); color: var(--text-2); }
-.body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); gap: var(--sp-5) 0; padding: 28px var(--sp-6) var(--sp-5); }
-.body > :not(.phead):not(.insp) { grid-column: 1; }
-.phead { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-4) var(--sp-5); }
+.body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--head-gap) 0; padding: 28px var(--sp-6) var(--sp-5); }
+.phead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-4) var(--sp-5); }
 .phead > div:first-child { display: grid; gap: 6px; min-width: 0; max-width: 760px; }
 .phead-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .phead-acts:empty { display: none; }
@@ -189,8 +191,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .box::before { content: ""; width: 18px; height: 18px; border: 1.5px solid var(--line-ui); border-radius: 5px; background: var(--bg); box-sizing: border-box; }
 
 /* Inspector: a card beside the screen */
-/* The design's drawer: a floating card with the float shadow */
-.insp { grid-column: 2; grid-row: 2; margin-left: var(--sp-4); width: var(--inspector); min-height: 0; align-self: start; max-height: 100%; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-float); }
+/* The side panel (components/page.tsx): a card beside the page that is always there */
+.insp { width: var(--inspector); min-height: 0; align-self: start; max-height: 100%; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.insp > .empty.sm { padding: var(--sp-7) var(--pad); }
 .insp header { padding: 18px var(--pad) var(--sp-4); border-bottom: 1px solid var(--line); }
 .insp h2 { margin: 0 0 2px; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .acts { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); flex-wrap: wrap; }
@@ -504,12 +507,19 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .toggles h3 { margin: 0; padding: var(--sp-4) var(--pad) var(--sp-2); font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); background: var(--panel); border-bottom: 1px solid var(--line); }
 .toggles .input { width: 160px; }
 
-/* Design page patterns (docs/design/redesign: mc-page). A screen that lays out its own cards uses
-   .scroll.page, then a filter row (.filters), cards (.card) and an optional side column (.split-r). */
-.stack { display: grid; gap: var(--sp-4); align-content: start; min-width: 0; }
-.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
-.filters .srch { flex: 1 1 200px; max-width: 280px; }
-.filters .end { margin-left: auto; }
+/* The page system (components/page.tsx): Page, Toolbar, SidePanel. Cards, tables and empty states sit in it. */
+.page { min-width: 0; min-height: 0; overflow: auto; display: grid; gap: var(--page-gap); align-content: start; }
+.page.narrow { max-width: 1000px; width: 100%; }
+.page.with-side { grid-template-columns: minmax(0, 1fr) var(--inspector); align-items: start; overflow: hidden; }
+.page-main { min-width: 0; min-height: 0; max-height: 100%; overflow: auto; display: grid; gap: var(--page-gap); align-content: start; }
+.stack { display: grid; gap: var(--page-gap); align-content: start; min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.toolbar > .end { margin-left: auto; }
+.toolbar .srch { flex: 1 1 220px; max-width: 320px; }
+.toolbar .btn, .toolbar .input, .toolbar .chip, .toolbar .dt-btn, .toolbar .dt-cal { height: var(--control); border-radius: var(--radius-control); }
+.toolbar .select { width: auto; min-width: 160px; max-width: 260px; }
+.toolbar .segmented { margin: 0; }
+.toolbar .label { white-space: nowrap; }
 .segmented.inline { display: inline-flex; flex-wrap: wrap; margin: 0; }
 .segmented.inline button { flex: none; display: inline-flex; align-items: center; gap: 6px; }
 .segmented small { font: 600 var(--fs-xs)/1 var(--mono); color: var(--text-3); }
@@ -518,7 +528,8 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.split-r { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--sp-4); align-items: start; }
+/* Two columns inside a page (a tab's own list and its side card), not the page's right panel */
+.split-r { display: grid; grid-template-columns: minmax(0, 1fr) var(--inspector); gap: var(--page-gap); align-items: start; }
 .card-body { padding: 20px; display: grid; gap: var(--sp-4); }
 /* The inspector's head: the thing's tile, its name, a mono line under it, and Close. */
 .insp > .ihead { display: flex; align-items: flex-start; gap: var(--sp-3); padding: 18px 20px; }
@@ -595,18 +606,19 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 /* Narrow windows and 200% zoom: one column, the rail on top, nothing cut off */
 @media (max-width: 900px) {
   .app { display: block; height: auto; }
-  .rail { flex-direction: row; flex-wrap: wrap; align-items: center; border-right: 0; border-bottom: 1px solid var(--line); }
-  .rail .brand { width: 100%; margin: 0; }
-  .scope-field { flex: 1 1 200px; margin: 0; }
-  .rail > div:not(.foot):not(.brand):not(.scope-field) { display: contents; }
+  .rail { flex-direction: row; flex-wrap: wrap; align-items: center; height: auto; padding: var(--sp-4) var(--sp-3); gap: 2px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .rail > .brand { width: 100%; margin: 0; }
+  .rail-nav, .rail-nav > div { display: contents; }
   .rail ul { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
   .navgroup { display: none; }
   .navitem { width: auto; }
-  .rail .foot { width: 100%; margin-top: var(--sp-2); }
+  .rail .foot { width: 100%; margin-top: var(--sp-2); padding: var(--sp-3) 0 0; }
   .main, .body { height: auto; }
   .body { display: flex; flex-direction: column; padding: var(--sp-4); }
   .scroll { overflow-x: auto; }
-  .insp { width: auto; margin: var(--sp-4) 0 0; }
+  .insp { width: auto; max-height: none; }
+  .page.with-side { display: grid; grid-template-columns: minmax(0, 1fr); overflow: visible; }
+  .page, .page-main { overflow: visible; max-height: none; }
   .top { padding: var(--sp-2) var(--sp-4); }
   .kbar { width: 100%; }
   .bar, .selbar { flex-wrap: wrap; }

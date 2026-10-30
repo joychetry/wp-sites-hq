@@ -447,45 +447,34 @@ export default function App() {
             <small>by Classic Monks</small>
           </p>
         </div>
-        <div className="scope-field">
-          <span className="label" aria-hidden="true">
-            Sites to show
-          </span>
-          <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
-            <option value="">All sites ({all.length})</option>
-            {groups.map((g) => (
-              <option key={g} value={g}>
-                Group: {g}
-              </option>
-            ))}
-          </Select>
+        <div className="rail-nav">
+          {GROUPS.map(([g, items]) => (
+            <div key={g || "top"}>
+              {g && <p className="navgroup">{g}</p>}
+              <ul>
+                {items.map((s) => (
+                  <li key={s}>
+                    <button
+                      type="button"
+                      className="navitem"
+                      aria-current={s === section ? "page" : undefined}
+                      onClick={() => setSection(s)}
+                    >
+                      {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
+                      {LABEL[s] ?? s}
+                      {counts[s] && (
+                        <span className={counts[s].alert ? "n alert" : "n"}>
+                          {counts[s].n}
+                          <span className="sr-only"> {counts[s].say}</span>
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        {GROUPS.map(([g, items]) => (
-          <div key={g || "top"}>
-            {g && <p className="navgroup">{g}</p>}
-            <ul>
-              {items.map((s) => (
-                <li key={s}>
-                  <button
-                    type="button"
-                    className="navitem"
-                    aria-current={s === section ? "page" : undefined}
-                    onClick={() => setSection(s)}
-                  >
-                    {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
-                    {LABEL[s] ?? s}
-                    {counts[s] && (
-                      <span className={counts[s].alert ? "n alert" : "n"}>
-                        {counts[s].n}
-                        <span className="sr-only"> {counts[s].say}</span>
-                      </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
         <div className="foot">
           <p className="next">
             <Glyph name="clock" />
@@ -508,6 +497,19 @@ export default function App() {
       </nav>
       <div className="main">
         <header className="top">
+          <div className="scope-field">
+            <span className="label" aria-hidden="true">
+              Sites to show
+            </span>
+            <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
+              <option value="">All sites ({all.length})</option>
+              {groups.map((g) => (
+                <option key={g} value={g}>
+                  Group: {g}
+                </option>
+              ))}
+            </Select>
+          </div>
           {sites && sites.length > 0 && (
             <p className="fresh" role="status">
               <span className="pulse" aria-hidden="true" />

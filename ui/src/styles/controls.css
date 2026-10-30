@@ -145,7 +145,19 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 
 /* Tabs */
 /* min-height: as a scrolling grid or flex child it would otherwise shrink to nothing and stop taking clicks. */
-.tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line); padding: 0 var(--pad); overflow-x: auto; flex: none; min-height: max-content; }
+.tabs { position: relative; display: flex; align-items: center; gap: var(--sp-1); border-bottom: 1px solid var(--line); padding: 0 var(--pad); flex: none; min-height: max-content; min-width: 0; }
+.tablist { display: flex; gap: var(--sp-1); min-width: 0; }
+/* One row: tabs and segmented options that don't fit go into "More" (controls.tsx useOverflow). A hidden copy measures them. */
+.row-measure { position: absolute; visibility: hidden; pointer-events: none; height: 0; overflow: hidden; display: flex; white-space: nowrap; }
+.tab-like, .tab-more { padding: 0 var(--sp-3); font-weight: 600; white-space: nowrap; }
+.tab-more { display: inline-flex; align-items: center; gap: 6px; height: 42px; border: 0; background: none; color: var(--text-2); font-weight: 500; border-radius: 8px 8px 0 0; }
+.tab-more:hover, .tab-more[aria-expanded="true"] { color: var(--text); background: var(--panel); }
+.tab-more:focus-visible { outline-offset: -2px; }
+.n-more { font: 600 var(--fs-xs)/1 var(--mono); color: var(--text-3); }
+.seg-row { position: relative; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; flex: 1 1 auto; }
+.seg-row .segmented.inline { flex-wrap: nowrap; }
+.seg-like { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; font-weight: 600; }
+.seg-row .tab-more { height: var(--control); border: 1px solid var(--control-line); border-radius: var(--radius-control); background: var(--bg); }
 .tabs [role="tab"] { height: 42px; padding: 0 var(--sp-3); border: 0; background: none; color: var(--text-2); font-weight: 500; white-space: nowrap; box-shadow: inset 0 -2px 0 transparent; border-radius: 8px 8px 0 0; }
 .tabs [role="tab"]:hover { color: var(--text); background: var(--panel); }
 .tabs [role="tab"][aria-selected="true"] { color: var(--brand-text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--green); }
@@ -206,10 +218,10 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 ::-webkit-scrollbar-corner { background: transparent; }
 /* The sidebar's scrollbar is thin and shows while the pointer or focus is in it; its gutter stays, so nothing shifts. */
 @media (min-width: 901px) {
-  .rail { scrollbar-gutter: stable; padding-right: calc(var(--sp-3) - 8px); }
-  .rail::-webkit-scrollbar { width: 8px; }
-  .rail::-webkit-scrollbar-thumb { background-color: transparent; border-width: 2px; }
-  .rail:hover::-webkit-scrollbar-thumb, .rail:focus-within::-webkit-scrollbar-thumb { background-color: var(--line-2); }
+  .rail-nav { scrollbar-gutter: stable; padding-right: calc(var(--sp-3) - 8px); }
+  .rail-nav::-webkit-scrollbar { width: 8px; }
+  .rail-nav::-webkit-scrollbar-thumb { background-color: transparent; border-width: 2px; }
+  .rail-nav:hover::-webkit-scrollbar-thumb, .rail-nav:focus-within::-webkit-scrollbar-thumb { background-color: var(--line-2); }
 }
 @supports not selector(::-webkit-scrollbar) {
   * { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
@@ -237,6 +249,10 @@ body:has(.sheet) .toasts ol { justify-items: start; }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 18l4-12h16l4 12v8H4zM4 18h7l2 3h6l2-3h7'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .empty p { max-width: 60ch; }
+/* Inside a card or the side panel: the same picture and words, smaller and calmer */
+.empty.sm { padding: var(--sp-6) var(--sp-4); gap: var(--sp-2); color: var(--text-3); }
+.empty.sm h2 { font: 500 var(--fs)/var(--lh) var(--sans); letter-spacing: 0; color: var(--text-2); }
+.empty.sm:not(:has(.empty-pic)) > h2:first-child::before { width: 28px; height: 28px; margin-bottom: var(--sp-2); background: var(--text-3); }
 
 /* First run and next steps on Overview */
 /* Errors in place of a page (board D01): a danger disc, plain words, Try again, the detail in mono */
