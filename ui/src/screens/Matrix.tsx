@@ -171,12 +171,12 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
           </Button>
         )}
         <Button kind="primary" className={waiting ? "disc" : undefined} disabled={waiting === 0} onClick={() => onPlan(updateLabel, updateRows(), "plan")}>
-          {updateLabel}
           {waiting > 0 && (
             <span className="btn-disc">
               <Glyph name="arrow" />
             </span>
           )}
+          {updateLabel}
         </Button>
       </HeadActions>
       <div className="scroll page mx">
@@ -421,10 +421,10 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
           className="disc"
           onClick={() => onRun(`Update ${name} on ${s.name}`, one(plugin ? { do: "update_plugin", plugin: id } : { do: "update_theme", theme: id }))}
         >
-          Update to {item.update}
           <span className="btn-disc">
             <Glyph name="arrow" />
           </span>
+          Update to {item.update}
         </Button>,
       );
     if (plugin && !item.active && can(s, "activate_plugin"))
@@ -646,10 +646,10 @@ function RollBack({ site: s, id, name, item, canAuto, onClose, onPick }: RollBac
         <>
           <Button onClick={onClose}>Close without changes</Button>
           <Button kind="primary" className="disc" disabled={!pick} onClick={go}>
-            Roll back {name}
             <span className="btn-disc">
               <Glyph name="history" />
             </span>
+            Roll back {name}
           </Button>
         </>
       }

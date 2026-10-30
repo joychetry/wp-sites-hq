@@ -10,14 +10,14 @@
 .clients .av.none { border: 1px dashed var(--line-ui); color: var(--text-2); }
 .clients .pchips { display: flex; flex-wrap: wrap; gap: 6px; white-space: normal; }
 /* Amounts: mono, right; one line per currency. Left over is bold. */
-.clients .t td.r .m { display: block; font: 500 var(--fs-sm)/18px var(--mono); color: var(--text); white-space: nowrap; }
+.clients .t td.r .m { display: block; font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); color: var(--text); white-space: nowrap; }
 .clients .t td.r .m.left { font-weight: 600; }
 .clients .t td.r .m.danger { color: var(--danger); }
 /* A cost or charge under its client, set in to line up with the client's name. */
 .clients .t tr.item td:first-child { padding-left: 62px; }
 .clients .item-t { display: grid; gap: 2px; min-width: 0; }
 .clients .item-t .linkish { font-weight: 500; }
-.clients .item-t span { font-size: var(--fs-sm); line-height: 18px; color: var(--text-2); white-space: normal; }
+.clients .item-t span { font-size: var(--fs-sm); line-height: var(--lh-tight); color: var(--text-2); white-space: normal; }
 .clients .card-foot .count { color: var(--text-3); font-size: var(--fs-sm); }
 .clients .card-head h2 .glyph { width: 16px; height: 16px; color: var(--text-2); }
 .clients .fix .tag { white-space: nowrap; }

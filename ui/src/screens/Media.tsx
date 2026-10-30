@@ -635,10 +635,10 @@ export function Media({ sites }: { sites: Site[] }) {
       {site && !blocked && (
         <HeadActions>
           <Button kind="primary" className="disc" aria-expanded={upOpen} onClick={() => setUpOpen(!upOpen)}>
-            Upload files
             <span className="btn-disc">
               <Glyph name="upload" />
             </span>
+            Upload files
           </Button>
         </HeadActions>
       )}
@@ -677,10 +677,10 @@ export function Media({ sites }: { sites: Site[] }) {
                   </div>
                   <div>
                     <Button className="disc" type="submit" disabled={importing || !link.trim()}>
-                      {importing ? "Importing…" : "Import the image"}
                       <span className="btn-disc">
                         <Glyph name="download" />
                       </span>
+                      {importing ? "Importing…" : "Import the image"}
                     </Button>
                   </div>
                 </div>

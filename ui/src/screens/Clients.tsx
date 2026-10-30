@@ -150,10 +150,10 @@ export function Clients({ sites }: { sites: Site[] }) {
           Add a cost or charge
         </Button>
         <Button kind="primary" className="disc" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
-          Add a client
           <span className="btn-disc">
             <Glyph name="plus" />
           </span>
+          Add a client
         </Button>
       </HeadActions>
       {clients.length === 0 && costs.length === 0 ? (
@@ -385,10 +385,10 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
         Close without saving
       </Button>
       <Button kind="primary" className="disc" disabled={busy || !c.name.trim()} onClick={save}>
-        {busy ? "Saving…" : isNew ? "Add the client" : "Save changes"}
         <span className="btn-disc">
           <Glyph name={isNew ? "plus" : "check"} />
         </span>
+        {busy ? "Saving…" : isNew ? "Add the client" : "Save changes"}
       </Button>
     </>
   );
@@ -475,10 +475,10 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
         {isNew ? "Close" : "Close without saving"}
       </Button>
       <Button kind="primary" className="disc" disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
-        {busy ? "Saving…" : isNew ? "Add it" : "Save changes"}
         <span className="btn-disc">
           <Glyph name={isNew ? "plus" : "check"} />
         </span>
+        {busy ? "Saving…" : isNew ? "Add it" : "Save changes"}
       </Button>
     </>
   );

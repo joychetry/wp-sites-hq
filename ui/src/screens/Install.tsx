@@ -136,10 +136,10 @@ function Bundles({ onPick }: { onPick: (b: Bundle) => void }) {
                 Close without saving
               </Button>
               <Button small kind="primary" className="disc" disabled={!editing.name.trim() || !text.trim()} onClick={save}>
-                Save the bundle
                 <span className="btn-disc">
                   <Glyph name="check" />
                 </span>
+                Save the bundle
               </Button>
             </div>
           )}

@@ -10,7 +10,7 @@
 .av.lg .glyph { width: 16px; height: 16px; }
 .ai .who { display: grid; gap: 2px; margin-right: auto; min-width: 0; }
 .ai .who b { font-weight: 600; }
-.ai .who small { font: 400 var(--fs-xs)/16px var(--mono); color: var(--text-3); }
+.ai .who small { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); }
 .ai .plan .card-body { gap: 18px; }
 .ai .plan-t { display: grid; gap: 6px; }
 .ai .plan-t h2 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; }
@@ -20,7 +20,7 @@
 .ai-diff { display: grid; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); }
 .ai-diff > div { display: grid; grid-template-columns: minmax(110px, 40%) minmax(0, 1fr); gap: 10px; align-items: center; font-size: var(--fs-sm); color: var(--text-3); }
 .ai-diff b { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text); font-weight: 600; min-width: 0; }
-.ai-diff code { justify-self: start; padding: 2px 7px; border-radius: 5px; background: var(--panel); color: var(--text); font: 500 var(--fs-sm)/18px var(--mono); overflow-wrap: anywhere; }
+.ai-diff code { justify-self: start; padding: 2px 7px; border-radius: 5px; background: var(--panel); color: var(--text); font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); overflow-wrap: anywhere; }
 .ai-diff code.old { background: var(--danger-bg); color: var(--danger); text-decoration: line-through; }
 .ai-diff code.new { background: var(--tint); color: var(--brand-text); }
 .vdiff { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -48,7 +48,7 @@
 /* How agents work here: three ticks */
 .how .card-body { gap: var(--sp-3); }
 .how b { font-weight: 600; }
-.how ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: var(--fs-sm); line-height: 19px; color: var(--text-2); }
+.how ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: var(--fs-sm); line-height: var(--lh); color: var(--text-2); }
 .how li { display: flex; align-items: flex-start; gap: 10px; }
 .how li .glyph { width: 14px; height: 14px; margin-top: 3px; color: var(--brand-text); }
 
@@ -60,7 +60,7 @@
 /* Connect an AI app: the dark snippet, Copy under it, then a lock note */
 .connect { display: grid; gap: var(--sp-4); }
 .connect .snip { display: grid; gap: var(--sp-2); justify-items: start; }
-.connect .code { display: block; width: 100%; padding: 14px var(--sp-4); border-radius: var(--radius); background: #0a0f0d; color: #edf2ef; font: 400 var(--fs-sm)/20px var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.connect .code { display: block; width: 100%; padding: 14px var(--sp-4); border-radius: var(--radius); background: #0a0f0d; color: #edf2ef; font: 400 var(--fs-sm)/var(--lh) var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .connect .code em { color: #5bd394; font-style: normal; }
 [data-theme="dark"] .connect .code { background: #0b0b0b; border: 1px solid var(--line); }
 [data-theme="dark"] .connect .code em { color: var(--accent); }

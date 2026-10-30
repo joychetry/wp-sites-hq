@@ -137,10 +137,10 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
           <Button onClick={onClose}>Close without changes</Button>
           {step === "plan" ? (
             <Button kind="primary" className="disc" disabled={chosen.length === 0} onClick={() => setStep("confirm")}>
-              Review {plural(chosen.length, "change")}
               <span className="btn-disc">
                 <Glyph name="arrow" />
               </span>
+              Review {plural(chosen.length, "change")}
             </Button>
           ) : (
             <Button

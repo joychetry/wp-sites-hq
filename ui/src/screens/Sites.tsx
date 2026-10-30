@@ -135,10 +135,10 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
     <>
       <HeadActions>
         <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
-          Add a site
           <span className="btn-disc">
             <Glyph name="plus" />
           </span>
+          Add a site
         </Button>
       </HeadActions>
       <div className="scroll page sites">
@@ -571,18 +571,18 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
       <section>
         {again ? (
           <Button kind="primary" className="disc block" onClick={onSignInAgain}>
-            Sign in again
             <span className="btn-disc">
               <Glyph name="login" />
             </span>
+            Sign in again
           </Button>
         ) : (
           canLogin && (
             <Button kind="primary" className="disc block" onClick={() => run(() => api.login(s.id))}>
-              Log in to the dashboard
               <span className="btn-disc">
                 <Glyph name="arrow" />
               </span>
+              Log in to the dashboard
             </Button>
           )
         )}

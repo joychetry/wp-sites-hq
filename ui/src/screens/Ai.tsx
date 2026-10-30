@@ -199,10 +199,10 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
                     Decline
                   </Button>
                   <Button kind="primary" className="disc" disabled={busy === p.id} aria-label={`Confirm and run ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
-                    {busy === p.id ? "Starting…" : `Confirm and run ${plural(p.items.length, "change")}`}
                     <span className="btn-disc">
                       <Glyph name="check" />
                     </span>
+                    {busy === p.id ? "Starting…" : `Confirm and run ${plural(p.items.length, "change")}`}
                   </Button>
                 </>
               )}

@@ -83,10 +83,10 @@ export function Monitoring({ sites, monitors }: Props) {
     <div className="scroll page mon">
       <HeadActions>
         <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
-          {checking ? "Loading…" : "Load every home page now"}
           <span className="btn-disc">
             <Glyph name="refresh" />
           </span>
+          {checking ? "Loading…" : "Load every home page now"}
         </Button>
       </HeadActions>
       <div className="stack">

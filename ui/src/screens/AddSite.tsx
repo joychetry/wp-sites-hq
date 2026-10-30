@@ -96,10 +96,10 @@ export function AddSite({ again, onClose, onDone }: Props) {
     );
   const primary = (
     <Button kind="primary" className="disc" disabled={!ready || busy !== null} onClick={go} keys="Enter">
-      {toStep2 ? "Next" : !basic ? (again ? "Sign in again" : "Open the sign-in page") : again ? "Sign in" : "Add the site"}
       <span className="btn-disc">
         <Glyph name={toStep2 ? "arrow" : basic ? "check" : "external"} />
       </span>
+      {toStep2 ? "Next" : !basic ? (again ? "Sign in again" : "Open the sign-in page") : again ? "Sign in" : "Add the site"}
     </Button>
   );
   const errorLine = error && (

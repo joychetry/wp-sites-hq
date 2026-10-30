@@ -415,10 +415,10 @@ function ProductSheet({ product, site, thumb, currency, onClose, onPlan }: Sheet
     <>
       <Button onClick={onClose}>Close without changing</Button>
       <Button kind="primary" className="disc" disabled={typeof change === "string"} onClick={() => typeof change !== "string" && onPlan(change)}>
-        Review the change
         <span className="btn-disc">
           <Glyph name="arrow" />
         </span>
+        Review the change
       </Button>
     </>
   );

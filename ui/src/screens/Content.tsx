@@ -389,10 +389,10 @@ export function Content({ sites, onPlan }: Props) {
         )}
         {type && !blocked && (
           <Button kind="primary" className="disc" onClick={() => setOpen({ siteId: site!.id })}>
-            New {type.singular.toLowerCase()}
             <span className="btn-disc">
               <Glyph name="plus" />
             </span>
+            New {type.singular.toLowerCase()}
           </Button>
         )}
       </HeadActions>

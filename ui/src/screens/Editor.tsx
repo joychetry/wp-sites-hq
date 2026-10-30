@@ -744,10 +744,10 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
                 </Button>
               ) : (
                 <Button kind="primary" className="disc" disabled={saving || (live && !dirty) || (!isNew && !post)} onClick={() => save(primaryTo)}>
-                  {saving ? "Saving…" : primary}
                   <span className="btn-disc">
                     <Glyph name="check" />
                   </span>
+                  {saving ? "Saving…" : primary}
                 </Button>
               )}
             </div>

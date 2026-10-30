@@ -235,10 +235,10 @@ export function Comments({ sites }: { sites: Site[] }) {
                           Cancel
                         </Button>
                         <Button small kind="primary" className="disc" type="submit" disabled={busy === k || !reply.trim()}>
-                          {busy === k ? "Sending…" : "Send the reply"}
                           <span className="btn-disc">
                             <Glyph name="arrow" />
                           </span>
+                          {busy === k ? "Sending…" : "Send the reply"}
                         </Button>
                       </div>
                     </form>

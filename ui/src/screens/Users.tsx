@@ -186,10 +186,10 @@ export function Users({ sites }: { sites: Site[] }) {
     <div className="scroll page users">
       <HeadActions>
         <Button kind="primary" className="disc" disabled={usable.length === 0} onClick={() => setAction({ kind: "add" })}>
-          Add a user
           <span className="btn-disc">
             <Glyph name="plus" />
           </span>
+          Add a user
         </Button>
       </HeadActions>
       <div className="stack">
@@ -301,10 +301,10 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
             Cancel
           </Button>
           <Button kind="primary" className="disc" disabled={busy || !username.trim() || !email.trim() || !info} onClick={save}>
-            {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
             <span className="btn-disc">
               <Glyph name="plus" />
             </span>
+            {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
           </Button>
         </>
       }
@@ -386,10 +386,10 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
             Cancel
           </Button>
           <Button kind="primary" className="disc" disabled={busy || role === user.role} onClick={save}>
-            {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
             <span className="btn-disc">
               <Glyph name="check" />
             </span>
+            {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
           </Button>
         </>
       }

@@ -23,7 +23,7 @@ button:disabled { cursor: default; opacity: 0.55; }
 
 /* Keys and buttons: pills. Primary is ink in light and the one green in dark. */
 .kbd { white-space: nowrap; font: 500 var(--fs-xs)/1 var(--mono); color: var(--text-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: var(--radius-sm); background: var(--bg); padding: 3px 6px 2px; min-width: 22px; text-align: center; display: inline-block; }
-.btn { height: var(--control); padding: 0 var(--sp-4); border-radius: var(--radius-pill); border: 1px solid var(--line-2); background: var(--bg); color: var(--text); font-size: var(--fs); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); white-space: nowrap; text-decoration: none; }
+.btn { height: var(--control); padding: 0 var(--sp-4); border-radius: var(--radius-control); border: 1px solid var(--control-line); background: var(--bg); color: var(--text); font-size: var(--fs); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); white-space: nowrap; text-decoration: none; }
 .btn:hover:not(:disabled) { background: var(--panel); border-color: var(--line-ui); }
 .btn .glyph { width: 15px; height: 15px; }
 .btn.primary { background: var(--btn-ink); color: var(--btn-on-ink); border-color: var(--btn-ink); }
@@ -36,18 +36,18 @@ button:disabled { cursor: default; opacity: 0.55; }
 .btn.danger { color: var(--danger); }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
 .btn.sm { height: var(--control-sm); padding: 0 var(--sp-3); font-size: var(--fs-sm); gap: 6px; }
-/* A round disc at the end of a pill holds its icon (the design's cm-btn__disc). */
-.btn.disc { padding-right: 5px; }
+/* A round disc at the start of a pill holds its icon (the design's cm-btn__disc); the words follow it. */
+.btn.disc { padding-left: 5px; }
 .btn-disc { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--green); color: var(--on-green); flex: none; }
 [data-theme="dark"] .btn-disc { background: rgba(255, 255, 255, 0.18); }
 .btn-disc .glyph { width: 13px; height: 13px; }
 .field { display: grid; gap: 6px; margin: 0 0 var(--sp-4); }
 .field > span { font-size: var(--fs-sm); color: var(--text); font-weight: 600; }
 .field small { color: var(--text-3); font-size: var(--fs-sm); }
-.input { height: var(--field); border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); padding: 0 var(--sp-3); width: 100%; }
+.input { height: var(--control); border: 1px solid var(--control-line); border-radius: var(--radius); background: var(--bg); padding: 0 var(--sp-3); width: 100%; }
 textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resize: vertical; }
 .input:focus { border-color: var(--green); }
-.input.sm { height: var(--field-sm); border-radius: 9px; font-size: var(--fs-sm); }
+.input.sm { height: var(--control-sm); font-size: var(--fs-sm); }
 
 /* Status: an icon shape and a word, never colour alone */
 .st { display: inline-flex; align-items: center; gap: var(--sp-2); white-space: nowrap; }
@@ -78,12 +78,12 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .rail { background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-3); gap: 2px; overflow: auto; }
 .brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; margin: 0 0 18px; }
 .brand .mark { width: 30px; height: 30px; }
-.brand p { margin: 0; font: 600 1.0625rem/1.2 var(--display); letter-spacing: -0.02em; color: var(--text); }
+.brand p { margin: 0; font: 600 var(--fs-md)/var(--lh-tight) var(--display); letter-spacing: -0.02em; color: var(--text); }
 .brand small { display: block; font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0; color: var(--text-3); }
 .scope-field { display: grid; gap: var(--sp-1); padding: 0 2px; margin-bottom: 16px; }
 .scope-field .label { padding-left: 6px; }
 .scope { width: 100%; font-weight: 500; }
-.scope.sm { height: var(--field-sm); border-radius: 9px; font-size: var(--fs-sm); padding-right: 8px; }
+.scope.sm { height: var(--control-sm); font-size: var(--fs-sm); padding-right: 8px; }
 .navgroup { padding: 14px var(--sp-3) var(--sp-1); margin: 0; }
 .navitem .glyph, .navitem .mark { width: 17px; height: 17px; }
 .rail ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
@@ -115,7 +115,7 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .fresh .link:hover { text-decoration: underline; }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--sel); flex: none; }
 .top-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
-.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 24vw, 300px); max-width: 100%; height: 38px; padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
+.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 24vw, 300px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
 .kbar span:nth-child(2) { flex: 1; }
 .kbar:hover { border-color: var(--line-2); color: var(--text-2); }
 .body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); gap: var(--sp-5) 0; padding: 28px var(--sp-6) var(--sp-5); }
@@ -135,7 +135,7 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 /* Bars above tables: filters on the card's top edge */
 .bar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--pad); border-bottom: 1px solid var(--line); }
 .bar .grow { flex: 1; }
-.chip { height: 34px; padding: 0 var(--sp-3); border: 1px dashed var(--line-ui); border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-2); background: var(--bg); }
+.chip { height: var(--control); padding: 0 var(--sp-3); border: 1px dashed var(--line-ui); border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-2); background: var(--bg); }
 .chip:hover { border-style: solid; }
 .chip.on { border-style: solid; border-color: var(--green); color: var(--text); background: var(--sel); }
 .chip b { font-weight: 600; color: var(--text); }
@@ -289,7 +289,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 /* A quiet pill for a word (a role, a site): the design's cm-chip; .brand is the green one */
 .pchip { display: inline-flex; align-items: center; vertical-align: middle; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--panel); color: var(--text); font-size: var(--fs-sm); line-height: 1; white-space: nowrap; }
 .pchip.brand { background: var(--tint); color: var(--brand-text); font-weight: 600; }
-.pchip .fav { width: 18px; height: 18px; border-radius: 5px; font-size: 10px; }
+.pchip .fav { width: 20px; height: 20px; border-radius: 5px; font-size: var(--fs-xs); }
 /* The card table wraps to fit instead of scrolling sideways (a scroll box would need its own Tab stop). */
 .card .t td:first-child, .card .t th:first-child { white-space: normal; }
 .card .site small { overflow-wrap: anywhere; }
@@ -353,7 +353,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .sheet.dialog footer { padding: 14px 24px; }
 /* Segmented: a pill track in the well, the chosen one lifted */
 .segmented { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); padding: 3px; margin: 0 0 var(--sp-4); }
-.segmented button { flex: 1; height: var(--control-sm); padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--text-2); font-weight: 500; }
+.segmented button { flex: 1; height: calc(var(--control) - 8px); padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--text-2); font-weight: 500; }
 .segmented button:hover { color: var(--text); }
 .segmented button[aria-pressed="true"] { background: var(--bg); color: var(--text); font-weight: 600; box-shadow: var(--shadow-soft); }
 .steps { margin: 0 0 var(--sp-4); padding-left: var(--sp-4); color: var(--text-2); }
@@ -435,7 +435,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 /* Board D10: a search row with the icon and Esc, mono group labels, rows with 28px tiles, keys in the foot */
 .pal-search { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4) 20px; border-bottom: 1px solid var(--line); }
 .pal-search > .glyph { width: 20px; height: 20px; color: var(--text-3); }
-.pal-search input { flex: 1; min-width: 0; height: var(--field); border: 0; border-radius: var(--radius); background: none; font: 400 var(--fs-md) var(--sans); padding: 0 var(--sp-2); }
+.pal-search input { flex: 1; min-width: 0; height: var(--control); border: 0; border-radius: var(--radius); background: none; font: 400 var(--fs-md) var(--sans); padding: 0 var(--sp-2); }
 .pal-search input:focus-visible { outline-offset: 0; }
 .pal ul { list-style: none; margin: 0; padding: var(--sp-2); max-height: 420px; overflow: auto; display: grid; gap: 2px; }
 .pal-group { font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); padding: var(--sp-3) var(--sp-3) var(--sp-1); }
@@ -544,7 +544,7 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 /* A plugin's or theme's tile: a letter in the well */
 .ptile { display: inline-grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); color: var(--text-2); font: 600 var(--fs-xs)/1 var(--display); }
 .ptile.sm { width: 24px; height: 24px; border-radius: 6px; }
-.ptile.xs { width: 18px; height: 18px; border-radius: 5px; font-size: 10px; }
+.ptile.xs { width: 20px; height: 20px; border-radius: 5px; font-size: var(--fs-xs); }
 /* WordPress.org's image inside the tile's border: plugin icons whole, theme screenshots (4:3) cropped square */
 .ptile.pic { overflow: hidden; background: #ffffff; }
 .ptile.ink { background: var(--btn-ink); color: var(--btn-on-ink); border-color: transparent; }
@@ -633,7 +633,7 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .fields { gap: var(--sp-3); }
 .fieldrow { align-items: end; }
 .fieldrow > .field { margin: 0; }
-.fields .row > .btn { height: var(--field); }
+.fields .row > .btn { height: var(--control); }
 ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 ul.plain .row { flex-wrap: wrap; }
 /* A file picker that looks like a button; the ring shows on the label. */

@@ -21,8 +21,8 @@
    not installed dashed, a known vulnerability on the danger ground. The open cell has a green ring. */
 .mx .cell { display: grid; gap: 1px; width: 100%; min-width: 128px; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
 .mx .cell:hover { border-color: var(--line-2); }
-.mx .cell .v { font: 500 var(--fs-sm)/16px var(--mono); color: var(--text); }
-.mx .cell .w { font-size: var(--fs-xs); line-height: 16px; color: var(--text-3); }
+.mx .cell .v { font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); color: var(--text); }
+.mx .cell .w { font-size: var(--fs-xs); line-height: var(--lh-tight); color: var(--text-3); }
 .mx .cell.up { background: var(--tint); }
 .mx .cell.up .w { color: var(--brand-text); font-weight: 600; }
 .mx .cell.on .w { color: var(--text-2); }
@@ -38,7 +38,7 @@
 .mx-legend li { display: flex; align-items: center; gap: 6px; }
 .mx-legend .cell { width: 14px; min-width: 0; height: 14px; padding: 0; border-radius: 4px; cursor: default; }
 .mx-legend .end { margin-left: auto; }
-.mx-label { margin: 0; font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.mx-label { margin: 0; font: 500 var(--fs-xs)/var(--lh-tight) var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 /* Sites the table can't show, as notes */
 .mx-notes { display: grid; gap: var(--sp-2); }
 .mx-notes ul { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }

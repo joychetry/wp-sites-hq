@@ -54,10 +54,10 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
       <span className="sum">{picked.size === 1 ? "1 site" : `${picked.size} sites`} picked</span>
       <Button onClick={onClose}>Close without publishing</Button>
       <Button kind="primary" className="disc" disabled={!title.trim() || picked.size === 0} onClick={review}>
-        Review the plan
         <span className="btn-disc">
           <Glyph name="arrow" />
         </span>
+        Review the plan
       </Button>
     </>
   );

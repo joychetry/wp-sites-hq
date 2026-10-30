@@ -214,10 +214,10 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
           Read every site again
         </Button>
         <Button kind="primary" className="disc" disabled={rows.length === 0} onClick={() => onPlan(planTitle(rows), rows)}>
-          Update all {rows.length}
           <span className="btn-disc">
             <Glyph name="arrow" />
           </span>
+          Update all {rows.length}
         </Button>
       </HeadActions>
       <div className="split-r">

@@ -152,10 +152,10 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
       </div>
       <div>
         <Button kind="primary" className="disc" disabled={busy} onClick={() => save(s)}>
-          Save report settings
           <span className="btn-disc">
             <Glyph name="check" />
           </span>
+          Save report settings
         </Button>
       </div>
     </Card>
@@ -248,10 +248,10 @@ function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: 
                   if (await run(async () => setGsc(await api.gscSetClient(client.id, client.secret)), "Saved your Google client.")) setSetup(false);
                 }}
               >
-                Save the client
                 <span className="btn-disc">
                   <Glyph name="check" />
                 </span>
+                Save the client
               </Button>
             </>
           }

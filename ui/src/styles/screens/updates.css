@@ -23,7 +23,7 @@
 .upd-alert { background: var(--warn-paper); border-color: var(--warn-line); }
 .upd-alert .card-body { gap: var(--sp-3); }
 .upd-alert .row { gap: 10px; }
-.upd-alert p { margin: 0; line-height: 20px; }
+.upd-alert p { margin: 0; line-height: var(--lh); }
 .upd-fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); font-size: var(--fs-sm); }
 .upd-fixes small { display: block; font-size: var(--fs-xs); color: var(--text-2); }
 /* Sites not in this list: a tile, the name and why */

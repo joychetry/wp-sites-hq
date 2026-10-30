@@ -5,7 +5,7 @@
 
 /* Site and Section pickers: a mono label beside the box; a site shows its tile. */
 .cm-pick { gap: var(--sp-2); }
-.cm-pick > span { font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.cm-pick > span { font: 500 var(--fs-xs)/var(--lh-tight) var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 .phead-acts .cm-pick .input { width: 180px; min-width: 0; }
 .cm .filters .cm-pick .input { width: 170px; min-width: 0; }
 .cm .filters .srch { flex: 1 1 220px; max-width: 320px; }
@@ -32,7 +32,7 @@
 .cm-site { display: flex; align-items: center; gap: var(--sp-2); }
 .cm-site > div { display: grid; gap: 2px; margin-right: auto; min-width: 0; }
 .cm-site b { font-weight: 600; }
-.cm-site small { font: 400 var(--fs-xs)/16px var(--mono); color: var(--text-3); }
+.cm-site small { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); }
 .cm .card-body > p.dim { margin: 0; font-size: var(--fs-sm); line-height: 1.45; }
 .cm-wait { background: var(--warn-paper); border-color: var(--warn-line); }
 .cm-wait .card-body { gap: var(--sp-3); }
@@ -70,7 +70,7 @@
 .rnums { display: flex; flex-wrap: wrap; gap: var(--sp-4) 28px; }
 .rnum { display: grid; gap: var(--sp-1); align-content: start; }
 .rnum .label { margin: 0; }
-.rnum strong { font: 600 26px/1 var(--display); letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
+.rnum strong { font: 600 var(--fs-xl)/1 var(--display); letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
 .rnum strong.warning { color: var(--warn); }
 .rnum small { font-size: var(--fs-sm); color: var(--text-3); }
 .cm .card .t th { position: static; }

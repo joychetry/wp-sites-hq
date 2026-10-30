@@ -537,20 +537,11 @@ export default function App() {
               <Kbd>Ctrl K</Kbd>
             </button>
             {sites && sites.length > 0 && (
-              section === "Overview" ? (
-                <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
-                  {checking ? "Checking…" : "Check all sites now"}
-                  <span className="btn-disc">
-                    <Glyph name="refresh" />
-                  </span>
-                </Button>
-              ) : (
-                // The page head holds this page's main action, so checking steps back to a plain button.
-                <Button disabled={checking} onClick={checkAll}>
-                  <Glyph name="refresh" />
-                  {checking ? "Checking…" : "Check all sites now"}
-                </Button>
-              )
+              // The page head holds each page's main action, so this is the same plain button on every page.
+              <Button disabled={checking} onClick={checkAll}>
+                <Glyph name="refresh" />
+                {checking ? "Checking…" : "Check all sites now"}
+              </Button>
             )}
           </div>
         </header>

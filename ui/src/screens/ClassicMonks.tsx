@@ -501,10 +501,10 @@ function useUndo(site: Site, onDone: (d: Done) => void) {
         <>
           <Button onClick={() => setAsking(null)}>Keep it</Button>
           <Button kind="primary" className="disc" onClick={() => run(asking)}>
-            Undo
             <span className="btn-disc">
               <Glyph name="undo" />
             </span>
+            Undo
           </Button>
         </>
       }

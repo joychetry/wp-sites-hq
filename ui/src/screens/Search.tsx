@@ -147,10 +147,10 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
       >
         <SearchInput aria-label="Search everything" placeholder="A site, plugin, theme, client, post or page" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <Button kind="primary" className="disc" type="submit" disabled={typed.trim().length < 2}>
-          Search
           <span className="btn-disc">
             <Glyph name="arrow" />
           </span>
+          Search
         </Button>
       </form>
       {query.trim().length < 2 ? (

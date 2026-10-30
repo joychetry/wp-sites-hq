@@ -140,10 +140,10 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
               </div>
               <div>
                 <Button kind="primary" className="disc" disabled={!ready || busy} onClick={make}>
-                  {busy ? "Making the report…" : "Make the report"}
                   <span className="btn-disc">
                     <Glyph name="arrow" />
                   </span>
+                  {busy ? "Making the report…" : "Make the report"}
                 </Button>
               </div>
             </div>
