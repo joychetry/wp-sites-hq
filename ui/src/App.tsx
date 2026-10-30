@@ -1,32 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
-import { Overview } from "./screens/Overview";
-import { Sites } from "./screens/Sites";
+import { Page } from "./components/page";
 import { AddSite } from "./screens/AddSite";
-import { Settings } from "./screens/Settings";
-import { Updates } from "./screens/Updates";
-import { Matrix } from "./screens/Matrix";
 import { Install } from "./screens/Install";
-import { Content } from "./screens/Content";
 import { attention, leaveGuard, planTitle, summary, updatesOf } from "./fleet";
-import { Media } from "./screens/Media";
-import { Users } from "./screens/Users";
-import { Comments } from "./screens/Comments";
-import { ClassicMonks } from "./screens/ClassicMonks";
-import { Ai } from "./screens/Ai";
-import { Security } from "./screens/Security";
-import { Monitoring } from "./screens/Monitoring";
-import { Clients } from "./screens/Clients";
-import { Search } from "./screens/Search";
-import { Store } from "./screens/Store";
-import { Reports } from "./screens/Reports";
+import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -183,6 +168,12 @@ export default function App() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  // Once the sites are in, the likely next pages load while the app is idle, so a click opens them at once.
+  const sitesIn = sites !== null;
+  useEffect(() => {
+    if (sitesIn) return prefetchIdle(section);
+  }, [sitesIn]);
 
   const all = sites ?? [];
   const groups = useMemo(() => [...new Set(all.flatMap((s) => (s.group ? [s.group] : [])))].sort(), [all]);
@@ -343,23 +334,25 @@ export default function App() {
     );
   } else if (all.length === 0 && !["Overview", "Sites", "Settings", "AI", "Clients"].includes(section)) {
     body = (
-      <div className="scroll">
-        <Empty
-          picture="sites"
-          title={`${section} fills in once you add a site.`}
-          action={
-            <Button kind="primary" keys="A" onClick={() => setAdding({})}>
-              Add a site
-            </Button>
-          }
-        >
-          <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
-        </Empty>
-      </div>
+      <Page>
+        <section className="card">
+          <Empty
+            picture="sites"
+            title={`${section} fills in once you add a site.`}
+            action={
+              <Button kind="primary" keys="A" onClick={() => setAdding({})}>
+                Add a site
+              </Button>
+            }
+          >
+            <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+          </Empty>
+        </section>
+      </Page>
     );
   } else if (section === "Overview") {
     body = (
-      <Overview
+      <S.Overview
         sites={scoped}
         waiting={waiting}
         plans={plans ?? []}
@@ -374,7 +367,7 @@ export default function App() {
     );
   } else if (section === "Sites") {
     body = (
-      <Sites
+      <S.Sites
         sites={scoped}
         groups={groups}
         focusId={focusId}
@@ -385,10 +378,10 @@ export default function App() {
       />
     );
   } else if (section === "Updates") {
-    body = <Updates sites={scoped} inventory={inv} reports={reports ?? []} onPlan={(t, r) => plan(t, r)} />;
+    body = <S.Updates sites={scoped} inventory={inv} reports={reports ?? []} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Plugins" || section === "Themes") {
     body = (
-      <Matrix
+      <S.Matrix
         key={section}
         kind={section === "Plugins" ? "plugins" : "themes"}
         sites={scoped}
@@ -399,28 +392,28 @@ export default function App() {
       />
     );
   } else if (section === "Content") {
-    body = <Content sites={scoped} onPlan={plan} />;
+    body = <S.Content sites={scoped} onPlan={plan} />;
   } else if (section === "Media") {
-    body = <Media sites={scoped} />;
+    body = <S.Media sites={scoped} />;
   } else if (section === "Users") {
-    body = <Users sites={scoped} />;
+    body = <S.Users sites={scoped} />;
   } else if (section === "Comments") {
-    body = <Comments sites={scoped} />;
+    body = <S.Comments sites={scoped} />;
   } else if (section === "Classic Monks") {
-    body = <ClassicMonks sites={scoped} />;
+    body = <S.ClassicMonks sites={scoped} />;
   } else if (section === "Monitoring") {
-    body = <Monitoring sites={scoped} monitors={monitors ?? []} />;
+    body = <S.Monitoring sites={scoped} monitors={monitors ?? []} />;
   } else if (section === "Security") {
-    body = <Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
+    body = <S.Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Clients") {
-    body = <Clients sites={all} />;
+    body = <S.Clients sites={all} />;
   } else if (section === "Store") {
-    body = <Store sites={scoped} onPlan={plan} />;
+    body = <S.Store sites={scoped} onPlan={plan} />;
   } else if (section === "Reports") {
-    body = <Reports sites={scoped} onSettings={() => setSection("Settings")} />;
+    body = <S.Reports sites={scoped} onSettings={() => setSection("Settings")} />;
   } else if (section === "Search") {
     body = (
-      <Search
+      <S.Search
         key={searchFor}
         sites={all}
         inventory={inv}
@@ -429,9 +422,9 @@ export default function App() {
       />
     );
   } else if (section === "AI") {
-    body = <Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
+    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
   } else {
-    body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
+    body = <S.Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   }
 
   return (
@@ -459,6 +452,8 @@ export default function App() {
                       className="navitem"
                       aria-current={s === section ? "page" : undefined}
                       onClick={() => setSection(s)}
+                      onPointerEnter={() => preload(s, scoped)}
+                      onFocus={() => preload(s, scoped)}
                     >
                       {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
                       {LABEL[s] ?? s}
@@ -563,7 +558,9 @@ export default function App() {
               )}
             </div>
           </header>
-          <HeadSlot.Provider value={headSlot}>{body}</HeadSlot.Provider>
+          <HeadSlot.Provider value={headSlot}>
+            <Suspense fallback={<Skeleton label={`Loading ${LABEL[section] ?? section}…`} />}>{body}</Suspense>
+          </HeadSlot.Provider>
         </main>
       </div>
       {palette && (

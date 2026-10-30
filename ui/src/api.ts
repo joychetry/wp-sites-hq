@@ -409,6 +409,38 @@ export type ActivityRow = { id: number; time: string; who: string; tool: string;
 export type Activity = { rows: ActivityRow[]; total: number; page: number; pages: number };
 export type Approval = { id: number; tool: string; who: string; time: string; expires_in: number };
 
+// Reads a page asks for first, started early (a nav item's hover or focus, or when the app is idle) by `warm`.
+// Each warmed answer is used once, within 30 s; any change made from here, or any change the core reports,
+// drops them all, so a screen never shows an answer older than the last change.
+const warmed = new Map<string, { at: number; p: Promise<unknown> }>();
+const WARM_MS = 30_000;
+let warming = false;
+function read<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  const key = cmd + JSON.stringify(args ?? {});
+  const hit = warmed.get(key);
+  const fresh = hit && Date.now() - hit.at < WARM_MS;
+  if (warming) {
+    if (fresh) return hit.p as Promise<T>;
+    const p = invoke<T>(cmd, args);
+    warmed.set(key, { at: Date.now(), p });
+    p.catch(() => warmed.delete(key));
+    return p;
+  }
+  warmed.delete(key);
+  return fresh ? (hit.p as Promise<T>) : invoke<T>(cmd, args);
+}
+/** Starts the api reads `f` makes now, for the screen that will ask for them next. */
+export function warm(f: () => unknown) {
+  warming = true;
+  try {
+    Promise.resolve(f()).catch(() => {});
+  } finally {
+    warming = false;
+  }
+}
+/** Drops every warmed answer (after a change). */
+export const cool = () => warmed.clear();
+
 export const api = {
   status: () => invoke<CoreStatus>("core_status"),
   sites: () => invoke<Site[]>("sites_list"),
@@ -447,7 +479,7 @@ export const api = {
   openLink: (url: string, site?: number) => invoke<void>("link_open", { url, site }),
   startJob: (title: string, changes: Change[]) => invoke<Job>("job_start", { title, changes }),
   job: (id: number) => invoke<Job>("job_get", { id }),
-  postTypes: (id: number) => invoke<PostType[]>("content_types", { id }),
+  postTypes: (id: number) => read<PostType[]>("content_types", { id }),
   posts: (id: number, query: Query) => invoke<Listing>("content_list", { id, query }),
   post: (id: number, postType: string, postId: number) => invoke<Post>("content_get", { id, postType, postId }),
   terms: (id: number, taxonomy: string, search = "") => invoke<Term[]>("content_terms", { id, taxonomy, search }),
@@ -473,16 +505,16 @@ export const api = {
   trashMedia: (id: number, ids: number[], back: boolean) => invoke<Moved>("media_trash", { id, ids, back }),
   onMediaProgress: (f: (p: MediaProgress) => void) => listen<MediaProgress>("media-progress", (e) => f(e.payload)),
   importMedia: (id: number, url: string, alt: string) => invoke<Media>("media_import", { id, url, alt }),
-  users: (id: number, search: string, page = 1) => invoke<Users>("users_list", { id, search, page }),
+  users: (id: number, search: string, page = 1) => read<Users>("users_list", { id, search, page }),
   createUser: (id: number, user: NewUser) => invoke<User>("user_create", { id, user }),
   setRole: (id: number, userId: number, role: string) => invoke<void>("user_set_role", { id, userId, role }),
   deleteUser: (id: number, userId: number, reassign: number) => invoke<void>("user_delete", { id, userId, reassign }),
   sendReset: (id: number, userId: number) => invoke<string>("user_reset", { id, userId }),
-  comments: (id: number, status: CommentState) => invoke<Comments>("comments_list", { id, status }),
+  comments: (id: number, status: CommentState) => read<Comments>("comments_list", { id, status }),
   moderate: (id: number, commentId: number, action: Moderation) => invoke<void>("comment_moderate", { id, commentId, action }),
   reply: (id: number, commentId: number, postId: number, text: string) => invoke<void>("comment_reply", { id, commentId, postId, text }),
   login: (id: number) => invoke<void>("site_login", { id }),
-  features: (id: number) => invoke<FeatureGroup[]>("cm_features", { id }),
+  features: (id: number) => read<FeatureGroup[]>("cm_features", { id }),
   setFeature: (id: number, name: string, on: boolean) => invoke<number | null>("cm_set_feature", { id, name, on }),
   settings: (id: number) => invoke<Setting[]>("cm_settings", { id }),
   setSetting: (id: number, name: string, value: unknown) => invoke<number | null>("cm_set_setting", { id, name, value }),
@@ -495,15 +527,15 @@ export const api = {
   plansWaiting: () => invoke<Job[]>("plans_waiting"),
   confirmPlan: (id: number) => invoke<Job>("plan_confirm", { id }),
   declinePlan: (id: number) => invoke<Job>("plan_decline", { id }),
-  activityLog: (before?: number) => invoke<Entry[]>("activity_list", { before }),
-  clients: () => invoke<Client[]>("clients_list"),
+  activityLog: (before?: number) => read<Entry[]>("activity_list", { before }),
+  clients: () => read<Client[]>("clients_list"),
   saveClient: (client: Client) => invoke<Client>("client_save", { client }),
   deleteClient: (id: number) => invoke<void>("client_delete", { id }),
   setClient: (id: number, client: number | null) => invoke<void>("site_set_client", { id, client }),
-  costs: () => invoke<Cost[]>("costs_list"),
+  costs: () => read<Cost[]>("costs_list"),
   saveCost: (cost: Cost) => invoke<Cost>("cost_save", { cost }),
   deleteCost: (id: number) => invoke<void>("cost_delete", { id }),
-  appSettings: () => invoke<AppSettings>("app_settings_get"),
+  appSettings: () => read<AppSettings>("app_settings_get"),
   /** The newer version on GitHub Releases, or null when this one is the newest. */
   updateStatus: () => invoke<AppUpdate>("app_update_status"),
   updateCheck: () => invoke<AppUpdate>("app_update_check"),
@@ -528,11 +560,17 @@ export const api = {
   cmReports: (id: number, days: number) => invoke<CmReports>("cm_reports", { id, days }),
   makeReport: (ask: ReportAsk) => invoke<SavedReport>("report_make", { ask }),
   openFile: (path: string) => invoke<void>("file_open", { path }),
-  gscStatus: () => invoke<GscStatus>("gsc_status"),
+  gscStatus: () => read<GscStatus>("gsc_status"),
   gscSetClient: (id: string, secret: string) => invoke<GscStatus>("gsc_set_client", { id, secret }),
   gscConnect: () => invoke<GscStatus>("gsc_connect"),
   gscForget: () => invoke<GscStatus>("gsc_forget"),
 };
+
+// Any change made from here drops the warmed reads (see `warm`).
+const CHANGES = /^(add|cancel|connect|download|signInAgain|remove|check|set|refresh|scan|start|create|edit|trash|restore|untrash|save|upload|replace|stop|update|import|delete|send|moderate|reply|undo|agentAccess|confirm|decline|stage|make|gsc[A-Z])/;
+for (const [name, f] of Object.entries(api) as [keyof typeof api, (...a: never[]) => unknown][])
+  if (CHANGES.test(name)) (api as Record<string, unknown>)[name] = (...a: never[]) => (cool(), f(...a));
+
 
 /** Whether this site's connection has this Classic Monks tool (Basic mode has none). */
 /** A file the person picked, as base64 without the data: prefix. */
@@ -592,7 +630,8 @@ function useLive<T>(load: () => Promise<T>, event: string) {
   }, [load]);
   useEffect(() => {
     reload();
-    const off = listen(event, reload);
+    // The core says something changed: warmed reads may be older than that.
+    const off = listen(event, () => (cool(), reload()));
     return () => {
       off.then((f) => f()).catch(() => {});
     };
@@ -705,7 +744,7 @@ export function useSites() {
   }, []);
   useEffect(() => {
     reload();
-    const off = listen("sites-changed", reload);
+    const off = listen("sites-changed", () => (cool(), reload()));
     return () => {
       off.then((f) => f()).catch(() => {});
     };
