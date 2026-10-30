@@ -384,7 +384,7 @@ test("the Sites table fits beside the site panel without scrolling sideways", as
   for (const [width, density] of [[1440, "comfortable"], [1301, "comfortable"], [1200, "comfortable"], [1200, "compact"]] as const) {
     await page.setViewportSize({ width, height: 900 });
     await show(page, SCREENS.find((s) => s.name === "sites-selected")!, "light", density);
-    const [scroll, client] = await page.locator(".scroll").evaluate((e) => [e.scrollWidth, e.clientWidth]);
+    const [scroll, client] = await page.locator(".page-main").evaluate((e) => [e.scrollWidth, e.clientWidth]);
     expect(scroll, `${width}px, ${density}`).toBeLessThanOrEqual(client);
   }
 });

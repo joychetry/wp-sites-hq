@@ -497,10 +497,10 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 
 /* The page system (components/page.tsx): Page, Toolbar, SidePanel. Cards, tables and empty states sit in it. */
 /* Rows are as tall as their content: in a scrolling grid an auto row can otherwise shrink to nothing. */
-.page { min-width: 0; min-height: 0; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
+.page { position: relative; min-width: 0; min-height: 0; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
 .page.narrow { max-width: 1000px; width: 100%; }
 .page.with-side { grid-template-columns: minmax(0, 1fr) var(--inspector); grid-template-rows: minmax(0, 1fr); align-content: stretch; align-items: start; overflow: hidden; }
-.page-main { min-width: 0; min-height: 0; max-height: 100%; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
+.page-main { position: relative; min-width: 0; min-height: 0; max-height: 100%; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
 .stack { display: grid; gap: var(--page-gap); align-content: start; min-width: 0; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .toolbar > .end { margin-left: auto; }
@@ -609,7 +609,8 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
   .body { display: flex; flex-direction: column; padding: var(--sp-4); }
   .insp { width: auto; max-height: none; }
   .page.with-side { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: visible; }
-  .page, .page-main { overflow: visible; max-height: none; }
+  /* The whole page scrolls down; a wide table scrolls sideways inside it, never the window. */
+  .page, .page-main { overflow: auto hidden; max-height: none; }
   .top { padding: var(--sp-2) var(--sp-4); }
   .kbar { width: 100%; }
   .selbar { flex-wrap: wrap; }

@@ -27,12 +27,12 @@ function Five() {
 
 // jsdom has no layout: every item is 100px wide and the row 350px.
 function narrow() {
-  const off = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth")!;
+  const rect = Element.prototype.getBoundingClientRect;
   const client = Object.getOwnPropertyDescriptor(Element.prototype, "clientWidth")!;
-  Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get: () => 100 });
+  Element.prototype.getBoundingClientRect = () => ({ width: 100 }) as DOMRect;
   Object.defineProperty(Element.prototype, "clientWidth", { configurable: true, get: () => 350 });
   return () => {
-    Object.defineProperty(HTMLElement.prototype, "offsetWidth", off);
+    Element.prototype.getBoundingClientRect = rect;
     Object.defineProperty(Element.prototype, "clientWidth", client);
   };
 }

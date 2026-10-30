@@ -1230,9 +1230,15 @@ function useOverflow(count: number, selected: number) {
     const el = row.current;
     if (!el) return;
     const read = () => {
-      const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
-      setRoom(el.clientWidth || Infinity);
-      setWidths([...(measure.current?.children ?? [])].map((c) => (c as HTMLElement).offsetWidth + gap));
+      const css = getComputedStyle(el);
+      const gap = parseFloat(css.columnGap) || 0;
+      // Each width below carries one gap; the last item has none after it, so the room gets it back.
+      const inner = el.clientWidth - (parseFloat(css.paddingLeft) || 0) - (parseFloat(css.paddingRight) || 0);
+      // 1px of slack: rounded widths must never tip a row that fits into More (and back, in a loop).
+      const room = el.clientWidth ? inner + gap + 1 : Infinity;
+      const ws = [...(measure.current?.children ?? [])].map((c) => c.getBoundingClientRect().width + gap);
+      setRoom((r) => (Math.abs(r - room) < 1 ? r : room));
+      setWidths((old) => (old.length === ws.length && old.every((w, i) => Math.abs(w - ws[i]) < 1) ? old : ws));
     };
     read();
     if (typeof ResizeObserver === "undefined") return;
