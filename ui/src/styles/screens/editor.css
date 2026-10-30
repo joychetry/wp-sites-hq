@@ -54,7 +54,6 @@
 
 /* The full-page editor (screens/Editor.tsx): a top bar, then the main column and the side boxes,
    like WordPress's classic editor. One column under 900px. */
-.ed-page { display: grid; gap: var(--sp-4); align-content: start; }
 .ed-top { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; min-height: var(--control); }
 .ed-top h2 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--display); }
 .ed-top h2 .dim { font: 400 var(--fs-md)/1.3 var(--sans); }

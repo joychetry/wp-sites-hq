@@ -46,7 +46,7 @@ describe("type scale", () => {
 });
 
 describe("page system", () => {
-  it.skip("leaves page layout to components/page.tsx", () => {
+  it("leaves page layout to components/page.tsx", () => {
     const bad = files.filter((f) => f.startsWith("screens/") && /\.scroll\.page|\.split-r|\.filters|\.mfilters|\.cfilter|\.phead-acts/.test(css[f]));
     expect(bad).toEqual([]);
     expect(tsx.filter(([, s]) => /"scroll page|className="filters|"split-r"/.test(s)).map(([f]) => f)).toEqual([]);

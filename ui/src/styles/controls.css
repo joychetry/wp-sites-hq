@@ -129,8 +129,6 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .srch .input:focus { box-shadow: var(--ring); }
 .srch .input:focus { background: var(--bg); }
 .srch .icon-btn { position: absolute; right: 5px; width: 28px; height: 28px; border-radius: 50%; }
-.bar .srch { width: 300px; }
-.bar .srch .input { width: 100%; }
 .tagin { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; }
 .tagin .input { flex: 1 1 140px; width: auto; }
 .color-in { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
@@ -232,7 +230,6 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 .dt .dt-cal { border: 1px solid var(--control-line); background: var(--bg); height: var(--control); width: var(--control); }
 .dt.sm .dt-cal, .dt.sm .dt-day, .dt.sm .dt-time { height: var(--control-sm); }
 .dt-err { width: 100%; margin: 0; }
-.bar .tabs { border: 0; padding: 0; margin-block: calc(-1 * var(--sp-2)); }
 
 /* Sidebar icons: a 17px line drawing per item, so the sidebar can be scanned by shape as well as by word */
 
@@ -291,7 +288,6 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 @media (max-width: 1300px) {
   :root { --rail: 216px; --inspector: 288px; }
   .top, .body { padding-inline: var(--sp-5); }
-  .bar .srch { width: 240px; }
 }
 @media (max-width: 900px) {
   .toasts { left: var(--sp-4); width: auto; }
@@ -308,5 +304,3 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 .next-steps > ul { grid-column: 1; }
 .next-steps > .btn { grid-column: 2; grid-row: 1; justify-self: end; }
 .next-steps li .btn { margin-left: auto; }
-.bar .srch { flex: 0 1 300px; min-width: 200px; }
-@media (max-width: 1200px) { .bar { flex-wrap: wrap; } }

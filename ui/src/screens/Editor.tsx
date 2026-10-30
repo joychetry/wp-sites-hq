@@ -11,13 +11,14 @@ import { Combobox, DateInput, NumberInput, Select } from "../components/controls
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, hasTool, type Block, type Draft, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
 import { Button, Glyph } from "../components/ui";
-import { toast } from "../components/feedback";
+import { toast, Empty } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import { MediaPicker } from "../components/MediaPicker";
 import { InlineText, RichText } from "../components/RichText";
 import { acfErrors, AcfGroups, invalid, type Acf } from "./AcfFields";
 import { STATUS_LABEL } from "./Content";
 import { leaveGuard } from "../fleet";
+import { Page } from "../components/page";
 
 
 /** "core/paragraph" -> "Paragraph", "acme/map" -> "Map (acme)", "" -> "Text". */
@@ -587,18 +588,17 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
 
   if (loadError) {
     return (
-      <div className="scroll page ed-page">
+      <Page className="ed-page">
         <div className="ed-top">
           <Button onClick={onClose}>
             <Glyph name="arrow" />
             {back ?? `Back to ${type.label.toLowerCase()}`}
           </Button>
         </div>
-        <div className="empty" role="alert">
-          <h2>This {noun} didn't open.</h2>
+        <Empty alert title={`This ${noun} didn't open.`}>
           <p>{loadError}</p>
-        </div>
-      </div>
+        </Empty>
+      </Page>
     );
   }
 
@@ -643,7 +643,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="scroll page ed-page">
+    <Page className="ed-page">
       <div className="ed-top">
         <Button onClick={leave}>
           <Glyph name="arrow" />
@@ -893,6 +893,6 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
           <p>Your changes to "{title || `this ${noun}`}" aren't saved. If you leave now, they are lost.</p>
         </Sheet>
       )}
-    </div>
+    </Page>
   );
 }
