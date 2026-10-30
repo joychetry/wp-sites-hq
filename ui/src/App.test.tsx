@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import App, { SECTIONS } from "./App";
 import { site, choose } from "./test-fixtures";
-import { leaveGuard } from "./screens/Editor";
+import { leaveGuard } from "./fleet";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));

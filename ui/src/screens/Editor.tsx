@@ -17,6 +17,7 @@ import { MediaPicker } from "../components/MediaPicker";
 import { InlineText, RichText } from "../components/RichText";
 import { acfErrors, AcfGroups, invalid, type Acf } from "./AcfFields";
 import { STATUS_LABEL } from "./Content";
+import { leaveGuard } from "../fleet";
 
 
 /** "core/paragraph" -> "Paragraph", "acme/map" -> "Map (acme)", "" -> "Text". */
@@ -53,12 +54,6 @@ export function siteDate(local: string): string {
 
 /** A body with no block comments is classic: one editable block, or nothing yet. */
 export const isClassic = (p: Post) => !p.locked && (p.blocks.length === 0 || (p.blocks.length === 1 && p.blocks[0].name === "" && p.blocks[0].editable));
-
-/**
- * Leaving the editor with unsaved changes asks first. The editor sets `ask` while it has changes;
- * App runs a page change through it.
- */
-export const leaveGuard: { ask: ((go: () => void) => void) | null } = { ask: null };
 
 /** PHP's serialize() output: WordPress keeps these out of its Custom Fields box, and so do we. */
 export const isSerialized = (v: string) => /^(?:[aOC]:\d+:[\s\S]*[;}]|s:\d+:"[\s\S]*";|[bid]:[^;]*;|N;)$/.test(v.trim());

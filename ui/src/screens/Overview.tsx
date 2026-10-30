@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Overview: what needs you across the fleet (docs/design/redesign, board 01). The fleet sentence is
 // the page head's line; here are the stat cards, the fixes, your sites, the latest changes and versions.
-import { ago, api, NO_TOOLS, noTools, pluginName, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
+import { ago, api, noTools, pluginName, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
@@ -9,38 +9,9 @@ import { SiteTile } from "../components/SiteTile";
 import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
+import { attention } from "../fleet";
 
-const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
-const word = (n: number) => WORDS[n] ?? String(n);
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-/** "Two sites are down. One needs a look." and the quieter rest. */
-export function summary(sites: Site[]): { lead: string; rest: string } {
-  const n = sites.length;
-  if (n === 0) return { lead: "Welcome to Monks Central.", rest: "Add your first site to get started." };
-  const tones = sites.map((s) => siteStatus(s).tone);
-  const down = tones.filter((t) => t === "danger").length;
-  const look = tones.filter((t) => t === "warning").length;
-  const ok = tones.filter((t) => t === "ok").length;
-  if (down === 0 && look === 0) {
-    if (ok === 0) return { lead: "Checking your sites.", rest: "This takes a few seconds." };
-    const lead = n === 1 ? "Your one site is healthy." : n === 2 ? "Both sites are healthy." : `All ${word(n)} sites are healthy.`;
-    return { lead, rest: ok < n ? `${cap(word(n - ok))} not checked yet.` : "" };
-  }
-  const parts = [];
-  if (down) parts.push(`${cap(word(down))} ${down === 1 ? "site is" : "sites are"} down.`);
-  if (look) parts.push(`${cap(word(look))} ${look === 1 ? "needs" : "need"} a look.`);
-  const rest = ok ? `The other ${word(ok)} ${ok === 1 ? "is" : "are"} fine.` : "";
-  return { lead: parts.join(" "), rest };
-}
-
-export function attention(s: Site): string | null {
-  if (s.sign_in_again) return "The saved sign-in can't be used. Sign in again.";
-  if (s.health === "down" || s.health === "warning") return s.health_detail || "Needs a look.";
-  if (noTools(s)) return NO_TOOLS;
-  if (s.capabilities.degraded === true) return "This Classic Monks is older. Update it on the site for every feature.";
-  return null;
-}
+export { attention, summary } from "../fleet";
 
 const UNKNOWN = "not known yet";
 

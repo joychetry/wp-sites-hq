@@ -2,51 +2,15 @@
 // Updates: everything waiting on every site, picked and sent to the plan.
 import { Fragment, useMemo, useState } from "react";
 import "../styles/screens/updates.css";
-import { ago, api, blocked, siteStatus, type Action, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
+import { ago, api, blocked, siteStatus, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
 import { toast } from "../components/feedback";
 import type { PlanRow } from "../components/JobSheet";
+import { planTitle, updatesOf, type Kind, type Row } from "../fleet";
 
-type Kind = "WordPress" | "Plugin" | "Theme" | "Translations";
-type Row = PlanRow & { key: string; kind: Kind; name: string; active?: boolean };
-
-/** Every update a site has waiting, as plan rows. */
-export function updatesOf(s: Site, inv: SiteInventory | undefined): Row[] {
-  if (!inv || blocked(s, inv) || !inv.inventory.updates_known) return [];
-  const i = inv.inventory;
-  const row = (key: string, kind: Kind, name: string, action: Action, from: string | null, to: string | null, active?: boolean): Row => ({
-    key: `${s.id}:${key}`,
-    kind,
-    name,
-    site: s.name,
-    icon: s.icon,
-    label: kind === "Translations" ? name : `Update ${name}${kind === "Theme" ? " theme" : ""}`,
-    from,
-    to,
-    active,
-    change: { site_id: s.id, action },
-  });
-  return [
-    ...(i.wordpress_update ? [row("core", "WordPress", "WordPress", { do: "update_core" }, i.wordpress, i.wordpress_update)] : []),
-    ...i.plugins
-      .filter((p) => p.update)
-      .map((p) => row(`p:${p.id}`, "Plugin", p.name, { do: "update_plugin", plugin: p.id }, p.version, p.update, p.active)),
-    ...i.themes
-      .filter((t) => t.update)
-      .map((t) => row(`t:${t.id}`, "Theme", t.name, { do: "update_theme", theme: t.id }, t.version, t.update, t.active)),
-    ...(i.translations > 0
-      ? [row("tr", "Translations", "Update translations", { do: "update_translations" }, null, null)]
-      : []),
-  ];
-}
-
-/** The plan's title for these updates, e.g. "Update WooCommerce on MC A". */
-export function planTitle(list: (PlanRow & { name: string })[]): string {
-  const sites = new Set(list.map((r) => r.change.site_id)).size;
-  return `Update ${list.length === 1 ? list[0].name : `${list.length} things`} on ${sites === 1 ? list[0].site : `${sites} sites`}`;
-}
+export { planTitle, updatesOf } from "../fleet";
 
 /** Sites whose updates aren't in the list, and why. */
 function unseen(sites: Site[], inventory: Map<number, SiteInventory>): [Site, string][] {
