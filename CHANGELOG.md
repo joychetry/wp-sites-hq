@@ -4,6 +4,30 @@ All notable changes to Monks Central. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org).
 
+## [0.3.2] - 2026-10-30
+
+Every screen looks and works the same way.
+
+### Layout
+- One page layout on every screen.
+- One type scale across the app.
+- Tabs that do not fit fold into a More menu.
+- Calmer borders on selects and inputs.
+- Search is the same height as the buttons next to it.
+- Sites to show moved to the top bar.
+- The sidebar footer stays pinned to the bottom.
+- The side panel is always shown.
+
+### Buttons and top bar
+- Every button puts its words first and its icon on the right.
+- The top bar button is now Check all sites.
+- Short last-check and attention pills in the top bar.
+
+### Speed and polish
+- Pages load ahead of the click.
+- Sharper site icons.
+- Better column widths and spacing on Sites.
+
 ## [0.3.1] - 2026-10-29
 
 The app keeps itself up to date.
@@ -145,6 +169,7 @@ The first public beta. Unsigned installers for macOS, Windows and Linux.
   before it installs.
 - The `monks` command line is installed with the app.
 
+[0.3.2]: https://github.com/joychetry/monks-central/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/joychetry/monks-central/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/joychetry/monks-central/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/joychetry/monks-central/compare/v0.1.0...v0.2.0
