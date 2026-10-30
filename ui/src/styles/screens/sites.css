@@ -2,6 +2,12 @@
 /* Sites (board 02): tabs, search and a filter above a card with the sites; the site's panel beside it. */
 .sites .t td { height: calc(var(--row) + 14px); }
 .sites .t th.tick { width: 44px; }
+/* Fixed columns as wide as their longest content ("Healthy, slow", "7.1.3 to 7.1.4", "Classic Monks Pro"), so
+   nothing wraps and filtering never moves them; the site column takes the rest and cuts with an ellipsis. */
+.sites .t th.c-status { width: 9.5rem; }
+.sites .t th.c-wp { width: 8.5rem; }
+.sites .t th.c-conn { width: 10.5rem; }
+.sites .t .acts-col { width: 1%; white-space: nowrap; }
 /* Ticked rows keep the ground; only the open row is tinted with the green edge (as in the design). */
 .sites .t tr.sel:not(.focus):not(:hover) td { background: var(--bg); }
 .sites .t tr.warn:not(.focus):not(:hover) td { background: var(--warn-paper); }
@@ -37,3 +43,5 @@
 .sites .selbar b, .sites .selbar label { white-space: nowrap; }
 .sites .selbar .btn.ghost { color: inherit; }
 .sites .selbar .btn.ghost:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); }
+/* The filter box gives way first, so tabs, box and the connection chip stay on one row. */
+.sites .toolbar .srch { flex: 1 1 160px; min-width: 160px; }

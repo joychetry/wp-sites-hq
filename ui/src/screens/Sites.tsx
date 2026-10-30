@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
-import { dismiss, toast } from "../components/feedback";
+import { dismiss, Empty, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type PluginZip, type Site } from "../api";
 import { Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
+import { Page, SidePanel, Toolbar } from "../components/page";
 import { updatesOf } from "./Updates";
 import "../styles/screens/sites.css";
 
@@ -131,6 +132,27 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   ];
   const modeAt = modes.findIndex(([m]) => m === mode);
 
+  const side = (
+    <SidePanel className="site-pane" label={focus ? `${focus.name} details` : "Site details"} empty="Pick a site to see its details, notes and actions.">
+      {focus && (
+        <Inspector
+          key={focus.id}
+          site={focus}
+          groups={groups}
+          allTags={[...new Set(sites.flatMap((x) => x.tags))].sort()}
+          updates={updatesOf(focus, inventory?.get(focus.id))}
+          onCheck={() => check([focus.id])}
+          onSignInAgain={() => onSignInAgain(focus)}
+          onUpdates={onUpdates}
+          onRemoved={(text, ok) => {
+            toast(text, { tone: ok ? "ok" : "warning" });
+            setFocusId(null);
+          }}
+        />
+      )}
+    </SidePanel>
+  );
+
   return (
     <>
       <HeadActions>
@@ -141,8 +163,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           Add a site
         </Button>
       </HeadActions>
-      <div className="scroll page sites">
-        <div className="filters">
+      <Page className="sites" side={side}>
+        <Toolbar>
           <div className="segmented inline" role="group" aria-label="Show sites">
             {FILTERS.map(([f, label]) => (
               <button key={f} type="button" aria-pressed={status === f} onClick={() => setStatus(f)}>
@@ -180,21 +202,25 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               </>
             )}
           </button>
-        </div>
+        </Toolbar>
         <section className="card" aria-label="All sites">
           {rows.length === 0 ? (
-            <div className="empty">
-              {sites.length === 0 ? (
-                <>
-                  <h2>No sites yet.</h2>
-                  <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+            sites.length === 0 ? (
+              <Empty
+                title="No sites yet."
+                action={
                   <Button kind="primary" keys="A" onClick={onAdd}>
                     Add a site
                   </Button>
-                </>
-              ) : (
-                <>
-                  <p>No site matches these filters.</p>
+                }
+              >
+                <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+              </Empty>
+            ) : (
+              <Empty
+                small
+                title="No site matches these filters."
+                action={
                   <Button
                     onClick={() => {
                       setQuery("");
@@ -204,9 +230,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                   >
                     Clear the filters
                   </Button>
-                </>
-              )}
-            </div>
+                }
+              />
+            )
           ) : (
             <table
               ref={table}
@@ -241,9 +267,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                     />
                   </th>
                   <th className="fill">Site</th>
-                  <th>Status</th>
-                  <th>WordPress</th>
-                  <th>Connection</th>
+                  <th className="c-status">Status</th>
+                  <th className="c-wp">WordPress</th>
+                  <th className="c-conn">Connection</th>
                   <th className="acts-col">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -407,23 +433,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             </div>
           )}
         </section>
-      </div>
-      {focus && (
-        <Inspector
-          key={focus.id}
-          site={focus}
-          groups={groups}
-          allTags={[...new Set(sites.flatMap((x) => x.tags))].sort()}
-          updates={updatesOf(focus, inventory?.get(focus.id))}
-          onCheck={() => check([focus.id])}
-          onSignInAgain={() => onSignInAgain(focus)}
-          onUpdates={onUpdates}
-          onRemoved={(text, ok) => {
-            toast(text, { tone: ok ? "ok" : "warning" });
-            setFocusId(null);
-          }}
-        />
-      )}
+      </Page>
     </>
   );
 }
@@ -553,7 +563,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
   };
 
   return (
-    <aside className="insp site-pane" aria-label={`${s.name} details`}>
+    <>
       <header className="ihead">
         <SiteTile site={s} size="lg" />
         <div>
@@ -826,6 +836,6 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           </Button>
         )}
       </section>
-    </aside>
+    </>
   );
 }

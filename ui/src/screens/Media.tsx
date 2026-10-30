@@ -3,7 +3,8 @@
 // upload files picked on this computer, change an item's details, replace its file, move items to the trash.
 import "../styles/screens/media.css";
 import { DateInput, dayLabel, FilePicker, SearchInput, Select } from "../components/controls";
-import { Progress, Skeleton, toast } from "../components/feedback";
+import { Empty, Progress, Skeleton, toast } from "../components/feedback";
+import { Page, SidePanel, Toolbar } from "../components/page";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { fileSize, kind, limitOf, Pic, refusal, uploadKey, useProgress } from "../components/MediaPicker";
 import { api, contentBlocked, fileBase64, hasTool, type Library, type Media as Item, type MediaDetails, type Site } from "../api";
@@ -245,7 +246,7 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
 
   const dims = item.width && item.height ? `${item.width} × ${item.height} pixels` : null;
   return (
-    <section className="card mdetails" aria-labelledby="media-details">
+    <section className="mdetails" aria-labelledby="media-details">
       <div className="card-head">
         <h2 id="media-details">
           <Glyph name="image" />
@@ -426,13 +427,17 @@ export function Media({ sites }: { sites: Site[] }) {
   );
   useEffect(() => load(1), [load]);
   useEffect(() => setTicked(new Set()), [current, search, type, month]);
+  // Search as you type, once the typing pauses.
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(typed.trim()), 300);
+    return () => clearTimeout(t);
+  }, [typed]);
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
+      <Empty title="No sites yet.">
         <p>Add a site on Sites, then its media library shows here.</p>
-      </div>
+      </Empty>
     );
   }
 
@@ -517,39 +522,39 @@ export function Media({ sites }: { sites: Site[] }) {
   let body;
   if (blocked) {
     body = (
-      <div className="empty">
-        <h2>{site!.name}'s media isn't available here.</h2>
+      <Empty title={`${site!.name}'s media isn't available here.`}>
         <p>{blocked}</p>
-      </div>
+      </Empty>
     );
   } else if (error) {
     body = (
-      <div className="empty" role="alert">
-        <h2>The media library didn't load.</h2>
+      <Empty alert title="The media library didn't load." action={<Button onClick={() => load(1)}>Try again</Button>}>
         <p>{error}</p>
-        <Button onClick={() => load(1)}>Try again</Button>
-      </div>
+      </Empty>
     );
   } else if (!items) {
     body = <Skeleton label={`Reading ${site?.name}'s media library…`} />;
   } else if (items.length === 0) {
     body = (
-      <div className="empty">
-        <h2>{filtered ? "Nothing matches." : "The media library is empty."}</h2>
+      <Empty
+        title={filtered ? "Nothing matches." : "The media library is empty."}
+        action={
+          filtered && (
+            <Button
+              onClick={() => {
+                setTyped("");
+                setSearch("");
+                setType("");
+                setMonth("");
+              }}
+            >
+              Clear the filters
+            </Button>
+          )
+        }
+      >
         <p>{filtered ? "Try other words, another type or another month." : "Upload files, or import an image from a link."}</p>
-        {filtered && (
-          <Button
-            onClick={() => {
-              setTyped("");
-              setSearch("");
-              setType("");
-              setMonth("");
-            }}
-          >
-            Clear the filters
-          </Button>
-        )}
-      </div>
+      </Empty>
     );
   } else {
     body = (
@@ -631,7 +636,13 @@ export function Media({ sites }: { sites: Site[] }) {
   }
 
   return (
-    <div className="scroll page">
+    <Page
+      side={
+        <SidePanel className="mside" label="Media details" empty="Pick a file to see and edit its details.">
+          {!blocked && site && chosen && <Details key={`${site.id}-${chosen.id}`} site={site} item={chosen} fresh={fresh[chosen.id]} onChanged={changed} />}
+        </SidePanel>
+      }
+    >
       {site && !blocked && (
         <HeadActions>
           <Button kind="primary" className="disc" aria-expanded={upOpen} onClick={() => setUpOpen(!upOpen)}>
@@ -642,133 +653,110 @@ export function Media({ sites }: { sites: Site[] }) {
           </Button>
         </HeadActions>
       )}
-      <div className={blocked ? "stack" : "split-r"}>
-        <div className="stack">
-          {upOpen && site && !blocked && (
-            <Uploads
-              site={site}
-              lib={lib}
-              onClose={() => setUpOpen(false)}
-              onUploaded={(m) => {
-                setLib((l) => l && { ...l, items: [m, ...l.items.filter((x) => x.id !== m.id)], total: l.total + 1 });
-                setPicked(m.id);
-              }}
-            >
-              <form
-                className="mimport"
-                aria-labelledby="media-import"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  add();
-                }}
-              >
-                <h3 id="media-import">
-                  <Glyph name="link" />
-                  Import an image
-                </h3>
-                <div className="mimport-row">
-                  <label className="field">
-                    <span>Image link</span>
-                    <input className="input" type="url" spellCheck={false} placeholder="https://" value={link} onChange={(e) => setLink(e.target.value)} />
-                  </label>
-                  <div className="field">
-                    <label htmlFor="media-import-alt">Alt text</label>
-                    <input id="media-import-alt" className="input" placeholder="Describe the image for people who can't see it" value={alt} onChange={(e) => setAlt(e.target.value)} />
-                  </div>
-                  <div>
-                    <Button className="disc" type="submit" disabled={importing || !link.trim()}>
-                      <span className="btn-disc">
-                        <Glyph name="download" />
-                      </span>
-                      {importing ? "Importing…" : "Import the image"}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </Uploads>
-          )}
-          <section
-            className="card mlib"
-            aria-label={site ? `Media library of ${site.name}` : "Media library"}
-            onKeyDown={(e) => {
-              if (e.key === "Escape" && ticked.size > 0) {
-                e.preventDefault();
-                setTicked(new Set());
-              }
+      <Toolbar label="Which items to show" className="mbar">
+        <SitePick sites={sites} value={current} onChange={setSiteId} />
+        {!blocked && (
+          <>
+            <SearchInput aria-label="Search the media library" placeholder="Search files" value={typed} onChange={(e) => setTyped(e.target.value)} />
+            <Select aria-label="Type" value={type} onChange={(e) => setType(e.target.value)}>
+              {KINDS.map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+            <DateInput type="month" aria-label="Uploaded in" value={month} onChange={(e) => setMonth(e.target.value)} />
+            {month && (
+              <Button className="ghost" onClick={() => setMonth("")}>
+                Any month
+              </Button>
+            )}
+            <div className="segmented inline end" role="group" aria-label="Show as">
+              {(["grid", "list"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  onClick={() => {
+                    setView(v);
+                    localStorage.setItem("mc-media-view", v);
+                  }}
+                >
+                  {v === "grid" ? "Grid" : "List"}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </Toolbar>
+      {upOpen && site && !blocked && (
+        <Uploads
+          site={site}
+          lib={lib}
+          onClose={() => setUpOpen(false)}
+          onUploaded={(m) => {
+            setLib((l) => l && { ...l, items: [m, ...l.items.filter((x) => x.id !== m.id)], total: l.total + 1 });
+            setPicked(m.id);
+          }}
+        >
+          <form
+            className="mimport"
+            aria-labelledby="media-import"
+            onSubmit={(e) => {
+              e.preventDefault();
+              add();
             }}
           >
-            <form
-              className="card-head"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSearch(typed.trim());
-              }}
-            >
-              <SitePick sites={sites} value={current} onChange={setSiteId} />
-              {!blocked && (
-                <>
-                  <SearchInput className="sm" aria-label="Search the media library" placeholder="Search the media library" value={typed} onChange={(e) => setTyped(e.target.value)} />
-                  <Button small type="submit">
-                    Search
-                  </Button>
-                </>
-              )}
-            </form>
-            {!blocked && (
-              <div className="mfilters" role="group" aria-label="Which items to show">
-                <Select className="input sm" aria-label="Type" value={type} onChange={(e) => setType(e.target.value)}>
-                  {KINDS.map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </Select>
-                <DateInput type="month" className="sm" aria-label="Uploaded in" value={month} onChange={(e) => setMonth(e.target.value)} />
-                {month && (
-                  <Button small className="quiet" onClick={() => setMonth("")}>
-                    Any month
-                  </Button>
-                )}
-                <span className="grow" />
-                <div className="segmented inline" role="group" aria-label="Show as">
-                  {(["grid", "list"] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      aria-pressed={view === v}
-                      onClick={() => {
-                        setView(v);
-                        localStorage.setItem("mc-media-view", v);
-                      }}
-                    >
-                      {v === "grid" ? "Grid" : "List"}
-                    </button>
-                  ))}
-                </div>
+            <h3 id="media-import">
+              <Glyph name="link" />
+              Import an image
+            </h3>
+            <div className="mimport-row">
+              <label className="field">
+                <span>Image link</span>
+                <input className="input" type="url" spellCheck={false} placeholder="https://" value={link} onChange={(e) => setLink(e.target.value)} />
+              </label>
+              <div className="field">
+                <label htmlFor="media-import-alt">Alt text</label>
+                <input id="media-import-alt" className="input" placeholder="Describe the image for people who can't see it" value={alt} onChange={(e) => setAlt(e.target.value)} />
               </div>
-            )}
-            {body}
-            {items && items.length > 0 && !blocked && !error && (
-              <div className="card-foot">
-                {/* Read out after Load more, so the new items are noticed. */}
-                <span className="count" aria-live="polite">
-                  {items.length} of {lib!.total === 1 ? "1 item" : `${lib!.total} items`}
-                </span>
-                {more && (
-                  <Button small onClick={() => load(page + 1)}>
-                    Load more
-                  </Button>
-                )}
+              <div>
+                <Button className="disc" type="submit" disabled={importing || !link.trim()}>
+                  <span className="btn-disc">
+                    <Glyph name="download" />
+                  </span>
+                  {importing ? "Importing…" : "Import the image"}
+                </Button>
               </div>
+            </div>
+          </form>
+        </Uploads>
+      )}
+      <section
+        className="card mlib"
+        aria-label={site ? `Media library of ${site.name}` : "Media library"}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && ticked.size > 0) {
+            e.preventDefault();
+            setTicked(new Set());
+          }
+        }}
+      >
+        {body}
+        {items && items.length > 0 && !blocked && !error && (
+          <div className="card-foot">
+            {/* Read out after Load more, so the new items are noticed. */}
+            <span className="count" aria-live="polite">
+              {items.length} of {lib!.total === 1 ? "1 item" : `${lib!.total} items`}
+            </span>
+            {more && (
+              <Button small onClick={() => load(page + 1)}>
+                Load more
+              </Button>
             )}
-          </section>
-        </div>
-        {!blocked && site && (
-          <div className="stack mside">
-            {chosen && <Details key={`${site.id}-${chosen.id}`} site={site} item={chosen} fresh={fresh[chosen.id]} onChanged={changed} />}
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </Page>
   );
 }
