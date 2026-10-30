@@ -241,7 +241,7 @@ export default function App() {
 
   const commands: Command[] = [
     { id: "add", group: "Actions", label: "Add a site", keys: "A", icon: "plus", run: () => setAdding({}) },
-    { id: "check", group: "Actions", label: "Check all sites now", icon: "refresh", run: checkAll },
+    { id: "check", group: "Actions", label: "Check all sites", icon: "refresh", run: checkAll },
     {
       id: "update-all",
       group: "Actions",
@@ -533,7 +533,7 @@ export default function App() {
             {sites && sites.length > 0 && (
               // The page head holds each page's main action, so this is the same plain button on every page.
               <Button disabled={checking} onClick={checkAll}>
-                {checking ? "Checking…" : "Check all sites now"}
+                {checking ? "Checking…" : "Check all sites"}
                 <Glyph name="refresh" />
               </Button>
             )}
