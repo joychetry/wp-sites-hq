@@ -31,7 +31,20 @@ export function SiteTile({ site, size }: { site: Pick<Site, "id" | "name"> & { i
   }, [key, site.id]);
   return (
     <span className={["fav", size, src ? "pic" : `m${site.id % 4}`].filter(Boolean).join(" ")} aria-hidden="true">
-      {src ? <img src={src} alt="" onError={() => setSrc(null)} /> : initial(site.name)}
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          onError={() => setSrc(null)}
+          // Upscaled, a 16px favicon is a blur: the monogram is crisper. SVGs (no natural size) always draw.
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalWidth < img.width) setSrc(null);
+          }}
+        />
+      ) : (
+        initial(site.name)
+      )}
     </span>
   );
 }

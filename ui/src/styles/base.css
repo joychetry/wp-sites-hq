@@ -307,12 +307,12 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .fav.m1 { background: #015433; color: #ffffff; }
 .fav.m2 { background: #8a5a00; color: #ffffff; }
 .fav.m3 { background: #45524b; color: #ffffff; }
-.fav.pic { background: #ffffff; box-shadow: inset 0 0 0 1px var(--line); }
-.fav img { width: 20px; height: 20px; object-fit: contain; }
+/* The icon fills the tile inside a 3px inset; the core fetches the sharpest one it finds (64px and up), so it draws crisp at 2x. */
+.fav.pic { background: #ffffff; box-shadow: inset 0 0 0 1px var(--line); padding: 3px; }
+.fav img { width: 100%; height: 100%; object-fit: contain; border-radius: 5px; }
 .fav.sm { width: 24px; height: 24px; border-radius: 6px; }
-.fav.sm img { width: 16px; height: 16px; }
 .fav.lg { width: 44px; height: 44px; border-radius: 10px; font-size: var(--fs-md); }
-.fav.lg img { width: 28px; height: 28px; }
+.fav.lg.pic { padding: 5px; }
 [data-theme="dark"] .fav { background: #2e2e2e; color: #ededed; }
 [data-theme="dark"] .fav.m1 { background: #3a3a3a; }
 [data-theme="dark"] .fav.m2 { background: #474747; }

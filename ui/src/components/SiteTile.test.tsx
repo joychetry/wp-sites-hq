@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { SiteTile } from "./SiteTile";
 
@@ -33,4 +33,16 @@ test("a site without an icon, or whose icon can't be read, shows its monogram", 
   expect(container.querySelector("img")).toBeNull();
   expect(container.textContent).toBe("SC");
   expect(container.querySelector(".fav")).toHaveClass("m2");
+});
+
+test("an icon smaller than its tile gives way to the monogram", async () => {
+  mockInvoke.mockResolvedValue("data:image/png;base64,BB==");
+  const { container } = render(<SiteTile site={{ id: 5, name: "Tiny", icon: "v2" }} />);
+  await waitFor(() => expect(container.querySelector("img")).not.toBeNull());
+  const img = container.querySelector("img")!;
+  Object.defineProperty(img, "naturalWidth", { value: 16 });
+  Object.defineProperty(img, "width", { value: 24 });
+  fireEvent.load(img);
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.textContent).toBe("T");
 });
