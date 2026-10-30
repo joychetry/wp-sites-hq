@@ -559,7 +559,15 @@ export default function App() {
             </div>
           </header>
           <HeadSlot.Provider value={headSlot}>
-            <Suspense fallback={<Skeleton label={`Loading ${LABEL[section] ?? section}…`} />}>{body}</Suspense>
+            <Suspense
+              fallback={
+                <div className="page-loading">
+                  <Skeleton label={`Loading ${LABEL[section] ?? section}…`} />
+                </div>
+              }
+            >
+              {body}
+            </Suspense>
           </HeadSlot.Provider>
         </main>
       </div>

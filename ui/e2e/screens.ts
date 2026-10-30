@@ -580,5 +580,8 @@ export async function show(page: Page, s: Screen, theme: string, density = "comf
   await page.locator(".app").waitFor();
   if (s.fixture !== "loading" && s.fixture !== "error") await page.locator(".body > *").first().waitFor();
   await s.open?.(page);
+  // A page's code loads as its own chunk; its stand-in goes once the page is drawn.
+  if (s.fixture !== "loading" && s.fixture !== "error") await page.locator(".body > :not(.phead):not(.page-loading)").first().waitFor();
+  await page.locator(".page-loading").waitFor({ state: "detached" });
   await page.evaluate(() => document.fonts.ready);
 }

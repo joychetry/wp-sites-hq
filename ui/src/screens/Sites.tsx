@@ -341,15 +341,13 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                         {/* Mouse shortcuts; the keyboard reaches the same actions in the panel (R, and its buttons). */}
                         <span className="rowacts">
                           {again ? (
-                            <Button small tabIndex={-1} onClick={() => onSignInAgain(s)}>
+                            <button type="button" className="icon-btn" tabIndex={-1} aria-label={`Sign in to ${s.name} again`} data-tip="Sign in again" onClick={() => onSignInAgain(s)}>
                               <Glyph name="login" />
-                              Sign in again
-                            </Button>
+                            </button>
                           ) : s.health === "down" ? (
-                            <Button small tabIndex={-1} onClick={() => check([s.id])}>
+                            <button type="button" className="icon-btn" tabIndex={-1} aria-label={`Check ${s.name} again`} data-tip="Check again" onClick={() => check([s.id])}>
                               <Glyph name="refresh" />
-                              Check again
-                            </Button>
+                            </button>
                           ) : (
                             <>
                               {hasTool(s, "create-login-link") && (
