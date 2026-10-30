@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { api, type AppSettings, type Client, type SavedReport, type Site } from "../api";
 import { Button, Glyph } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
+import { Empty } from "../components/feedback";
+import { Page } from "../components/page";
 
 /** Last month, "2026-09", from a date in this one. */
 export function lastMonth(now = new Date()): string {
@@ -67,10 +69,11 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
-        <p>Add a site on Sites, then make a report for it here.</p>
-      </div>
+      <Page>
+        <Empty picture="sites" title="No sites yet.">
+          <p>Add a site on Sites, then make a report for it here.</p>
+        </Empty>
+      </Page>
     );
   }
   const client = clients.find((c) => c.id === clientId);
@@ -78,7 +81,7 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
   const title = who === "client" ? client?.name ?? "Your client" : on.length === 1 ? on[0].name : "Website report";
   const accent = brand?.report_accent || "#0d1411";
   return (
-    <div className="scroll page reports">
+    <Page className="reports">
       <div className="rep-split">
         <div className="stack">
           <section className="card" aria-labelledby="rep-make">
@@ -168,18 +171,18 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
                   <p className="dim">Saved as PDF and HTML in Downloads.</p>
                   <div className="row">
                     <Button small kind="soft" onClick={() => open(saved.pdf)}>
-                      <Glyph name="file" />
                       Open the PDF
+                      <Glyph name="file" />
                     </Button>
                     <Button small onClick={() => open(saved.html)}>
-                      <Glyph name="globe" />
                       Open the HTML
+                      <Glyph name="globe" />
                     </Button>
                   </div>
                   <div>
                     <button type="button" className="link quiet" onClick={() => api.showFile(saved.pdf).catch((e) => setError(String(e)))}>
-                      <Glyph name="folder" />
                       Show in folder
+                      <Glyph name="folder" />
                     </button>
                   </div>
                   {saved.notes.length > 0 && (
@@ -241,6 +244,6 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
           )}
         </section>
       </div>
-    </div>
+    </Page>
   );
 }

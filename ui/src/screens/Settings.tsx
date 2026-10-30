@@ -9,6 +9,7 @@ import { when } from "./Overview";
 import { Button, Glyph, type GlyphName } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { toast } from "../components/feedback";
+import { Page } from "../components/page";
 import { setTextSize, textSize, type Density, type ThemeChoice } from "../theme";
 
 /** What an import did, in a sentence or two. */
@@ -72,12 +73,12 @@ function YourData() {
       </p>
       <div className="row acts-row">
         <Button small disabled={busy} onClick={() => exportAs(false)}>
-          <Glyph name="download" />
           Export as JSON
+          <Glyph name="download" />
         </Button>
         <Button small disabled={busy} onClick={() => exportAs(true)}>
-          <Glyph name="download" />
           Export as CSV
+          <Glyph name="download" />
         </Button>
         <FilePicker label="Import a JSON or CSV file" accept=".json,.csv,application/json,text/csv" disabled={busy} onFile={importFile} />
       </div>
@@ -290,8 +291,8 @@ function Choice<T extends string>({ label, value, options, onChange }: {
     <div className="segmented inline" role="group" aria-label={label}>
       {options.map(([v, text, icon]) => (
         <button key={v} type="button" aria-pressed={v === value} onClick={() => onChange(v)}>
-          {icon && <Glyph name={icon} />}
           {text}
+          {icon && <Glyph name={icon} />}
         </button>
       ))}
     </div>
@@ -406,7 +407,7 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
   const [pct, setPct] = useState(textSize);
   const rs = useReportSettings();
   return (
-    <div className="scroll page setpage">
+    <Page className="setpage">
       <div className="g2">
         <div className="stack">
           <Card icon="sun" title="Look" id="set-look">
@@ -459,6 +460,6 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
         </div>
         {rs.s && <Reports {...rs} s={rs.s} />}
       </div>
-    </div>
+    </Page>
   );
 }

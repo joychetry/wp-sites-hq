@@ -1,16 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Content (screens/Content.tsx): a filter card, then the entries card with its bulk bar on top. */
+/* Content (screens/Content.tsx): the toolbar, then the entries card with its bulk bar on top. */
 
-/* Site and Show pickers: a mono label beside the box; a site shows its tile. */
-.cfilter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); padding: var(--sp-3); overflow: visible; }
-.cfilter .pick { gap: var(--sp-2); }
-.cfilter .pick > span { font: 500 var(--fs-xs)/16px var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
-.cfilter .pick .input { width: 200px; min-width: 0; }
+/* Site and Show pickers (Media's too): the mono label beside the box, not .pick's plain words; a site shows its tile. */
+.pick > .label { font-size: var(--fs-xs); font-weight: 500; color: var(--text-3); }
 .pick .select-v:has(.fav), .lb li > span:has(> .fav) { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .pick .select-v .fav, .lb li .fav { width: 20px; height: 20px; border-radius: 5px; font-size: var(--fs-xs); }
 .pick .select-v .fav img, .lb li .fav img { width: 14px; height: 14px; }
-.cfilter .srch.end { flex: 0 1 260px; min-width: 200px; margin-left: auto; }
-.cfilter .srch .input { width: 100%; }
 
 /* The bulk bar: the ink band on the card's top edge, always there so nothing moves when ticking. */
 .ctable .bulk, .mlib .bulk { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-height: 46px; padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); background: var(--btn-ink); color: var(--btn-on-ink); }
@@ -31,6 +26,6 @@
 .ctable .linkish { font-weight: 600; text-decoration-color: transparent; }
 .ctable .linkish:hover { text-decoration-color: currentColor; }
 .ctable .who { color: var(--text-2); }
-.ctable .when { font: 400 var(--fs-xs)/16px var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.ctable .when { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .ctable .card-foot .count { margin-right: auto; color: var(--text-3); font-size: var(--fs-sm); }
 .ctable > .legend { border-bottom: 1px solid var(--line); }

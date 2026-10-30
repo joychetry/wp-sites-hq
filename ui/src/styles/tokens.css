@@ -92,10 +92,15 @@
   --dur: 150ms;
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
   --row: 48px;
+  /* Every button, text box, select, search, date and segmented track: one of two heights. */
   --control: 36px;
-  --control-sm: 30px;
-  --field: 40px;
-  --field-sm: 34px;
+  --control-sm: 32px;
+  --radius-control: var(--radius-pill); /* toolbar controls; form fields in sheets keep --radius */
+  --control-line: var(--line-2); /* every control at rest (the button border); --line-ui on hover */
+  --ring: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
+  /* Page rhythm: under the page head, and between a page's toolbar, cards and sections */
+  --head-gap: var(--sp-5);
+  --page-gap: var(--sp-4);
   --rail: 248px;
   --inspector: 340px;
   --sheet: 560px;

@@ -1,32 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
-import { attention, Overview, summary } from "./screens/Overview";
-import { Sites } from "./screens/Sites";
+import { Page } from "./components/page";
 import { AddSite } from "./screens/AddSite";
-import { Settings } from "./screens/Settings";
-import { planTitle, Updates, updatesOf } from "./screens/Updates";
-import { Matrix } from "./screens/Matrix";
 import { Install } from "./screens/Install";
-import { Content } from "./screens/Content";
-import { leaveGuard } from "./screens/Editor";
-import { Media } from "./screens/Media";
-import { Users } from "./screens/Users";
-import { Comments } from "./screens/Comments";
-import { ClassicMonks } from "./screens/ClassicMonks";
-import { Ai } from "./screens/Ai";
-import { Security } from "./screens/Security";
-import { Monitoring } from "./screens/Monitoring";
-import { Clients } from "./screens/Clients";
-import { Search } from "./screens/Search";
-import { Store } from "./screens/Store";
-import { Reports } from "./screens/Reports";
+import { attention, leaveGuard, planTitle, summary, updatesOf } from "./fleet";
+import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
 export type { CoreStatus };
@@ -95,6 +80,21 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
   ["light", "sun", "Theme: light"],
   ["dark", "moon", "Theme: dark"],
 ];
+
+/** "just now", "5 min ago", "3 h ago", "yesterday", then a date. */
+export function shortAgo(unix: number, now = Date.now() / 1000): string {
+  const s = Math.max(0, now - unix);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  if (s < 2 * 86400) return "yesterday";
+  return `on ${new Date(unix * 1000).toLocaleDateString([], { day: "numeric", month: "short" })}`;
+}
+
+const checkedAt = (unix: number) => {
+  const d = new Date(unix * 1000);
+  return `${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} on ${d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}`;
+};
 
 export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
@@ -184,6 +184,12 @@ export default function App() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // Once the sites are in, the likely next pages load while the app is idle, so a click opens them at once.
+  const sitesIn = sites !== null;
+  useEffect(() => {
+    if (sitesIn) return prefetchIdle(section);
+  }, [sitesIn]);
+
   const all = sites ?? [];
   const groups = useMemo(() => [...new Set(all.flatMap((s) => (s.group ? [s.group] : [])))].sort(), [all]);
   // A group that no longer has sites falls back to all sites instead of an empty app.
@@ -250,7 +256,7 @@ export default function App() {
 
   const commands: Command[] = [
     { id: "add", group: "Actions", label: "Add a site", keys: "A", icon: "plus", run: () => setAdding({}) },
-    { id: "check", group: "Actions", label: "Check all sites now", icon: "refresh", run: checkAll },
+    { id: "check", group: "Actions", label: "Check all sites", icon: "refresh", run: checkAll },
     {
       id: "update-all",
       group: "Actions",
@@ -314,8 +320,8 @@ export default function App() {
           <b>Nothing was changed.</b> Close Monks Central and open it again. If it keeps happening, restart the computer.
         </p>
         <Button onClick={() => location.reload()}>
-          <Glyph name="refresh" />
           Try again
+          <Glyph name="refresh" />
         </Button>
         <p className="mono dim detail">{coreError}</p>
       </div>
@@ -331,8 +337,8 @@ export default function App() {
           <b>Nothing was changed.</b> Try again; if it keeps happening, close Monks Central and open it again.
         </p>
         <Button onClick={reload}>
-          <Glyph name="refresh" />
           Try again
+          <Glyph name="refresh" />
         </Button>
         <p className="mono dim detail">{error}</p>
       </div>
@@ -343,23 +349,25 @@ export default function App() {
     );
   } else if (all.length === 0 && !["Overview", "Sites", "Settings", "AI", "Clients"].includes(section)) {
     body = (
-      <div className="scroll">
-        <Empty
-          picture="sites"
-          title={`${section} fills in once you add a site.`}
-          action={
-            <Button kind="primary" keys="A" onClick={() => setAdding({})}>
-              Add a site
-            </Button>
-          }
-        >
-          <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
-        </Empty>
-      </div>
+      <Page>
+        <section className="card">
+          <Empty
+            picture="sites"
+            title={`${section} fills in once you add a site.`}
+            action={
+              <Button kind="primary" keys="A" onClick={() => setAdding({})}>
+                Add a site
+              </Button>
+            }
+          >
+            <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+          </Empty>
+        </section>
+      </Page>
     );
   } else if (section === "Overview") {
     body = (
-      <Overview
+      <S.Overview
         sites={scoped}
         waiting={waiting}
         plans={plans ?? []}
@@ -374,7 +382,7 @@ export default function App() {
     );
   } else if (section === "Sites") {
     body = (
-      <Sites
+      <S.Sites
         sites={scoped}
         groups={groups}
         focusId={focusId}
@@ -385,10 +393,10 @@ export default function App() {
       />
     );
   } else if (section === "Updates") {
-    body = <Updates sites={scoped} inventory={inv} reports={reports ?? []} onPlan={(t, r) => plan(t, r)} />;
+    body = <S.Updates sites={scoped} inventory={inv} reports={reports ?? []} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Plugins" || section === "Themes") {
     body = (
-      <Matrix
+      <S.Matrix
         key={section}
         kind={section === "Plugins" ? "plugins" : "themes"}
         sites={scoped}
@@ -399,28 +407,28 @@ export default function App() {
       />
     );
   } else if (section === "Content") {
-    body = <Content sites={scoped} onPlan={plan} />;
+    body = <S.Content sites={scoped} onPlan={plan} />;
   } else if (section === "Media") {
-    body = <Media sites={scoped} />;
+    body = <S.Media sites={scoped} />;
   } else if (section === "Users") {
-    body = <Users sites={scoped} />;
+    body = <S.Users sites={scoped} />;
   } else if (section === "Comments") {
-    body = <Comments sites={scoped} />;
+    body = <S.Comments sites={scoped} />;
   } else if (section === "Classic Monks") {
-    body = <ClassicMonks sites={scoped} />;
+    body = <S.ClassicMonks sites={scoped} />;
   } else if (section === "Monitoring") {
-    body = <Monitoring sites={scoped} monitors={monitors ?? []} />;
+    body = <S.Monitoring sites={scoped} monitors={monitors ?? []} />;
   } else if (section === "Security") {
-    body = <Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
+    body = <S.Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Clients") {
-    body = <Clients sites={all} />;
+    body = <S.Clients sites={all} />;
   } else if (section === "Store") {
-    body = <Store sites={scoped} onPlan={plan} />;
+    body = <S.Store sites={scoped} onPlan={plan} />;
   } else if (section === "Reports") {
-    body = <Reports sites={scoped} onSettings={() => setSection("Settings")} />;
+    body = <S.Reports sites={scoped} onSettings={() => setSection("Settings")} />;
   } else if (section === "Search") {
     body = (
-      <Search
+      <S.Search
         key={searchFor}
         sites={all}
         inventory={inv}
@@ -429,9 +437,9 @@ export default function App() {
       />
     );
   } else if (section === "AI") {
-    body = <Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
+    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
   } else {
-    body = <Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
+    body = <S.Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   }
 
   return (
@@ -447,45 +455,36 @@ export default function App() {
             <small>by Classic Monks</small>
           </p>
         </div>
-        <div className="scope-field">
-          <span className="label" aria-hidden="true">
-            Sites to show
-          </span>
-          <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
-            <option value="">All sites ({all.length})</option>
-            {groups.map((g) => (
-              <option key={g} value={g}>
-                Group: {g}
-              </option>
-            ))}
-          </Select>
+        <div className="rail-nav">
+          {GROUPS.map(([g, items]) => (
+            <div key={g || "top"}>
+              {g && <p className="navgroup">{g}</p>}
+              <ul>
+                {items.map((s) => (
+                  <li key={s}>
+                    <button
+                      type="button"
+                      className="navitem"
+                      aria-current={s === section ? "page" : undefined}
+                      onClick={() => setSection(s)}
+                      onPointerEnter={() => preload(s, scoped)}
+                      onFocus={() => preload(s, scoped)}
+                    >
+                      {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
+                      {LABEL[s] ?? s}
+                      {counts[s] && (
+                        <span className={counts[s].alert ? "n alert" : "n"}>
+                          {counts[s].n}
+                          <span className="sr-only"> {counts[s].say}</span>
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        {GROUPS.map(([g, items]) => (
-          <div key={g || "top"}>
-            {g && <p className="navgroup">{g}</p>}
-            <ul>
-              {items.map((s) => (
-                <li key={s}>
-                  <button
-                    type="button"
-                    className="navitem"
-                    aria-current={s === section ? "page" : undefined}
-                    onClick={() => setSection(s)}
-                  >
-                    {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
-                    {LABEL[s] ?? s}
-                    {counts[s] && (
-                      <span className={counts[s].alert ? "n alert" : "n"}>
-                        {counts[s].n}
-                        <span className="sr-only"> {counts[s].say}</span>
-                      </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
         <div className="foot">
           <p className="next">
             <Glyph name="clock" />
@@ -508,25 +507,42 @@ export default function App() {
       </nav>
       <div className="main">
         <header className="top">
+          <div className="scope-field">
+            <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
+              <option value="">All sites ({all.length})</option>
+              {groups.map((g) => (
+                <option key={g} value={g}>
+                  Group: {g}
+                </option>
+              ))}
+            </Select>
+          </div>
           {sites && sites.length > 0 && (
             <p className="fresh" role="status">
-              <span className="pulse" aria-hidden="true" />
               {checking ? (
-                "Checking all sites…"
+                <span className="pill">
+                  <span className="pulse on" aria-hidden="true" />
+                  Checking…
+                </span>
+              ) : lastCheck ? (
+                <span className="pill" data-tip={`Last checked at ${checkedAt(lastCheck)}`}>
+                  <span className="pulse" aria-hidden="true" />
+                  <span aria-hidden="true">Checked {shortAgo(lastCheck)}</span>
+                  <span className="sr-only">Last checked at {checkedAt(lastCheck)}</span>
+                </span>
               ) : (
-                lastCheck && (
-                  <span>
-                    Last checked <b>{ago(lastCheck)}</b>
-                  </span>
-                )
+                <span className="pill">
+                  <span className="pulse" aria-hidden="true" />
+                  Not checked yet
+                </span>
               )}
               {needs > 0 && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <button type="button" className={section === "Overview" ? "link go" : "link quiet"} onClick={() => setSection("Sites")}>
-                    {needs === 1 ? "1 site needs attention" : `${needs} sites need attention`}
-                  </button>
-                </>
+                <button type="button" className="pill warning" onClick={() => setSection("Sites")}>
+                  {/* The name keeps the visible words and adds "sites" and where it goes. */}
+                  {needs} {needs === 1 ? <><span className="sr-only">site</span> needs</> : <><span className="sr-only">sites</span> need</>} attention
+                  <span className="sr-only">, open Sites</span>
+                  <Glyph name="alert" />
+                </button>
               )}
             </p>
           )}
@@ -537,20 +553,11 @@ export default function App() {
               <Kbd>Ctrl K</Kbd>
             </button>
             {sites && sites.length > 0 && (
-              section === "Overview" ? (
-                <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
-                  {checking ? "Checking…" : "Check all sites now"}
-                  <span className="btn-disc">
-                    <Glyph name="refresh" />
-                  </span>
-                </Button>
-              ) : (
-                // The page head holds this page's main action, so checking steps back to a plain button.
-                <Button disabled={checking} onClick={checkAll}>
-                  <Glyph name="refresh" />
-                  {checking ? "Checking…" : "Check all sites now"}
-                </Button>
-              )
+              // The page head holds each page's main action, so this is the same plain button on every page.
+              <Button disabled={checking} onClick={checkAll}>
+                {checking ? "Checking…" : "Check all sites"}
+                <Glyph name="refresh" />
+              </Button>
             )}
           </div>
         </header>
@@ -564,13 +571,23 @@ export default function App() {
             <div className="phead-acts" ref={setHeadSlot}>
               {section === "Overview" && all.length > 0 && (
                 <Button keys="A" onClick={() => setAdding({})}>
-                  <Glyph name="plus" />
                   Add a site
+                  <Glyph name="plus" />
                 </Button>
               )}
             </div>
           </header>
-          <HeadSlot.Provider value={headSlot}>{body}</HeadSlot.Provider>
+          <HeadSlot.Provider value={headSlot}>
+            <Suspense
+              fallback={
+                <div className="page-loading">
+                  <Skeleton label={`Loading ${LABEL[section] ?? section}…`} />
+                </div>
+              }
+            >
+              {body}
+            </Suspense>
+          </HeadSlot.Provider>
         </main>
       </div>
       {palette && (

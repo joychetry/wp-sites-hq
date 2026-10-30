@@ -192,8 +192,8 @@ export function RichText({ label, html, onChange, site, idBase }: { label: strin
       <div className="rte-head">
         {site && (
           <Button small aria-expanded={picking} onClick={() => setPicking(!picking)}>
-            <Glyph name="image" />
             Add media
+            <Glyph name="image" />
           </Button>
         )}
         <span className="grow" />

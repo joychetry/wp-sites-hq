@@ -9,7 +9,8 @@ import { Menu, SearchInput } from "../components/controls";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, slugOf } from "../components/PkgTile";
-import { toast } from "../components/feedback";
+import { Empty, toast } from "../components/feedback";
+import { Page, SidePanel, Toolbar } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
 
 export type Kind = "plugins" | "themes";
@@ -161,13 +162,71 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
   const selCol = sel && cols.find((c) => c.id === sel.item);
   const updateLabel = waiting === 0 ? `No ${noun} updates` : `Update ${waiting === 1 ? `1 ${noun}` : `${waiting} ${noun}s`}`;
 
+  const themesAside = !plugin && ready.length > 0 && cols.length > 0;
+  const side = (
+    <SidePanel
+      className="mx-insp"
+      label={selSite && selCol ? `${itemAt(selSite.id, selCol.id)?.name || selCol.name} on ${selSite.name}` : themesAside ? "Active theme on each site" : `${Noun} details`}
+      empty={`Pick a cell to manage that ${noun} on that site.`}
+    >
+      {selSite && selCol ? (
+        <Inspector
+          key={`${selSite.id}:${selCol.id}`}
+          kind={kind}
+          site={selSite}
+          col={selCol}
+          item={itemAt(selSite.id, selCol.id)}
+          vuln={vulnOf(reports, kind, selSite.id, itemAt(selSite.id, selCol.id))}
+          others={read.flatMap((s) => {
+            const it = itemAt(s.id, selCol.id);
+            return it ? [{ site: s, item: it }] : [];
+          })}
+          everywhere={updateRows(selCol.id)}
+          onPlan={onPlan}
+          onRun={onRun}
+          onClose={() => setSel(null)}
+        />
+      ) : (
+        themesAside && (
+          <>
+            <div className="card-head">
+              <h2>Active theme on each site</h2>
+            </div>
+            <ul className="mx-list">
+              {ready.map((s) => {
+                const it = itemsOf(kind, inventory.get(s.id)).find((i) => i.active);
+                return (
+                  <li key={s.id}>
+                    <SiteTile site={s} />
+                    <span>
+                      <b>{s.name}</b>
+                      <span>{it ? `${it.name} ${it.version}` : "Not known"}</span>
+                    </span>
+                    {it?.update ? (
+                      <span className="tag ok">Update ready</span>
+                    ) : it ? (
+                      <span className="st pill ok">
+                        <Icon tone="ok" />
+                        Current
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )
+      )}
+    </SidePanel>
+  );
+
   return (
     <>
       <HeadActions>
         {onInstall && (
           <Button onClick={onInstall}>
-            <Glyph name="plus" />
             Install a plugin
+            <Glyph name="plus" />
           </Button>
         )}
         <Button kind="primary" className={waiting ? "disc" : undefined} disabled={waiting === 0} onClick={() => onPlan(updateLabel, updateRows(), "plan")}>
@@ -179,9 +238,8 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
           )}
         </Button>
       </HeadActions>
-      <div className="scroll page mx">
-        <div className="stack">
-          <div className="filters">
+      <Page className="mx" side={side}>
+          <Toolbar>
             <SearchInput aria-label={`Find a ${noun}`} placeholder={`Find a ${noun}`} value={query} onChange={(e) => setQuery(e.target.value)} />
             <Menu
               label="Show"
@@ -198,19 +256,18 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                 Status: <b>{status}</b>
               </Menu>
             )}
-          </div>
+          </Toolbar>
           <section className="card" aria-label={`${Noun}s by site`}>
             {cols.length === 0 ? (
-              <div className="empty">
-                <h2>No {noun}s to show yet.</h2>
+              <Empty title={`No ${noun}s to show yet.`}>
                 <p>
                   {sites.length === 0
                     ? "Add a site to see its plugins and themes here."
                     : `Monks Central reads each site's ${noun}s when it checks the site. Check all sites now, then come back.`}
                 </p>
-              </div>
+              </Empty>
             ) : rows.length === 0 || ready.length === 0 ? (
-              <p className="card-body dim">{ready.length === 0 ? "None of these sites can be read now. See why below." : `No ${noun} matches these filters.`}</p>
+              <Empty small title={ready.length === 0 ? "None of these sites can be read now. See why below." : `No ${noun} matches these filters.`} />
             ) : (
               <div className="mx-box">
                 <table
@@ -324,58 +381,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
               </ul>
             </section>
           )}
-        </div>
-      </div>
-      {selSite && selCol ? (
-        <Inspector
-          key={`${selSite.id}:${selCol.id}`}
-          kind={kind}
-          site={selSite}
-          col={selCol}
-          item={itemAt(selSite.id, selCol.id)}
-          vuln={vulnOf(reports, kind, selSite.id, itemAt(selSite.id, selCol.id))}
-          others={read.flatMap((s) => {
-            const it = itemAt(s.id, selCol.id);
-            return it ? [{ site: s, item: it }] : [];
-          })}
-          everywhere={updateRows(selCol.id)}
-          onPlan={onPlan}
-          onRun={onRun}
-          onClose={() => setSel(null)}
-        />
-      ) : (
-        !plugin &&
-        ready.length > 0 &&
-        cols.length > 0 && (
-          <aside className="insp mx-insp" aria-label="Active theme on each site">
-            <div className="card-head">
-              <h2>Active theme on each site</h2>
-            </div>
-            <ul className="mx-list">
-              {ready.map((s) => {
-                const it = itemsOf(kind, inventory.get(s.id)).find((i) => i.active);
-                return (
-                  <li key={s.id}>
-                    <SiteTile site={s} />
-                    <span>
-                      <b>{s.name}</b>
-                      <span>{it ? `${it.name} ${it.version}` : "Not known"}</span>
-                    </span>
-                    {it?.update ? (
-                      <span className="tag ok">Update ready</span>
-                    ) : it ? (
-                      <span className="st pill ok">
-                        <Icon tone="ok" />
-                        Current
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </aside>
-        )
-      )}
+      </Page>
     </>
   );
 }
@@ -430,29 +436,29 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
     if (plugin && !item.active && can(s, "activate_plugin"))
       acts.push(
         <Button key="act" small onClick={() => onRun(`Activate ${name} on ${s.name}`, one({ do: "activate_plugin", plugin: id }))}>
-          <Glyph name="power" />
           Activate
+          <Glyph name="power" />
         </Button>,
       );
     if (plugin && item.active && can(s, "deactivate_plugin"))
       acts.push(
         <Button key="deact" small onClick={() => onPlan(`Deactivate ${name} on ${s.name}`, row(`Deactivate ${name}`, { do: "deactivate_plugin", plugin: id }), "confirm", true)}>
-          <Glyph name="power" />
           Deactivate
+          <Glyph name="power" />
         </Button>,
       );
     if (!plugin && !item.active && can(s, "activate_theme"))
       acts.push(
         <Button key="use" small onClick={() => onPlan(`Use ${name} on ${s.name}`, row(`Use the ${name} theme`, { do: "activate_theme", theme: id }), "confirm")}>
-          <Glyph name="palette" />
           Use this theme
+          <Glyph name="palette" />
         </Button>,
       );
   } else if (plugin && can(s, "install_plugin")) {
     acts.push(
       <Button key="inst" small kind="primary" onClick={() => onRun(`Install ${name} on ${s.name}`, one({ do: "install_plugin", source: slugOf(id), activate: false }))}>
-        <Glyph name="download" />
         Install here
+        <Glyph name="download" />
       </Button>,
     );
   }
@@ -472,120 +478,118 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
 
   return (
     <>
-      <aside className="insp mx-insp" aria-label={`${name} on ${s.name}`}>
-        <div className="ihead">
-          <Tile kind={kind} id={col.id} name={name} big />
-          <div>
-            <h2>{name}</h2>
-            <small>
-              on {s.name} · {state}
-            </small>
-          </div>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
-            <Glyph name="x" />
-          </button>
+      <div className="ihead">
+        <Tile kind={kind} id={col.id} name={name} big />
+        <div>
+          <h2>{name}</h2>
+          <small>
+            on {s.name} · {state}
+          </small>
         </div>
-        <div className="mx-ibody">
-          {vuln ? (
-            <p className="callout danger">
-              <Glyph name="alert" />
-              <span>
-                <b>{vuln.title}.</b> {vuln.fixed_in ? `Fixed in ${vuln.fixed_in}.` : "No fix yet."}
-              </span>
-            </p>
-          ) : item?.update ? (
-            <p className="callout ok">
-              <Glyph name="download" />
-              <span>
-                <b>{item.update} is ready.</b> This site runs {item.version || "a version not known"}.
-              </span>
-            </p>
-          ) : !item ? (
-            <p className="callout">
-              <Glyph name="info" />
-              <span>Not installed on this site.</span>
-            </p>
-          ) : null}
-          {acts.length > 0 && <div className="acts">{acts}</div>}
-          {why && (
-            <p className="callout">
-              <Glyph name="info" />
-              <span>{why}</span>
-            </p>
-          )}
-          {plugin && item && item.auto_update != null && (
-            <div className="mx-auto">
-              <span>
-                <label htmlFor={autoId}>Automatic updates</label>
-                <span id={`${autoId}-d`}>{item.auto_update ? "On for this site" : "Off on this site"}</span>
-              </span>
-              <input
-                id={autoId}
-                type="checkbox"
-                role="switch"
-                aria-describedby={`${autoId}-d`}
-                checked={item.auto_update}
-                disabled={!auto}
-                onChange={() => onRun(`Automatic updates for ${name} on ${s.name}`, one({ do: "auto_update_plugin", plugin: id, on: !item.auto_update }))}
-              />
-            </div>
-          )}
-          <div className="mx-every">
-            <h3 className="mx-label">On every site</h3>
-            {others.length > 0 ? (
-              <dl className="dl">
-                {others.map((o) => (
-                  <div key={o.site.id}>
-                    <dt>{o.site.name}</dt>
-                    <dd>
-                      {o.item.version || "not known"}
-                      {o.item.update && " · update ready"}
-                      {!o.item.active && (plugin ? " · inactive" : "")}
-                      {!plugin && o.item.active && " · active"}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <p className="dim">Not installed on any site.</p>
-            )}
-            {everywhere.length > 0 && (
-              <div>
-                <Button small kind="soft" onClick={() => onPlan(`Update ${name} on ${everywhere.length === 1 ? "1 site" : `${everywhere.length} sites`}`, everywhere, "plan")}>
-                  Update {name} on {everywhere.length === 1 ? "1 site" : `${everywhere.length} sites`}
-                </Button>
-              </div>
-            )}
+        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+          <Glyph name="x" />
+        </button>
+      </div>
+      <div className="mx-ibody">
+        {vuln ? (
+          <p className="callout danger">
+            <Glyph name="alert" />
+            <span>
+              <b>{vuln.title}.</b> {vuln.fixed_in ? `Fixed in ${vuln.fixed_in}.` : "No fix yet."}
+            </span>
+          </p>
+        ) : item?.update ? (
+          <p className="callout ok">
+            <Glyph name="download" />
+            <span>
+              <b>{item.update} is ready.</b> This site runs {item.version || "a version not known"}.
+            </span>
+          </p>
+        ) : !item ? (
+          <p className="callout">
+            <Glyph name="info" />
+            <span>Not installed on this site.</span>
+          </p>
+        ) : null}
+        {acts.length > 0 && <div className="acts">{acts}</div>}
+        {why && (
+          <p className="callout">
+            <Glyph name="info" />
+            <span>{why}</span>
+          </p>
+        )}
+        {plugin && item && item.auto_update != null && (
+          <div className="mx-auto">
+            <span>
+              <label htmlFor={autoId}>Automatic updates</label>
+              <span id={`${autoId}-d`}>{item.auto_update ? "On for this site" : "Off on this site"}</span>
+            </span>
+            <input
+              id={autoId}
+              type="checkbox"
+              role="switch"
+              aria-describedby={`${autoId}-d`}
+              checked={item.auto_update}
+              disabled={!auto}
+              onChange={() => onRun(`Automatic updates for ${name} on ${s.name}`, one({ do: "auto_update_plugin", plugin: id, on: !item.auto_update }))}
+            />
           </div>
-          {(roll || canDelete) && (
-            <div className="mx-foot">
-              {roll && (
-                <Button small className="ghost" onClick={() => setRolling(true)}>
-                  <Glyph name="history" />
-                  Choose an older version
-                </Button>
-              )}
-              {canDelete && (
-                <Button
-                  small
-                  kind="danger"
-                  onClick={() =>
-                    onPlan(
-                      `Delete ${name} from ${s.name}`,
-                      row(`Delete ${name}`, plugin ? { do: "delete_plugin", plugin: id } : { do: "delete_theme", theme: id }, item!.version),
-                      "confirm",
-                      true,
-                    )
-                  }
-                >
-                  <Glyph name="trash" />
-                  Delete
-                </Button>
-              )}
+        )}
+        <div className="mx-every">
+          <h3 className="mx-label">On every site</h3>
+          {others.length > 0 ? (
+            <dl className="dl">
+              {others.map((o) => (
+                <div key={o.site.id}>
+                  <dt>{o.site.name}</dt>
+                  <dd>
+                    {o.item.version || "not known"}
+                    {o.item.update && " · update ready"}
+                    {!o.item.active && (plugin ? " · inactive" : "")}
+                    {!plugin && o.item.active && " · active"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="dim">Not installed on any site.</p>
+          )}
+          {everywhere.length > 0 && (
+            <div>
+              <Button small kind="soft" onClick={() => onPlan(`Update ${name} on ${everywhere.length === 1 ? "1 site" : `${everywhere.length} sites`}`, everywhere, "plan")}>
+                Update {name} on {everywhere.length === 1 ? "1 site" : `${everywhere.length} sites`}
+              </Button>
             </div>
           )}
         </div>
-      </aside>
+        {(roll || canDelete) && (
+          <div className="mx-foot">
+            {roll && (
+              <Button small className="ghost" onClick={() => setRolling(true)}>
+                Choose an older version
+                <Glyph name="history" />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                small
+                kind="danger"
+                onClick={() =>
+                  onPlan(
+                    `Delete ${name} from ${s.name}`,
+                    row(`Delete ${name}`, plugin ? { do: "delete_plugin", plugin: id } : { do: "delete_theme", theme: id }, item!.version),
+                    "confirm",
+                    true,
+                  )
+                }
+              >
+                Delete
+                <Glyph name="trash" />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
       {rolling && item && (
         <RollBack
           site={s}

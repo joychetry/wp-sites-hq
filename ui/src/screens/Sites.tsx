@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
-import { dismiss, toast } from "../components/feedback";
+import { dismiss, Empty, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type PluginZip, type Site } from "../api";
 import { Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
+import { Page, SidePanel, Toolbar } from "../components/page";
 import { updatesOf } from "./Updates";
 import "../styles/screens/sites.css";
 
@@ -131,6 +132,27 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   ];
   const modeAt = modes.findIndex(([m]) => m === mode);
 
+  const side = (
+    <SidePanel className="site-pane" label={focus ? `${focus.name} details` : "Site details"} empty="Pick a site to see its details, notes and actions.">
+      {focus && (
+        <Inspector
+          key={focus.id}
+          site={focus}
+          groups={groups}
+          allTags={[...new Set(sites.flatMap((x) => x.tags))].sort()}
+          updates={updatesOf(focus, inventory?.get(focus.id))}
+          onCheck={() => check([focus.id])}
+          onSignInAgain={() => onSignInAgain(focus)}
+          onUpdates={onUpdates}
+          onRemoved={(text, ok) => {
+            toast(text, { tone: ok ? "ok" : "warning" });
+            setFocusId(null);
+          }}
+        />
+      )}
+    </SidePanel>
+  );
+
   return (
     <>
       <HeadActions>
@@ -141,8 +163,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           </span>
         </Button>
       </HeadActions>
-      <div className="scroll page sites">
-        <div className="filters">
+      <Page className="sites" side={side}>
+        <Toolbar>
           <div className="segmented inline" role="group" aria-label="Show sites">
             {FILTERS.map(([f, label]) => (
               <button key={f} type="button" aria-pressed={status === f} onClick={() => setStatus(f)}>
@@ -171,7 +193,6 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             onClick={() => setMode(modes[(modeAt + 1) % modes.length][0])}
             aria-label={`${mode === "any" ? "Connection and group" : `Connection ${modes[modeAt][1]}`}, change`}
           >
-            <Glyph name="sliders" />
             {mode === "any" ? (
               "Connection and group"
             ) : (
@@ -179,22 +200,27 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 Connection <b>{modes[modeAt][1]}</b>
               </>
             )}
+            <Glyph name="sliders" />
           </button>
-        </div>
+        </Toolbar>
         <section className="card" aria-label="All sites">
           {rows.length === 0 ? (
-            <div className="empty">
-              {sites.length === 0 ? (
-                <>
-                  <h2>No sites yet.</h2>
-                  <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+            sites.length === 0 ? (
+              <Empty
+                title="No sites yet."
+                action={
                   <Button kind="primary" keys="A" onClick={onAdd}>
                     Add a site
                   </Button>
-                </>
-              ) : (
-                <>
-                  <p>No site matches these filters.</p>
+                }
+              >
+                <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+              </Empty>
+            ) : (
+              <Empty
+                small
+                title="No site matches these filters."
+                action={
                   <Button
                     onClick={() => {
                       setQuery("");
@@ -204,9 +230,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                   >
                     Clear the filters
                   </Button>
-                </>
-              )}
-            </div>
+                }
+              />
+            )
           ) : (
             <table
               ref={table}
@@ -241,9 +267,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                     />
                   </th>
                   <th className="fill">Site</th>
-                  <th>Status</th>
-                  <th>WordPress</th>
-                  <th>Connection</th>
+                  <th className="c-status">Status</th>
+                  <th className="c-wp">WordPress</th>
+                  <th className="c-conn">Connection</th>
                   <th className="acts-col">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -315,15 +341,13 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                         {/* Mouse shortcuts; the keyboard reaches the same actions in the panel (R, and its buttons). */}
                         <span className="rowacts">
                           {again ? (
-                            <Button small tabIndex={-1} onClick={() => onSignInAgain(s)}>
+                            <button type="button" className="icon-btn" tabIndex={-1} aria-label={`Sign in to ${s.name} again`} data-tip="Sign in again" onClick={() => onSignInAgain(s)}>
                               <Glyph name="login" />
-                              Sign in again
-                            </Button>
+                            </button>
                           ) : s.health === "down" ? (
-                            <Button small tabIndex={-1} onClick={() => check([s.id])}>
+                            <button type="button" className="icon-btn" tabIndex={-1} aria-label={`Check ${s.name} again`} data-tip="Check again" onClick={() => check([s.id])}>
                               <Glyph name="refresh" />
-                              Check again
-                            </Button>
+                            </button>
                           ) : (
                             <>
                               {hasTool(s, "create-login-link") && (
@@ -397,8 +421,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 />
               </label>
               <Button small className="ghost" keys="R" onClick={() => check(picked.map((s) => s.id))}>
-                <Glyph name="refresh" />
                 Check them now
+                <Glyph name="refresh" />
               </Button>
               <span className="grow" />
               <Button small className="ghost" onClick={() => setSelected(new Set())} keys="Esc">
@@ -407,23 +431,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
             </div>
           )}
         </section>
-      </div>
-      {focus && (
-        <Inspector
-          key={focus.id}
-          site={focus}
-          groups={groups}
-          allTags={[...new Set(sites.flatMap((x) => x.tags))].sort()}
-          updates={updatesOf(focus, inventory?.get(focus.id))}
-          onCheck={() => check([focus.id])}
-          onSignInAgain={() => onSignInAgain(focus)}
-          onUpdates={onUpdates}
-          onRemoved={(text, ok) => {
-            toast(text, { tone: ok ? "ok" : "warning" });
-            setFocusId(null);
-          }}
-        />
-      )}
+      </Page>
     </>
   );
 }
@@ -502,18 +510,18 @@ function GetPlugin({ site: s }: { site: Site }) {
       <div className="btn-grid one">
         {saved ? (
           <Button small onClick={() => api.openLink(upload, s.id).catch(fail)}>
-            <Glyph name="external" />
             Open the upload page
+            <Glyph name="external" />
           </Button>
         ) : (
           <Button small disabled={busy !== null} onClick={download}>
-            <Glyph name="download" />
             {busy === "download" ? "Getting Monks Central…" : "Install Monks Central for me"}
+            <Glyph name="download" />
           </Button>
         )}
         <Button small kind={saved ? "primary" : undefined} disabled={busy !== null} onClick={connect}>
-          <Glyph name="login" />
           Connect through the plugin
+          <Glyph name="login" />
         </Button>
       </div>
     </>
@@ -553,7 +561,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
   };
 
   return (
-    <aside className="insp site-pane" aria-label={`${s.name} details`}>
+    <>
       <header className="ihead">
         <SiteTile site={s} size="lg" />
         <div>
@@ -588,12 +596,12 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         )}
         <div className="btn-grid">
           <Button small onClick={() => api.open(s.id).catch((e) => setError(String(e)))}>
-            <Glyph name="external" />
             Open the site
+            <Glyph name="external" />
           </Button>
           <Button small onClick={onCheck} keys="R">
-            <Glyph name="refresh" />
             Check now
+            <Glyph name="refresh" />
           </Button>
         </div>
         <dl className="dl">
@@ -783,8 +791,8 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         />
         <div>
           <Button small disabled={!note.trim()} onClick={() => run(() => api.addNote(s.id, note).then(() => setNote("")))}>
-            <Glyph name="plus" />
             Add the note
+            <Glyph name="plus" />
           </Button>
         </div>
       </section>
@@ -821,11 +829,11 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           </div>
         ) : (
           <Button small className="ghost danger-text" onClick={() => setConfirm(true)}>
-            <Glyph name="trash" />
             Remove from Monks Central
+            <Glyph name="trash" />
           </Button>
         )}
       </section>
-    </aside>
+    </>
   );
 }

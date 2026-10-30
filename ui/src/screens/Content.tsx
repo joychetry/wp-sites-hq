@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Posts, pages and every post type a site lets us edit: list, filter, open, create (plan Phase 3).
 import "../styles/screens/content.css";
-import { Skeleton, toast } from "../components/feedback";
-import { dayLabel, SearchInput, Select } from "../components/controls";
+import { Empty, Skeleton, toast } from "../components/feedback";
+import { Page, Toolbar } from "../components/page";
+import { dayLabel, SearchInput, Segmented, Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary, type Tone } from "../api";
@@ -41,7 +42,7 @@ export function firstUsable(sites: Site[]): number | null {
 export function SitePick({ sites, value, onChange }: { sites: Site[]; value: number | null; onChange: (id: number) => void }) {
   return (
     <label className="row pick">
-      <span>Site</span>
+      <span className="label">Site</span>
       <Select className="input sm" aria-label="Site" value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))}>
         {sites.map((s) => (
           <option key={s.id} value={s.id}>
@@ -173,10 +174,9 @@ export function Content({ sites, onPlan }: Props) {
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
+      <Empty picture="sites" title="No sites yet.">
         <p>Add a site on Sites, then its posts and pages show here.</p>
-      </div>
+      </Empty>
     );
   }
 
@@ -219,18 +219,15 @@ export function Content({ sites, onPlan }: Props) {
   let body;
   if (blocked) {
     body = (
-      <div className="empty">
-        <h2>{site!.name}'s content isn't available here.</h2>
+      <Empty title={`${site!.name}'s content isn't available here.`}>
         <p>{blocked}</p>
-      </div>
+      </Empty>
     );
   } else if (error) {
     body = (
-      <div className="empty" role="alert">
-        <h2>The content didn't load.</h2>
+      <Empty alert title="The content didn't load." action={<Button onClick={() => (types ? load() : pickSite(site!.id))}>Try again</Button>}>
         <p>{error}</p>
-        <Button onClick={() => (types ? load() : pickSite(site!.id))}>Try again</Button>
-      </div>
+      </Empty>
     );
   } else if (!types || !list || !type) {
     body = (
@@ -238,21 +235,25 @@ export function Content({ sites, onPlan }: Props) {
     );
   } else if (list.posts.length === 0) {
     body = (
-      <div className="empty">
-        <h2>{search || status ? "Nothing matches." : `No ${type.label.toLowerCase()} yet.`}</h2>
+      <Empty
+        picture={search || status ? "search" : undefined}
+        title={search || status ? "Nothing matches." : `No ${type.label.toLowerCase()} yet.`}
+        action={
+          (search || status) && (
+            <Button
+              onClick={() => {
+                setStatus("");
+                setTyped("");
+                setSearch("");
+              }}
+            >
+              Clear the filters
+            </Button>
+          )
+        }
+      >
         <p>{search || status ? "Try other words, or show everything but the trash." : `Add the first one with New ${type.singular.toLowerCase()}.`}</p>
-        {(search || status) && (
-          <Button
-            onClick={() => {
-              setStatus("");
-              setTyped("");
-              setSearch("");
-            }}
-          >
-            Clear the filters
-          </Button>
-        )}
-      </div>
+      </Empty>
     );
   } else {
     const rows = list.posts;
@@ -277,9 +278,9 @@ export function Content({ sites, onPlan }: Props) {
             <b>{chosen.length === 0 ? "None ticked" : chosen.length === 1 ? "1 entry ticked" : `${chosen.length} entries ticked`}</b>
             {actions.map((a) => (
               <Button key={a} small disabled={chosen.length === 0} onClick={() => bulk(a)}>
-                {a === "trash" && <Glyph name="trash" />}
                 {BULK[a].button}
                 {chosen.length > 0 && ` (${chosen.length})`}
+                {a === "trash" && <Glyph name="trash" />}
               </Button>
             ))}
             <span className="grow" />
@@ -379,12 +380,12 @@ export function Content({ sites, onPlan }: Props) {
   }
 
   return (
-    <div className="scroll page">
+    <Page>
       <HeadActions>
         {onPlan && (
           <Button onClick={() => setMany(true)}>
-            <Glyph name="copy" />
             Publish on several sites
+            <Glyph name="copy" />
           </Button>
         )}
         {type && !blocked && (
@@ -396,38 +397,31 @@ export function Content({ sites, onPlan }: Props) {
           </Button>
         )}
       </HeadActions>
-      <div className="stack">
-        <form
-          className="card cfilter"
-          aria-label="Which entries to show"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setPage(1);
-            setSearch(typed.trim());
-          }}
-        >
+      <form
+        aria-label="Which entries to show"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setPage(1);
+          setSearch(typed.trim());
+        }}
+      >
+        <Toolbar>
           <SitePick sites={sites} value={current} onChange={pickSite} />
           {types && types.length > 0 && (
-            <div className="segmented inline" role="group" aria-label="Post type">
-              {types.map((t) => (
-                <button
-                  key={t.name}
-                  type="button"
-                  aria-pressed={t.name === typeName}
-                  onClick={() => {
-                    setTypeName(t.name);
-                    setPage(1);
-                  }}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              label="Post type"
+              options={types.map((t) => ({ id: t.name, label: t.label }))}
+              value={typeName}
+              onChange={(t) => {
+                setTypeName(t);
+                setPage(1);
+              }}
+            />
           )}
           {type && !blocked && (
             <>
               <label className="row pick">
-                <span>Show</span>
+                <span className="label">Show</span>
                 <Select
                   className="input sm"
                   aria-label="Show"
@@ -460,20 +454,20 @@ export function Content({ sites, onPlan }: Props) {
               />
             </>
           )}
-        </form>
-        <section
-          className="card ctable"
-          aria-label={type && site ? `${type.label} on ${site.name}` : "Entries"}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && picked.size > 0) {
-              e.preventDefault();
-              setPicked(new Set());
-            }
-          }}
-        >
-          {body}
-        </section>
-      </div>
+        </Toolbar>
+      </form>
+      <section
+        className="card ctable"
+        aria-label={type && site ? `${type.label} on ${site.name}` : "Entries"}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && picked.size > 0) {
+            e.preventDefault();
+            setPicked(new Set());
+          }
+        }}
+      >
+        {body}
+      </section>
       {many && onPlan && (
         <PublishMany
           sites={sites}
@@ -485,6 +479,6 @@ export function Content({ sites, onPlan }: Props) {
           }}
         />
       )}
-    </div>
+    </Page>
   );
 }

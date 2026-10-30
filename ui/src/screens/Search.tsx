@@ -4,7 +4,8 @@
 import "../styles/screens/search.css";
 import { useEffect, useState } from "react";
 import { api, contentBlocked, type Client, type ContentFound, type PostType, type Site, type SiteInventory } from "../api";
-import { toast } from "../components/feedback";
+import { Empty, toast } from "../components/feedback";
+import { Page, Toolbar } from "../components/page";
 import { Editor } from "./Editor";
 import { SearchInput } from "../components/controls";
 import { SiteTile } from "../components/SiteTile";
@@ -136,7 +137,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
   }
 
   return (
-    <div className="scroll page search">
+    <Page narrow className="search">
       <form
         className="srch-go"
         role="search"
@@ -154,15 +155,14 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
         </Button>
       </form>
       {query.trim().length < 2 ? (
-        <div className="card">
-          <div className="empty">
-            <h2>Search every site at once.</h2>
+        <section className="card">
+          <Empty picture="search" title="Search every site at once.">
             <p>Sites, plugins, themes and clients show straight away. Posts and pages are looked up on each site.</p>
-          </div>
-        </div>
+          </Empty>
+        </section>
       ) : (
         <>
-          <div className="filters">
+          <Toolbar>
             <div className="segmented inline" role="group" aria-label="Show results">
               {kinds.map((k) => (
                 <button key={k} type="button" aria-pressed={show === k} onClick={() => setShow(k)}>
@@ -174,7 +174,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
             <span className="end dim" id="search-legend">
               {plural(count("All"), "result")} on {plural(on, "site")}
             </span>
-          </div>
+          </Toolbar>
           <section className="card" aria-label={`Results for ${query}`}>
             <ul className="fixes" aria-label="Results" aria-describedby="search-legend">
               {hits
@@ -192,14 +192,14 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                     </div>
                     {site(h.site_id) && !contentBlocked(site(h.site_id)!) && (
                       <Button small className="ghost" aria-label={`Edit ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => edit(site(h.site_id)!, h.post_type, h.id)}>
-                        <Glyph name="edit" />
                         Edit
+                        <Glyph name="edit" />
                       </Button>
                     )}
                     {h.link.startsWith("https://") && (
                       <Button small aria-label={`View on ${name(h.site_id)}: ${h.title || "(no title)"}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
-                        <Glyph name="external" />
                         View on {name(h.site_id)}
+                        <Glyph name="external" />
                       </Button>
                     )}
                   </li>
@@ -241,7 +241,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                 <span>{error}</span>
               </p>
             )}
-            {found && found.hits.length === 0 && <p className="quiet">{local.length ? "No posts or pages match on any site." : "Nothing matches on any site: no sites, plugins, themes, clients, posts or pages."}</p>}
+            {found && found.hits.length === 0 && <Empty small title={local.length ? "No posts or pages match on any site." : "Nothing matches on any site: no sites, plugins, themes, clients, posts or pages."} />}
           </section>
           {found && found.failed.length > 0 && (
             <p className="callout warning">
@@ -257,6 +257,6 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
           <b>Faster from anywhere:</b> press <Kbd>Ctrl K</Kbd> to search sites, pages and actions without leaving the page you're on.
         </span>
       </p>
-    </div>
+    </Page>
   );
 }

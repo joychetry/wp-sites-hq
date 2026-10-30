@@ -36,8 +36,8 @@ impl Core {
         let _ = std::fs::remove_file(path(&self.home, id));
     }
 
-    /// Fetch the site's icon and cache it: WordPress's site icon, else the home
-    /// page's `<link rel="icon">`, else `/favicon.ico`. Never fails.
+    /// Fetch the site's icon and cache it: WordPress's site icon (512px), else the
+    /// home page's sharpest icon link, else `/favicon.ico`. Never fails.
     pub(crate) async fn refresh_icon(&self, site: &Site) {
         let Ok(home) = Url::parse(&site.url) else {
             return;
@@ -145,13 +145,14 @@ fn site_icon_url(index: &Value) -> Option<&str> {
         .filter(|u| !u.trim().is_empty())
 }
 
-/// The `<head>`'s icon links resolved against `base`: `icon` and `shortcut icon`
-/// first, then `apple-touch-icon`.
+/// The `<head>`'s icon links resolved against `base`, sharpest first: SVG and the
+/// largest `sizes`, then `apple-touch-icon` (180px when it doesn't say), then
+/// icons that don't say their size, `.ico` files last (often 16px).
 fn icon_links(html: &str, base: &Url) -> Vec<Url> {
     // ASCII lowercasing keeps byte offsets, so `lower` indexes `html`.
     let lower = html.to_ascii_lowercase();
     let head = &lower[..lower.find("</head").unwrap_or(lower.len())];
-    let (mut icons, mut touch) = (Vec::new(), Vec::new());
+    let mut found: Vec<(u32, Url)> = Vec::new();
     let mut at = 0;
     while let Some(i) = head[at..].find("<link") {
         let start = at + i;
@@ -164,14 +165,36 @@ fn icon_links(html: &str, base: &Url) -> Vec<Url> {
             continue;
         };
         let mut rels = rel.split_ascii_whitespace();
-        if rels.clone().any(|r| r == "icon") {
-            icons.push(url);
+        let touch = if rels.clone().any(|r| r == "icon") {
+            false
         } else if rels.any(|r| r.starts_with("apple-touch-icon")) {
-            touch.push(url);
-        }
+            true
+        } else {
+            continue;
+        };
+        let file = url.path().to_ascii_lowercase();
+        let kind = attr(tag, "type").unwrap_or_default().to_ascii_lowercase();
+        let sizes = attr(tag, "sizes").unwrap_or_default().to_ascii_lowercase();
+        let declared = sizes
+            .split_ascii_whitespace()
+            .filter_map(|s| s.split('x').next()?.parse::<u32>().ok())
+            .max();
+        let size = if file.ends_with(".svg") || kind.contains("svg") || sizes.contains("any") {
+            u32::MAX
+        } else if let Some(n) = declared {
+            n
+        } else if touch {
+            180
+        } else if file.ends_with(".ico") {
+            0
+        } else {
+            16
+        };
+        found.push((size, url));
     }
-    icons.extend(touch);
-    icons
+    // Stable: links of one size keep the page's order.
+    found.sort_by_key(|(size, _)| std::cmp::Reverse(*size));
+    found.into_iter().map(|(_, url)| url).collect()
 }
 
 /// An attribute's value in a tag, quoted or bare.
@@ -265,9 +288,33 @@ mod tests {
         assert_eq!(
             links,
             [
-                "https://a.test/f.ico?v=1&x=2",
-                "https://a.test/up/i-32.png",
                 "https://a.test/blog/touch.png",
+                "https://a.test/up/i-32.png",
+                "https://a.test/f.ico?v=1&x=2",
+            ]
+        );
+        // Sharpest first: SVG, then the largest size, a sized 192 over the touch icon, unsized PNG over .ico.
+        let html = r#"<head>
+            <link rel="icon" href="/favicon.ico">
+            <link rel="icon" href="/plain.png">
+            <link rel="icon" sizes="16x16" href="/16.png">
+            <link rel="apple-touch-icon" href="/touch.png">
+            <link rel="icon" sizes="32x32 192x192" href="/multi.png">
+            <link rel="icon" type="image/svg+xml" href="/mark">
+            </head>"#;
+        let links: Vec<String> = icon_links(html, &base)
+            .iter()
+            .map(|u| u.path().to_string())
+            .collect();
+        assert_eq!(
+            links,
+            [
+                "/mark",
+                "/multi.png",
+                "/touch.png",
+                "/plain.png",
+                "/16.png",
+                "/favicon.ico"
             ]
         );
         assert!(icon_links("<html><head><title>x</title></head>", &base).is_empty());

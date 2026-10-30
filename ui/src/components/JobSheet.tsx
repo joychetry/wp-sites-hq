@@ -276,8 +276,8 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
                 )
               }
             >
-              <Glyph name="refresh" />
               Try the {plural(failed.length, "failed change")} again
+              <Glyph name="refresh" />
             </Button>
           )}
         </>

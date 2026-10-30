@@ -11,12 +11,14 @@ import { Combobox, DateInput, NumberInput, Select } from "../components/controls
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, hasTool, type Block, type Draft, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
 import { Button, Glyph } from "../components/ui";
-import { toast } from "../components/feedback";
+import { toast, Empty } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import { MediaPicker } from "../components/MediaPicker";
 import { InlineText, RichText } from "../components/RichText";
 import { acfErrors, AcfGroups, invalid, type Acf } from "./AcfFields";
 import { STATUS_LABEL } from "./Content";
+import { leaveGuard } from "../fleet";
+import { Page } from "../components/page";
 
 
 /** "core/paragraph" -> "Paragraph", "acme/map" -> "Map (acme)", "" -> "Text". */
@@ -53,12 +55,6 @@ export function siteDate(local: string): string {
 
 /** A body with no block comments is classic: one editable block, or nothing yet. */
 export const isClassic = (p: Post) => !p.locked && (p.blocks.length === 0 || (p.blocks.length === 1 && p.blocks[0].name === "" && p.blocks[0].editable));
-
-/**
- * Leaving the editor with unsaved changes asks first. The editor sets `ask` while it has changes;
- * App runs a page change through it.
- */
-export const leaveGuard: { ask: ((go: () => void) => void) | null } = { ask: null };
 
 /** PHP's serialize() output: WordPress keeps these out of its Custom Fields box, and so do we. */
 export const isSerialized = (v: string) => /^(?:[aOC]:\d+:[\s\S]*[;}]|s:\d+:"[\s\S]*";|[bid]:[^;]*;|N;)$/.test(v.trim());
@@ -122,8 +118,8 @@ function FieldsEdit({ meta, value, owned, onChange }: { meta: Record<string, unk
           <input className="input" aria-label="New field name" placeholder="New field name" value={key} onChange={(e) => setKey(e.target.value)} />
           <input className="input" aria-label="New field value" placeholder="New field value" value={val} onChange={(e) => setVal(e.target.value)} />
           <Button onClick={add} disabled={!key.trim() || key.trim().startsWith("_")}>
-            <Glyph name="plus" />
             Add the field
+            <Glyph name="plus" />
           </Button>
         </div>
         {key.trim().startsWith("_") && <small className="why danger">Names starting with an underscore belong to plugins and can't be set here.</small>}
@@ -160,8 +156,8 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
   if (!open) {
     return (
       <Button small onClick={show}>
-        <Glyph name="history" />
         Show earlier versions
+        <Glyph name="history" />
       </Button>
     );
   }
@@ -592,18 +588,17 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
 
   if (loadError) {
     return (
-      <div className="scroll page ed-page">
+      <Page className="ed-page">
         <div className="ed-top">
           <Button onClick={onClose}>
-            <Glyph name="arrow" />
             {back ?? `Back to ${type.label.toLowerCase()}`}
+            <Glyph name="arrow" />
           </Button>
         </div>
-        <div className="empty" role="alert">
-          <h2>This {noun} didn't open.</h2>
+        <Empty alert title={`This ${noun} didn't open.`}>
           <p>{loadError}</p>
-        </div>
-      </div>
+        </Empty>
+      </Page>
     );
   }
 
@@ -648,11 +643,11 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="scroll page ed-page">
+    <Page className="ed-page">
       <div className="ed-top">
         <Button onClick={leave}>
-          <Glyph name="arrow" />
           {back ?? `Back to ${type.label.toLowerCase()}`}
+          <Glyph name="arrow" />
         </Button>
         <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>
@@ -727,8 +722,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               )}
               {post && post.preview_link && (
                 <Button small onClick={() => api.openLink(post.preview_link, site.id).catch((e) => toast(String(e), { tone: "danger" }))}>
-                  <Glyph name="external" />
                   Preview
+                  <Glyph name="external" />
                 </Button>
               )}
             </div>
@@ -774,8 +769,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               ) : (
                 <div className="row wrap">
                   <Button small onClick={() => setPicking(true)}>
-                    <Glyph name="image" />
                     {image.id ? "Change the image" : "Choose an image"}
+                    <Glyph name="image" />
                   </Button>
                   {image.id > 0 && (
                     <Button small className="quiet" onClick={() => setImage({ id: 0, url: null })}>
@@ -863,8 +858,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             <>
               <Button onClick={() => setTrashing(false)}>Keep it</Button>
               <Button kind="danger" className="solid" disabled={saving} onClick={trash}>
-                <Glyph name="trash" />
                 {saving ? "Moving…" : "Move it to the trash"}
+                <Glyph name="trash" />
               </Button>
             </>
           }
@@ -898,6 +893,6 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
           <p>Your changes to "{title || `this ${noun}`}" aren't saved. If you leave now, they are lost.</p>
         </Sheet>
       )}
-    </div>
+    </Page>
   );
 }

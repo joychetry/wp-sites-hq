@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // A WooCommerce store on one site: how it did over a period, what runs low, and
 // its products with their prices and stock, changed as a job (plan Phase 7).
-import { Skeleton, toast } from "../components/feedback";
+import { Empty, Skeleton, toast } from "../components/feedback";
+import { Page, Toolbar } from "../components/page";
 import { SearchInput, Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import "../styles/screens/store.css";
 import { api, hasTool, type Action, type Product, type ProductQuery, type Products, type Site, type StoreOverview } from "../api";
-import { Button, Glyph, HeadActions } from "../components/ui";
+import { Button, Glyph } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { Sheet } from "../components/Sheet";
 import type { PlanRow } from "../components/JobSheet";
@@ -104,10 +105,9 @@ export function Store({ sites, onPlan }: Props) {
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
+      <Empty picture="sites" title="No sites yet.">
         <p>Add a site with WooCommerce and Classic Monks on Sites, then its store shows here.</p>
-      </div>
+      </Empty>
     );
   }
 
@@ -116,10 +116,10 @@ export function Store({ sites, onPlan }: Props) {
   const orders = Object.entries(overview?.by_status ?? {}).filter(([, n]) => n > 0);
   const word = (s: string) => ORDER[s] ?? [s, "k-off"];
   return (
-    <div className="scroll page store">
-      <HeadActions>
-        <label className="row pick store-pick">
-          <span>Site</span>
+    <Page className="store">
+      <Toolbar>
+        <label className="row">
+          <span className="label">Site</span>
           <Select
             className="input sm"
             aria-label="Site"
@@ -148,16 +148,15 @@ export function Store({ sites, onPlan }: Props) {
             ))}
           </div>
         )}
-      </HeadActions>
+      </Toolbar>
       {!can || !site ? (
         <section className="card">
-          <div className="empty">
-            <h2>{site?.name ?? "This site"} has no store Monks Central can read.</h2>
+          <Empty title={`${site?.name ?? "This site"} has no store Monks Central can read.`}>
             <p>It needs WooCommerce and Classic Monks Pro with the store tools. Update Classic Monks on the site, then check it again on Sites.</p>
-          </div>
+          </Empty>
         </section>
       ) : (
-        <div className="stack">
+        <>
           {error && <p className="alert danger">{error}</p>}
           <section className="card" aria-labelledby="store-sales">
             <div className="card-head">
@@ -277,7 +276,7 @@ export function Store({ sites, onPlan }: Props) {
                 </Select>
               </label>
             </form>
-            {list && list.products.length === 0 && <p className="quiet">No products match.</p>}
+            {list && list.products.length === 0 && <Empty small title="No products match." />}
             {list && list.products.length > 0 && (
               <table className="t" aria-label="Products" aria-describedby="products-legend">
                 <thead>
@@ -374,7 +373,7 @@ export function Store({ sites, onPlan }: Props) {
               </div>
             )}
           </section>
-        </div>
+        </>
       )}
       {editing && site && (
         <ProductSheet
@@ -389,7 +388,7 @@ export function Store({ sites, onPlan }: Props) {
           }}
         />
       )}
-    </div>
+    </Page>
   );
 }
 

@@ -1200,40 +1200,155 @@ export function Menu({ label, items, children, small, className }: { label: stri
 }
 
 /**
- * Tabs (WAI-ARIA, manual activation is not needed here: content is already loaded, so arrows
- * select as they move). Only the chosen tab is a Tab stop.
+ * Which items of a one-row list fit in `room` (widths in px, the "More" button's width when some don't):
+ * the first ones in order, and the chosen one always, in place of the last that would fit.
  */
-export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }: { label: string; tabs: { id: T; label: ReactNode }[]; value: T; onChange: (t: T) => void; idBase: string }) {
-  const ref = useRef<HTMLDivElement>(null);
+export function fit(widths: number[], room: number, more: number, selected: number): number[] {
+  const all = widths.map((_, i) => i);
+  if (widths.reduce((a, b) => a + b, 0) <= room) return all;
+  const shown: number[] = [];
+  let used = more + (selected >= 0 ? widths[selected] : 0);
+  for (const i of all) {
+    if (i === selected) continue;
+    if (used + widths[i] > room) break;
+    shown.push(i);
+    used += widths[i];
+  }
+  if (selected >= 0) shown.push(selected);
+  return shown.sort((a, b) => a - b);
+}
+
+const MORE_WIDTH = 96;
+
+/** Measures a row's items (a hidden copy of all of them) and keeps the ones that fit, as `fit` says. */
+function useOverflow(count: number, selected: number) {
+  const row = useRef<HTMLDivElement>(null);
+  const measure = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState(Infinity);
+  const [widths, setWidths] = useState<number[]>([]);
+  useLayoutEffect(() => {
+    const el = row.current;
+    if (!el) return;
+    const read = () => {
+      const css = getComputedStyle(el);
+      const gap = parseFloat(css.columnGap) || 0;
+      // Each width below carries one gap; the last item has none after it, so the room gets it back.
+      const inner = el.clientWidth - (parseFloat(css.paddingLeft) || 0) - (parseFloat(css.paddingRight) || 0);
+      // 1px of slack: rounded widths must never tip a row that fits into More (and back, in a loop).
+      const room = el.clientWidth ? inner + gap + 1 : Infinity;
+      const ws = [...(measure.current?.children ?? [])].map((c) => c.getBoundingClientRect().width + gap);
+      setRoom((r) => (Math.abs(r - room) < 1 ? r : room));
+      setWidths((old) => (old.length === ws.length && old.every((w, i) => Math.abs(w - ws[i]) < 1) ? old : ws));
+    };
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [count]);
+  const shown = widths.length === count ? fit(widths, room, MORE_WIDTH, selected) : [...Array(count).keys()];
+  return { row, measure, shown: new Set(shown) };
+}
+
+/** The "More" menu at the end of a row, holding the items that don't fit. */
+function More({ label, items }: { label: string; items: MenuItem[] }) {
+  if (!items.length) return null;
   return (
-    <div
-      ref={ref}
-      role="tablist"
-      aria-label={label}
-      className="tabs"
-      onKeyDown={(e) => {
-        const i = tabs.findIndex((t) => t.id === value);
-        const go: Record<string, number> = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i - 1 + tabs.length) % tabs.length, Home: 0, End: tabs.length - 1 };
-        if (!(e.key in go)) return;
-        e.preventDefault();
-        onChange(tabs[go[e.key]].id);
-        requestAnimationFrame(() => ref.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus());
-      }}
-    >
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          role="tab"
-          id={`${idBase}-tab-${t.id}`}
-          aria-selected={t.id === value}
-          aria-controls={`${idBase}-panel`}
-          tabIndex={t.id === value ? 0 : -1}
-          onClick={() => onChange(t.id)}
-        >
-          {t.label}
-        </button>
-      ))}
+    <Menu label={label} items={items} className="tab-more">
+      More <span className="n-more">{items.length}</span>
+    </Menu>
+  );
+}
+
+/**
+ * Tabs (WAI-ARIA, manual activation is not needed here: content is already loaded, so arrows
+ * select as they move). Only the chosen tab is a Tab stop. Tabs that don't fit on the row go into a
+ * "More" menu after it; arrows still move through every tab, and the chosen one is always on the row.
+ * `text` names a tab whose label isn't plain words, for the menu.
+ */
+export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }: { label: string; tabs: { id: T; label: ReactNode; text?: string }[]; value: T; onChange: (t: T) => void; idBase: string }) {
+  const list = useRef<HTMLDivElement>(null);
+  const at = tabs.findIndex((t) => t.id === value);
+  const { row, measure, shown } = useOverflow(tabs.length, at);
+  return (
+    <div className="tabs" ref={row}>
+      <div
+        ref={list}
+        role="tablist"
+        aria-label={label}
+        className="tablist"
+        onKeyDown={(e) => {
+          const i = at;
+          const go: Record<string, number> = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i - 1 + tabs.length) % tabs.length, Home: 0, End: tabs.length - 1 };
+          if (!(e.key in go)) return;
+          e.preventDefault();
+          onChange(tabs[go[e.key]].id);
+          requestAnimationFrame(() => list.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus());
+        }}
+      >
+        {tabs.map(
+          (t, i) =>
+            shown.has(i) && (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                id={`${idBase}-tab-${t.id}`}
+                aria-selected={t.id === value}
+                aria-controls={`${idBase}-panel`}
+                tabIndex={t.id === value ? 0 : -1}
+                onClick={() => onChange(t.id)}
+              >
+                {t.label}
+              </button>
+            ),
+        )}
+      </div>
+      <More
+        label="More tabs"
+        items={tabs.flatMap((t, i) => (shown.has(i) ? [] : [{ label: t.text ?? (textOf(t.label) || t.id), run: () => onChange(t.id) }]))}
+      />
+      <div className="row-measure" ref={measure} aria-hidden="true">
+        {tabs.map((t) => (
+          <span key={t.id} className="tab-like">
+            {t.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A segmented filter (one pressed button of a few) on one row; what doesn't fit goes into "More". */
+export function Segmented<T extends string>({ label, options, value, onChange }: { label: string; options: { id: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void }) {
+  const at = options.findIndex((o) => o.id === value);
+  const { row, measure, shown } = useOverflow(options.length, at);
+  const body = (o: { label: string; count?: number }) => (
+    <>
+      {o.label}
+      {o.count !== undefined && <small>{o.count}</small>}
+    </>
+  );
+  return (
+    <div className="seg-row" ref={row}>
+      <div className="segmented inline" role="group" aria-label={label}>
+        {options.map(
+          (o, i) =>
+            shown.has(i) && (
+              <button key={o.id} type="button" aria-pressed={o.id === value} onClick={() => onChange(o.id)}>
+                {body(o)}
+              </button>
+            ),
+        )}
+      </div>
+      <More label={`More ${label.toLowerCase()} choices`} items={options.flatMap((o, i) => (shown.has(i) ? [] : [{ label: o.label, run: () => onChange(o.id) }]))} />
+      <div className="row-measure" ref={measure} aria-hidden="true">
+        {options.map((o) => (
+          <span key={o.id} className="seg-like">
+            {body(o)}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

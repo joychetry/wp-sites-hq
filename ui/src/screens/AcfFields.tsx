@@ -84,8 +84,8 @@ function Field({ f, value, error, ctx, onChange }: { f: AcfField; value: unknown
             {!empty(value) && typeof value !== "object" && <span className="mono cut"> Now: {str(value)}</span>}
           </span>
           <Button small onClick={() => api.openLink(ctx.editUrl, ctx.site.id).catch(() => {})}>
-            <Glyph name="external" />
             Edit in WordPress
+            <Glyph name="external" />
           </Button>
         </p>
       </div>
@@ -269,8 +269,8 @@ function Repeater({ f, label, value, error, ctx, onChange }: { f: AcfField; labe
       ))}
       {error && <small className="err">{error}</small>}
       <Button ref={add} small disabled={max > 0 && rows.length >= max} onClick={() => onChange([...rows, Object.fromEntries((f.sub_fields ?? []).map((sf) => [sf.key, sf.settings.default_value ?? ""]))])}>
-        <Glyph name="plus" />
         {str(f.settings.button_label) || "Add a row"}
+        <Glyph name="plus" />
       </Button>
     </fieldset>
   );
@@ -317,8 +317,8 @@ function MediaField({ f, value, ctx, onChange }: { f: AcfField; value: unknown; 
         />
       ) : (
         <Button small onClick={() => setPicking(true)}>
-          <Glyph name={f.type === "file" ? "file" : "image"} />
           {gallery ? "Add images" : ids.length ? `Change the ${f.type}` : `Choose ${f.type === "file" ? "a file" : "an image"}`}
+          <Glyph name={f.type === "file" ? "file" : "image"} />
         </Button>
       )}
     </div>

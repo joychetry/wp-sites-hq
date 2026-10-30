@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Clients, their sites, and what the sites cost you and earn (plan Phase 7).
 import "../styles/screens/clients.css";
-import { Skeleton, toast } from "../components/feedback";
+import { Empty, Skeleton, toast } from "../components/feedback";
+import { Page } from "../components/page";
 import { DateInput, dayLabel, MultiSelect, Select } from "../components/controls";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
@@ -88,11 +89,11 @@ export function Clients({ sites }: { sites: Site[] }) {
 
   if (error) {
     return (
-      <div className="empty" role="alert">
-        <h2>Clients didn't load.</h2>
-        <p>{error}</p>
-        <Button onClick={load}>Try again</Button>
-      </div>
+      <Page>
+        <Empty alert title="Clients didn't load." action={<Button onClick={load}>Try again</Button>}>
+          <p>{error}</p>
+        </Empty>
+      </Page>
     );
   }
   if (!clients) {
@@ -143,11 +144,11 @@ export function Clients({ sites }: { sites: Site[] }) {
   const whose = (k: Cost) => clientName(k.client_id) ?? siteOf(k.site_id)?.name ?? "a removed site";
 
   return (
-    <div className="scroll page clients">
+    <Page className="clients">
       <HeadActions>
         <Button onClick={() => setEditing({ cost: blankCost() })} disabled={clients.length === 0 && sites.length === 0}>
-          <Glyph name="plus" />
           Add a cost or charge
+          <Glyph name="plus" />
         </Button>
         <Button kind="primary" className="disc" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
           Add a client
@@ -157,12 +158,13 @@ export function Clients({ sites }: { sites: Site[] }) {
         </Button>
       </HeadActions>
       {clients.length === 0 && costs.length === 0 ? (
-        <div className="card empty">
-          <h2>No clients yet.</h2>
-          <p>Add a client, tick their sites, then note what the sites cost you (hosting, domains, licences) and what you charge. Client reports use the same list.</p>
-        </div>
+        <section className="card">
+          <Empty title="No clients yet.">
+            <p>Add a client, tick their sites, then note what the sites cost you (hosting, domains, licences) and what you charge. Client reports use the same list.</p>
+          </Empty>
+        </section>
       ) : (
-        <div className="stack">
+        <>
           <section className="g3" aria-label="This month">
             <div className="stat">
               <h2 className="label">Charged each month</h2>
@@ -192,7 +194,7 @@ export function Clients({ sites }: { sites: Site[] }) {
               {also("left")}
             </div>
           </section>
-          <div className="split-r">
+          <div className="cl-split">
             <section className="card" aria-label="Clients and costs">
               <table className="t" aria-label="Clients" aria-describedby="clients-legend">
                 <thead>
@@ -296,7 +298,7 @@ export function Clients({ sites }: { sites: Site[] }) {
                 </h2>
               </div>
               {renewing.length === 0 ? (
-                <p className="quiet">Nothing has a renewal date yet. Add one to a cost or charge.</p>
+                <Empty small title="Nothing has a renewal date yet. Add one to a cost or charge." />
               ) : (
                 <ul className="fixes">
                   {renewing.map(({ k, days }) => (
@@ -321,11 +323,11 @@ export function Clients({ sites }: { sites: Site[] }) {
               )}
             </section>
           </div>
-        </div>
+        </>
       )}
       {editing && "client" in editing && <ClientSheet client={editing.client} sites={sites} onClose={() => setEditing(null)} onDone={done} />}
       {editing && "cost" in editing && <CostSheet cost={editing.cost} sites={sites} clients={clients} onClose={() => setEditing(null)} onDone={done} />}
-    </div>
+    </Page>
   );
 }
 
@@ -369,16 +371,16 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
       <span className="sum">Delete {client.name} and the costs and charges on them? Their sites stay.</span>
       <Button onClick={() => setDeleting(false)}>Keep {client.name}</Button>
       <Button kind="danger" className="solid" disabled={busy} onClick={remove}>
-        <Glyph name="trash" />
         Delete the client
+        <Glyph name="trash" />
       </Button>
     </>
   ) : (
     <>
       {!isNew && (
         <Button kind="danger" className="push" onClick={() => setDeleting(true)}>
-          <Glyph name="trash" />
           Delete the client
+          <Glyph name="trash" />
         </Button>
       )}
       <Button className="ghost" onClick={onClose}>
@@ -467,8 +469,8 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
     <>
       {!isNew && (
         <Button kind="danger" className="push" disabled={busy} onClick={remove}>
-          <Glyph name="trash" />
           Delete it
+          <Glyph name="trash" />
         </Button>
       )}
       <Button className="ghost" onClick={onClose}>

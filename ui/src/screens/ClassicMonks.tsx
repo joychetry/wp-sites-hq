@@ -2,12 +2,13 @@
 // Classic Monks on one site: its features, the settings it lets Monks Central change,
 // its activity log with undo, and changes waiting for approval (plan Phase 4).
 import "../styles/screens/classic-monks.css";
-import { Skeleton, toast } from "../components/feedback";
+import { Empty as EmptyState, Skeleton, toast } from "../components/feedback";
+import { Page, Toolbar } from "../components/page";
 import { Select, NumberInput, Tabs, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type ActivityRow, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
 import { SiteTile } from "../components/SiteTile";
-import { Button, Glyph, HeadActions, Status } from "../components/ui";
+import { Button, Glyph, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 
 type Tab = "features" | "settings" | "activity" | "approvals" | "reports";
@@ -77,10 +78,9 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
+      <EmptyState picture="sites" title="No sites yet.">
         <p>Add a site with Classic Monks on Sites, then its features show here.</p>
-      </div>
+      </EmptyState>
     );
   }
 
@@ -107,11 +107,57 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
   };
   const update = site && inventory?.get(site.id)?.inventory.plugins.find((p) => p.id.startsWith("classic-monks/"))?.update;
 
+  // The site's own cards beside every tab: its Classic Monks, what waits, recent changes.
+  const side =
+    !blocked && site ? (
+      <div className="stack cm-side">
+        <section className="card" aria-label={`Classic Monks on ${site.name}`}>
+          <div className="card-body">
+            <div className="cm-site">
+              <SiteTile site={site} />
+              <div>
+                <b>{site.name}</b>
+                <small>{site.cm_version ? `${pluginName(site)} ${site.cm_version}` : pluginName(site)}</small>
+              </div>
+              {update && <span className="tag ok">{update} ready</span>}
+            </div>
+            <p className="dim">
+              Each change applies to the site at once and is logged, so you can undo it from Activity. Locked features (security and login) change only in
+              WordPress, so a mistake here can't lock you out.
+            </p>
+          </div>
+        </section>
+        {count > 0 && current !== "approvals" && (
+          <section className="card cm-wait" aria-labelledby="cm-wait-t">
+            <div className="card-body">
+              <div className="row">
+                <span className="tile sm warning">
+                  <Glyph name="clock" />
+                </span>
+                <b id="cm-wait-t">
+                  {count === 1 ? "1 change waits" : `${count} changes wait`} for approval
+                </b>
+              </div>
+              <p className="dim">Changes AI apps asked for. Approve or decline each one on the site itself.</p>
+              <div>
+                <Button small onClick={() => setTab("approvals")}>
+                  See what's waiting
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
+        {current !== "activity" && hasTool(site, "list-ai-activity") && (
+          <Recent key={site.id} site={site} onDone={setDone} round={round + logged} onAll={() => setTab("activity")} />
+        )}
+      </div>
+    ) : undefined;
+
   return (
-    <div className="scroll page cm">
-      <HeadActions>
-        <label className="row pick cm-pick">
-          <span>Site</span>
+    <Page className="cm" side={side}>
+      <Toolbar>
+        <label className="row">
+          <span className="label">Site</span>
           <Select
             className="input"
             aria-label="Site"
@@ -129,101 +175,56 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
             ))}
           </Select>
         </label>
-      </HeadActions>
-      <div className="stack">
-        {!blocked && site && (
-          <Tabs
-            label="Show"
-            idBase="cm"
-            tabs={tools.map(([id, label]) => ({
-              id,
-              label:
-                id === "approvals" && count > 0 ? (
-                  <>
-                    {label}
-                    <span className="cm-n" aria-hidden="true">
-                      {count}
-                    </span>
-                  </>
-                ) : (
-                  label
-                ),
-            }))}
-            value={current}
-            onChange={(t) => {
-              setTab(t);
-            }}
-          />
+      </Toolbar>
+      {!blocked && site && (
+        <Tabs
+          label="Show"
+          idBase="cm"
+          tabs={tools.map(([id, label]) => ({
+            id,
+            text: label,
+            label:
+              id === "approvals" && count > 0 ? (
+                <>
+                  {label}
+                  <span className="cm-n" aria-hidden="true">
+                    {count}
+                  </span>
+                </>
+              ) : (
+                label
+              ),
+          }))}
+          value={current}
+          onChange={(t) => {
+            setTab(t);
+          }}
+        />
+      )}
+      <div role={blocked || !site ? undefined : "tabpanel"} id="cm-panel" aria-labelledby={blocked || !site ? undefined : `cm-tab-${current}`}>
+        {blocked || !site ? (
+          <section className="card">
+            <EmptyState title={`Classic Monks isn't available on ${site?.name ?? "this site"}.`}>
+              <p>{blocked}</p>
+            </EmptyState>
+          </section>
+        ) : (
+          <div className="stack">
+            {current === "features" ? (
+              <Features key={site.id} site={site} onDone={setDone} round={round} />
+            ) : current === "settings" ? (
+              <Settings key={site.id} site={site} onDone={setDone} round={round} />
+            ) : current === "activity" ? (
+              <Log key={site.id} site={site} onDone={setDone} round={round + logged} />
+            ) : current === "reports" ? (
+              <Reports key={site.id} site={site} />
+            ) : (
+              <Approvals key={site.id} site={site} onDone={setDone} read={waiting} />
+            )}
+          </div>
         )}
-        <div role={blocked || !site ? undefined : "tabpanel"} id="cm-panel" aria-labelledby={blocked || !site ? undefined : `cm-tab-${current}`}>
-          {blocked || !site ? (
-            <section className="card">
-              <div className="empty">
-                <h2>Classic Monks isn't available on {site?.name ?? "this site"}.</h2>
-                <p>{blocked}</p>
-              </div>
-            </section>
-          ) : (
-            <div className="split-r">
-              <div className="stack">
-                {current === "features" ? (
-                  <Features key={site.id} site={site} onDone={setDone} round={round} />
-                ) : current === "settings" ? (
-                  <Settings key={site.id} site={site} onDone={setDone} round={round} />
-                ) : current === "activity" ? (
-                  <Log key={site.id} site={site} onDone={setDone} round={round + logged} />
-                ) : current === "reports" ? (
-                  <Reports key={site.id} site={site} />
-                ) : (
-                  <Approvals key={site.id} site={site} onDone={setDone} read={waiting} />
-                )}
-              </div>
-              <div className="stack">
-                <section className="card" aria-label={`Classic Monks on ${site.name}`}>
-                  <div className="card-body">
-                    <div className="cm-site">
-                      <SiteTile site={site} />
-                      <div>
-                        <b>{site.name}</b>
-                        <small>{site.cm_version ? `${pluginName(site)} ${site.cm_version}` : pluginName(site)}</small>
-                      </div>
-                      {update && <span className="tag ok">{update} ready</span>}
-                    </div>
-                    <p className="dim">
-                      Each change applies to the site at once and is logged, so you can undo it from Activity. Locked features (security and login) change only in
-                      WordPress, so a mistake here can't lock you out.
-                    </p>
-                  </div>
-                </section>
-                {count > 0 && current !== "approvals" && (
-                  <section className="card cm-wait" aria-labelledby="cm-wait-t">
-                    <div className="card-body">
-                      <div className="row">
-                        <span className="tile sm warning">
-                          <Glyph name="clock" />
-                        </span>
-                        <b id="cm-wait-t">
-                          {count === 1 ? "1 change waits" : `${count} changes wait`} for approval
-                        </b>
-                      </div>
-                      <p className="dim">Changes AI apps asked for. Approve or decline each one on the site itself.</p>
-                      <div>
-                        <Button small onClick={() => setTab("approvals")}>
-                          See what's waiting
-                        </Button>
-                      </div>
-                    </div>
-                  </section>
-                )}
-                {current !== "activity" && hasTool(site, "list-ai-activity") && (
-                  <Recent key={site.id} site={site} onDone={setDone} round={round + logged} onAll={() => setTab("activity")} />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </Page>
   );
 }
 
@@ -247,11 +248,9 @@ function useRead<T>(read: () => Promise<T>, deps: unknown[]) {
 function Failed({ what, error, retry }: { what: string; error: string; retry: () => void }) {
   return (
     <section className="card">
-      <div className="empty" role="alert">
-        <h2>{what} didn't load.</h2>
+      <EmptyState alert title={`${what} didn't load.`} action={<Button onClick={retry}>Try again</Button>}>
         <p>{error}</p>
-        <Button onClick={retry}>Try again</Button>
-      </div>
+      </EmptyState>
     </section>
   );
 }
@@ -267,10 +266,7 @@ function Loading({ label }: { label: string }) {
 function Empty({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="card">
-      <div className="empty">
-        <h2>{title}</h2>
-        {children}
-      </div>
+      <EmptyState title={title}>{children}</EmptyState>
     </section>
   );
 }
@@ -303,9 +299,9 @@ function Features({ site, onDone, round }: Part) {
   };
   return (
     <>
-      <form className="filters" onSubmit={(e) => e.preventDefault()}>
-        <label className="row pick cm-pick">
-          <span>Section</span>
+      <Toolbar>
+        <label className="row">
+          <span className="label">Section</span>
           <Select className="input sm" aria-label="Section" value={group} disabled={!!words} onChange={(e) => setGroup(e.target.value)}>
             <option value="">All sections</option>
             {data.map((g) => (
@@ -319,7 +315,7 @@ function Features({ site, onDone, round }: Part) {
         <span className="end dim" role="status">
           <b>{on}</b> switched on
         </span>
-      </form>
+      </Toolbar>
       {groups.every((g) => g.toggles.length === 0) ? (
         <Empty title="No feature matches.">
           <p>Try another word.</p>
@@ -433,8 +429,8 @@ function Settings({ site, onDone, round }: Part) {
                 {(s.description || s.section) && <small>{s.description || s.section}</small>}
               </div>
               <Button kind={changed ? "soft" : undefined} disabled={!changed || busy === s.name} aria-label={`Save ${s.label}`} onClick={() => save(s)}>
-                {changed && <Glyph name="check" />}
                 {busy === s.name ? "Saving…" : `Save ${s.label}`}
+                {changed && <Glyph name="check" />}
               </Button>
             </li>,
           ];
@@ -465,8 +461,8 @@ function Change({ row, busy, onUndo }: { row: ActivityRow; busy: boolean; onUndo
       </div>
       {row.can_undo ? (
         <Button small className="ghost" disabled={busy} aria-label={`Undo ${what} at ${row.time}`} onClick={onUndo}>
-          <Glyph name="undo" />
           {busy ? "Undoing…" : "Undo"}
+          <Glyph name="undo" />
         </Button>
       ) : (
         <Status tone={tone}>{word}</Status>
@@ -618,8 +614,8 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
               </span>
             </div>
             <Button small aria-label={`Approve or decline on the site: ${toolLabel(a.tool)}`} onClick={() => open(a)}>
-              <Glyph name="external" />
               Approve or decline on the site
+              <Glyph name="external" />
             </Button>
           </li>
         ))}
@@ -672,11 +668,9 @@ function Reports({ site }: { site: Site }) {
     return (
       <section className="card" aria-label="Reports">
         {head}
-        <div className="empty" role="alert">
-          <h2>The reports didn't load.</h2>
+        <EmptyState alert title="The reports didn't load." action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
-          <Button onClick={load}>Try again</Button>
-        </div>
+        </EmptyState>
       </section>
     );
   if (!data)

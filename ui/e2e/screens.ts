@@ -11,7 +11,12 @@ export async function choose(select: Locator, by: { name: string } | { value: st
   await ("name" in by ? page.getByRole("option", { name: by.name, exact: true }) : page.locator(`[role="option"][data-value="${by.value}"]`)).click();
 }
 
-const nav = (name: string) => (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: new RegExp(`^${name}`) }).click();
+// Each page is a lazy chunk: wait until it is drawn, so its own keys are listening before the next step.
+const nav = (name: string) => async (page: Page) => {
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: new RegExp(`^${name}`) }).click();
+  await page.locator(".body > :not(.phead):not(.page-loading)").first().waitFor();
+  await page.locator(".page-loading").waitFor({ state: "detached" });
+};
 
 export const SCREENS: Screen[] = [
   { name: "overview" },
@@ -316,7 +321,7 @@ export const SCREENS: Screen[] = [
       await nav("Content")(page);
       await page.getByRole("button", { name: "Monks test fields post" }).click();
       await page.getByRole("region", { name: "Monks test fields" }).evaluate((e) => {
-        const s = e.closest(".scroll")!;
+        const s = e.closest(".page-main, .page")!;
         s.scrollTop += e.getBoundingClientRect().top - s.getBoundingClientRect().top;
       });
       await page.getByRole("textbox", { name: "Email" }).waitFor();
@@ -580,5 +585,8 @@ export async function show(page: Page, s: Screen, theme: string, density = "comf
   await page.locator(".app").waitFor();
   if (s.fixture !== "loading" && s.fixture !== "error") await page.locator(".body > *").first().waitFor();
   await s.open?.(page);
+  // A page's code loads as its own chunk; its stand-in goes once the page is drawn.
+  if (s.fixture !== "loading" && s.fixture !== "error") await page.locator(".body > :not(.phead):not(.page-loading)").first().waitFor();
+  await page.locator(".page-loading").waitFor({ state: "detached" });
   await page.evaluate(() => document.fonts.ready);
 }

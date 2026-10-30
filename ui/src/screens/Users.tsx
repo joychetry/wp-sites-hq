@@ -2,7 +2,8 @@
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
 import "../styles/screens/users.css";
-import { Skeleton, toast } from "../components/feedback";
+import { Empty, Skeleton, toast } from "../components/feedback";
+import { Page, Toolbar } from "../components/page";
 import { dayLabel, Menu, Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Role, type Site, type User, type Users as SiteUsers } from "../api";
@@ -46,10 +47,11 @@ export function Users({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <div className="empty">
-        <h2>No sites yet.</h2>
-        <p>Add a site on Sites, then its users show here.</p>
-      </div>
+      <Page>
+        <Empty picture="sites" title="No sites yet.">
+          <p>Add a site on Sites, then its users show here.</p>
+        </Empty>
+      </Page>
     );
   }
 
@@ -82,22 +84,26 @@ export function Users({ sites }: { sites: Site[] }) {
     );
   } else if (rows.length === 0) {
     body = (
-      <div className="empty">
-        <h2>{filtered ? "Nobody matches." : "No users to show."}</h2>
+      <Empty
+        picture="search"
+        title={filtered ? "Nobody matches." : "No users to show."}
+        action={
+          filtered && (
+            <Button
+              onClick={() => {
+                setTyped("");
+                setSearch("");
+                setSiteF(null);
+                setRoleF(null);
+              }}
+            >
+              Clear the search
+            </Button>
+          )
+        }
+      >
         <p>{filtered ? "Try part of a name, username or email address, or another site or role." : "The sites below can't list their users here."}</p>
-        {filtered && (
-          <Button
-            onClick={() => {
-              setTyped("");
-              setSearch("");
-              setSiteF(null);
-              setRoleF(null);
-            }}
-          >
-            Clear the search
-          </Button>
-        )}
-      </div>
+      </Empty>
     );
   } else {
     body = (
@@ -155,8 +161,8 @@ export function Users({ sites }: { sites: Site[] }) {
                       </Button>
                       {l.users!.can_reset && (
                         <Button small className="ghost" aria-label={`Send password reset to ${who} on ${l.site.name}`} onClick={() => reset(l.site, u)}>
-                          <Glyph name="mail" />
                           Send password reset
+                          <Glyph name="mail" />
                         </Button>
                       )}
                       <button type="button" className="icon-btn" aria-label={`Delete ${who} from ${l.site.name}`} data-tip="Delete" onClick={() => setAction({ kind: "delete", site: l.site, user: u, roles })}>
@@ -183,7 +189,7 @@ export function Users({ sites }: { sites: Site[] }) {
   const siteName = usable.find((s) => s.id === siteF)?.name;
 
   return (
-    <div className="scroll page users">
+    <Page className="users">
       <HeadActions>
         <Button kind="primary" className="disc" disabled={usable.length === 0} onClick={() => setAction({ kind: "add" })}>
           Add a user
@@ -192,15 +198,14 @@ export function Users({ sites }: { sites: Site[] }) {
           </span>
         </Button>
       </HeadActions>
-      <div className="stack">
-        <form
-          className="filters"
-          aria-label="Which users to show"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSearch(typed.trim());
-          }}
-        >
+      <form
+        aria-label="Which users to show"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSearch(typed.trim());
+        }}
+      >
+        <Toolbar>
           <SearchInput aria-label="Search users" placeholder="Search users by name or email" value={typed} onChange={(e) => setTyped(e.target.value)} />
           <Button type="submit">Search</Button>
           <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
@@ -209,43 +214,43 @@ export function Users({ sites }: { sites: Site[] }) {
           <Menu label="Role" className={roleF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setRoleF(null) }, ...roleList.map((r) => ({ label: r.name, run: () => setRoleF(r.id) }))]}>
             Role: <b>{roleF == null ? "Any" : roleName(roleList, roleF)}</b>
           </Menu>
-        </form>
-        <section className="card" aria-label="Users on every site">
-          {body}
-        </section>
-        {(partial.length > 0 || failed.length > 0 || blocked.length > 0) && (
-          <ul className="pnotes" aria-label="Sites not fully shown">
-            {partial.map((l) => (
-              <li key={l.site.id} className="callout">
-                <Glyph name="info" />
-                <span>
-                  {l.site.name}: showing {l.users!.users.length} of {l.users!.total} users. Search to find the others.
-                </span>
-              </li>
-            ))}
-            {failed.map((l) => (
-              <li key={l.site.id} className="callout warning">
-                <Glyph name="alert" />
-                <span>
-                  {l.site.name}: the users didn't load. {l.error}
-                </span>
-              </li>
-            ))}
-            {blocked.map((s) => (
-              <li key={s.id} className="callout">
-                <Glyph name="info" />
-                <span>
-                  {s.name}: {peopleBlocked(s, "get-users")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        </Toolbar>
+      </form>
+      <section className="card" aria-label="Users on every site">
+        {body}
+      </section>
+      {(partial.length > 0 || failed.length > 0 || blocked.length > 0) && (
+        <ul className="pnotes" aria-label="Sites not fully shown">
+          {partial.map((l) => (
+            <li key={l.site.id} className="callout">
+              <Glyph name="info" />
+              <span>
+                {l.site.name}: showing {l.users!.users.length} of {l.users!.total} users. Search to find the others.
+              </span>
+            </li>
+          ))}
+          {failed.map((l) => (
+            <li key={l.site.id} className="callout warning">
+              <Glyph name="alert" />
+              <span>
+                {l.site.name}: the users didn't load. {l.error}
+              </span>
+            </li>
+          ))}
+          {blocked.map((s) => (
+            <li key={s.id} className="callout">
+              <Glyph name="info" />
+              <span>
+                {s.name}: {peopleBlocked(s, "get-users")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       {action?.kind === "add" && <AddUser sites={usable} onClose={() => setAction(null)} onDone={done} />}
       {action?.kind === "role" && <ChangeRole {...action} onClose={() => setAction(null)} onDone={done} />}
       {action?.kind === "delete" && <DeleteUser {...action} onClose={() => setAction(null)} onDone={done} />}
-    </div>
+    </Page>
   );
 }
 
@@ -453,8 +458,8 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
             Cancel
           </Button>
           <Button kind="danger" className="solid" disabled={busy || !to} onClick={save}>
-            <Glyph name="trash" />
             {busy ? "Deleting…" : `Delete ${who}`}
+            <Glyph name="trash" />
           </Button>
         </>
       }
