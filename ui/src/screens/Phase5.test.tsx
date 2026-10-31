@@ -113,7 +113,7 @@ test("agent access per site: read only, on with approval, Basic mode needs Class
   expect(within(rows[2]).getByRole("switch")).toBeDisabled();
 
   fireEvent.click(screen.getByRole("switch", { name: "Access for Alpha" }));
-  expect(screen.getByText(/leave "This is my Monks Central app \(operator\)" unticked/)).toBeInTheDocument();
+  expect(screen.getByText(/leave "This is my WP Sites HQ app \(operator\)" \(older plugins say Monks Central app\) unticked/)).toBeInTheDocument();
   expect(await screen.findByText("AI agents can change Alpha now. The site asks you to approve each change.")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("switch", { name: "Access for Beta" }));
   expect(await screen.findByText("AI agents can only read Beta now.")).toBeInTheDocument();
@@ -138,7 +138,7 @@ test("the activity log says who did what, and loads older entries", async () => 
   expect(screen.queryByRole("button", { name: "Show older entries" })).toBeNull();
 });
 
-test("connect shows the command to add Monks Central to an AI app", async () => {
+test("connect shows the command to add WP Sites HQ to an AI app", async () => {
   core();
   const writeText = vi.fn(() => Promise.resolve());
   Object.assign(navigator, { clipboard: { writeText } });

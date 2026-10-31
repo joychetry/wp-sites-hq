@@ -214,7 +214,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                   </Button>
                 }
               >
-                <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+                <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
               </Empty>
             ) : (
               <Empty
@@ -456,7 +456,7 @@ function waitingWords(updates: { kind: string }[]) {
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
 }
 
-/** Basic mode: get the Monks Central plugin onto the site, then connect through it. */
+/** Basic mode: get the WP Sites HQ plugin onto the site, then connect through it. */
 function GetPlugin({ site: s }: { site: Site }) {
   const [busy, setBusy] = useState<null | "download" | "browser">(null);
   const [saved, setSaved] = useState<PluginZip | null>(null);
@@ -501,7 +501,7 @@ function GetPlugin({ site: s }: { site: Site }) {
         <p className="callout ok" role="status">
           <Glyph name="check" />
           <span>
-            Monks Central {saved.version} is saved as <span className="m">{saved.path}</span>, checked against the SHA-256
+            The WP Sites HQ plugin {saved.version} is saved as <span className="m">{saved.path}</span>, checked against the SHA-256
             published with it. On the site's Upload Plugin page, choose that file, press Install Now, then Activate Plugin.
             WordPress lets apps install only from WordPress.org, so this one step is yours.
           </span>
@@ -515,7 +515,7 @@ function GetPlugin({ site: s }: { site: Site }) {
           </Button>
         ) : (
           <Button small disabled={busy !== null} onClick={download}>
-            {busy === "download" ? "Getting Monks Central…" : "Install Monks Central for me"}
+            {busy === "download" ? "Getting the WP Sites HQ plugin…" : "Install the WP Sites HQ plugin for me"}
             <Glyph name="download" />
           </Button>
         )}
@@ -664,12 +664,12 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         )}
       </section>
       <section>
-        <h3>What Monks Central can do here</h3>
+        <h3>What WP Sites HQ can do here</h3>
         {s.mode === "basic" ? (
           <>
             <p className="dim-2">
               Content, users, comments and the plugin list through WordPress itself. Updates, one-click login and the rest
-              need one plugin on the site: Monks Central, Classic Monks or Classic Monks Pro. Any of them works.
+              need one plugin on the site: the WP Sites HQ plugin, Classic Monks or Classic Monks Pro. Any of them works.
             </p>
             <GetPlugin site={s} />
           </>
@@ -801,8 +801,8 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           <div role="alertdialog" aria-label={`Remove ${s.name}`}>
             <p style={{ margin: "0 0 10px" }}>
               {s.mode === "classic_monks"
-                ? "Monks Central signs out on the site, then deletes its saved sign-in here. Group, tags and notes go too."
-                : "Monks Central deletes the saved application password here. Group, tags and notes go too."}
+                ? "WP Sites HQ signs out on the site, then deletes its saved sign-in here. Group, tags and notes go too."
+                : "WP Sites HQ deletes the saved application password here. Group, tags and notes go too."}
             </p>
             <div className="row">
               <Button
@@ -829,7 +829,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           </div>
         ) : (
           <Button small className="ghost danger-text" onClick={() => setConfirm(true)}>
-            Remove from Monks Central
+            Remove from WP Sites HQ
             <Glyph name="trash" />
           </Button>
         )}

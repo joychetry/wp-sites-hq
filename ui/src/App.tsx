@@ -139,7 +139,7 @@ export default function App() {
     const v = update?.found?.version;
     if (!v || told.current === v) return;
     told.current = v;
-    toast(`Monks Central ${v} is out.`, {
+    toast(`WP Sites HQ ${v} is out.`, {
       tone: "info",
       stay: true,
       action: {
@@ -315,9 +315,9 @@ export default function App() {
         <span className="danger-disc" aria-hidden="true">
           <Glyph name="alert" />
         </span>
-        <h2>Monks Central couldn't start.</h2>
+        <h2>WP Sites HQ couldn't start.</h2>
         <p>
-          <b>Nothing was changed.</b> Close Monks Central and open it again. If it keeps happening, restart the computer.
+          <b>Nothing was changed.</b> Close WP Sites HQ and open it again. If it keeps happening, restart the computer.
         </p>
         <Button onClick={() => location.reload()}>
           Try again
@@ -334,7 +334,7 @@ export default function App() {
         </span>
         <h2>Your sites didn't load.</h2>
         <p>
-          <b>Nothing was changed.</b> Try again; if it keeps happening, close Monks Central and open it again.
+          <b>Nothing was changed.</b> Try again; if it keeps happening, close WP Sites HQ and open it again.
         </p>
         <Button onClick={reload}>
           Try again
@@ -360,7 +360,7 @@ export default function App() {
               </Button>
             }
           >
-            <p>Add a site with Monks Central, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+            <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
           </Empty>
         </section>
       </Page>
@@ -451,7 +451,7 @@ export default function App() {
         <div className="brand">
           <Logo />
           <p>
-            Monks Central
+            WP Sites HQ
             <small>by Classic Monks</small>
           </p>
         </div>

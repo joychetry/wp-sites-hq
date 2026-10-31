@@ -350,7 +350,7 @@ test("AI agent access is turned on from the keyboard", async ({ page }) => {
   const access = page.getByRole("tabpanel").getByRole("switch", { name: "Access for Portfolio" });
   await access.focus();
   await page.keyboard.press("Space");
-  await expect(page.getByText(/leave "This is my Monks Central app \(operator\)" unticked/)).toBeVisible();
+  await expect(page.getByText(/leave "This is my WP Sites HQ app \(operator\)" \(older plugins say Monks Central app\) unticked/)).toBeVisible();
   await expect(page.getByText("AI agents can change Portfolio now. The site asks you to approve each change.")).toBeVisible();
   await expect(access).toBeChecked();
 });

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Monks Central desktop app. The window is the only operator (plan D6): it
+//! WP Sites HQ desktop app. The window is the only operator (plan D6): it
 //! reaches the core through Tauri commands, never through the local socket.
 
-// No console window on Windows release builds; `monks` is the console program.
+// No console window on Windows release builds; `wpshq` (and `monks`) is the console program.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::collections::BTreeMap;
@@ -48,7 +48,7 @@ fn core(state: &State<'_, AppCore>) -> Res<Arc<Core>> {
 /// (smb:, file:, search-ms: and the like).
 fn browser(url: &str) -> std::io::Result<()> {
     if !is_web(url) {
-        return Err(std::io::Error::other("Monks Central only opens web links."));
+        return Err(std::io::Error::other("WP Sites HQ only opens web links."));
     }
     open::that_detached(url)
 }
@@ -57,7 +57,7 @@ fn is_web(url: &str) -> bool {
     url.starts_with("https://") || url.starts_with("http://")
 }
 
-/// A report or export Monks Central saved: right in the Downloads folder.
+/// A report or export WP Sites HQ saved: right in the Downloads folder.
 fn saved_by_us(p: &std::path::Path) -> bool {
     paths::downloads().is_ok_and(|d| p.parent() == Some(d.as_path()))
 }
@@ -161,7 +161,7 @@ async fn site_connect_plugin(state: State<'_, AppCore>, id: i64) -> Res<Site> {
     done(&core, Some(id), "Connected through the site's plugin", r)
 }
 
-/// The Monks Central plugin's newest release, checksum checked, saved in Downloads
+/// The WP Sites HQ plugin's newest release, checksum checked, saved in Downloads
 /// for the site's Upload Plugin page.
 #[tauri::command]
 async fn plugin_download(app: AppHandle, state: State<'_, AppCore>, id: i64) -> Res<PluginZip> {
@@ -171,7 +171,7 @@ async fn plugin_download(app: AppHandle, state: State<'_, AppCore>, id: i64) -> 
     done(
         &core,
         Some(id),
-        "Saved the Monks Central plugin in Downloads",
+        "Saved the WP Sites HQ plugin in Downloads",
         r,
     )
 }
@@ -891,7 +891,7 @@ fn app_update_status(app: AppHandle) -> update::Status {
     update::status(&app)
 }
 
-/// Look for a newer Monks Central on GitHub Releases now.
+/// Look for a newer WP Sites HQ on GitHub Releases now.
 #[tauri::command]
 async fn app_update_check(app: AppHandle, state: State<'_, AppCore>) -> Res<update::Status> {
     update::check(&app, core(&state).ok()).await
@@ -922,10 +922,7 @@ fn sites_export(state: State<'_, AppCore>, csv: bool) -> Res<String> {
     let text = core(&state)?.export(csv).map_err(|e| e.to_string())?;
     let today = paths::day(monks_core::oauth::now());
     let ext = if csv { "csv" } else { "json" };
-    save_download(
-        &format!("monks-central-sites-{today}.{ext}"),
-        text.as_bytes(),
-    )
+    save_download(&format!("wp-sites-hq-sites-{today}.{ext}"), text.as_bytes())
 }
 
 /// A monthly report as HTML and PDF, into Downloads.
@@ -941,11 +938,11 @@ async fn report_make(state: State<'_, AppCore>, ask: ReportAsk) -> Res<Saved> {
 #[tauri::command]
 fn file_open(path: String) -> Res<()> {
     let p = std::path::Path::new(&path);
-    // Only the reports and exports Monks Central wrote.
+    // Only the reports and exports WP Sites HQ wrote.
     let ours = saved_by_us(p);
     let kind = p.extension().and_then(|e| e.to_str());
     if !ours || !matches!(kind, Some("html" | "pdf")) {
-        return Err("Monks Central only opens the reports it saved.".into());
+        return Err("WP Sites HQ only opens the reports it saved.".into());
     }
     open::that_detached(p).map_err(|e| e.to_string())
 }
@@ -991,7 +988,7 @@ fn sites_import(state: State<'_, AppCore>, text: String) -> Res<Imported> {
 fn file_show(path: String) -> Res<()> {
     let p = std::path::Path::new(&path);
     if !saved_by_us(p) {
-        return Err("Monks Central only shows the files it saved.".into());
+        return Err("WP Sites HQ only shows the files it saved.".into());
     }
     let folder = p
         .parent()
@@ -1057,7 +1054,7 @@ async fn pagespeed_run(state: State<'_, AppCore>, id: i64) -> Res<PageSpeed> {
 #[tauri::command]
 fn link_open(state: State<'_, AppCore>, url: String, site: Option<i64>) -> Res<()> {
     if !link_scheme_ok(&url, site) {
-        return Err("Only https links open from Monks Central.".into());
+        return Err("Only https links open from WP Sites HQ.".into());
     }
     // A site's own link must point at that site.
     if let Some(id) = site {
@@ -1119,14 +1116,14 @@ fn show_window(app: &AppHandle) {
     }
 }
 
-/// The tray agent: closing the window leaves Monks Central watching the
+/// The tray agent: closing the window leaves WP Sites HQ watching the
 /// sites from here; Quit stops it. Linux trays show only the menu, so the
 /// menu opens the window too.
 fn tray(app: &AppHandle, core: Arc<Core>) -> tauri::Result<()> {
     let status = MenuItem::with_id(app, "status", "Checking your sites…", false, None::<&str>)?;
-    let open = MenuItem::with_id(app, "open", "Open Monks Central", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open WP Sites HQ", true, None::<&str>)?;
     let check = MenuItem::with_id(app, "check", "Load every home page now", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Monks Central", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit WP Sites HQ", true, None::<&str>)?;
     let line = PredefinedMenuItem::separator(app)?;
     let line2 = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(app, &[&status, &line, &open, &check, &line2, &quit])?;
@@ -1138,7 +1135,7 @@ fn tray(app: &AppHandle, core: Arc<Core>) -> tauri::Result<()> {
         )))?;
     tauri::tray::TrayIconBuilder::with_id("main")
         .icon(icon)
-        .tooltip("Monks Central")
+        .tooltip("WP Sites HQ")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
@@ -1184,7 +1181,7 @@ fn monitors_changed(app: &AppHandle, core: &Core, was_down: &mut std::collection
         let _ = status.0.set_text(&line);
     }
     if let Some(tray) = app.tray_by_id("main") {
-        let _ = tray.set_tooltip(Some(format!("Monks Central: {line}")));
+        let _ = tray.set_tooltip(Some(format!("WP Sites HQ: {line}")));
     }
     for (title, body) in monks_core::monitor::news(was_down, &monitors, &names) {
         let _ = app.notification().builder().title(title).body(body).show();
@@ -1199,7 +1196,7 @@ fn main() {
             keychain: vault::os_keychain().map_err(|e| e.to_string()),
             ..Default::default()
         };
-        // A headless core (`monks core`, or one the CLI started) finishes and hands over.
+        // A headless core (`wpshq core`, or one the CLI started) finishes and hands over.
         Core::start_or_take_over(&home, opts)
             .await
             .map_err(|e| e.to_string())
@@ -1229,7 +1226,7 @@ fn main() {
                     let _ = app
                         .notification()
                         .builder()
-                        .title("Monks Central is still watching your sites")
+                        .title("WP Sites HQ is still watching your sites")
                         .body("It keeps checking them from the tray. To stop, choose Quit in the tray menu.")
                         .show();
                 }
@@ -1250,7 +1247,7 @@ fn main() {
                 let handle = app.handle().clone();
                 // No tray (no tray host on this desktop): closing the window quits, as before.
                 if let Err(e) = tray(&handle, core.clone()) {
-                    eprintln!("Monks Central couldn't add its tray icon: {e}");
+                    eprintln!("WP Sites HQ couldn't add its tray icon: {e}");
                 }
                 tauri::async_runtime::spawn(async move {
                     let mut was_down = std::collections::HashSet::new();
@@ -1394,7 +1391,7 @@ fn main() {
             pagespeed_run,
         ])
         .run(tauri::generate_context!())
-        .expect("Monks Central couldn't open its window");
+        .expect("WP Sites HQ couldn't open its window");
 }
 
 #[cfg(test)]

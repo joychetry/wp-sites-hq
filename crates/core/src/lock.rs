@@ -7,7 +7,7 @@ use std::path::Path;
 
 #[derive(Debug, thiserror::Error)]
 pub enum LockError {
-    #[error("Monks Central is already running{}.", .pid.map(|p| format!(" (pid {p})")).unwrap_or_default())]
+    #[error("WP Sites HQ is already running{}.", .pid.map(|p| format!(" (pid {p})")).unwrap_or_default())]
     AlreadyRunning { pid: Option<u32> },
     #[error("couldn't open the core lock file: {0}")]
     Io(#[from] io::Error),

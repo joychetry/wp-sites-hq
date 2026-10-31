@@ -60,13 +60,13 @@ pub struct Cost {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppSettings {
-    /// Your business name on reports; empty says Monks Central.
+    /// Your business name on reports; empty says WP Sites HQ.
     pub report_name: String,
     /// A contact line under every report page.
     pub report_footer: String,
     /// "#1f6feb", or empty for black.
     pub report_accent: String,
-    /// Leave out "Made with Monks Central".
+    /// Leave out "Made with WP Sites HQ".
     pub white_label: bool,
     /// Add Google Search Console numbers to reports.
     pub search_console: bool,
@@ -426,7 +426,7 @@ impl Core {
             )
         })?;
         if n == 0 {
-            return Err(plain("That site isn't in Monks Central any more."));
+            return Err(plain("That site isn't in WP Sites HQ any more."));
         }
         self.notify();
         Ok(())
@@ -465,9 +465,7 @@ impl Core {
             Ok(None) => return Err(plain("That cost was deleted.")),
             // A site or client that's gone breaks the foreign key.
             Err(_) => {
-                return Err(plain(
-                    "That site or client isn't in Monks Central any more.",
-                ));
+                return Err(plain("That site or client isn't in WP Sites HQ any more."));
             }
         };
         Ok(Cost {
@@ -592,14 +590,11 @@ impl Core {
             return Err(plain("The file is larger than 5 MB. Is it the right one?"));
         }
         let data = if text.trim_start().starts_with('{') {
-            let e: Export = serde_json::from_str(text).map_err(|e| {
-                plain(format!(
-                    "This isn't a Monks Central export Monks Central can read: {e}."
-                ))
-            })?;
+            let e: Export = serde_json::from_str(text)
+                .map_err(|e| plain(format!("This isn't an export WP Sites HQ can read: {e}.")))?;
             if e.monks_central != 1 {
                 return Err(plain(
-                    "This export is from a newer Monks Central. Update the app first.",
+                    "This export is from a newer WP Sites HQ. Update the app first.",
                 ));
             }
             e
@@ -900,7 +895,7 @@ mod tests {
                     site_id: Some(99),
                     ..hosting.clone()
                 },
-                "isn't in Monks Central",
+                "isn't in WP Sites HQ",
             ),
             (
                 Cost {

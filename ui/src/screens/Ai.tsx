@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// AI apps and Monks Central (plan Phase 5): plans AI agents proposed, waiting
+// AI apps and WP Sites HQ (plan Phase 5): plans AI agents proposed, waiting
 // for you to confirm them; which sites agents may change; the activity log of
 // who did what; and how to connect an AI app with `wpshq mcp`.
 import "../styles/screens/ai.css";
@@ -236,7 +236,7 @@ function Access({ sites, full }: { sites: Site[]; full?: boolean }) {
   const [busy, setBusy] = useState<number | null>(null);
   const flip = async (s: Site) => {
     setBusy(s.id);
-    if (!s.agent_access) note({ text: `Finish in your browser: sign in to ${s.name}, leave "This is my Monks Central app (operator)" unticked, then press Connect.`, ok: true });
+    if (!s.agent_access) note({ text: `Finish in your browser: sign in to ${s.name}, leave "This is my WP Sites HQ app (operator)" (older plugins say Monks Central app) unticked, then press Connect.`, ok: true });
     try {
       if (s.agent_access) {
         await api.agentAccessOff(s.id);
@@ -366,7 +366,7 @@ function Log() {
     <section className="card log" aria-labelledby="log-t">
       <div className="card-head">
         <h2 id="log-t">Activity</h2>
-        <span className="dim">Everything done through Monks Central, newest first</span>
+        <span className="dim">Everything done through WP Sites HQ, newest first</span>
       </div>
       {error ? (
         <Empty alert title="The activity log didn't load." action={<Button onClick={load}>Try again</Button>}>
@@ -375,7 +375,7 @@ function Log() {
       ) : !rows ? (
         <Skeleton label="Reading the activity log…" />
       ) : rows.length === 0 ? (
-        <p className="quiet">Nothing in the log yet. Changes you make here, and anything an AI app asks Monks Central to do, show here with who started them.</p>
+        <p className="quiet">Nothing in the log yet. Changes you make here, and anything an AI app asks WP Sites HQ to do, show here with who started them.</p>
       ) : (
         <ul className="feed" aria-label="Activity">
           {rows.map((r) => (
@@ -433,7 +433,7 @@ function Connect({ onClose }: { onClose: () => void }) {
       () => note({ text: "Couldn't copy. Select the text and copy it yourself.", ok: false }),
     );
   return (
-    <Sheet dialog title="Connect an AI app" intro="Add Monks Central to any app that takes MCP servers. It works while this app is open, and starts on its own when it isn't." onClose={onClose}>
+    <Sheet dialog title="Connect an AI app" intro="Add WP Sites HQ to any app that takes MCP servers. It works while this app is open, and starts on its own when it isn't." onClose={onClose}>
       <div className="connect">
         <div className="snip">
           <span className="label">Claude Code</span>

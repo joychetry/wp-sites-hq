@@ -16,7 +16,7 @@ export const ACF_FIELDS = [
    "prepend": "",
    "append": ""
   },
-  "value": "Hello from Monks Central"
+  "value": "Hello from WP Sites HQ"
  },
  {
   "key": "field_monks_test_fields_textarea",
@@ -32,7 +32,7 @@ export const ACF_FIELDS = [
    "placeholder": "",
    "rows": ""
   },
-  "value": "Edited live from Monks Central"
+  "value": "Edited live from WP Sites HQ"
  },
  {
   "key": "field_monks_test_fields_number",

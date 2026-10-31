@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Test sites for Monks Central in WordPress Studio.
+# Test sites for WP Sites HQ in WordPress Studio.
 #
 #   scripts/test-sites.sh create|start|stop|status|delete [mc-a|mc-b|mc-c ...]
 #
 #   mc-a  Classic Monks from a branch of ~/Documents/GitHub/classic-monks
-#         (CM_BRANCH, default feat/monks-central) + WooCommerce, Elementor
+#         (CM_BRANCH, default main) + WooCommerce, Elementor
 #         and Bricks (theme installed, not active)
 #   mc-b  Classic Monks as released (CM_RELEASE_REF, default main, 2.5.0),
 #         without the new abilities (degraded mode). Not on wordpress.org yet.
@@ -23,7 +23,7 @@ set -Eeuo pipefail
 
 SITES_ROOT="${SITES_ROOT:-$HOME/Studio}"
 CM_REPO="${CM_REPO:-$HOME/Documents/GitHub/classic-monks}"
-CM_BRANCH="${CM_BRANCH:-feat/monks-central}"
+CM_BRANCH="${CM_BRANCH:-main}"
 BRICKS_ZIP="${BRICKS_ZIP:-$HOME/.cache/monks-test-assets/bricks-2.4.3.zip}"
 CM_RELEASE_REF="${CM_RELEASE_REF:-main}"
 STATE_DIR="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/monks-central/test-sites}"
@@ -148,7 +148,7 @@ create() {
   start "$site"
 
   local v; v=$(wp1 "$site" core version)
-  version_ge "$v" "$MIN_WP" || die "$site runs WordPress $v; Monks Central needs $MIN_WP or newer"
+  version_ge "$v" "$MIN_WP" || die "$site runs WordPress $v; WP Sites HQ needs $MIN_WP or newer"
   # Studio sites default to "local"; Basic mode and M3 rely on it.
   [ "$(wp1 "$site" eval 'echo wp_get_environment_type(), "\n";')" = local ] \
     || die "$site is not WP_ENVIRONMENT_TYPE=local"
@@ -166,7 +166,7 @@ create() {
       local user file; user=$(site_field "$site" adminUsername); file="$STATE_DIR/mc-c.app-password"
       if [ ! -s "$file" ]; then
         mkdir -p "$STATE_DIR" && chmod 700 "$STATE_DIR"
-        ( umask 077; wp "$site" user application-password create "${user:-admin}" monks-central --porcelain > "$file" )
+        ( umask 077; wp "$site" user application-password create "${user:-admin}" wp-sites-hq --porcelain > "$file" )
         say "  application password for ${user:-admin} saved to $file"
       fi
       ;;

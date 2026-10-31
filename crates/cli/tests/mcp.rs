@@ -61,7 +61,7 @@ async fn an_ai_app_lists_sites_and_its_plans_reach_the_core() {
     assert_eq!(plan["result"]["isError"], true);
     assert_eq!(
         plan["result"]["content"][0]["text"],
-        "No site called nowhere in Monks Central."
+        "No site called nowhere in WP Sites HQ."
     );
     drop(stdin);
     assert!(child.wait().unwrap().success());

@@ -25,7 +25,7 @@ pub const SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
     #[error(
-        "This database was made by a newer Monks Central (schema {found}, this app knows {known}). Update the app."
+        "This database was made by a newer WP Sites HQ (schema {found}, this app knows {known}). Update the app."
     )]
     TooNew { found: u32, known: u32 },
     #[error("database error: {0}")]

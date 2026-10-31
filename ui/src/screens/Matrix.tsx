@@ -263,7 +263,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                 <p>
                   {sites.length === 0
                     ? "Add a site to see its plugins and themes here."
-                    : `Monks Central reads each site's ${noun}s when it checks the site. Check all sites now, then come back.`}
+                    : `WP Sites HQ reads each site's ${noun}s when it checks the site. Check all sites now, then come back.`}
                 </p>
               </Empty>
             ) : rows.length === 0 || ready.length === 0 ? (
@@ -473,7 +473,7 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
       : !nothing
         ? null
         : s.mode === "basic"
-          ? `Basic mode can't change ${plugin ? "this plugin here" : "themes"}. That needs Monks Central, Classic Monks or Classic Monks Pro on the site.`
+          ? `Basic mode can't change ${plugin ? "this plugin here" : "themes"}. That needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.`
           : "This connection has no tools for this. Sign in again and tick the plugin and theme tool groups.";
 
   return (

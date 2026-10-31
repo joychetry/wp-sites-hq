@@ -20,25 +20,25 @@ use crate::fleet::has_tool;
 use crate::net::{self, Retry};
 use crate::sites::Mode;
 
-/// The Monks Central plugin's release asset; its checksum is this name plus `.sha256`.
-const PLUGIN_ZIP: &str = "monks-central.zip";
-/// The largest zip Monks Central sends.
+/// The WP Sites HQ plugin's release asset; its checksum is this name plus `.sha256`.
+const PLUGIN_ZIP: &str = "wp-sites-hq.zip";
+/// The largest zip WP Sites HQ sends.
 pub const MAX_ZIP: usize = 64 * 1024 * 1024;
 /// Bytes per `install-zip` call, well under the site's 2 MB and post_max_size.
 const CHUNK: usize = 1024 * 1024;
 /// Staged zips older than this are deleted.
 const KEEP_SECS: u64 = 7 * 86_400;
 
-pub const NEEDS_CM_ZIP: &str = "Installing from a zip needs Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
+pub const NEEDS_CM_ZIP: &str = "Installing from a zip needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
 pub const ALREADY_THERE: &str = "It's already installed on this site. To put this copy in its place, install it again with \u{201c}Replace it where it's already installed\u{201d} ticked.";
 pub const OLD_CM_ZIP: &str = "This site's Classic Monks can't install from a zip yet. Update Classic Monks on the site, then check it again.";
 
-const NO_RELEASE: &str = "Couldn't get the Monks Central plugin from GitHub. Check your internet connection and try again later.";
-const NOT_RELEASED: &str = "There is no Monks Central release on GitHub yet. Try again later.";
-const BAD_RELEASE: &str = "The newest Monks Central release on GitHub doesn't have a plugin zip with a SHA-256 checksum, so nothing was saved.";
-const BAD_SUM: &str = "The Monks Central plugin from GitHub doesn't match its published SHA-256 checksum, so it wasn't saved. Try again later.";
+const NO_RELEASE: &str = "Couldn't get the WP Sites HQ plugin from GitHub. Check your internet connection and try again later.";
+const NOT_RELEASED: &str = "There is no WP Sites HQ release on GitHub yet. Try again later.";
+const BAD_RELEASE: &str = "The newest WP Sites HQ release on GitHub doesn't have a plugin zip with a SHA-256 checksum, so nothing was saved.";
+const BAD_SUM: &str = "The WP Sites HQ plugin from GitHub doesn't match its published SHA-256 checksum, so it wasn't saved. Try again later.";
 
-/// The Monks Central plugin from its newest GitHub release, saved on this computer.
+/// The WP Sites HQ plugin from its newest GitHub release, saved on this computer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PluginZip {
     pub version: String,
@@ -217,7 +217,7 @@ impl Core {
         let dir = self.zips();
         let io = |e: std::io::Error| {
             plain(format!(
-                "Couldn't keep the zip in Monks Central's folder: {e}"
+                "Couldn't keep the zip in WP Sites HQ's folder: {e}"
             ))
         };
         crate::paths::ensure_private_dir(&dir).map_err(io)?;
@@ -265,7 +265,7 @@ impl Core {
         self.stage_zip(name, &bytes)
     }
 
-    /// Save the Monks Central plugin from its newest GitHub release in `dir`, only when
+    /// Save the WP Sites HQ plugin from its newest GitHub release in `dir`, only when
     /// the zip's SHA-256 matches the checksum published with it (the release assets the
     /// plugin's own updater reads). WordPress' REST API installs plugins from
     /// WordPress.org only, so a Basic mode site gets it through its Upload Plugin page.
@@ -342,7 +342,7 @@ impl Core {
         if bytes.len() > MAX_ZIP || !bytes.starts_with(b"PK\x03\x04") {
             return Err(plain(BAD_RELEASE));
         }
-        let path = dir.join(format!("monks-central-{version}.zip"));
+        let path = dir.join(format!("wp-sites-hq-{version}.zip"));
         std::fs::create_dir_all(dir)
             .and_then(|()| std::fs::write(&path, &bytes))
             .map_err(|e| {
@@ -375,12 +375,10 @@ impl Core {
             return Err(plain(OLD_CM_ZIP));
         }
         if !is_staged_name(file) || !matches!(kind, "plugin" | "theme") {
-            return Err(plain(
-                "That zip isn't one Monks Central kept for installing.",
-            ));
+            return Err(plain("That zip isn't one WP Sites HQ kept for installing."));
         }
         let bytes = std::fs::read(self.zips().join(file)).map_err(|_| {
-            plain("The zip isn't in Monks Central any more (zips are kept a week). Choose the file again.")
+            plain("The zip isn't in WP Sites HQ any more (zips are kept a week). Choose the file again.")
         })?;
         let b64 = base64::engine::general_purpose::STANDARD;
         let chunks: Vec<&[u8]> = bytes.chunks(CHUNK).collect();
@@ -649,7 +647,7 @@ mod tests {
             .install_zip(s.id, "../../etc/passwd", "x.zip", "plugin", false, false)
             .await
             .unwrap_err();
-        assert!(e.to_string().contains("isn't one Monks Central kept"));
+        assert!(e.to_string().contains("isn't one WP Sites HQ kept"));
         let gone = format!("{}.zip", "0".repeat(64));
         let e = core
             .install_zip(s.id, &gone, "x.zip", "theme", false, true)
@@ -707,8 +705,8 @@ mod tests {
                 "draft": false,
                 "prerelease": false,
                 "assets": [
-                    { "name": "monks-central.zip", "browser_download_url": format!("{base}/zip") },
-                    { "name": "monks-central.zip.sha256", "browser_download_url": format!("{base}/sum") },
+                    { "name": "wp-sites-hq.zip", "browser_download_url": format!("{base}/zip") },
+                    { "name": "wp-sites-hq.zip.sha256", "browser_download_url": format!("{base}/sum") },
                 ],
             });
             for (k, v) in extra.as_object().unwrap() {
@@ -736,16 +734,13 @@ mod tests {
         let ok = github(
             |b| release(b, json!({})),
             zip.clone(),
-            format!("{hex}  monks-central.zip\n"),
+            format!("{hex}  wp-sites-hq.zip\n"),
         )
         .await;
         let (home, out) = save(ok).await;
         let out = out.unwrap();
         assert_eq!(out.version, "1.2.0");
-        let saved = home
-            .path()
-            .join("Downloads")
-            .join("monks-central-1.2.0.zip");
+        let saved = home.path().join("Downloads").join("wp-sites-hq-1.2.0.zip");
         assert_eq!(out.path, saved.to_string_lossy());
         assert_eq!(std::fs::read(&saved).unwrap(), zip);
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! One-click login (Classic Monks M3) and Classic Monks itself (plan Phase 4):
-//! its features (on/off), the settings it lets Monks Central change, its
+//! its features (on/off), the settings it lets WP Sites HQ change, its
 //! activity log with undo, and the changes waiting for approval on the site.
 //!
 //! All of it needs Classic Monks; Basic mode has none of these tools.
@@ -23,7 +23,7 @@ pub struct Toggle {
     pub description: String,
     pub section: String,
     pub on: bool,
-    /// Can't be changed from Monks Central (security and login features).
+    /// Can't be changed from WP Sites HQ (security and login features).
     pub locked: bool,
 }
 
@@ -35,7 +35,7 @@ pub struct FeatureGroup {
     pub toggles: Vec<Toggle>,
 }
 
-/// A value Classic Monks lets Monks Central change (`hq_editable`).
+/// A value Classic Monks lets WP Sites HQ change (`hq_editable`).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Setting {
     pub name: String,
@@ -57,7 +57,7 @@ pub struct ActivityRow {
     pub id: i64,
     /// The site's local time.
     pub time: String,
-    /// The app or person who did it ("Monks Central", "Claude", "WP-CLI").
+    /// The app or person who did it ("WP Sites HQ", "Claude", "WP-CLI").
     pub who: String,
     pub tool: String,
     pub status: String,
@@ -82,7 +82,7 @@ pub struct Approval {
     pub expires_in: u64,
 }
 
-/// "Monks Central [operator]" reads as "Monks Central".
+/// "WP Sites HQ [operator]" reads as "WP Sites HQ".
 fn who(row: &Value) -> String {
     let label = text(&row["client_label"]);
     let label = label
@@ -193,7 +193,7 @@ pub fn feature_groups(features: &Value, schema: Option<&Value>) -> Vec<FeatureGr
     groups
 }
 
-/// The settings Classic Monks lets Monks Central change, without their values.
+/// The settings Classic Monks lets WP Sites HQ change, without their values.
 pub fn editable_settings(schema: &Value) -> Vec<Setting> {
     let num = |v: &Value| v.as_f64();
     fields(schema)
@@ -258,7 +258,7 @@ fn on_site(site: &Site, link: &str) -> Result<String, SiteError> {
             Ok(t.to_string())
         }
         _ => Err(plain(
-            "The site sent a link to somewhere else, so Monks Central didn't open it.",
+            "The site sent a link to somewhere else, so WP Sites HQ didn't open it.",
         )),
     }
 }
@@ -276,7 +276,7 @@ pub struct CmReports {
     pub failed: Vec<(String, String)>,
 }
 
-pub const NO_REPORTS: &str = "This site's Classic Monks has no reports Monks Central can read. Update Classic Monks on the site, then check it again.";
+pub const NO_REPORTS: &str = "This site's Classic Monks has no reports WP Sites HQ can read. Update Classic Monks on the site, then check it again.";
 
 fn keep(
     got: Option<Result<Value, SiteError>>,
@@ -368,12 +368,12 @@ impl Core {
         let site = self.site(id)?;
         if site.mode != Mode::ClassicMonks {
             return Err(plain(
-                "One-click login needs Monks Central, Classic Monks or Classic Monks Pro on the site. Open the site and log in as usual.",
+                "One-click login needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. Open the site and log in as usual.",
             ));
         }
         if !has_tool(&site, "create-login-link") {
             return Err(plain(
-                "One-click login needs a newer Classic Monks, signed in as your Monks Central app. Update Classic Monks, then sign in to the site again.",
+                "One-click login needs a newer Classic Monks, signed in as your WP Sites HQ app. Update Classic Monks, then sign in to the site again.",
             ));
         }
         let v = self
@@ -454,7 +454,7 @@ impl Core {
             .and_then(|r| r["id"].as_i64()))
     }
 
-    /// The settings Monks Central may change here, with their values.
+    /// The settings WP Sites HQ may change here, with their values.
     pub async fn settings(&self, id: i64) -> Result<Vec<Setting>, SiteError> {
         let _work = self.working().await;
         self.cm_site(id, "get-settings-schema")?;
@@ -654,7 +654,7 @@ mod tests {
         let e = core.login_link(basic.id).await.unwrap_err();
         assert!(
             e.to_string()
-                .contains("needs Monks Central, Classic Monks or Classic Monks Pro")
+                .contains("needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro")
         );
         assert!(core.features(basic.id).await.is_err());
 
@@ -707,7 +707,7 @@ mod tests {
         let row = &log.rows[0];
         assert_eq!(
             (row.id, row.who.as_str(), row.can_undo),
-            (undo, "Monks Central", true)
+            (undo, "WP Sites HQ", true)
         );
         core.undo(s.id, undo).await.unwrap();
         assert_eq!(site.state().features["enable_svg_support"], false);

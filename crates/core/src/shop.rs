@@ -13,7 +13,7 @@ use crate::connect::{SiteError, plain};
 use crate::fleet::{Action, has_tool};
 use crate::sites::Mode;
 
-pub const NEEDS_WOO: &str = "This site has no WooCommerce store that Monks Central can read. It needs WooCommerce and an up to date Classic Monks.";
+pub const NEEDS_WOO: &str = "This site has no WooCommerce store that WP Sites HQ can read. It needs WooCommerce and an up to date Classic Monks.";
 
 /// A product as the site stores it. Prices are WooCommerce's strings, "" when unset.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]

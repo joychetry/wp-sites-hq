@@ -29,7 +29,7 @@ const TOO_OLD: &str = "Update WordPress to 7.1 or newer first.";
 pub enum SiteError {
     #[error("{0}")]
     Plain(String),
-    #[error("Monks Central can't read this site's saved sign-in. Sign in again.")]
+    #[error("WP Sites HQ can't read this site's saved sign-in. Sign in again.")]
     SignInAgain,
     #[error("This site runs WordPress {0}. {TOO_OLD}")]
     TooOld(String),
@@ -66,7 +66,7 @@ pub(crate) fn site_said(msg: &str) -> String {
 
 impl From<rusqlite::Error> for SiteError {
     fn from(e: rusqlite::Error) -> Self {
-        plain(format!("Monks Central's database had a problem: {e}"))
+        plain(format!("WP Sites HQ's database had a problem: {e}"))
     }
 }
 
@@ -125,7 +125,7 @@ impl Grant {
 }
 
 /// An agent grant the site no longer honours.
-pub const AGENT_ACCESS_ENDED: &str = "AI agents' access to this site has ended on the site. Turn it on again in the Monks Central app, under AI.";
+pub const AGENT_ACCESS_ENDED: &str = "AI agents' access to this site has ended on the site. Turn it on again in the WP Sites HQ app, under AI.";
 
 /// "7.1.3" and "7.1-beta2" pass; "7.0.7" doesn't. Unreadable versions pass:
 /// they can't be shown to be too old.
@@ -244,7 +244,7 @@ impl Core {
 
     pub fn site(&self, id: i64) -> Result<Site, SiteError> {
         self.db(|c| sites::get(c, id))?
-            .ok_or_else(|| plain("That site isn't in Monks Central any more."))
+            .ok_or_else(|| plain("That site isn't in WP Sites HQ any more."))
     }
 
     pub fn groups(&self) -> Result<Vec<String>, SiteError> {
@@ -310,7 +310,7 @@ impl Core {
                 .db(|c| sites::find_by_url(c, &sites::url_string(&url)))?
                 .is_some()
         {
-            return Err(plain("This site is already in Monks Central."));
+            return Err(plain("This site is already in WP Sites HQ."));
         }
         if let Some(v) = self.feed_version(&url).await
             && !at_least_7_1(&v)
@@ -407,7 +407,7 @@ impl Core {
     ) -> Result<(oauth::Discovery, OAuthClient, Tokens), SiteError> {
         let key = url.as_str();
         let d = oauth::discover(&self.http, &self.limits, url).await?.ok_or_else(|| {
-            plain("This site has no Monks Central connection. Install Monks Central, Classic Monks or Classic Monks Pro on it and switch its connection on, or add the site in Basic mode with an application password.")
+            plain("This site has no WP Sites HQ connection. Install the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it and switch its connection on, or add the site in Basic mode with an application password.")
         })?;
         let client_id = oauth::register(&self.http, &self.limits, key, &d, client_name).await?;
         let pkce = oauth::pkce();
@@ -756,7 +756,7 @@ impl Core {
         let site = self.site(id)?;
         if site.mode != Mode::ClassicMonks {
             return Err(plain(
-                "This site is in Basic mode. That needs Monks Central, Classic Monks or Classic Monks Pro on the site.",
+                "This site is in Basic mode. That needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.",
             ));
         }
         let read_only = site.capabilities["read_only"]
@@ -1142,7 +1142,7 @@ impl Core {
         let site = self.site(id)?;
         let (signed_out, message) = match site.mode {
             Mode::ClassicMonks => match self.revoke_grant(&site, Grant::Operator).await {
-                Ok(()) => (true, "Removed. Monks Central signed out of the site.".to_string()),
+                Ok(()) => (true, "Removed. WP Sites HQ signed out of the site.".to_string()),
                 Err(e) => (
                     false,
                     format!("Removed here, but the site couldn't be told ({e}). Remove the connection under AI > MCP on the site, or it ends by itself within 30 days."),
@@ -1228,7 +1228,7 @@ fn rest_json(reply: &Reply) -> Result<Value, SiteError> {
     Err(plain(net::explain_status(reply).map_or_else(
         || {
             format!(
-                "The site's REST API answered {} and nothing Monks Central could read.",
+                "The site's REST API answered {} and nothing WP Sites HQ could read.",
                 reply.status
             )
         },
@@ -1248,10 +1248,10 @@ fn rpc_result(reply: Reply) -> Result<Value, SiteError> {
         _ => Err(plain(net::explain_status(&reply).map_or_else(
             || {
                 if reply.status == 401 {
-                    "The site refused Monks Central's sign-in.".to_string()
+                    "The site refused WP Sites HQ's sign-in.".to_string()
                 } else {
                     format!(
-                        "The site answered {} and nothing Monks Central could read.",
+                        "The site answered {} and nothing WP Sites HQ could read.",
                         reply.status
                     )
                 }
@@ -1395,7 +1395,7 @@ mod tests {
         assert_eq!(s.capabilities["connector"]["version"], "1.1.0");
         assert_eq!(
             s.capabilities["connector"]["hosts"][1]["name"],
-            "Monks Central"
+            "WP Sites HQ"
         );
         assert_eq!(s.capabilities["operator"], true);
         assert_eq!(s.capabilities["degraded"], false);
@@ -1490,7 +1490,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Monks Central can't read this site's saved sign-in. Sign in again."
+            "WP Sites HQ can't read this site's saved sign-in. Sign in again."
         );
         assert!(core.site(s.id).unwrap().sign_in_again);
         core.check_site(s.id).await;
@@ -1596,16 +1596,16 @@ mod tests {
         let (_h, core) = core().await;
         let site = TestSite::start().await;
         let s = added(&core, &site).await;
-        // Classic Monks Pro removed: Monks Central's copy runs the same grant.
-        site.state().hq_plugin = json!({ "name": "Monks Central", "version": "1.0.0" });
+        // Classic Monks Pro removed: WP Sites HQ's copy runs the same grant.
+        site.state().hq_plugin = json!({ "name": "WP Sites HQ", "version": "1.0.0" });
         site.state().hq_connector = json!({ "version": "1.1.0", "hosts": [
-            { "name": "Monks Central", "version": "1.0.0", "connector": "1.1.0" },
+            { "name": "WP Sites HQ", "version": "1.0.0", "connector": "1.1.0" },
         ] });
         core.check_site(s.id).await;
         let s = core.site(s.id).unwrap();
         assert_eq!(s.health, Health::Ok, "{}", s.health_detail);
         assert_eq!(s.cm_version.as_deref(), Some("1.0.0"));
-        assert_eq!(s.capabilities["plugin"]["name"], "Monks Central");
+        assert_eq!(s.capabilities["plugin"]["name"], "WP Sites HQ");
         assert_eq!(
             s.capabilities["connector"]["hosts"]
                 .as_array()
@@ -1671,7 +1671,7 @@ mod tests {
             .await
             .unwrap();
         core.set_tags(s.id, &["client".into()]).unwrap();
-        // Monks Central installed on the site: sign in through it, same site row.
+        // WP Sites HQ installed on the site: sign in through it, same site row.
         let s = core.sign_in_again_oauth(s.id, browser).await.unwrap();
         assert_eq!(s.mode, Mode::ClassicMonks);
         assert_eq!(s.tags, ["client"]);

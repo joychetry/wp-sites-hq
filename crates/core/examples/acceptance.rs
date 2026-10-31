@@ -49,7 +49,7 @@
 //!   agent-access <url> <studio site path>  give AI agents their own connection:
 //!                       the consent form with "operator" left unticked
 //!   agent-access-off <url>
-//!   plans | log        agents' plans waiting for a person; Monks Central's activity log
+//!   plans | log        agents' plans waiting for a person; WP Sites HQ's activity log
 //!   confirm-plan <id> | decline-plan <id>  the person's Confirm or Decline, as the window
 //!                       does; confirm waits for the job
 //!   security [url]     scan one site (or all) for vulnerabilities, abandoned plugins
@@ -63,7 +63,7 @@
 //!   cm-reports <url> | store <url>         Classic Monks' reports; the store and its products
 //!   zip <url> <zip file> <plugin|theme>    stage a zip and install it (off) as a job
 //!   plugins            which plugin runs each site's connector, and the connector's version
-//!   plugin-download <dir>   the Monks Central plugin from its latest release, checksum checked
+//!   plugin-download <dir>   the WP Sites HQ plugin from its latest release, checksum checked
 //!                       (MONKS_PLUGIN_RELEASE points at another releases/latest address)
 //!
 //! These two need no core of their own, so they also run while the app is open:

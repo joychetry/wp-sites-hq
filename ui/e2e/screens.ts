@@ -35,7 +35,7 @@ export const SCREENS: Screen[] = [
     name: "sites-sign-in-again",
     open: async (page) => {
       await nav("Sites")(page);
-      await page.getByRole("gridcell", { name: /^Monks Central Test / }).click();
+      await page.getByRole("gridcell", { name: /^WP Sites HQ Test / }).click();
     },
   },
   {
@@ -50,7 +50,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Sites")(page);
       await page.getByRole("gridcell", { name: /^mc-c / }).click();
-      await page.getByRole("complementary").getByRole("button", { name: "Install Monks Central for me" }).click();
+      await page.getByRole("complementary").getByRole("button", { name: "Install the WP Sites HQ plugin for me" }).click();
       await page.getByRole("complementary").getByText(/is saved as/).waitFor();
     },
   },
@@ -70,7 +70,7 @@ export const SCREENS: Screen[] = [
     name: "sign-in-again",
     open: async (page) => {
       await nav("Sites")(page);
-      await page.getByRole("gridcell", { name: /^Monks Central Test / }).click();
+      await page.getByRole("gridcell", { name: /^WP Sites HQ Test / }).click();
       await page.getByRole("complementary").getByRole("button", { name: "Sign in again" }).click();
     },
   },
@@ -426,7 +426,7 @@ export const SCREENS: Screen[] = [
     name: "content-unavailable",
     open: async (page) => {
       await nav("Content")(page);
-      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "Monks Central Test (not available)" });
+      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "WP Sites HQ Test (not available)" });
     },
   },
   { name: "media", open: nav("Media") },

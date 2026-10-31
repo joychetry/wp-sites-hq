@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Classic Monks on one site: its features, the settings it lets Monks Central change,
+// Classic Monks on one site: its features, the settings it lets WP Sites HQ change,
 // its activity log with undo, and changes waiting for approval (plan Phase 4).
 import "../styles/screens/classic-monks.css";
 import { Empty as EmptyState, Skeleton, toast } from "../components/feedback";
@@ -51,8 +51,9 @@ export function when(time: string, now = new Date()): string {
   return `${days === 0 ? "Today" : days === 1 ? "Yesterday" : DAYTIME.format(at)}, ${hm}`;
 }
 
-/** Who made a change, as the log names them: changes Monks Central made are yours. */
-const whoOf = (who: string) => (who === "Monks Central" ? "You" : who || "Not known");
+/** Who made a change, as the log names them: changes this app made are yours, also from before
+ * its rename (older rows say Monks Central). */
+export const whoOf = (who: string) => (who === "WP Sites HQ" || who === "Monks Central" ? "You" : who || "Not known");
 const initials = (who: string) =>
   who
     .split(/[\s-]+/)
@@ -370,7 +371,7 @@ function Settings({ site, onDone, round }: Part) {
   if (data.length === 0)
     return (
       <Empty title="Nothing to change here.">
-        <p>This Classic Monks lets Monks Central change no settings. Its features are under Features.</p>
+        <p>This Classic Monks lets WP Sites HQ change no settings. Its features are under Features.</p>
       </Empty>
     );
   const valueOf = (s: Setting) => edits[s.name] ?? (s.value == null ? "" : String(s.value));
@@ -437,7 +438,7 @@ function Settings({ site, onDone, round }: Part) {
         })}
       </ul>
       <p className="card-foot note" id="settings-legend">
-        The settings Classic Monks lets Monks Central change, each saved on its own. Everything else stays in WordPress.
+        The settings Classic Monks lets WP Sites HQ change, each saved on its own. Everything else stays in WordPress.
       </p>
     </section>
   );
@@ -554,7 +555,7 @@ function Log({ site, onDone, round }: Part) {
   if (data.rows.length === 0)
     return (
       <Empty title="Nothing in the log yet.">
-        <p>Changes made through Classic Monks' tools, by Monks Central or an AI app, show here.</p>
+        <p>Changes made through Classic Monks' tools, by WP Sites HQ or an AI app, show here.</p>
       </Empty>
     );
   return (

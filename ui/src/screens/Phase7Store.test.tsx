@@ -92,7 +92,7 @@ test("a slow answer for an older period never replaces the newer one", async () 
 test("a site without the store tools says what it needs", () => {
   core();
   render(<Store sites={[B]} onPlan={() => {}} />);
-  expect(screen.getByRole("heading", { name: "Blog has no store Monks Central can read." })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Blog has no store WP Sites HQ can read." })).toBeInTheDocument();
 });
 
 test("Classic Monks' reports show what the site has and name what failed", async () => {

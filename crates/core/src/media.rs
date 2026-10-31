@@ -29,7 +29,7 @@ const CHUNK: usize = 1024 * 1024;
 /// shortcut: the window sends the whole file at once, so it sits in memory; stream chunks from the window if larger files are needed.
 pub const MAX_FILE: usize = 256 * 1024 * 1024;
 
-pub const NEEDS_CM_MEDIA: &str = "Replacing files needs Monks Central, Classic Monks or Classic Monks Pro on the site, and the media trash Classic Monks Pro. This site is in Basic mode.";
+pub const NEEDS_CM_MEDIA: &str = "Replacing files needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site, and the media trash Classic Monks Pro. This site is in Basic mode.";
 pub const OLD_CM_MEDIA: &str = "This site's Classic Monks is older and can't do this yet. Update Classic Monks on the site, then check it again.";
 pub const STOPPED: &str = "Stopped. Nothing was added.";
 
@@ -172,7 +172,7 @@ const KINDS: &[&str] = &["image", "video", "audio", "application"];
 pub fn decode_file(data: &str) -> Result<Vec<u8>, SiteError> {
     if data.len() > MAX_FILE / 3 * 4 + 4 {
         return Err(plain(
-            "Monks Central uploads files up to 256 MB. Upload larger ones in WordPress.",
+            "WP Sites HQ uploads files up to 256 MB. Upload larger ones in WordPress.",
         ));
     }
     let bytes = base64::engine::general_purpose::STANDARD

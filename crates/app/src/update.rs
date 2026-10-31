@@ -66,8 +66,8 @@ fn changed(app: &AppHandle) {
 
 /// The check failed: offline, GitHub down, or no release published yet.
 fn unreachable(e: tauri_plugin_updater::Error) -> String {
-    eprintln!("Monks Central update check: {e}");
-    "Couldn't reach the Monks Central releases on GitHub. Check your internet connection and try again later.".into()
+    eprintln!("WP Sites HQ update check: {e}");
+    "Couldn't reach the WP Sites HQ releases on GitHub. Check your internet connection and try again later.".into()
 }
 
 fn auto(core: Option<&Core>) -> bool {

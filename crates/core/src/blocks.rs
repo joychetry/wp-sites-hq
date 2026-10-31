@@ -32,7 +32,7 @@ pub struct Block {
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum BlockError {
     #[error(
-        "Monks Central can't read this body's blocks safely, so it won't change it. Edit it in WordPress."
+        "WP Sites HQ can't read this body's blocks safely, so it won't change it. Edit it in WordPress."
     )]
     Unreadable,
     #[error("That block can't be edited here. Only text blocks can.")]

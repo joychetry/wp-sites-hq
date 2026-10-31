@@ -12,7 +12,7 @@ const mockInvoke = vi.mocked(invoke);
 
 const STATUS = { version: "0.0.1", pid: 7, role: "operator", headless: false, home: "/data" };
 
-function serve(sites = [site(), site({ id: 2, name: "Monks Central Test", url: "https://monks-central-test.local" })]) {
+function serve(sites = [site(), site({ id: 2, name: "WP Sites HQ Test", url: "https://monks-central-test.local" })]) {
   mockInvoke.mockImplementation(async (cmd: string) => {
     if (cmd === "core_status") return STATUS;
     if (cmd === "sites_list") return sites;
@@ -48,7 +48,7 @@ test("a new version is announced once, stays until closed, however often the app
   let status = upd({ found: found("0.2.0") });
   mockInvoke.mockImplementation(async (cmd: string, args?: unknown) => (cmd === "app_update_status" ? status : base(cmd, args as never)));
   render(<App />);
-  const note = "Monks Central 0.2.0 is out.";
+  const note = "WP Sites HQ 0.2.0 is out.";
   // App mounts its own toast region next to the test setup's, so the note shows in both.
   const shown = (await screen.findAllByText(note)).length;
   expect(screen.getAllByRole("button", { name: "See what's new" }).length).toBeGreaterThan(0);
@@ -61,7 +61,7 @@ test("a new version is announced once, stays until closed, however often the app
   expect(screen.getAllByText(note).length).toBe(shown);
   status = upd({ found: found("0.3.0") });
   await act(async () => recheck());
-  expect((await screen.findAllByText("Monks Central 0.3.0 is out.")).length).toBe(shown);
+  expect((await screen.findAllByText("WP Sites HQ 0.3.0 is out.")).length).toBe(shown);
   vi.useRealTimers();
 });
 
@@ -77,7 +77,7 @@ test("installing by itself waits while the editor has unsaved changes, then trie
   const installs = () => mockInvoke.mock.calls.filter(([c]) => c === "app_update_install");
   leaveGuard.ask = () => {};
   render(<App />);
-  await screen.findAllByText("Monks Central 0.2.0 is out.");
+  await screen.findAllByText("WP Sites HQ 0.2.0 is out.");
   await vi.advanceTimersByTimeAsync(120_000);
   expect(installs()).toHaveLength(0);
   leaveGuard.ask = null;
@@ -118,9 +118,9 @@ test("short relative time: just now, minutes, hours, yesterday, then a date", ()
 });
 
 test("shows the core error in plain words", async () => {
-  mockInvoke.mockRejectedValue("Monks Central is already running (pid 42).");
+  mockInvoke.mockRejectedValue("WP Sites HQ is already running (pid 42).");
   render(<App />);
-  expect(await screen.findByRole("heading", { name: "Monks Central couldn't start." })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "WP Sites HQ couldn't start." })).toBeInTheDocument();
   expect(screen.getAllByRole("alert")[0]).toHaveTextContent("already running (pid 42)");
 });
 
@@ -130,11 +130,11 @@ test("Ctrl K opens the palette and runs a command", async () => {
   await screen.findByText("Both sites are healthy.");
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });
   const input = screen.getByRole("combobox", { name: "Command" });
-  fireEvent.change(input, { target: { value: "central test" } });
-  expect(screen.getByRole("option", { name: /Monks Central Test/ })).toHaveAttribute("aria-selected", "true");
+  fireEvent.change(input, { target: { value: "hq test" } });
+  expect(screen.getByRole("option", { name: /WP Sites HQ Test/ })).toHaveAttribute("aria-selected", "true");
   fireEvent.keyDown(input, { key: "Enter" });
   expect(screen.queryByRole("dialog", { name: "Command palette" })).not.toBeInTheDocument();
-  expect(screen.getByRole("complementary", { name: "Monks Central Test details" })).toBeInTheDocument();
+  expect(screen.getByRole("complementary", { name: "WP Sites HQ Test details" })).toBeInTheDocument();
 });
 
 test("the theme is the system's until light or dark is picked", async () => {
