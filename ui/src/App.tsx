@@ -11,7 +11,7 @@ import { Select } from "./components/controls";
 import { Page } from "./components/page";
 import { AddSite } from "./screens/AddSite";
 import { Install } from "./screens/Install";
-import { attention, leaveGuard, planTitle, summary, updatesOf } from "./fleet";
+import { attention, leaveGuard, planTitle, summary, toFix, updatesOf } from "./fleet";
 import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
@@ -195,14 +195,15 @@ export default function App() {
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
-  const vulnerable = (reports ?? []).reduce((n, r) => n + r.vulnerabilities.length, 0);
+  const inScope = new Set(scoped.map((s) => s.id));
+  const vulnerable = (reports ?? []).filter((r) => inScope.has(r.site_id)).reduce((n, r) => n + r.vulnerabilities.length, 0);
   const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
   const ofKind = (k: string) => new Set(waiting.filter((w) => w.kind === k).map((w) => w.name)).size;
   // The design's sidebar counts: what waits on each page, amber where something is wrong.
   const counts: Partial<Record<Section, { n: number; say: string; alert?: boolean }>> = Object.fromEntries(
     (
       [
-        ["Overview", needs, "need attention", true],
+        ["Overview", toFix(needs, vulnerable, livePlans, waiting.length), "to fix", true],
         ["Sites", scoped.length, scoped.length === 1 ? "site" : "sites"],
         ["Updates", waiting.length, "waiting"],
         ["Plugins", ofKind("Plugin"), "with an update waiting"],
@@ -530,8 +531,7 @@ export default function App() {
               )}
               {needs > 0 && (
                 <button type="button" className="pill warning" onClick={() => setSection("Sites")}>
-                  {/* The name keeps the visible words and adds "sites" and where it goes. */}
-                  {needs} {needs === 1 ? <><span className="sr-only">site</span> needs</> : <><span className="sr-only">sites</span> need</>} attention
+                  {needs} {needs === 1 ? "site needs" : "sites need"} attention
                   <span className="sr-only">, open Sites</span>
                   <Glyph name="alert" />
                 </button>

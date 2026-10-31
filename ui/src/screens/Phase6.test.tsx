@@ -58,7 +58,7 @@ describe("Security", () => {
   test("lists vulnerabilities, abandoned plugins and changed files, and fixes through the plan", () => {
     const onPlan = vi.fn();
     render(<Security sites={[A, B]} reports={[report]} inventory={new Map([[1, inv("10.3.0")]])} onPlan={onPlan} />);
-    expect(screen.getByText("2 known vulnerabilities, 2 abandoned plugins and 1 changed install on 1 site.", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Across 1 scanned site: 2 known vulnerabilities, 2 abandoned plugins and 1 changed install.", { exact: false })).toBeInTheDocument();
     const vulns = screen.getByRole("list", { name: "Known vulnerabilities" });
     expect(within(vulns).getByText("Alpha, on 10.2.0")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Security at a glance" })).toHaveTextContent("Sites clear0 of 2");

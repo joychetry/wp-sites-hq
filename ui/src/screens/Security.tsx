@@ -376,7 +376,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
               ? "Every site is scanned once a day while WP Sites HQ runs."
               : vulns.length + abandoned.length + changed.length === 0
                 ? `No known problems on ${plural(scanned.length, "site")}.`
-                : `${plural(vulns.length, "known vulnerability", "known vulnerabilities")}, ${plural(abandoned.length, "abandoned plugin")} and ${plural(changed.length, "changed install", "changed installs")} on ${plural(scanned.length, "site")}.`}{" "}
+                : `Across ${plural(scanned.length, "scanned site")}: ${plural(vulns.length, "known vulnerability", "known vulnerabilities")}, ${plural(abandoned.length, "abandoned plugin")} and ${plural(changed.length, "changed install", "changed installs")}.`}{" "}
             Vulnerabilities come from WPVulnerability, checked against the version each site runs. Sites are scanned once a day while WP Sites HQ runs.
           </p>
         </div>
