@@ -120,7 +120,7 @@ test("short relative time: just now, minutes, hours, yesterday, then a date", ()
 test("shows the core error in plain words", async () => {
   mockInvoke.mockRejectedValue("WP Sites HQ is already running (pid 42).");
   render(<App />);
-  expect(await screen.findByRole("heading", { name: "WP Sites HQ couldn't start." })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "WP Sites HQ couldn't start" })).toBeInTheDocument();
   expect(screen.getAllByRole("alert")[0]).toHaveTextContent("already running (pid 42)");
 });
 

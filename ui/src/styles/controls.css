@@ -214,7 +214,7 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 .progress span { display: block; height: 100%; background: var(--green); border-radius: var(--radius-pill); transition: width 300ms var(--ease); }
 
 /* Empty states */
-.empty-pic { width: 56px; height: 56px; padding: 13px; border-radius: 50%; background: var(--sel); fill: none; stroke: var(--brand-text); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; margin-bottom: var(--sp-1); }
+.empty-pic { width: 56px; height: 56px; padding: 13px; border-radius: 50%; background: var(--tint); fill: none; stroke: var(--brand-text); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; margin-bottom: var(--sp-1); }
 .empty[role="alert"] .empty-pic { background: var(--danger-bg); stroke: var(--danger); }
 .empty > .row { margin-top: var(--sp-2); flex-wrap: wrap; justify-content: center; }
 
@@ -250,23 +250,17 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 
 /* Sidebar icons: a 17px line drawing per item, so the sidebar can be scanned by shape as well as by word */
 
-/* Empty states: one picture for all of them, unless they bring their own */
 /* Centred, the way the design draws first runs and errors */
 .empty { padding: var(--sp-7) var(--sp-5); margin: 0 auto; display: grid; justify-items: center; align-content: start; gap: var(--sp-3); text-align: center; }
 /* Loading and start-up errors stand in for the screen, so they take its card. */
 .body > .empty, .body > .skel, .page-loading { align-self: start; max-width: none; width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); }
 .empty h2 { margin: 0; }
 .empty p { margin: 0; }
-.empty:not(:has(.empty-pic)) > h2:first-child::before {
-  content: ""; display: block; width: 40px; height: 40px; margin: 0 auto var(--sp-3); background: var(--brand-text);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 18l4-12h16l4 12v8H4zM4 18h7l2 3h6l2-3h7'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 18l4-12h16l4 12v8H4zM4 18h7l2 3h6l2-3h7'/%3E%3C/svg%3E") center / contain no-repeat;
-}
 .empty p { max-width: 60ch; }
 /* Inside a card or the side panel: the same picture and words, smaller and calmer */
 .empty.sm { padding: var(--sp-6) var(--sp-4); gap: var(--sp-2); color: var(--text-3); }
+.empty.sm .empty-pic { width: 40px; height: 40px; padding: 9px; margin: 0; }
 .empty.sm h2 { font: 500 var(--fs)/var(--lh) var(--sans); letter-spacing: 0; color: var(--text-2); }
-.empty.sm:not(:has(.empty-pic)) > h2:first-child::before { width: 28px; height: 28px; margin-bottom: var(--sp-2); background: var(--text-3); }
 
 /* First run and next steps on Overview */
 /* Errors in place of a page (board D01): a danger disc, plain words, Try again, the detail in mono */

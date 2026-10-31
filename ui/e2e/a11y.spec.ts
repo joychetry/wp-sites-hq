@@ -320,7 +320,7 @@ test("the palette searches everything, and a result opens its site from the keyb
   await page.keyboard.type("bakery");
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("table", { name: "Posts and pages found" }).or(page.getByText("No posts or pages match on any site."))).toBeVisible();
+  await expect(page.getByRole("table", { name: "Posts and pages found" }).or(page.getByText("No posts or pages match on any site"))).toBeVisible();
   const open = page.getByRole("button", { name: "Open on Sites: Corner Bakery" });
   for (let i = 0; i < 40 && !(await open.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
   await expect(open).toBeFocused();

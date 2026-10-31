@@ -4,7 +4,7 @@
 import { ago, api, noTools, pluginName, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
+import { AddSiteButton, Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
@@ -69,12 +69,7 @@ function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
           </span>
           <h2>Every WordPress site you look after, in one place</h2>
           <p>WP Sites HQ checks your sites, keeps them updated and tells you what needs you. Add your first site to start.</p>
-          <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
-            Add a site
-            <span className="btn-disc">
-              <Glyph name="plus" />
-            </span>
-          </Button>
+          <AddSiteButton onClick={onAdd} />
           <p className="dim or">
             or press <Kbd>A</Kbd>
           </p>

@@ -276,7 +276,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
       </Toolbar>
       <section className="card" aria-label="Pending updates">
         {rows.length === 0 ? (
-          <Empty picture="done" title="No updates waiting.">
+          <Empty picture="done" title="No updates waiting">
             <p>
               {sites.length === 0
                 ? "Add a site to see its updates here."
@@ -284,7 +284,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
             </p>
           </Empty>
         ) : shown.length === 0 ? (
-          <Empty small title="Nothing of this kind is waiting." />
+          <Empty small title="Nothing of this kind is waiting" />
         ) : (
           <table className="t" aria-label="Updates waiting">
             <thead>

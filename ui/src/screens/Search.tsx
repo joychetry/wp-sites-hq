@@ -156,7 +156,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
       </form>
       {query.trim().length < 2 ? (
         <section className="card">
-          <Empty picture="search" title="Search every site at once.">
+          <Empty picture="search" title="Search every site at once">
             <p>Sites, plugins, themes and clients show straight away. Posts and pages are looked up on each site.</p>
           </Empty>
         </section>
@@ -241,7 +241,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                 <span>{error}</span>
               </p>
             )}
-            {found && found.hits.length === 0 && <Empty small title={local.length ? "No posts or pages match on any site." : "Nothing matches on any site: no sites, plugins, themes, clients, posts or pages."} />}
+            {found && found.hits.length === 0 && <Empty small title={local.length ? "No posts or pages match on any site" : "Nothing matches on any site: no sites, plugins, themes, clients, posts or pages"} />}
           </section>
           {found && found.failed.length > 0 && (
             <p className="callout warning">

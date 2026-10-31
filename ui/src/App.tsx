@@ -4,7 +4,7 @@ import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./compone
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
-import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
+import { AddSiteButton, Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { Page } from "./components/page";
@@ -311,6 +311,8 @@ export default function App() {
     ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${LABEL[s] ?? s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
   ];
 
+  // Counts, status pills and the generated summary only once the sites have loaded and the core is up.
+  const live = !!sites && !coreError && !error;
   let body;
   if (coreError) {
     body = (
@@ -318,7 +320,7 @@ export default function App() {
         <span className="danger-disc" aria-hidden="true">
           <Glyph name="alert" />
         </span>
-        <h2>WP Sites HQ couldn't start.</h2>
+        <h2>WP Sites HQ couldn't start</h2>
         <p>
           <b>Nothing was changed.</b> Close WP Sites HQ and open it again. If it keeps happening, restart the computer.
         </p>
@@ -335,7 +337,7 @@ export default function App() {
         <span className="danger-disc" aria-hidden="true">
           <Glyph name="alert" />
         </span>
-        <h2>Your sites didn't load.</h2>
+        <h2>Your sites didn't load</h2>
         <p>
           <b>Nothing was changed.</b> Try again; if it keeps happening, close WP Sites HQ and open it again.
         </p>
@@ -356,12 +358,8 @@ export default function App() {
         <section className="card">
           <Empty
             picture="sites"
-            title={`${section} fills in once you add a site.`}
-            action={
-              <Button kind="primary" keys="A" onClick={() => setAdding({})}>
-                Add a site
-              </Button>
-            }
+            title={`${section} fills in once you add a site`}
+            action={<AddSiteButton onClick={() => setAdding({})} />}
           >
             <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
           </Empty>
@@ -482,7 +480,7 @@ export default function App() {
                     >
                       {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
                       {LABEL[s] ?? s}
-                      {counts[s] && (
+                      {live && counts[s] && (
                         <span className={counts[s].alert ? "n alert" : "n"}>
                           {counts[s].n}
                           <span className="sr-only"> {counts[s].say}</span>
@@ -510,17 +508,19 @@ export default function App() {
       </nav>
       <div className="main">
         <header className="top">
-          <div className="scope-field">
-            <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
-              <option value="">All sites ({all.length})</option>
-              {groups.map((g) => (
-                <option key={g} value={g}>
-                  Group: {g}
-                </option>
-              ))}
-            </Select>
-          </div>
-          {sites && sites.length > 0 && (
+          {live && (
+            <div className="scope-field">
+              <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
+                <option value="">All sites ({all.length})</option>
+                {groups.map((g) => (
+                  <option key={g} value={g}>
+                    Group: {g}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+          {live && sites.length > 0 && (
             <p className="fresh" role="status">
               {checking ? (
                 <span className="pill">
@@ -558,7 +558,7 @@ export default function App() {
               <span>Search or run…</span>
               <Kbd>Ctrl K</Kbd>
             </button>
-            {sites && sites.length > 0 && (
+            {live && sites.length > 0 && (
               // The page head holds each page's main action, so this is the same plain button on every page.
               <Button disabled={checking} onClick={checkAll}>
                 {checking ? "Checking…" : "Check all sites"}
@@ -572,15 +572,10 @@ export default function App() {
             <div className={section === "Classic Monks" ? "marked" : undefined}>
               {section === "Classic Monks" && <Logo />}
               <h1>{LABEL[section] ?? section}</h1>
-              <p>{section === "Overview" && all.length > 0 ? sentence : ABOUT[section]}</p>
+              <p>{section === "Overview" && all.length > 0 && live ? sentence : ABOUT[section]}</p>
             </div>
             <div className="phead-acts" ref={setHeadSlot}>
-              {section === "Overview" && all.length > 0 && (
-                <Button keys="A" onClick={() => setAdding({})}>
-                  Add a site
-                  <Glyph name="plus" />
-                </Button>
-              )}
+              {section === "Overview" && all.length > 0 && live && <AddSiteButton onClick={() => setAdding({})} />}
             </div>
           </header>
           <HeadSlot.Provider value={headSlot}>

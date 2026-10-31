@@ -5,7 +5,7 @@ import { dismiss, Empty, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type PluginZip, type Site } from "../api";
-import { Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
+import { AddSiteButton, Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import { updatesOf } from "./Updates";
@@ -167,12 +167,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   return (
     <>
       <HeadActions>
-        <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
-          Add a site
-          <span className="btn-disc">
-            <Glyph name="plus" />
-          </span>
-        </Button>
+        <AddSiteButton onClick={onAdd} />
       </HeadActions>
       <Page className="sites" side={side}>
         <Toolbar>
@@ -218,19 +213,15 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           {rows.length === 0 ? (
             sites.length === 0 ? (
               <Empty
-                title="No sites yet."
-                action={
-                  <Button kind="primary" keys="A" onClick={onAdd}>
-                    Add a site
-                  </Button>
-                }
+                title="No sites yet"
+                action={<AddSiteButton onClick={onAdd} />}
               >
                 <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
               </Empty>
             ) : (
               <Empty
                 small
-                title="No site matches these filters."
+                title="No site matches these filters"
                 action={
                   <Button
                     onClick={() => {

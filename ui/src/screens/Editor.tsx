@@ -606,7 +606,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             {back ?? `Back to ${type.label.toLowerCase()}`}
           </Button>
         </div>
-        <Empty alert title={`This ${noun} didn't open.`}>
+        <Empty alert title={`This ${noun} didn't open`}>
           <p>{loadError}</p>
         </Empty>
       </Page>

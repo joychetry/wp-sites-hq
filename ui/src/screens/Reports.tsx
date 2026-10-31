@@ -70,7 +70,7 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site on Sites, then make a report for it here.</p>
         </Empty>
       </Page>

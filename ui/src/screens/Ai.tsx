@@ -369,7 +369,7 @@ function Log() {
         <span className="dim">Everything done through WP Sites HQ, newest first</span>
       </div>
       {error ? (
-        <Empty alert title="The activity log didn't load." action={<Button onClick={load}>Try again</Button>}>
+        <Empty alert title="The activity log didn't load" action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
         </Empty>
       ) : !rows ? (

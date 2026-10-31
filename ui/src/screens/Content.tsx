@@ -174,7 +174,7 @@ export function Content({ sites, onPlan }: Props) {
 
   if (sites.length === 0) {
     return (
-      <Empty picture="sites" title="No sites yet.">
+      <Empty picture="sites" title="No sites yet">
         <p>Add a site on Sites, then its posts and pages show here.</p>
       </Empty>
     );
@@ -219,13 +219,17 @@ export function Content({ sites, onPlan }: Props) {
   let body;
   if (blocked) {
     body = (
-      <Empty title={`${site!.name}'s content isn't available here.`}>
+      <Empty
+        title={`${site!.name}'s content isn't available here`}
+        // Not a dead end: the Site picker above opens, to go on with another site.
+        action={<Button onClick={() => document.querySelector<HTMLElement>('.toolbar [aria-label="Site"]')?.click()}>Choose another site</Button>}
+      >
         <p>{blocked}</p>
       </Empty>
     );
   } else if (error) {
     body = (
-      <Empty alert title="The content didn't load." action={<Button onClick={() => (types ? load() : pickSite(site!.id))}>Try again</Button>}>
+      <Empty alert title="The content didn't load" action={<Button onClick={() => (types ? load() : pickSite(site!.id))}>Try again</Button>}>
         <p>{error}</p>
       </Empty>
     );
@@ -237,7 +241,7 @@ export function Content({ sites, onPlan }: Props) {
     body = (
       <Empty
         picture={search || status ? "search" : undefined}
-        title={search || status ? "Nothing matches." : `No ${type.label.toLowerCase()} yet.`}
+        title={search || status ? "Nothing matches" : `No ${type.label.toLowerCase()} yet.`}
         action={
           (search || status) && (
             <Button

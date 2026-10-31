@@ -80,7 +80,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site to scan it for known vulnerabilities, abandoned plugins and changed files.</p>
         </Empty>
       </Page>
@@ -328,7 +328,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
               <h2 id="sec-clear">Sites with nothing known</h2>
             </div>
             {clear.length === 0 ? (
-              <Empty small title={scanned.length ? "Every scanned site has something to look at." : "No site scanned yet."} />
+              <Empty small title={scanned.length ? "Every scanned site has something to look at" : "No site scanned yet"} />
             ) : (
               <ul className="fixes">
                 {clear.map((s) => {

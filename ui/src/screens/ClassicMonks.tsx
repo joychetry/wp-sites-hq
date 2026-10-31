@@ -79,7 +79,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <EmptyState picture="sites" title="No sites yet.">
+      <EmptyState picture="sites" title="No sites yet">
         <p>Add a site with Classic Monks on Sites, then its features show here.</p>
       </EmptyState>
     );
@@ -249,7 +249,7 @@ function useRead<T>(read: () => Promise<T>, deps: unknown[]) {
 function Failed({ what, error, retry }: { what: string; error: string; retry: () => void }) {
   return (
     <section className="card">
-      <EmptyState alert title={`${what} didn't load.`} action={<Button onClick={retry}>Try again</Button>}>
+      <EmptyState alert title={`${what} didn't load`} action={<Button onClick={retry}>Try again</Button>}>
         <p>{error}</p>
       </EmptyState>
     </section>
@@ -318,7 +318,7 @@ function Features({ site, onDone, round }: Part) {
         </span>
       </Toolbar>
       {groups.every((g) => g.toggles.length === 0) ? (
-        <Empty title="No feature matches.">
+        <Empty title="No feature matches">
           <p>Try another word.</p>
         </Empty>
       ) : (
@@ -370,7 +370,7 @@ function Settings({ site, onDone, round }: Part) {
   if (!data) return <Loading label={`Reading Classic Monks' settings on ${site.name}…`} />;
   if (data.length === 0)
     return (
-      <Empty title="Nothing to change here.">
+      <Empty title="Nothing to change here">
         <p>This Classic Monks lets WP Sites HQ change no settings. Its features are under Features.</p>
       </Empty>
     );
@@ -554,7 +554,7 @@ function Log({ site, onDone, round }: Part) {
   if (!data) return <Loading label={`Reading the activity log on ${site.name}…`} />;
   if (data.rows.length === 0)
     return (
-      <Empty title="Nothing in the log yet.">
+      <Empty title="Nothing in the log yet">
         <p>Changes made through Classic Monks' tools, by WP Sites HQ or an AI app, show here.</p>
       </Empty>
     );
@@ -592,7 +592,7 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
   if (!data) return <Loading label={`Reading ${site.name}…`} />;
   if (data.length === 0)
     return (
-      <Empty title="Nothing is waiting for approval.">
+      <Empty title="Nothing is waiting for approval">
         <p>When an AI app asks to change {site.name}, the request waits here until you approve it on the site.</p>
         <Button onClick={load}>Check again</Button>
       </Empty>
@@ -671,7 +671,7 @@ function Reports({ site }: { site: Site }) {
     return (
       <section className="card" aria-label="Reports">
         {head}
-        <EmptyState alert title="The reports didn't load." action={<Button onClick={load}>Try again</Button>}>
+        <EmptyState alert title="The reports didn't load" action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
         </EmptyState>
       </section>
