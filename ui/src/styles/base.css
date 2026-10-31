@@ -5,7 +5,7 @@ html, body, #root { margin: 0; height: 100%; background: var(--ground); color: v
 body { font: 400 var(--fs)/var(--lh) var(--sans); -webkit-font-smoothing: antialiased; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
-button:disabled { cursor: default; opacity: 0.55; }
+button:disabled { cursor: not-allowed; opacity: 0.45; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 ::placeholder { color: var(--text-3); opacity: 1; }
 .mono { font-family: var(--mono); font-size: var(--fs-sm); }
@@ -41,6 +41,10 @@ button:disabled { cursor: default; opacity: 0.55; }
 .btn-disc { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--green); color: var(--on-green); flex: none; }
 [data-theme="dark"] .btn-disc { background: rgba(255, 255, 255, 0.18); }
 .btn-disc .glyph { width: 13px; height: 13px; }
+/* Disabled never looks ready: the disc goes grey, the key hint goes, and a dark green primary loses its green. */
+.btn:disabled .btn-disc { background: var(--line-2); color: var(--text-3); }
+.btn:disabled .kbd { display: none; }
+[data-theme="dark"] .btn.primary:disabled, .btn.danger.solid:disabled { background: var(--raise); border-color: var(--line-2); color: var(--text-3); opacity: 1; }
 .field { display: grid; gap: 6px; margin: 0 0 var(--sp-4); }
 .field > span { font-size: var(--fs-sm); color: var(--text); font-weight: 600; }
 .field small { color: var(--text-3); font-size: var(--fs-sm); }
@@ -110,7 +114,7 @@ small { font-size: var(--fs-sm); }
 .themes { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-pill); background: var(--panel); border: 1px solid var(--line); }
 .themes button { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); padding: 0; }
 .themes button:hover { color: var(--text); }
-.themes button[aria-pressed="true"] { background: var(--bg); color: var(--text); box-shadow: var(--shadow-soft); }
+.themes button[aria-pressed="true"] { background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-ui), var(--shadow-soft); }
 .themes .glyph { width: 14px; height: 14px; }
 .ver { font: 400 var(--fs-xs) var(--mono); color: var(--text-3); }
 .main { display: flex; flex-direction: column; min-width: 0; height: 100vh; background: var(--ground); }
@@ -177,7 +181,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .t td.fill > * { width: 0; min-width: 100%; }
 .t tbody tr { cursor: default; }
 .t tbody tr:hover td { background: var(--panel); }
-.t tr.sel td { background: var(--sel); }
+.t tbody tr.sel td { background: var(--sel); }
+.t tbody tr.sel:hover td { background: color-mix(in srgb, var(--sel) 90%, var(--text)); }
 .t tr.focus td { background: var(--sel); }
 .t tr.focus td:first-child { box-shadow: inset 3px 0 0 var(--green); }
 .t .name { font-weight: 600; }
@@ -354,7 +359,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .segmented { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); padding: 3px; margin: 0 0 var(--sp-4); }
 .segmented button { flex: 1; height: calc(var(--control) - 8px); padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--text-2); font-weight: 500; }
 .segmented button:hover { color: var(--text); }
-.segmented button[aria-pressed="true"] { background: var(--bg); color: var(--text); font-weight: 600; box-shadow: var(--shadow-soft); }
+/* The chosen option is lifted with a 3:1 edge, so it reads as a fill and not only as bolder words. */
+.segmented button[aria-pressed="true"] { background: var(--bg); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line-ui), var(--shadow-soft); }
+[data-theme="dark"] .segmented button[aria-pressed="true"], [data-theme="dark"] .themes button[aria-pressed="true"] { background: var(--tint-2); }
 .steps { margin: 0 0 var(--sp-4); padding-left: var(--sp-4); color: var(--text-2); }
 .steps li { margin: 0 0 var(--sp-1); }
 .waiting { display: flex; align-items: center; gap: var(--sp-3); color: var(--text-2); }

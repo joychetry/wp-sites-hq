@@ -298,6 +298,9 @@ export function Content({ sites, onPlan }: Props) {
                     type="checkbox"
                     aria-label="Tick every entry on this page"
                     checked={chosen.length === rows.length}
+                    ref={(el) => {
+                      if (el) el.indeterminate = chosen.length > 0 && chosen.length < rows.length;
+                    }}
                     onChange={(e) => setPicked(new Set(e.target.checked ? rows.map((p) => p.id) : []))}
                   />
                 </th>
