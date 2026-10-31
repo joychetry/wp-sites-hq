@@ -8,6 +8,7 @@ import { siteDate } from "./Editor";
 import { site, POST_FIELDS } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import type { Post, PostType } from "../api";
+import { dayTime } from "../format";
 
 // The page head's action slot, as App gives it: the screen's main actions render there.
 const head = document.body.appendChild(document.createElement("div"));
@@ -137,11 +138,11 @@ test("puts an earlier version back after asking, and brings an entry back from t
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
   const sheet = document.body;
   fireEvent.click(await within(sheet).findByRole("button", { name: "Show earlier versions" }));
-  const put = await within(sheet).findByRole("button", { name: "Put back the version from 2026-10-20 08:00:00" });
+  const put = await within(sheet).findByRole("button", { name: `Put back the version from ${dayTime("2026-10-20 08:00:00")}` });
   fireEvent.click(put);
   fireEvent.click(within(sheet).getByRole("button", { name: "Put it back" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_restore_revision" && c[1].revisionId === 70)).toBe(true));
-  expect(await screen.findByText(/is back to the version from 2026-10-20 08:00:00/)).toBeInTheDocument();
+  expect(await screen.findByText(`is back to the version from ${dayTime("2026-10-20 08:00:00")}`, { exact: false })).toBeInTheDocument();
   fireEvent.click(within(sheet).getByRole("button", { name: "Bring it back from the trash" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_untrash")).toBe(true));
   expect(await screen.findByText(/back from the trash on Alpha, as draft/)).toBeInTheDocument();

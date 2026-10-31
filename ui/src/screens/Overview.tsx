@@ -11,6 +11,7 @@ import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
 import { attention } from "../fleet";
 import { Page } from "../components/page";
+import { dayTime } from "../format";
 
 export { attention, summary } from "../fleet";
 
@@ -240,16 +241,6 @@ export function said(r: Entry, inventory?: Map<number, SiteInventory> | null) {
   );
 }
 
-/** "Today, 10:42", "Yesterday, 17:20", "Oct 26, 11:15" in the computer's own clock format. */
-export function when(unix: number, now = new Date()) {
-  const d = new Date(unix * 1000);
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const days = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
-  if (days === 0) return `Today, ${time}`;
-  if (days === 1) return `Yesterday, ${time}`;
-  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
-}
-
 /** Latest changes from the activity log, with All, You and AI. */
 function Feed({ onGo }: { onGo?: Props["onGo"] }) {
   const [rows, setRows] = useState<Entry[] | null>(null);
@@ -297,7 +288,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
                   </>
                 )}
                 . {OUTCOME[r.outcome]}
-                <time dateTime={new Date(r.at * 1000).toISOString()}>{when(r.at)}</time>
+                <time dateTime={new Date(r.at * 1000).toISOString()}>{dayTime(r.at)}</time>
               </p>
             </li>
           ))}

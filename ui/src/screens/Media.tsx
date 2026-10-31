@@ -2,7 +2,7 @@
 // A site's media library (plan "media and editor", part 1): browse it as a grid or a list, filter it,
 // upload files picked on this computer, change an item's details, replace its file, move items to the trash.
 import "../styles/screens/media.css";
-import { DateInput, dayLabel, FilePicker, SearchInput, Select } from "../components/controls";
+import { DateInput, FilePicker, SearchInput, Select } from "../components/controls";
 import { Empty, Progress, Skeleton, toast } from "../components/feedback";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -10,6 +10,7 @@ import { fileSize, kind, limitOf, Pic, refusal, uploadKey, useProgress } from ".
 import { api, contentBlocked, fileBase64, hasTool, type Library, type Media as Item, type MediaDetails, type Site } from "../api";
 import { Button, Glyph, HeadActions } from "../components/ui";
 import { firstUsable, SitePick } from "./Content";
+import { day } from "../format";
 
 export const KINDS: [string, string][] = [
   ["", "All types"],
@@ -280,7 +281,7 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
           )}
           <div>
             <dt>Uploaded</dt>
-            <dd>{dayLabel(item.date) || item.date || "not known"}</dd>
+            <dd>{day(item.date) || item.date || "not known"}</dd>
           </div>
           <div>
             <dt>By</dt>
@@ -511,7 +512,7 @@ export function Media({ sites }: { sites: Site[] }) {
           <b data-tip={m.title || m.file_name}>{m.title || m.file_name || "No title"}</b>
           <small>
             {kind(m.mime)}
-            {m.date && ` · ${dayLabel(m.date) || m.date}`}
+            {m.date && ` · ${day(m.date) || m.date}`}
           </small>
         </button>
       </div>
@@ -611,7 +612,7 @@ export function Media({ sites }: { sites: Site[] }) {
                     <td className="r">{m.size ? fileSize(m.size) : "not known"}</td>
                     <td>{m.width && m.height ? `${m.width} × ${m.height}` : "none"}</td>
                     <td>
-                      <span className="when">{dayLabel(m.date) || m.date || "not known"}</span>
+                      <span className="when">{day(m.date) || m.date || "not known"}</span>
                     </td>
                     <td className="who">{m.author || "not known"}</td>
                   </tr>

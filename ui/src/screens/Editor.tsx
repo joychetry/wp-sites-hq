@@ -19,6 +19,7 @@ import { acfErrors, AcfGroups, invalid, type Acf } from "./AcfFields";
 import { STATUS_LABEL } from "./Content";
 import { leaveGuard } from "../fleet";
 import { Page } from "../components/page";
+import { dayTime } from "../format";
 
 
 /** "core/paragraph" -> "Paragraph", "acme/map" -> "Map (acme)", "" -> "Text". */
@@ -144,7 +145,7 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
     try {
       const msg = await api.restoreRevision(site.id, post.id, r.id);
       const p = await api.post(site.id, post.post_type, post.id);
-      onRestored(p, `${msg} "${p.title}" on ${site.name} is back to the version from ${r.date}.`);
+      onRestored(p, `${msg} "${p.title}" on ${site.name} is back to the version from ${dayTime(r.date) || r.date}.`);
       setAsking(null);
       setList(await api.revisions(site.id, post.id));
     } catch (e) {
@@ -178,10 +179,10 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
                 <span className="vwho">
                   <b>{r.author || "Someone"}</b>
                   <span>
-                    <span className="mono">{r.date}</span> · {r.title || "(no title)"}
+                    <span>{dayTime(r.date) || r.date}</span> · {r.title || "(no title)"}
                   </span>
                 </span>
-                <Button small className={on ? undefined : "quiet"} aria-pressed={on} aria-label={`Put back the version from ${r.date}`} onClick={() => setAsking(on ? null : r)}>
+                <Button small className={on ? undefined : "quiet"} aria-pressed={on} aria-label={`Put back the version from ${dayTime(r.date) || r.date}`} onClick={() => setAsking(on ? null : r)}>
                   Put back
                 </Button>
               </li>
@@ -194,7 +195,7 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
           <Glyph name="undo" />
           <div>
             <p>
-              <b>Put back the version from {asking.date}?</b> The title and body go back to that version. The current one is kept as a version too, so you can undo this.
+              <b>Put back the version from {dayTime(asking.date) || asking.date}?</b> The title and body go back to that version. The current one is kept as a version too, so you can undo this.
             </p>
             <div className="row">
               <Button small onClick={() => setAsking(null)}>

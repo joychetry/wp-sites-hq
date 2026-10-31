@@ -7,9 +7,9 @@ import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty } from "../components/feedback";
 import { Page } from "../components/page";
+import { day } from "../format";
 
 const DAY = 86400;
-const DATE = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" });
 
 /** "in 41 days", with a tone: a month's notice, then a week's. */
 export function expiry(
@@ -18,7 +18,7 @@ export function expiry(
 ): { tone: "ok" | "warning" | "danger"; text: string; date: string } | null {
   if (at == null) return null;
   const days = Math.floor((at - now) / DAY);
-  const date = DATE.format(at * 1000);
+  const date = day(at);
   if (days < 0) return { tone: "danger", text: "Expired", date };
   const text = days === 0 ? "Expires today" : `${days === 1 ? "1 day" : `${days} days`} left`;
   return { tone: days < 7 ? "danger" : days < 30 ? "warning" : "ok", text, date };

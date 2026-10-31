@@ -5,12 +5,12 @@ import { ColorInput, FilePicker, Slider } from "../components/controls";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import "../styles/screens/settings.css";
 import { api, useAppUpdate, type AppSettings, type GscStatus, type Imported } from "../api";
-import { when } from "./Overview";
 import { Button, Glyph, type GlyphName } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { toast } from "../components/feedback";
 import { Page } from "../components/page";
 import { setTextSize, textSize, type Density, type ThemeChoice } from "../theme";
+import { day, dayTime } from "../format";
 
 /** What an import did, in a sentence or two. */
 export function importNote(r: Imported): string {
@@ -342,9 +342,9 @@ function AppUpdate({ s, save, saving }: { s: AppSettings | null; save: ReportSet
         <dt>This version</dt>
         <dd>{st?.current ?? "…"}</dd>
         <dt>Last checked</dt>
-        <dd>{st?.checked_at ? when(st.checked_at) : "Not yet"}</dd>
+        <dd>{st?.checked_at ? dayTime(st.checked_at) : "Not yet"}</dd>
         <dt>New version</dt>
-        <dd>{found ? found.version + (found.date ? `, released ${new Date(found.date * 1000).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}` : "") : "None, you have the newest"}</dd>
+        <dd>{found ? found.version + (found.date ? `, released ${day(found.date)}` : "") : "None, you have the newest"}</dd>
       </dl>
       {found && (
         <section className="upd-notes" aria-label={`What's new in ${found.version}`}>

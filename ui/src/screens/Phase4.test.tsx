@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
-import { ClassicMonks, toolLabel, when, whoOf } from "./ClassicMonks";
+import { ClassicMonks, toolLabel, whoOf } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
@@ -314,10 +314,6 @@ describe("Classic Monks", () => {
 
   it("names tools and blocks plainly", () => {
     expect(toolLabel("classic-monks/update-features")).toBe("Update features");
-    const noon = new Date(2026, 9, 28, 12);
-    expect(when("2026-10-28 09:30:12", noon)).toBe("Today, 09:30");
-    expect(when("2026-10-27 16:12:00", noon)).toBe("Yesterday, 16:12");
-    expect(when("2026-10-24 14:20:00", noon)).toBe("Oct 24, 14:20");
     expect(cmBlocked(OLD)).toMatch(/can't change Classic Monks/);
     expect(cmBlocked(site({ sign_in_again: true }))).toBe("Sign in again first.");
     expect(peopleBlocked(BASIC, "get-users")).toBeNull();

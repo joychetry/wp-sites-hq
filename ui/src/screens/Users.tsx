@@ -4,12 +4,13 @@
 import "../styles/screens/users.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
-import { dayLabel, Menu, Select, SearchInput } from "../components/controls";
+import { Menu, Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Role, type Site, type User, type Users as SiteUsers } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions } from "../components/ui";
 import { Sheet } from "../components/Sheet";
+import { day } from "../format";
 
 type Loaded = { site: Site; users?: SiteUsers; error?: string };
 type Action = { kind: "add" } | { kind: "role" | "delete"; site: Site; user: User; roles: Role[] };
@@ -151,7 +152,7 @@ export function Users({ sites }: { sites: Site[] }) {
                   </td>
                   <td>
                     <span className="when" data-tip={u.registered || undefined}>
-                      {dayLabel(u.registered) || "not known"}
+                      {day(u.registered) || "not known"}
                     </span>
                   </td>
                   <td>

@@ -8,6 +8,7 @@ import { Button, Glyph } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { Empty } from "../components/feedback";
 import { Page } from "../components/page";
+import { month } from "../format";
 
 /** Last month, "2026-09", from a date in this one. */
 export function lastMonth(now = new Date()): string {
@@ -19,10 +20,7 @@ export function lastMonth(now = new Date()): string {
 const names = (sites: Site[]) =>
   sites.length <= 3 ? sites.map((s) => s.name).join(", ").replace(/, ([^,]*)$/, " and $1") : `${sites.slice(0, 2).map((s) => s.name).join(", ")} and ${sites.length - 2} more`;
 
-const monthName = (m: string) => {
-  const [y, mo] = m.split("-").map(Number);
-  return y && mo ? new Date(y, mo - 1, 1).toLocaleDateString([], { month: "long", year: "numeric" }) : "";
-};
+const monthName = month;
 
 /** What every report holds, in the order the report shows it. */
 const COVERS = ["Uptime and speed of each home page", "Updates made and what changed", "Security: known vulnerabilities and fixes", "What was published, and the store", "Search numbers, when they're on in Settings"];

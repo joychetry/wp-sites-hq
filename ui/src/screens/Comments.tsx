@@ -3,11 +3,12 @@
 import "../styles/screens/comments.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
-import { dayLabel, Menu } from "../components/controls";
+import { Menu } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Comment, type CommentState, type Moderation, type Site } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
 import { Button, Glyph } from "../components/ui";
+import { dayTime } from "../format";
 
 const SHOW: [CommentState, string][] = [
   ["pending", "Waiting for approval"],
@@ -161,8 +162,6 @@ export function Comments({ sites }: { sites: Site[] }) {
             const k = key(r);
             const who = r.c.author || "A visitor";
             const open = replying === k;
-            const day = dayLabel(r.c.date);
-            const time = r.c.date.slice(11, 16);
             return (
               <li key={k} className="card">
                 <div className="card-body">
@@ -177,8 +176,7 @@ export function Comments({ sites }: { sites: Site[] }) {
                         <b>{r.site.name}</b>, on <span data-tip={r.c.post_title}>{r.c.post_title || "a page with no title"}</span>
                       </span>
                     </div>
-                    <span className="when" data-tip={r.c.date}>
-                      {day ? `${day}${time ? `, ${time}` : ""}` : r.c.date}
+                    <span className="when">{dayTime(r.c.date) || r.c.date}
                     </span>
                   </div>
                   <p className="said">{plainText(r.c.content) || "(empty)"}</p>
