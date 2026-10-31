@@ -250,7 +250,12 @@ pub fn parse(s: &str) -> Result<Vec<Block>, BlockError> {
                     b.span = (from, to);
                     // "<h3 ...>": the digit after "<h".
                     if d.name == "core/heading" {
-                        b.level = s[opener.end..from].trim_start().as_bytes().get(2).filter(|c| c.is_ascii_digit()).map(|c| c - b'0');
+                        b.level = s[opener.end..from]
+                            .trim_start()
+                            .as_bytes()
+                            .get(2)
+                            .filter(|c| c.is_ascii_digit())
+                            .map(|c| c - b'0');
                     }
                 }
                 _ if !nested => b.html = preview(&s[opener.end..d.start]),
@@ -351,7 +356,11 @@ mod tests {
             ]
         );
         assert_eq!(b[0].html, "Our <em>menu</em>");
-        assert_eq!((b[0].level, b[1].level), (Some(2), None), "a heading knows its level");
+        assert_eq!(
+            (b[0].level, b[1].level),
+            (Some(2), None),
+            "a heading knows its level"
+        );
         assert_eq!(b[3].html, "Open 7 to 3.");
         assert_eq!(b[4].html, "The shop", "a locked block shows its text");
         assert_eq!(b[6].html, "Rye");
