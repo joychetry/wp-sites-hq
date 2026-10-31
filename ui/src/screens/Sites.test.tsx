@@ -175,7 +175,7 @@ test("the inspector names the plugin running the connector and the spare copies"
         operator: true,
         abilities: ["get-hq-status"],
         plugin: { name: "Classic Monks", version: "1.9.0" },
-        connector: { version: "1.1.0", hosts: [{ name: "Classic Monks", version: "1.9.0" }, { name: "WP Sites HQ", version: "1.0.0" }] },
+        connector: { version: "1.1.0", hosts: [{ name: "Classic Monks", version: "1.9.0" }, { name: "WP Sites HQ", version: "0.2.0" }] },
       },
       cm_version: "1.9.0",
     }),
@@ -184,7 +184,7 @@ test("the inspector names the plugin running the connector and the spare copies"
   const { rerender } = render(<Sites sites={sites} groups={[]} focusId={7} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   let insp = screen.getByRole("complementary", { name: "Both details" });
   expect(insp).toHaveTextContent("PluginClassic Monks Free 1.9.0, connector 1.1.0");
-  expect(insp).toHaveTextContent("Also on the siteWP Sites HQ 1.0.0, not running");
+  expect(insp).toHaveTextContent("Also on the siteWP Sites HQ 0.2.0, not running");
   expect(insp).toHaveTextContent("Classic Monks Free, full access");
   rerender(<Sites sites={sites} groups={[]} focusId={8} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   insp = screen.getByRole("complementary", { name: "Old details" });

@@ -175,7 +175,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           </div>
           <SearchInput
             ref={filter}
-            placeholder="Filter by name, address, group or tag"
+            placeholder="Filter sites"
             aria-label="Filter sites"
             aria-keyshortcuts="/"
             value={query}
@@ -568,7 +568,12 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           <h2>{s.name}</h2>
           <small>
             {s.url.replace(/^https?:\/\//, "")}
-            {s.client && ` · ${s.client}`}
+            {s.client && (
+              <>
+                {" · "}
+                <span className="client">{s.client}</span>
+              </>
+            )}
           </small>
         </div>
         <span className={`st pill ${st.tone}`}>

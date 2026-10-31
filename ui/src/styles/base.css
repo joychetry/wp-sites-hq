@@ -133,9 +133,9 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .phead p { margin: 0; font-size: var(--fs-md); color: var(--text-2); }
 .empty { padding: var(--sp-7) var(--pad); color: var(--text-2); max-width: 560px; }
 .empty h2 { font: 600 var(--fs-lg)/var(--lh-tight) var(--display); letter-spacing: -0.02em; color: var(--text); margin: 0 0 var(--sp-3); }
-.chip { height: var(--control); padding: 0 var(--sp-3); border: 1px dashed var(--line-ui); border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-2); background: var(--bg); }
-.chip:hover { border-style: solid; }
-.chip.on { border-style: solid; border-color: var(--green); color: var(--text); background: var(--sel); }
+.chip { height: var(--control); padding: 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--radius-control); display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 500; color: var(--text-2); background: var(--bg); white-space: nowrap; }
+.chip:hover { border-color: var(--line-ui); background: var(--panel); }
+.chip.on { border-color: var(--green); color: var(--text); background: var(--sel); }
 .chip b { font-weight: 600; color: var(--text); }
 .notice:not(:empty) { padding: var(--sp-2) var(--pad) 0; }
 .notice .alert { margin: 0; }

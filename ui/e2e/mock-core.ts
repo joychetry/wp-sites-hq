@@ -145,7 +145,7 @@ const FLEET: Site[] = [
         version: "1.1.0",
         hosts: [
           { name: "Classic Monks Pro", version: "2.6.0", connector: "1.1.0" },
-          { name: "WP Sites HQ", version: "1.0.0", connector: "1.1.0" },
+          { name: "WP Sites HQ", version: "0.2.0", connector: "1.1.0" },
         ],
       },
     },
