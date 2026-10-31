@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { ago, day, dayTime, month, range, time, toDate } from "./format";
+import { ago, day, dayTime, month, range, time, toDate, vulnSummary } from "./format";
 
 // Local dates, so the asserts hold in any timezone; the expected text comes from the same locale.
 const at = new Date(2026, 9, 28, 9, 30);
@@ -39,4 +39,13 @@ test("relative time: just now, minutes, hours, yesterday, then days", () => {
   expect(ago(now - 3 * 3600, now)).toBe("3 hr ago");
   expect(ago(now - 30 * 3600, now)).toBe("yesterday");
   expect(ago(now - 5 * 86400, now)).toBe("5 days ago");
+});
+
+test("a vulnerability feed title becomes one plain sentence", () => {
+  expect(vulnSummary("WooCommerce < 10.3.0 - Authenticated (Shop Manager+) Stored Cross-Site Scripting via product reviews")).toBe(
+    "Someone could add harmful code that runs in visitors' or admins' browsers. It needs a signed-in account.",
+  );
+  expect(vulnSummary("Forms <= 2.3 - Unauthenticated SQL Injection")).toBe("Someone could read or change the site's database. No account is needed.");
+  expect(vulnSummary("Classic Editor <= 1.6 - Cross-Site Request Forgery")).toBe("Someone could trick a signed-in user into making changes.");
+  expect(vulnSummary("Something odd")).toBe("A known security problem in this version.");
 });

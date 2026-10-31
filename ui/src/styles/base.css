@@ -688,3 +688,11 @@ ul.plain .row { flex-wrap: wrap; }
 .toolbar > .end, .toolbar > .segmented.end { margin-left: auto; }
 .page > .tabs, .page-main > .tabs { padding: 0; }
 .toolbar .pick > span { font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+/* "Show the details": raw text from a site or a feed, behind a disclosure the app draws. */
+details.more { margin-top: var(--sp-1); }
+details.more > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--text-2); font-size: var(--fs-sm); }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary:hover { color: var(--text); }
+details.more > summary .glyph { width: 14px; height: 14px; transition: transform .15s var(--ease); }
+details.more[open] > summary .glyph { transform: rotate(180deg); }
+details.more > div { margin-top: var(--sp-1); color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }

@@ -3,7 +3,8 @@
 import { Fragment, useMemo, useState } from "react";
 import "../styles/screens/updates.css";
 import { ago, api, blocked, siteStatus, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
-import { Button, Glyph, HeadActions, Icon } from "../components/ui";
+import { Button, Details, Glyph, HeadActions, Icon } from "../components/ui";
+import { vulnSummary } from "../format";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
 import { Empty, toast } from "../components/feedback";
@@ -160,7 +161,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
         </td>
         <td>
           {tone ? (
-            <span className={`st pill ${tone}`} data-tip={r.vuln?.title}>
+            <span className={`st pill ${tone}`} data-tip={r.vuln && vulnSummary(r.vuln.title)}>
               <Icon tone={tone} />
               {words}
             </span>
@@ -229,7 +230,8 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
                     {r.name} {r.to}
                   </b>{" "}
                   on {r.site}
-                  <small>{r.vuln!.title}</small>
+                  <small>{vulnSummary(r.vuln!.title)}</small>
+                  <Details>{r.vuln!.title}</Details>
                 </li>
               ))}
             </ul>

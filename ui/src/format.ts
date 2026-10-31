@@ -57,3 +57,27 @@ export function ago(unix: number | null, now = Date.now() / 1000): string {
   const d = Math.floor(s / 86400);
   return d === 1 ? "yesterday" : `${d} days ago`;
 }
+
+// What a vulnerability feed title ("WooCommerce < 10.3.0 - Authenticated (Shop Manager+) Stored Cross-Site
+// Scripting via ...") means, in plain words. The raw title stays behind "Show the details".
+const HARM: [RegExp, string][] = [
+  [/cross[- ]site request forgery|csrf/i, "Someone could trick a signed-in user into making changes."],
+  [/cross[- ]site scripting|xss/i, "Someone could add harmful code that runs in visitors' or admins' browsers."],
+  [/sql injection/i, "Someone could read or change the site's database."],
+  [/remote code execution|code injection|\brce\b|object injection/i, "Someone could run their own code on the server."],
+  [/privilege escalation/i, "A user could give themselves more rights than their role allows."],
+  [/authentication bypass/i, "Someone could get in without signing in properly."],
+  [/file (upload|deletion|read|download|inclusion)|path traversal|directory traversal/i, "Someone could read, add or remove files on the server."],
+  [/missing authori[sz]ation|access control|insecure direct object/i, "Users could do things their role should not allow."],
+  [/information (disclosure|exposure)|sensitive (data|information)/i, "Private information could be shown to people who should not see it."],
+  [/open redirect/i, "Visitors could be sent on to another site."],
+  [/denial of service|\bdos\b/i, "Someone could make the site stop answering."],
+  [/server[- ]side request forgery|ssrf/i, "Someone could make the server send requests for them."],
+];
+
+/** The harm in one plain sentence, and who could do it. */
+export function vulnSummary(title: string): string {
+  const harm = HARM.find(([re]) => re.test(title))?.[1] ?? "A known security problem in this version.";
+  const who = /unauthenticated/i.test(title) ? " No account is needed." : /\bauthenticated\b|[a-z]\+/i.test(title) ? " It needs a signed-in account." : "";
+  return harm + who;
+}

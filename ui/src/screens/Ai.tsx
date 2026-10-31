@@ -9,7 +9,7 @@ import { Tabs } from "../components/controls";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { ago, api, useInventory, type Entry, type Job, type JobItem, type Site } from "../api";
-import { Button, Glyph, HeadActions, Status } from "../components/ui";
+import { Button, Details, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
@@ -25,6 +25,12 @@ const RESULT: Record<Exclude<Entry["outcome"], "done">, [string, "danger" | "war
   waiting: ["Waiting for you", "warning"],
 };
 const PER_PAGE = 50;
+/** A site's note written for the AI app (a link and steps for it) shows only its first plain sentence. */
+function plainDetail(detail: string): string {
+  if (!/https?:\/\//.test(detail)) return detail;
+  const first = detail.split(/(?<=\.)\s+/)[0];
+  return /https?:\/\//.test(first) ? "The site sent steps for the AI app." : first;
+}
 const CLAUDE = "claude mcp add wp-sites-hq -- wpshq mcp";
 const CONFIG = '{ "mcpServers": { "wp-sites-hq": { "command": "wpshq", "args": ["mcp"] } } }';
 
@@ -384,21 +390,26 @@ function Log() {
               <span className={`av ${r.actor === "human" ? "me" : "ai"}`} aria-hidden="true">
                 {r.actor === "human" ? "You" : <Glyph name="sparkle" />}
               </span>
-              <p>
-                {said(r, inventory)}
-                {r.site_name ? (
-                  <>
-                    {" "}
-                    on <b>{r.site_name}</b>.
-                  </>
-                ) : (
-                  " on several sites."
-                )}
-                {r.detail && <span className="why">{r.detail}</span>}
-                <time dateTime={new Date(r.at * 1000).toISOString()} data-tip={day(r.at)}>
-                  {dayTime(r.at)}
-                </time>
-              </p>
+              <div>
+                <p>
+                  {said(r, inventory)}
+                  {r.site_name ? (
+                    <>
+                      {" "}
+                      on <b>{r.site_name}</b>.
+                    </>
+                  ) : / on \d+ sites?$/.test(r.what) ? (
+                    "."
+                  ) : (
+                    " on several sites."
+                  )}
+                  {r.detail && <span className="why">{plainDetail(r.detail)}</span>}
+                  <time dateTime={new Date(r.at * 1000).toISOString()} data-tip={day(r.at)}>
+                    {dayTime(r.at)}
+                  </time>
+                </p>
+                {r.detail && plainDetail(r.detail) !== r.detail && <Details>{r.detail}</Details>}
+              </div>
               {r.outcome !== "done" && <Status tone={RESULT[r.outcome][1]}>{RESULT[r.outcome][0]}</Status>}
             </li>
           ))}
