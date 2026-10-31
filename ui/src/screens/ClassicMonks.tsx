@@ -737,7 +737,7 @@ function Reports({ site }: { site: Site }) {
                 <tr key={u.id}>
                   <td className="m cut">{u.url}</td>
                   <td className="r">{u.hits}</td>
-                  <td className="dim">{u.last_seen}</td>
+                  <td className="dim">{dayTime(u.last_seen) || u.last_seen}</td>
                   <td className="dim cut">{u.referrer || "not known"}</td>
                 </tr>
               ))}
