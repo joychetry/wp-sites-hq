@@ -144,7 +144,7 @@ test("the content editor works from the keyboard and gives focus back", async ({
   await expect(page.getByText("Unsaved changes")).toBeVisible();
   // Ctrl+S saves from inside the editor.
   await page.keyboard.press("Control+s");
-  await expect(page.getByText('Saved "Our menu" on MC A.')).toBeVisible();
+  await expect(page.getByText('Saved “Our menu” on MC A.')).toBeVisible();
   await expect(page.getByText("Unsaved changes")).toHaveCount(0);
   await page.getByRole("button", { name: "Back to pages" }).focus();
   await page.keyboard.press("Enter");
@@ -181,7 +181,7 @@ test("saving and its messages never move the page: title, a body edit and an ACF
   await expect(page.getByText("Unsaved changes")).toBeVisible();
   expect(await y(title)).toBe(top);
   await page.getByRole("button", { name: "Update", exact: true }).click();
-  await expect(page.getByText('Saved "Winter opening hours" on MC A.')).toBeVisible();
+  await expect(page.getByText('Saved “Winter opening hours” on MC A.')).toBeVisible();
   expect(await y(title)).toBe(top);
 
   await show(page, SCREENS.find((s) => s.name === "content-acf")!, "light");

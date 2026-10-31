@@ -112,7 +112,7 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
       if (confirm) onWatch(await api.confirmPlan(plan.id));
       else {
         await api.declinePlan(plan.id);
-        note({ text: plan.expired ? `Removed "${plan.title}". Nothing changed.` : `Declined "${plan.title}". Nothing changed.`, ok: true });
+        note({ text: plan.expired ? `Removed “${plan.title}”. Nothing changed.` : `Declined “${plan.title}”. Nothing changed.`, ok: true });
       }
     } catch (e) {
       note({ text: String(e), ok: false });

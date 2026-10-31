@@ -304,7 +304,7 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
       footer={
         <>
           <Button className="ghost" onClick={onClose}>
-            Cancel
+            Close without saving
           </Button>
           <Button kind="primary" className="disc" disabled={busy || !username.trim() || !email.trim() || !info} onClick={save}>
             {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
@@ -389,7 +389,7 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
       footer={
         <>
           <Button className="ghost" onClick={onClose}>
-            Cancel
+            Close without saving
           </Button>
           <Button kind="primary" className="disc" disabled={busy || role === user.role} onClick={save}>
             {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
@@ -456,7 +456,7 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
       footer={
         <>
           <Button className="ghost" onClick={onClose}>
-            Cancel
+            Close without deleting
           </Button>
           <Button kind="danger" className="solid" disabled={busy || !to} onClick={save}>
             {busy ? "Deleting…" : `Delete ${who}`}
