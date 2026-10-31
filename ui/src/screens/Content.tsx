@@ -369,10 +369,12 @@ export function Content({ sites, onPlan }: Props) {
             {first}–{first + rows.length - 1} of {list.total} {(list.total === 1 ? type.singular : type.label).toLowerCase()}
           </span>
           <Button small disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <Glyph name="arrow-left" />
             Previous page
           </Button>
           <Button small disabled={page >= list.pages} onClick={() => setPage(page + 1)}>
             Next page
+            <Glyph name="arrow" />
           </Button>
         </div>
       </>

@@ -570,10 +570,12 @@ function Log({ site, onDone, round }: Part) {
           Page {data.page} of {data.pages}, {data.total} {data.total === 1 ? "change" : "changes"}
         </span>
         <Button small disabled={page <= 1} onClick={() => setPage(page - 1)}>
+          <Glyph name="arrow-left" />
           Previous page
         </Button>
         <Button small disabled={page >= data.pages} onClick={() => setPage(page + 1)}>
           Next page
+          <Glyph name="arrow" />
         </Button>
       </div>
       <p className="card-foot note" id="activity-legend">

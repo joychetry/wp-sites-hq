@@ -203,7 +203,10 @@ export function AddSite({ again, onClose, onDone }: Props) {
         onClose={close}
         footer={
           <>
-            <Button onClick={() => setStep(1)}>Back</Button>
+            <Button onClick={() => setStep(1)}>
+              <Glyph name="arrow-left" />
+              Back
+            </Button>
             {primary}
           </>
         }
