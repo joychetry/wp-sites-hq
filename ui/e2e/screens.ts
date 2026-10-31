@@ -13,6 +13,9 @@ export async function choose(select: Locator, by: { name: string } | { value: st
 
 // Each page is a lazy chunk: wait until it is drawn, so its own keys are listening before the next step.
 const nav = (name: string) => async (page: Page) => {
+  // Under 900px wide (200% zoom) the nav is behind the Menu button.
+  const menu = page.getByRole("button", { name: "Menu", exact: true });
+  if (await menu.isVisible()) await menu.click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: new RegExp(`^${name}`) }).click();
   await page.locator(".body > :not(.phead):not(.page-loading)").first().waitFor();
   await page.locator(".page-loading").waitFor({ state: "detached" });

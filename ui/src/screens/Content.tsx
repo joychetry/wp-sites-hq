@@ -273,22 +273,6 @@ export function Content({ sites, onPlan }: Props) {
           Select a title to open it, or tick entries to change several at once. Dates are in the site's own time zone.
           {inTrash && !canBack && " Bringing entries back from the trash needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site."}
         </p>
-        {onPlan && actions.length > 0 && (
-          <div className="bulk" role="group" aria-label="Change the ticked entries">
-            <b>{chosen.length === 0 ? "None ticked" : chosen.length === 1 ? "1 entry ticked" : `${chosen.length} entries ticked`}</b>
-            {actions.map((a) => (
-              <Button key={a} small disabled={chosen.length === 0} onClick={() => bulk(a)}>
-                {BULK[a].button}
-                {chosen.length > 0 && ` (${chosen.length})`}
-                {a === "trash" && <Glyph name="trash" />}
-              </Button>
-            ))}
-            <span className="grow" />
-            <Button small keys="Esc" disabled={chosen.length === 0} onClick={() => setPicked(new Set())}>
-              Clear selection
-            </Button>
-          </div>
-        )}
         <table className="t" aria-label={type.label} aria-describedby="content-legend">
           <thead>
             <tr>
@@ -367,6 +351,22 @@ export function Content({ sites, onPlan }: Props) {
             })}
           </tbody>
         </table>
+        {onPlan && actions.length > 0 && chosen.length > 0 && (
+          <div className="selbar" role="group" aria-label="Change the ticked entries">
+            <b>{chosen.length === 1 ? "1 entry ticked" : `${chosen.length} entries ticked`}</b>
+            {actions.map((a) => (
+              <Button key={a} small onClick={() => bulk(a)}>
+                {BULK[a].button}
+                {` (${chosen.length})`}
+                {a === "trash" && <Glyph name="trash" />}
+              </Button>
+            ))}
+            <span className="grow" />
+            <Button small keys="Esc" onClick={() => setPicked(new Set())}>
+              Clear selection
+            </Button>
+          </div>
+        )}
         <div className="card-foot">
           <span className="count">
             {first}–{first + rows.length - 1} of {list.total} {(list.total === 1 ? type.singular : type.label).toLowerCase()}

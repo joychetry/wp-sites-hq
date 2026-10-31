@@ -20,7 +20,7 @@
 .sites .t .tag .glyph { width: 11px; height: 11px; }
 .sites .card-foot { justify-content: space-between; flex-wrap: wrap; margin: 0; font-size: var(--fs-sm); }
 .sites .card-foot .keys .kbd { margin-right: 2px; }
-.sites .selbar { border-radius: 0 0 var(--radius-lg) var(--radius-lg); gap: 10px 14px; }
+.sites .selbar { gap: 10px 14px; }
 .sites .selbar label { gap: var(--sp-2); font-size: var(--fs-sm); }
 .sites .selbar .btn.ghost { border-color: transparent; }
 /* The row's own buttons go first when the table gets narrow; the panel has the same actions. */

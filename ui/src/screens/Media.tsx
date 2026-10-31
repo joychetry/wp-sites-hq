@@ -562,19 +562,6 @@ export function Media({ sites }: { sites: Site[] }) {
         <p className="sr-only" id="media-legend">
           Newest first. Pick one to see its details, alt text and where it is used{canTrash ? ", or tick several to move them to the trash" : ""}.
         </p>
-        {canTrash && (
-          <div className="bulk" role="group" aria-label="Change the ticked items">
-            <b>{ticked.size === 0 ? "None ticked" : ticked.size === 1 ? "1 item ticked" : `${ticked.size} items ticked`}</b>
-            <Button small disabled={ticked.size === 0} onClick={trash}>
-              Move to the trash{ticked.size > 0 && ` (${ticked.size})`}
-              <Glyph name="trash" />
-            </Button>
-            <span className="grow" />
-            <Button small keys="Esc" disabled={ticked.size === 0} onClick={() => setTicked(new Set())}>
-              Clear selection
-            </Button>
-          </div>
-        )}
         {view === "grid" ? (
           <ul className="mthumbs mgrid" aria-label={`${site?.name} media`} aria-describedby="media-legend">
             {items.map((m) => (
@@ -631,6 +618,19 @@ export function Media({ sites }: { sites: Site[] }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {canTrash && ticked.size > 0 && (
+          <div className="selbar" role="group" aria-label="Change the ticked items">
+            <b>{ticked.size === 1 ? "1 item ticked" : `${ticked.size} items ticked`}</b>
+            <Button small onClick={trash}>
+              Move to the trash ({ticked.size})
+              <Glyph name="trash" />
+            </Button>
+            <span className="grow" />
+            <Button small keys="Esc" onClick={() => setTicked(new Set())}>
+              Clear selection
+            </Button>
           </div>
         )}
       </>

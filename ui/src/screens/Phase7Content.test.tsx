@@ -165,8 +165,8 @@ test("ticked entries change in bulk through a plan", async () => {
   const plans: [string, number, string | undefined, boolean | undefined][] = [];
   render(<Content sites={[CM]} onPlan={(t, r, start, danger) => plans.push([t, r.length, start, danger])} />);
   const table = await screen.findByRole("table", { name: "Posts" });
-  const trash = screen.getByRole("button", { name: "Move to the trash" });
-  expect(trash).toBeDisabled();
+  // The bulk bar shows only while something is ticked.
+  expect(screen.queryByRole("group", { name: "Change the ticked entries" })).not.toBeInTheDocument();
   fireEvent.click(within(table).getByRole("checkbox", { name: "Tick every entry on this page" }));
   fireEvent.click(screen.getByRole("button", { name: "Move to the trash (2)" }));
   fireEvent.click(within(table).getByRole("checkbox", { name: "Tick Hours" }));
