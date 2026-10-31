@@ -13,6 +13,7 @@ import { SiteTile } from "../components/SiteTile";
 import { Sheet } from "../components/Sheet";
 import type { PlanRow } from "../components/JobSheet";
 import { money } from "./Clients";
+import { range } from "../format";
 
 const PERIODS: [number, string][] = [
   [7, "7 days"],
@@ -164,9 +165,7 @@ export function Store({ sites, onPlan }: Props) {
                 Orders and revenue on {site.name}, last {days} days
               </h2>
               {overview && (
-                <span className="dim m">
-                  {overview.from} to {overview.to}
-                </span>
+                <span className="dim">{range(overview.from, overview.to)}</span>
               )}
             </div>
             {overview ? (
@@ -412,7 +411,7 @@ function ProductSheet({ product, site, thumb, currency, onClose, onPlan }: Sheet
   const change = productChange(product, regular, sale, stock);
   const footer = (
     <>
-      <Button onClick={onClose}>Close without changing</Button>
+      <Button onClick={onClose}>Close without saving</Button>
       <Button kind="primary" className="disc" disabled={typeof change === "string"} onClick={() => typeof change !== "string" && onPlan(change)}>
         Review the change
         <span className="btn-disc">
