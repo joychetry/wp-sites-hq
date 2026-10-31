@@ -1,19 +1,19 @@
 # AI apps
 
-`monks mcp` is an MCP server for Claude Code, Claude Desktop, Cursor and VS
-Code. It reaches every site through Monks Central, always as an agent.
+`wpshq mcp` is an MCP server for Claude Code, Claude Desktop, Cursor and VS
+Code. It reaches every site through WP Sites HQ, always as an agent.
 
 ```sh
-claude mcp add monks-central -- monks mcp
+claude mcp add wp-sites-hq -- wpshq mcp
 ```
 
 or, in an MCP config file:
 
 ```json
-{ "mcpServers": { "monks-central": { "command": "monks", "args": ["mcp"] } } }
+{ "mcpServers": { "wp-sites-hq": { "command": "wpshq", "args": ["mcp"] } } }
 ```
 
-The `monks` command comes with the app; see [Install](install.md) to put it
+The `wpshq` command comes with the app; see [Install](install.md) to put it
 on your PATH.
 
 ## What an agent can do

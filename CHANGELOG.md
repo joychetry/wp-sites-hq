@@ -1,8 +1,41 @@
 # Changelog
 
-All notable changes to Monks Central. The format follows
+All notable changes to WP Sites HQ (called Monks Central until 0.3.2). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org).
+
+## [0.4.0] - 2026-10-31
+
+Monks Central is now WP Sites HQ. Same app, same data, new name.
+
+### What stays
+- Your sites, saved sign-ins, settings and history. The data folder and the
+  keychain entry keep their old names, so you never sign in again because of
+  the rename.
+- No database change: you can go back to 0.3.2 by installing it.
+
+### What changes
+- The app, its windows, tray, installers and messages say WP Sites HQ. The
+  publisher is Good Monks.
+- The command is `wpshq` (`wpshq mcp` for AI apps). `monks` still works
+  until 1.0 and prints a one-line note, except for `monks mcp`.
+- Sites see the app as WP Sites HQ (sign-ins, User-Agent `WPSitesHQ`). Log
+  rows from before the rename still read as You.
+- Install the WP Sites HQ plugin fetches `wp-sites-hq.zip` from the new
+  plugin repo. Sites that run the Monks Central plugin keep working.
+- The app icon stays the same until the new brand art is ready.
+
+### Updating from Monks Central
+- **Mac:** the update keeps the app where it is, so Finder may still call it
+  "Monks Central.app". The Dock, menu bar and About say WP Sites HQ. Quit
+  the app and rename it in Finder if you like; it keeps working either way.
+- **Windows:** the update installs WP Sites HQ and removes Monks Central from
+  Apps and the Start menu. If you put the old folder on PATH for
+  `monks.exe`, use `%LOCALAPPDATA%\WP Sites HQ` now.
+- **Linux:** the `wp-sites-hq` package replaces `monks-central`. The
+  AppImage updates in place and keeps its old file name.
+- Moving each site's plugin to its new folder: see "Moving from Monks
+  Central" in the install guide.
 
 ## [0.3.2] - 2026-10-30
 
@@ -169,8 +202,9 @@ The first public beta. Unsigned installers for macOS, Windows and Linux.
   before it installs.
 - The `monks` command line is installed with the app.
 
-[0.3.2]: https://github.com/joychetry/monks-central/compare/v0.3.1...v0.3.2
-[0.3.1]: https://github.com/joychetry/monks-central/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/joychetry/monks-central/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/joychetry/monks-central/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/joychetry/monks-central/releases/tag/v0.1.0
+[0.4.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.3.2...v0.4.0
+[0.3.2]: https://github.com/joychetry/wp-sites-hq/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/joychetry/wp-sites-hq/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/joychetry/wp-sites-hq/releases/tag/v0.1.0

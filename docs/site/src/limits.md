@@ -10,7 +10,7 @@ Honest limits of a desktop app, and of this first beta:
 - **Keychain needed.** Linux needs GNOME Keyring or KWallet running.
 - **One computer.** Your data lives on the computer you use. Export the site
   list (Settings) to move it; sign in to each site again on the new computer.
-- **No phone or network access.** Monks Central listens only on your own
+- **No phone or network access.** WP Sites HQ listens only on your own
   computer. Read-only access from other devices may come later.
 - **Basic mode** sites can't update, roll back or log in with one click; install
   Classic Monks for that.

@@ -1,6 +1,6 @@
 # Summary
 
-[Monks Central](introduction.md)
+[WP Sites HQ](introduction.md)
 
 - [Install](install.md)
 - [Add your first site](first-site.md)

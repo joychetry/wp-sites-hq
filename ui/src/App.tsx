@@ -452,7 +452,7 @@ export default function App() {
           <Logo />
           <p>
             WP Sites HQ
-            <small>by Classic Monks</small>
+            <small>by Good Monks</small>
           </p>
         </div>
         <div className="rail-nav">
