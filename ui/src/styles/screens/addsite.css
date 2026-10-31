@@ -8,7 +8,7 @@
 .sheet .meta { font-size: var(--fs-xs); color: var(--text-3); }
 .choices { display: grid; gap: var(--sp-2); border: 0; padding: 0; margin: 0; }
 .choices legend { padding: 0; margin-bottom: var(--sp-2); font-size: var(--fs-sm); font-weight: 600; }
-.choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); padding: 14px var(--sp-4); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: pointer; }
+.choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-1) var(--sp-3); padding: 14px var(--sp-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); cursor: pointer; }
 .choice:hover { border-color: var(--line-2); }
 .choice:has(:checked) { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); background: var(--sel); }
 .choice:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }

@@ -11,7 +11,7 @@
 .rep-well { padding: var(--sp-5); background: var(--panel); }
 .rep-well .preview { height: 640px; }
 /* The report's own look: white paper whatever the theme, as the PDF prints. */
-.rep-page { display: grid; gap: var(--sp-3); max-width: 420px; margin: 0 auto; padding: var(--sp-5); border-radius: 6px; background: #ffffff; color: #0d1411; box-shadow: var(--shadow-float); }
+.rep-page { display: grid; gap: var(--sp-3); max-width: 420px; margin: 0 auto; padding: var(--sp-5); border-radius: var(--radius-xs); background: #ffffff; color: #0d1411; box-shadow: var(--shadow-float); }
 .rep-page header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: 2px solid var(--accent-r); }
 .rep-page header > div { display: grid; gap: 2px; }
 .rep-page .label { color: #45524b; }

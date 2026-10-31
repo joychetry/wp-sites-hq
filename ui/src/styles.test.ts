@@ -45,6 +45,16 @@ describe("type scale", () => {
   });
 });
 
+describe("radius system", () => {
+  // Every corner comes from the scale in tokens.css (audit.md, section 3): a --radius-* token, a circle, or none.
+  it.each(files.filter((f) => f !== "tokens.css"))("%s rounds corners only with the --radius tokens", (f) => {
+    const bad = [...css[f].matchAll(/border-radius:\s*([^;}]+)/g)]
+      .filter((m) => !m[1].trim().split(/\s+/).every((p) => /^(var\(--radius(-xs|-sm|-lg|-xl|-pill|-tile)?\)|50%|0)$/.test(p)))
+      .map((m) => m[0]);
+    expect(bad).toEqual([]);
+  });
+});
+
 describe("page system", () => {
   it("leaves page layout to components/page.tsx", () => {
     const bad = files.filter((f) => f.startsWith("screens/") && /\.scroll\.page|\.split-r|\.filters|\.mfilters|\.cfilter|\.phead-acts/.test(css[f]));
