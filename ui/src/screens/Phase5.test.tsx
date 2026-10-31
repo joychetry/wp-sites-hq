@@ -148,8 +148,8 @@ test("connect shows the command to add Monks Central to an AI app", async () => 
     </HeadSlot.Provider>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Connect an AI app" }));
-  expect(screen.getByText("claude mcp add monks-central -- monks mcp")).toBeInTheDocument();
+  expect(screen.getByText("claude mcp add wp-sites-hq -- wpshq mcp")).toBeInTheDocument();
   fireEvent.click(screen.getAllByRole("button", { name: "Copy" })[0]);
   expect(await screen.findByText("Copied the Claude Code command.")).toBeInTheDocument();
-  expect(writeText).toHaveBeenCalledWith("claude mcp add monks-central -- monks mcp");
+  expect(writeText).toHaveBeenCalledWith("claude mcp add wp-sites-hq -- wpshq mcp");
 });
