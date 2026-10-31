@@ -77,8 +77,9 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .glyph { width: 16px; height: 16px; flex: none; stroke-linecap: round; stroke-linejoin: round; }
 .rail { background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; height: 100vh; }
 /* The brand and the foot stay put; only the nav between them scrolls. */
-.rail > .brand { flex: none; margin: var(--sp-4) var(--sp-3) var(--sp-2); }
-.rail-nav { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 2px; padding: 0 var(--sp-3) var(--sp-3); }
+/* The logo block lines up with the top bar: same 64px height, same bottom border. */
+.rail > .brand { flex: none; box-sizing: border-box; min-height: 64px; margin: 0; padding: 0 calc(var(--sp-3) + 6px); border-bottom: 1px solid var(--line); }
+.rail-nav { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 2px; padding: var(--sp-3) var(--sp-3); }
 .brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; }
 .brand .mark { width: 30px; height: 30px; }
 .brand p { margin: 0; font: 600 var(--fs-md)/var(--lh-tight) var(--display); letter-spacing: -0.02em; color: var(--text); }
@@ -86,7 +87,8 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 /* "Sites to show" group select in the top bar (no visible label; the select is named for screen readers) */
 .scope-field { display: inline-flex; align-items: center; gap: var(--sp-2); margin: 0; }
 .scope { width: auto; min-width: 168px; max-width: 260px; font-weight: 500; }
-.scope.sm { height: var(--control-sm); font-size: var(--fs-sm); padding-right: 8px; }
+/* Same height and pill shape as the status pills beside it. */
+.top .select.scope.sm { height: var(--control-sm); border-radius: var(--radius-pill); font-size: var(--fs-sm); padding: 0 var(--sp-2) 0 var(--sp-3); }
 .navgroup { padding: 14px var(--sp-3) var(--sp-1); margin: 0; }
 .navitem .glyph, .navitem .mark { width: 17px; height: 17px; }
 .rail ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
@@ -110,7 +112,7 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .themes .glyph { width: 14px; height: 14px; }
 .ver { font: 400 var(--fs-xs) var(--mono); color: var(--text-3); }
 .main { display: flex; flex-direction: column; min-width: 0; height: 100vh; background: var(--ground); }
-.top { min-height: 64px; flex: none; border-bottom: 1px solid var(--line); background: var(--bg); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3) var(--sp-4); padding: var(--sp-3) var(--sp-6); }
+.top { min-height: 64px; flex: none; border-bottom: 1px solid var(--line); background: var(--bg); display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3) var(--sp-2); padding: var(--sp-3) var(--sp-6); }
 .fresh { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-width: 0; margin: 0; }
 .fresh .pill { display: inline-flex; align-items: center; gap: var(--sp-2); height: var(--control-sm); padding: 0 var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); color: var(--text-2); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; }
 .fresh .pill.warning { border-color: var(--warn-line); background: var(--warn-bg); color: var(--warn); font-weight: 600; }
@@ -119,7 +121,7 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--sel); flex: none; }
 .pulse.on { animation: pulse 1.2s ease-in-out infinite; }
 .top-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
-.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 24vw, 300px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--radius-control); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
+.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(200px, 17vw, 232px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--radius-control); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
 .kbar span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kbar:hover { border-color: var(--line-ui); color: var(--text-2); }
 .body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--head-gap) 0; padding: 28px var(--sp-6) var(--sp-5); }
