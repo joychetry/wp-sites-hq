@@ -3,12 +3,13 @@
 import "../styles/screens/clients.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page } from "../components/page";
-import { DateInput, dayLabel, MultiSelect, Select } from "../components/controls";
+import { DateInput, MultiSelect, Select } from "../components/controls";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
-import { Button, Glyph, HeadActions } from "../components/ui";
+import { Button, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
+import { day } from "../format";
 
 /** "€12.50"; an unknown code still reads ("XYZ 12.50"). `whole` drops ".00" (the stat cards: "€340"). */
 export function money(cents: number, currency: string, whole = false): string {
@@ -90,7 +91,7 @@ export function Clients({ sites }: { sites: Site[] }) {
   if (error) {
     return (
       <Page>
-        <Empty alert title="Clients didn't load." action={<Button onClick={load}>Try again</Button>}>
+        <Empty alert title="Clients didn't load" action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
         </Empty>
       </Page>
@@ -159,7 +160,7 @@ export function Clients({ sites }: { sites: Site[] }) {
       </HeadActions>
       {clients.length === 0 && costs.length === 0 ? (
         <section className="card">
-          <Empty title="No clients yet.">
+          <Empty title="No clients yet">
             <p>Add a client, tick their sites, then note what the sites cost you (hosting, domains, licences) and what you charge. Client reports use the same list.</p>
           </Empty>
         </section>
@@ -261,7 +262,7 @@ export function Clients({ sites }: { sites: Site[] }) {
                         </tr>
                         {list.map((k) => {
                           const on = k.site_id != null && own.length > 1 ? siteOf(k.site_id)?.name : null;
-                          const when = k.renews_on ? `${k.every === "once" ? "due" : "renews"} ${dayLabel(k.renews_on) || k.renews_on}` : null;
+                          const when = k.renews_on ? `${k.every === "once" ? "due" : "renews"} ${day(k.renews_on) || k.renews_on}` : null;
                           return (
                             <tr key={k.id} className="item">
                               <td>
@@ -311,12 +312,12 @@ export function Clients({ sites }: { sites: Site[] }) {
                           {k.label} · {whose(k)}
                         </b>
                         <span>
-                          {dayLabel(k.renews_on!) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency, true)}
+                          {day(k.renews_on) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency, true)}
                         </span>
                       </div>
-                      <span className={`tag ${days < 0 ? "danger" : days <= 30 ? "warning" : ""}`}>
+                      <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>
                         {days < 0 ? `${-days} ${days === -1 ? "day" : "days"} ago` : days === 0 ? "today" : `${days} ${days === 1 ? "day" : "days"}`}
-                      </span>
+                      </Status>
                     </li>
                   ))}
                 </ul>
@@ -474,7 +475,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
         </Button>
       )}
       <Button className="ghost" onClick={onClose}>
-        {isNew ? "Close" : "Close without saving"}
+        Close without saving
       </Button>
       <Button kind="primary" className="disc" disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
         {busy ? "Saving…" : isNew ? "Add it" : "Save changes"}
@@ -543,7 +544,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
         <label htmlFor="cost-amount">
           Amount
         </label>
-        <input id="cost-amount" className="input mono" inputMode="decimal" placeholder="120.00" aria-describedby={cents == null ? "cost-amount-why" : undefined} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <input id="cost-amount" className="input mono" inputMode="decimal" placeholder="e.g. 120.00" aria-describedby={cents == null ? "cost-amount-why" : undefined} value={amount} onChange={(e) => setAmount(e.target.value)} />
         {amount.trim() !== "" && cents == null && (
           <small id="cost-amount-why" className="why danger">
             Write the amount as a number, like 120 or 9.99.

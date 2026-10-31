@@ -2,7 +2,7 @@
 // Updates, the Plugins and Themes matrix, Install and the job sheet.
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
-import { fixes, Updates, updatesOf } from "./Updates";
+import { fixes, planTitle, Updates, updatesOf } from "./Updates";
 import { Matrix, cellOf, olderStable } from "./Matrix";
 import { Install } from "./Install";
 import { JobSheet, type PlanRow } from "../components/JobSheet";
@@ -59,7 +59,7 @@ test("Updates lists every waiting update, says which sites are left out, and pla
 test("Updates: nothing waiting, and reading every site again", async () => {
   mockInvoke.mockResolvedValue(null);
   render(<HeadSlot.Provider value={document.body}><Updates sites={[BASIC]} inventory={INV} onPlan={vi.fn()} /></HeadSlot.Provider>);
-  expect(screen.getByText("No updates waiting.")).toBeInTheDocument();
+  expect(screen.getByText("No updates waiting")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Read every site again" }));
   expect(mockInvoke).toHaveBeenCalledWith("inventory_refresh", { id: undefined });
   await waitFor(() => expect(screen.getByRole("button", { name: "Read every site again" })).toBeEnabled());
@@ -283,7 +283,10 @@ test("a safe update that broke a site says it was rolled back and why, and isn't
   render(<JobSheet state={{ title: "Update WooCommerce", jobId: 9 }} onClose={vi.fn()} />);
   expect(await screen.findByText("Finished. 0 changes done, 1 rolled back.")).toBeInTheDocument();
   expect(screen.getByText("Rolled back")).toHaveClass("warning");
-  expect(screen.getByText(reason)).toBeInTheDocument();
+  // The PHP error is behind a disclosure; the row says it plainly.
+  expect(screen.getByText("Rolled back to 10.2.0 because the update broke the site.")).toBeInTheDocument();
+  expect(screen.getByText("Show the details").closest("details")).toHaveTextContent(reason);
+  expect(screen.getByRole("progressbar", { name: "Changes finished" })).toHaveAttribute("aria-valuetext", "1 of 1 finished: 1 rolled back");
   expect(screen.queryByRole("button", { name: /Try the/ })).toBeNull();
 });
 
@@ -302,7 +305,12 @@ test("the job sheet goes plan, confirm, progress and only sends what stayed tick
   expect(mockInvoke).toHaveBeenCalledWith("job_start", { title: "Update WooCommerce on 2 sites", changes: ROWS.map((r) => r.change) });
   expect(await screen.findByText("Finished. 1 change done, 1 failed.")).toBeInTheDocument();
   expect(screen.getByText("The site took too long to answer.")).toBeInTheDocument();
-  expect(screen.getByRole("progressbar", { name: "Changes finished" })).toHaveAttribute("aria-valuenow", "2");
+  const bar = screen.getByRole("progressbar", { name: "Changes finished" });
+  expect(bar).toHaveAttribute("aria-valuenow", "2");
+  expect(bar).toHaveAttribute("aria-valuetext", "2 of 2 finished: 1 done, 1 failed");
+  expect(screen.getByText("1 failed", { selector: ".jobmeter-key span" })).toBeInTheDocument();
+  // A plain reason stays in the row, with nothing to open.
+  expect(screen.queryByText("Show the details")).toBeNull();
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "job_start" ? job({ id: 10, finished_at: null }) : new Promise(() => {})));
   fireEvent.click(screen.getByRole("button", { name: "Try the 1 failed change again" }));
   await waitFor(() =>
@@ -310,6 +318,14 @@ test("the job sheet goes plan, confirm, progress and only sends what stayed tick
   );
   // The retry button is gone, so focus must not fall out of the sheet.
   await waitFor(() => expect(screen.getByRole("button", { name: "Hide this panel" })).toHaveFocus());
+});
+
+test("a plan titled from its updates follows the ticks", () => {
+  const named = ROWS.map((r, i) => ({ ...r, name: "WooCommerce", site: i ? "Beta" : "Alpha" }));
+  render(<JobSheet state={{ title: planTitle(named), rows: named, start: "plan" }} onClose={vi.fn()} />);
+  expect(screen.getByRole("dialog", { name: /^Update 2 things on 2 sites/ })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Update WooCommerce on Beta" }));
+  expect(screen.getByRole("dialog", { name: /^Update WooCommerce on Alpha/ })).toBeInTheDocument();
 });
 
 test("a finished job of one change says so in words", async () => {

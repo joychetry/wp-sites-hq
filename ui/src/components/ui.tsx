@@ -21,6 +21,19 @@ export function Logo() {
   );
 }
 
+/** Raw text from a site or a feed, behind "Show the details"; the plain summary sits before it. */
+export function Details({ children }: { children: ReactNode }) {
+  return (
+    <details className="more">
+      <summary>
+        Show the details
+        <Glyph name="chevron-down" />
+      </summary>
+      <div>{children}</div>
+    </details>
+  );
+}
+
 /** The design's line icons (components/icons.ts), drawn in currentColor. */
 export type GlyphName = keyof typeof ICONS | "arrow";
 
@@ -70,9 +83,10 @@ export function Icon({ tone }: { tone: Tone | "info" }) {
   );
 }
 
-export function Status({ tone, children }: { tone: Tone | "info"; children: ReactNode }) {
+/** A state: an icon and a word, never colour alone. `pill` puts it on its tinted ground (every state in a list or table). */
+export function Status({ tone, pill, children }: { tone: Tone | "info"; pill?: boolean; children: ReactNode }) {
   return (
-    <span className={`st ${tone}`}>
+    <span className={`st ${pill ? "pill " : ""}${tone}`}>
       <Icon tone={tone} />
       {children}
     </span>
@@ -93,6 +107,19 @@ export function Button({ kind, small, keys, className, children, ...rest }: BtnP
       {children}
       {keys && <Kbd>{keys}</Kbd>}
     </button>
+  );
+}
+
+/** The one "Add a site" button: primary, the A key, and the plus disc, wherever it appears. */
+export function AddSiteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onClick}>
+      Add a site
+      <Kbd>A</Kbd>
+      <span className="btn-disc">
+        <Glyph name="plus" />
+      </span>
+    </Button>
   );
 }
 

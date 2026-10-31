@@ -11,12 +11,12 @@
 .vhead h3 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--display); letter-spacing: -0.02em; color: var(--text); }
 .vhead p { margin: 0; color: var(--text-2); overflow-wrap: anywhere; }
 /* The facts sit in a well; versions in mono */
-.dl.well { padding: var(--sp-1) var(--sp-4); border-radius: 12px; background: var(--panel); }
+.dl.well { padding: var(--sp-1) var(--sp-4); border-radius: var(--radius); background: var(--panel); }
 .dl.well > div { align-items: center; }
 .dl.well dd.m { font: 500 var(--fs-sm) var(--mono); }
 .dl.well dd { display: grid; justify-items: end; gap: var(--sp-1); }
 .dl.well .conn { color: var(--text-2); }
-.dl.well .conn .fav { width: 22px; height: 22px; border-radius: 6px; font-size: var(--fs-xs); }
+.dl.well .conn .fav { width: 22px; height: 22px; font-size: var(--fs-xs); }
 .dl.well .conn .fav img { width: 14px; height: 14px; }
 .vuln .acts { flex-wrap: wrap; }
 .vuln .acts .dim { font-size: var(--fs-sm); }

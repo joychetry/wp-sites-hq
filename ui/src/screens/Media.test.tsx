@@ -175,8 +175,7 @@ test("filters, the list view, and bulk trash with Undo", async () => {
   fireEvent.click(screen.getByRole("button", { name: "List" }));
   const table = await screen.findByRole("table", { name: "Alpha media" });
   expect(within(table).getByText("menu.pdf")).toBeInTheDocument();
-  const trash = screen.getByRole("button", { name: /^Move to the trash/ });
-  expect(trash).toBeDisabled();
+  expect(screen.queryByRole("group", { name: "Change the ticked items" })).not.toBeInTheDocument();
   fireEvent.click(within(table).getByRole("checkbox", { name: "Tick every item shown" }));
   fireEvent.click(screen.getByRole("button", { name: "Move to the trash (2)" }));
   expect(await screen.findByText(/^Moved 2 items to the trash on Alpha/)).toBeInTheDocument();

@@ -162,7 +162,7 @@ test("the editor changes only edited text blocks and keeps the others", async ()
       draft: { title: "Our menu", status: "draft", edits: [{ index: 2, html: "Bread at <b>7</b>." }], seen_modified: "2026-10-28 09:05:00" },
     }),
   );
-  expect(await screen.findByText('Saved "Our menu" on Alpha.')).toBeInTheDocument();
+  expect(await screen.findByText('Saved “Our menu” on Alpha.')).toBeInTheDocument();
 });
 
 test("a classic body is edited whole; Ctrl+S saves and a changed entry offers the site's version", async () => {
@@ -299,7 +299,7 @@ test("a new entry gets its body, terms by name and a featured image", async () =
       draft: { title: "Kind of Blue", status: "draft", body: "<p>Modal jazz.</p>", featured_image: 9, terms: { cm_genre: [3, "Cool"] } },
     }),
   );
-  expect(await screen.findByText('Added "Kind of Blue" to Alpha as draft.')).toBeInTheDocument();
+  expect(await screen.findByText('Added “Kind of Blue” to Alpha as draft.')).toBeInTheDocument();
 });
 
 test("existing terms only, when new ones can't be added; trash asks first", async () => {
@@ -317,7 +317,7 @@ test("existing terms only, when new ones can't be added; trash asks first", asyn
   expect(within(ask).getByText(/WordPress keeps it there for 30 days/)).toBeInTheDocument();
   fireEvent.click(within(ask).getByRole("button", { name: "Move it to the trash" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_trash")).toBe(true));
-  expect(await screen.findByText('Moved "Menu" to the trash on Alpha.')).toBeInTheDocument();
+  expect(await screen.findByText('Moved “Menu” to the trash on Alpha.')).toBeInTheDocument();
 });
 
 test("Media lists images with their alt text and imports one from a link", async () => {

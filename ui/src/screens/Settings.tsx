@@ -2,15 +2,15 @@
 // Settings: how the app looks (remembered on this computer), how reports look,
 // Search Console and AgentedSEO, and your site list in and out.
 import { ColorInput, FilePicker, Slider } from "../components/controls";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import "../styles/screens/settings.css";
 import { api, useAppUpdate, type AppSettings, type GscStatus, type Imported } from "../api";
-import { when } from "./Overview";
 import { Button, Glyph, type GlyphName } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { toast } from "../components/feedback";
 import { Page } from "../components/page";
 import { setTextSize, textSize, type Density, type ThemeChoice } from "../theme";
+import { day, dayTime } from "../format";
 
 /** What an import did, in a sentence or two. */
 export function importNote(r: Imported): string {
@@ -140,7 +140,7 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
       </label>
       <div className="rpreview" aria-label="Preview" role="group">
         <span className="label">Preview</span>
-        <div style={{ borderTopColor: accent }}>
+        <div style={{ "--band": accent } as CSSProperties}>
           <b>{s.report_name || "[Your business name]"}</b>
           <span>Monthly report · your client</span>
           {(s.report_footer || !s.white_label) && (
@@ -240,7 +240,7 @@ function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: 
           onClose={() => setSetup(false)}
           footer={
             <>
-              <Button onClick={() => setSetup(false)}>Cancel</Button>
+              <Button onClick={() => setSetup(false)}>Close without saving</Button>
               <Button
                 kind="primary"
                 className="disc"
@@ -342,9 +342,9 @@ function AppUpdate({ s, save, saving }: { s: AppSettings | null; save: ReportSet
         <dt>This version</dt>
         <dd>{st?.current ?? "…"}</dd>
         <dt>Last checked</dt>
-        <dd>{st?.checked_at ? when(st.checked_at) : "Not yet"}</dd>
+        <dd>{st?.checked_at ? dayTime(st.checked_at) : "Not yet"}</dd>
         <dt>New version</dt>
-        <dd>{found ? found.version + (found.date ? `, released ${new Date(found.date * 1000).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}` : "") : "None, you have the newest"}</dd>
+        <dd>{found ? found.version + (found.date ? `, released ${day(found.date)}` : "") : "None, you have the newest"}</dd>
       </dl>
       {found && (
         <section className="upd-notes" aria-label={`What's new in ${found.version}`}>

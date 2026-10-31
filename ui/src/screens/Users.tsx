@@ -4,12 +4,13 @@
 import "../styles/screens/users.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
-import { dayLabel, Menu, Select, SearchInput } from "../components/controls";
+import { Menu, Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Role, type Site, type User, type Users as SiteUsers } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions } from "../components/ui";
 import { Sheet } from "../components/Sheet";
+import { day } from "../format";
 
 type Loaded = { site: Site; users?: SiteUsers; error?: string };
 type Action = { kind: "add" } | { kind: "role" | "delete"; site: Site; user: User; roles: Role[] };
@@ -48,7 +49,7 @@ export function Users({ sites }: { sites: Site[] }) {
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site on Sites, then its users show here.</p>
         </Empty>
       </Page>
@@ -86,7 +87,7 @@ export function Users({ sites }: { sites: Site[] }) {
     body = (
       <Empty
         picture="search"
-        title={filtered ? "Nobody matches." : "No users to show."}
+        title={filtered ? "Nobody matches" : "No users to show"}
         action={
           filtered && (
             <Button
@@ -151,7 +152,7 @@ export function Users({ sites }: { sites: Site[] }) {
                   </td>
                   <td>
                     <span className="when" data-tip={u.registered || undefined}>
-                      {dayLabel(u.registered) || "not known"}
+                      {day(u.registered) || "not known"}
                     </span>
                   </td>
                   <td>
@@ -303,7 +304,7 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
       footer={
         <>
           <Button className="ghost" onClick={onClose}>
-            Cancel
+            Close without saving
           </Button>
           <Button kind="primary" className="disc" disabled={busy || !username.trim() || !email.trim() || !info} onClick={save}>
             {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
@@ -388,7 +389,7 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
       footer={
         <>
           <Button className="ghost" onClick={onClose}>
-            Cancel
+            Close without saving
           </Button>
           <Button kind="primary" className="disc" disabled={busy || role === user.role} onClick={save}>
             {busy ? "Changing…" : `Make them ${roleName(roles, role)}`}
@@ -455,7 +456,7 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
       footer={
         <>
           <Button className="ghost" onClick={onClose}>
-            Cancel
+            Close without deleting
           </Button>
           <Button kind="danger" className="solid" disabled={busy || !to} onClick={save}>
             {busy ? "Deleting…" : `Delete ${who}`}

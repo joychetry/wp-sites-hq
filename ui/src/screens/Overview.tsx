@@ -4,13 +4,14 @@
 import { ago, api, noTools, pluginName, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
+import { AddSiteButton, Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
-import { attention } from "../fleet";
+import { attention, toFix } from "../fleet";
 import { Page } from "../components/page";
+import { dayTime } from "../format";
 
 export { attention, summary } from "../fleet";
 
@@ -69,12 +70,7 @@ function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
           </span>
           <h2>Every WordPress site you look after, in one place</h2>
           <p>WP Sites HQ checks your sites, keeps them updated and tells you what needs you. Add your first site to start.</p>
-          <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
-            Add a site
-            <span className="btn-disc">
-              <Glyph name="plus" />
-            </span>
-          </Button>
+          <AddSiteButton onClick={onAdd} />
           <p className="dim or">
             or press <Kbd>A</Kbd>
           </p>
@@ -245,16 +241,6 @@ export function said(r: Entry, inventory?: Map<number, SiteInventory> | null) {
   );
 }
 
-/** "Today, 10:42", "Yesterday, 17:20", "Oct 26, 11:15" in the computer's own clock format. */
-export function when(unix: number, now = new Date()) {
-  const d = new Date(unix * 1000);
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const days = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
-  if (days === 0) return `Today, ${time}`;
-  if (days === 1) return `Yesterday, ${time}`;
-  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${time}`;
-}
-
 /** Latest changes from the activity log, with All, You and AI. */
 function Feed({ onGo }: { onGo?: Props["onGo"] }) {
   const [rows, setRows] = useState<Entry[] | null>(null);
@@ -302,7 +288,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
                   </>
                 )}
                 . {OUTCOME[r.outcome]}
-                <time dateTime={new Date(r.at * 1000).toISOString()}>{when(r.at)}</time>
+                <time dateTime={new Date(r.at * 1000).toISOString()}>{dayTime(r.at)}</time>
               </p>
             </li>
           ))}
@@ -337,7 +323,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
   const mon = new Map(monitors.map((m) => [m.site_id, m]));
   // Sites that need you first, then the rest, as many as fit a glance.
   const listed = [...needs, ...sites.filter((s) => !attention(s))].slice(0, SHOW_SITES);
-  const fixes = needs.length + (vulns.length ? 1 : 0) + (live.length ? 1 : 0) + (waiting.length ? 1 : 0);
+  const fixes = toFix(needs.length, vulns.length, live.length, waiting.length);
   if (sites.length === 0)
     return (
       <Page>

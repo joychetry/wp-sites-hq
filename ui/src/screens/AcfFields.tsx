@@ -43,7 +43,7 @@ export function invalid(f: AcfField, v: unknown): string | null {
   if (empty(v)) return null;
   const s = f.settings;
   const n = Number(v);
-  if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str(v))) return `${f.label}: "${str(v)}" is not an email address.`;
+  if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str(v))) return `${f.label}: “${str(v)}” is not an email address.`;
   if (f.type === "url" && !/^(https?:\/\/|\/|#|mailto:)/i.test(str(v))) return `${f.label}: write the full address, starting with https://.`;
   if ((f.type === "number" || f.type === "range") && !Number.isFinite(n)) return `${f.label} must be a number.`;
   if ((f.type === "number" || f.type === "range") && s.min !== "" && s.min != null && n < Number(s.min)) return `${f.label} must be ${s.min} or more.`;

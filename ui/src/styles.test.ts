@@ -45,6 +45,16 @@ describe("type scale", () => {
   });
 });
 
+describe("radius system", () => {
+  // Every corner comes from the scale in tokens.css (audit.md, section 3): a --radius-* token, a circle, or none.
+  it.each(files.filter((f) => f !== "tokens.css"))("%s rounds corners only with the --radius tokens", (f) => {
+    const bad = [...css[f].matchAll(/border-radius:\s*([^;}]+)/g)]
+      .filter((m) => !m[1].trim().split(/\s+/).every((p) => /^(var\(--radius(-xs|-sm|-lg|-xl|-pill|-tile)?\)|50%|0)$/.test(p)))
+      .map((m) => m[0]);
+    expect(bad).toEqual([]);
+  });
+});
+
 describe("page system", () => {
   it("leaves page layout to components/page.tsx", () => {
     const bad = files.filter((f) => f.startsWith("screens/") && /\.scroll\.page|\.split-r|\.filters|\.mfilters|\.cfilter|\.phead-acts/.test(css[f]));
@@ -65,6 +75,19 @@ describe("page system", () => {
         .filter((m) => !(m[1] === '<Glyph name="arrow-left" />' && BACK.test(s.slice(m.index + m[1].length))))
         .map(() => f),
     );
+    expect(bad).toEqual([]);
+  });
+
+  it("puts an inline svg icon after a button's words too", () => {
+    // A raw <svg> (or a const that holds one, like the month field's calendar) that opens a button with words after it.
+    const bad = tsx.flatMap(([f, s]) => {
+      const names = [...s.matchAll(/const (\w+) = \(\s*<svg\b/g)].map((m) => m[1]);
+      const icon = new RegExp(`<svg\\b[\\s\\S]*?<\\/svg>${names.map((n) => `|\\{${n}\\}`).join("")}`, "g");
+      return [...s.matchAll(icon)]
+        .filter((m) => opensButton(s, m.index) && /^\s*$/.test(s.slice(s.lastIndexOf(">", m.index - 1) + 1, m.index)))
+        .filter((m) => !/^\s*<\//.test(s.slice(m.index + m[0].length)))
+        .map((m) => `${f}: ${s.slice(m.index, m.index + 40)}`);
+    });
     expect(bad).toEqual([]);
   });
 

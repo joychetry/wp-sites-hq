@@ -7,8 +7,8 @@
 /* Rounded 4:3 thumbnails, a mono file name and a small meta line; the picked one has a green ring. */
 .mthumbs { list-style: none; margin: 0; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--sp-3); }
 .mthumbs li { min-width: 0; }
-.mthumb { width: 100%; display: grid; gap: 6px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; border-radius: 10px; }
-.mthumb-img { display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); color: var(--text-3); }
+.mthumb { width: 100%; display: grid; gap: 6px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; border-radius: var(--radius); }
+.mthumb-img { display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); color: var(--text-3); }
 .mthumb-img img { width: 100%; height: 100%; object-fit: cover; }
 .mthumb-img .glyph { width: 22px; height: 22px; }
 .mthumb:hover .mthumb-img { border-color: var(--line-ui); }
@@ -18,7 +18,7 @@
 
 /* The picked item's card: a small thumbnail, its name and type, then its details. */
 .mpicked { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
-.mpicked .mthumb-img { width: 64px; flex: none; border-radius: 8px; }
+.mpicked .mthumb-img { width: 64px; flex: none; border-radius: var(--radius); }
 .mpicked > div { display: grid; gap: 2px; min-width: 0; }
 .mpicked b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mpicked .mono { font-size: var(--fs-xs); }
@@ -43,7 +43,7 @@
 .mlist .t .name { width: 40%; max-width: 0; }
 .mlist .t tr.sel td { background: var(--sel); }
 .mrow { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-width: 0; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
-.mrow .mthumb-img { width: 48px; flex: none; border-radius: 6px; }
+.mrow .mthumb-img { width: 48px; flex: none; border-radius: var(--radius-sm); }
 .mrow > span { display: grid; min-width: 0; }
 .mrow b { font-weight: 600; }
 .mrow small { font-size: var(--fs-xs); color: var(--text-3); }
@@ -53,7 +53,7 @@
 .mlist .who { color: var(--text-2); }
 
 /* Details: a large preview, the facts, the address, the fields, then Replace. */
-.mpreview .mthumb-img { aspect-ratio: 4 / 3; border-radius: 10px; }
+.mpreview .mthumb-img { aspect-ratio: 4 / 3; border-radius: var(--radius); }
 .mpreview .mthumb-img img { object-fit: contain; background: var(--panel); }
 .mpreview .mthumb-img .glyph { width: 32px; height: 32px; }
 .mdetails .dl dd.cut { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -69,7 +69,7 @@
 /* The upload list: each picked file with its details, then its bar while it goes. */
 .mup .card-body > small { font-size: var(--fs-sm); }
 .mqueue { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
-.mqueue li { display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.mqueue li { display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
 .mqueue li .progress { margin: 0; }
 .mq-head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .mq-head b { flex: 1; min-width: 0; font: 500 var(--fs-sm)/1.4 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

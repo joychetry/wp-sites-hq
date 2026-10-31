@@ -20,7 +20,7 @@
 .sites .t .tag .glyph { width: 11px; height: 11px; }
 .sites .card-foot { justify-content: space-between; flex-wrap: wrap; margin: 0; font-size: var(--fs-sm); }
 .sites .card-foot .keys .kbd { margin-right: 2px; }
-.sites .selbar { border-radius: 0 0 var(--radius-lg) var(--radius-lg); gap: 10px 14px; }
+.sites .selbar { gap: 10px 14px; }
 .sites .selbar label { gap: var(--sp-2); font-size: var(--fs-sm); }
 .sites .selbar .btn.ghost { border-color: transparent; }
 /* The row's own buttons go first when the table gets narrow; the panel has the same actions. */
@@ -37,7 +37,7 @@
 .site-pane .dim-2 { margin: 0; color: var(--text-2); }
 .site-pane .field-label { margin: var(--sp-1) 0 -6px; }
 .site-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
-.site-notes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: 12px; background: var(--panel); }
+.site-notes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: var(--radius); background: var(--panel); }
 .site-notes b { display: block; font-weight: 600; white-space: pre-wrap; overflow-wrap: anywhere; }
 .site-notes small { display: block; margin-top: 2px; font: 400 var(--fs-xs) var(--mono); color: var(--text-3); }
 .site-notes .icon-btn { margin: -6px -8px 0 0; }

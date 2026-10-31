@@ -3,7 +3,7 @@
 import "../styles/screens/content.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
-import { dayLabel, SearchInput, Segmented, Select } from "../components/controls";
+import { SearchInput, Segmented, Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary, type Tone } from "../api";
@@ -12,6 +12,7 @@ import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { Editor } from "./Editor";
 import { PublishMany } from "./PublishMany";
+import { day, dayTime } from "../format";
 
 export const STATUS_LABEL: Record<string, string> = {
   publish: "Published",
@@ -174,7 +175,7 @@ export function Content({ sites, onPlan }: Props) {
 
   if (sites.length === 0) {
     return (
-      <Empty picture="sites" title="No sites yet.">
+      <Empty picture="sites" title="No sites yet">
         <p>Add a site on Sites, then its posts and pages show here.</p>
       </Empty>
     );
@@ -219,13 +220,17 @@ export function Content({ sites, onPlan }: Props) {
   let body;
   if (blocked) {
     body = (
-      <Empty title={`${site!.name}'s content isn't available here.`}>
+      <Empty
+        title={`${site!.name}'s content isn't available here`}
+        // Not a dead end: the Site picker above opens, to go on with another site.
+        action={<Button onClick={() => document.querySelector<HTMLElement>('.toolbar [aria-label="Site"]')?.click()}>Choose another site</Button>}
+      >
         <p>{blocked}</p>
       </Empty>
     );
   } else if (error) {
     body = (
-      <Empty alert title="The content didn't load." action={<Button onClick={() => (types ? load() : pickSite(site!.id))}>Try again</Button>}>
+      <Empty alert title="The content didn't load" action={<Button onClick={() => (types ? load() : pickSite(site!.id))}>Try again</Button>}>
         <p>{error}</p>
       </Empty>
     );
@@ -237,7 +242,7 @@ export function Content({ sites, onPlan }: Props) {
     body = (
       <Empty
         picture={search || status ? "search" : undefined}
-        title={search || status ? "Nothing matches." : `No ${type.label.toLowerCase()} yet.`}
+        title={search || status ? "Nothing matches" : `No ${type.label.toLowerCase()} yet.`}
         action={
           (search || status) && (
             <Button
@@ -273,22 +278,6 @@ export function Content({ sites, onPlan }: Props) {
           Select a title to open it, or tick entries to change several at once. Dates are in the site's own time zone.
           {inTrash && !canBack && " Bringing entries back from the trash needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site."}
         </p>
-        {onPlan && actions.length > 0 && (
-          <div className="bulk" role="group" aria-label="Change the ticked entries">
-            <b>{chosen.length === 0 ? "None ticked" : chosen.length === 1 ? "1 entry ticked" : `${chosen.length} entries ticked`}</b>
-            {actions.map((a) => (
-              <Button key={a} small disabled={chosen.length === 0} onClick={() => bulk(a)}>
-                {BULK[a].button}
-                {chosen.length > 0 && ` (${chosen.length})`}
-                {a === "trash" && <Glyph name="trash" />}
-              </Button>
-            ))}
-            <span className="grow" />
-            <Button small keys="Esc" disabled={chosen.length === 0} onClick={() => setPicked(new Set())}>
-              Clear selection
-            </Button>
-          </div>
-        )}
         <table className="t" aria-label={type.label} aria-describedby="content-legend">
           <thead>
             <tr>
@@ -298,6 +287,9 @@ export function Content({ sites, onPlan }: Props) {
                     type="checkbox"
                     aria-label="Tick every entry on this page"
                     checked={chosen.length === rows.length}
+                    ref={(el) => {
+                      if (el) el.indeterminate = chosen.length > 0 && chosen.length < rows.length;
+                    }}
                     onChange={(e) => setPicked(new Set(e.target.checked ? rows.map((p) => p.id) : []))}
                   />
                 </th>
@@ -355,8 +347,8 @@ export function Content({ sites, onPlan }: Props) {
                   </td>
                   <td className="who">{p.author || "not known"}</td>
                   <td>
-                    <span className="when" data-tip={when || undefined}>
-                      {dayLabel(when) || when || "not known"}
+                    <span className="when" data-tip={dayTime(when) || undefined}>
+                      {day(when) || when || "not known"}
                     </span>
                   </td>
                 </tr>
@@ -364,6 +356,21 @@ export function Content({ sites, onPlan }: Props) {
             })}
           </tbody>
         </table>
+        {onPlan && actions.length > 0 && chosen.length > 0 && (
+          <div className="selbar" role="group" aria-label="Change the ticked entries">
+            <b>{chosen.length === 1 ? "1 entry ticked" : `${chosen.length} entries ticked`}</b>
+            {actions.map((a) => (
+              <Button key={a} small onClick={() => bulk(a)}>
+                {BULK[a].button}
+                {` (${chosen.length})`}
+                {a === "trash" && <Glyph name="trash" />}
+              </Button>
+            ))}
+            <Button small keys="Esc" onClick={() => setPicked(new Set())}>
+              Clear selection
+            </Button>
+          </div>
+        )}
         <div className="card-foot">
           <span className="count">
             {first}–{first + rows.length - 1} of {list.total} {(list.total === 1 ? type.singular : type.label).toLowerCase()}
@@ -442,7 +449,7 @@ export function Content({ sites, onPlan }: Props) {
               </label>
               {/* Enter searches; clearing the box shows everything again. */}
               <SearchInput
-                className="sm end"
+                className="end"
                 aria-label={`Search ${type.label.toLowerCase()}`}
                 placeholder={`Search ${type.label.toLowerCase()}`}
                 value={typed}

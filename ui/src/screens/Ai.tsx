@@ -9,11 +9,12 @@ import { Tabs } from "../components/controls";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { ago, api, useInventory, type Entry, type Job, type JobItem, type Site } from "../api";
-import { Button, Glyph, HeadActions, Status } from "../components/ui";
+import { Button, Details, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
-import { said, when } from "./Overview";
+import { said } from "./Overview";
+import { day, dayTime } from "../format";
 
 type Tab = "plans" | "access" | "activity";
 type Note = { text: string; ok: boolean };
@@ -24,6 +25,12 @@ const RESULT: Record<Exclude<Entry["outcome"], "done">, [string, "danger" | "war
   waiting: ["Waiting for you", "warning"],
 };
 const PER_PAGE = 50;
+/** A site's note written for the AI app (a link and steps for it) shows only its first plain sentence. */
+function plainDetail(detail: string): string {
+  if (!/https?:\/\//.test(detail)) return detail;
+  const first = detail.split(/(?<=\.)\s+/)[0];
+  return /https?:\/\//.test(first) ? "The site sent steps for the AI app." : first;
+}
 const CLAUDE = "claude mcp add wp-sites-hq -- wpshq mcp";
 const CONFIG = '{ "mcpServers": { "wp-sites-hq": { "command": "wpshq", "args": ["mcp"] } } }';
 
@@ -105,7 +112,7 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
       if (confirm) onWatch(await api.confirmPlan(plan.id));
       else {
         await api.declinePlan(plan.id);
-        note({ text: plan.expired ? `Removed "${plan.title}". Nothing changed.` : `Declined "${plan.title}". Nothing changed.`, ok: true });
+        note({ text: plan.expired ? `Removed “${plan.title}”. Nothing changed.` : `Declined “${plan.title}”. Nothing changed.`, ok: true });
       }
     } catch (e) {
       note({ text: String(e), ok: false });
@@ -130,7 +137,7 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
                 <b>AI agent</b>
                 <small>Connected AI app · asked {ago(p.created_at)}</small>
               </div>
-              {p.expired ? <span className="tag">Expired</span> : <span className="tag warning">Waiting for you</span>}
+              {p.expired ? <Status pill tone="unknown">Expired</Status> : <Status pill tone="warning">Waiting for you</Status>}
             </div>
             <div className="card-body">
               <div className="plan-t">
@@ -369,7 +376,7 @@ function Log() {
         <span className="dim">Everything done through WP Sites HQ, newest first</span>
       </div>
       {error ? (
-        <Empty alert title="The activity log didn't load." action={<Button onClick={load}>Try again</Button>}>
+        <Empty alert title="The activity log didn't load" action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
         </Empty>
       ) : !rows ? (
@@ -383,21 +390,26 @@ function Log() {
               <span className={`av ${r.actor === "human" ? "me" : "ai"}`} aria-hidden="true">
                 {r.actor === "human" ? "You" : <Glyph name="sparkle" />}
               </span>
-              <p>
-                {said(r, inventory)}
-                {r.site_name ? (
-                  <>
-                    {" "}
-                    on <b>{r.site_name}</b>.
-                  </>
-                ) : (
-                  " on several sites."
-                )}
-                {r.detail && <span className="why">{r.detail}</span>}
-                <time dateTime={new Date(r.at * 1000).toISOString()} data-tip={new Date(r.at * 1000).toLocaleString()}>
-                  {when(r.at)}
-                </time>
-              </p>
+              <div>
+                <p>
+                  {said(r, inventory)}
+                  {r.site_name ? (
+                    <>
+                      {" "}
+                      on <b>{r.site_name}</b>.
+                    </>
+                  ) : / on \d+ sites?$/.test(r.what) ? (
+                    "."
+                  ) : (
+                    " on several sites."
+                  )}
+                  {r.detail && <span className="why">{plainDetail(r.detail)}</span>}
+                  <time dateTime={new Date(r.at * 1000).toISOString()} data-tip={day(r.at)}>
+                    {dayTime(r.at)}
+                  </time>
+                </p>
+                {r.detail && plainDetail(r.detail) !== r.detail && <Details>{r.detail}</Details>}
+              </div>
               {r.outcome !== "done" && <Status tone={RESULT[r.outcome][1]}>{RESULT[r.outcome][0]}</Status>}
             </li>
           ))}

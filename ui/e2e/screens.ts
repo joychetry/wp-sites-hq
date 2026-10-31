@@ -13,6 +13,9 @@ export async function choose(select: Locator, by: { name: string } | { value: st
 
 // Each page is a lazy chunk: wait until it is drawn, so its own keys are listening before the next step.
 const nav = (name: string) => async (page: Page) => {
+  // Under 900px wide (200% zoom) the nav is behind the Menu button.
+  const menu = page.getByRole("button", { name: "Menu", exact: true });
+  if (await menu.isVisible()) await menu.click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: new RegExp(`^${name}`) }).click();
   await page.locator(".body > :not(.phead):not(.page-loading)").first().waitFor();
   await page.locator(".page-loading").waitFor({ state: "detached" });
@@ -107,6 +110,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Store")(page);
       await page.getByRole("button", { name: "Change price or stock of Rye loaf" }).click();
+      // The same edit as store-change, so the review shows the sale price going too.
+      await page.getByRole("textbox", { name: "Sale price" }).fill("");
       await page.getByRole("textbox", { name: "Stock" }).fill("30");
       await page.getByRole("button", { name: "Review the change" }).click();
     },
@@ -373,7 +378,7 @@ export const SCREENS: Screen[] = [
       await page.getByRole("button", { name: "Pages", exact: true }).click();
       await page.getByRole("button", { name: "Our menu" }).click();
       await page.getByRole("button", { name: "Show earlier versions" }).click();
-      await page.getByRole("button", { name: "Put back the version from 2026-10-20 09:10:00" }).click();
+      await page.getByRole("button", { name: /^Put back the version from .*20.*9:10/ }).click();
     },
   },
   {

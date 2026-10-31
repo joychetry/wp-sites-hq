@@ -2,7 +2,7 @@
 // A site's media library (plan "media and editor", part 1): browse it as a grid or a list, filter it,
 // upload files picked on this computer, change an item's details, replace its file, move items to the trash.
 import "../styles/screens/media.css";
-import { DateInput, dayLabel, FilePicker, SearchInput, Select } from "../components/controls";
+import { DateInput, FilePicker, SearchInput, Select } from "../components/controls";
 import { Empty, Progress, Skeleton, toast } from "../components/feedback";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -10,6 +10,7 @@ import { fileSize, kind, limitOf, Pic, refusal, uploadKey, useProgress } from ".
 import { api, contentBlocked, fileBase64, hasTool, type Library, type Media as Item, type MediaDetails, type Site } from "../api";
 import { Button, Glyph, HeadActions } from "../components/ui";
 import { firstUsable, SitePick } from "./Content";
+import { day } from "../format";
 
 export const KINDS: [string, string][] = [
   ["", "All types"],
@@ -280,7 +281,7 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
           )}
           <div>
             <dt>Uploaded</dt>
-            <dd>{dayLabel(item.date) || item.date || "not known"}</dd>
+            <dd>{day(item.date) || item.date || "not known"}</dd>
           </div>
           <div>
             <dt>By</dt>
@@ -435,7 +436,7 @@ export function Media({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <Empty title="No sites yet.">
+      <Empty title="No sites yet">
         <p>Add a site on Sites, then its media library shows here.</p>
       </Empty>
     );
@@ -511,7 +512,7 @@ export function Media({ sites }: { sites: Site[] }) {
           <b data-tip={m.title || m.file_name}>{m.title || m.file_name || "No title"}</b>
           <small>
             {kind(m.mime)}
-            {m.date && ` · ${dayLabel(m.date) || m.date}`}
+            {m.date && ` · ${day(m.date) || m.date}`}
           </small>
         </button>
       </div>
@@ -522,13 +523,13 @@ export function Media({ sites }: { sites: Site[] }) {
   let body;
   if (blocked) {
     body = (
-      <Empty title={`${site!.name}'s media isn't available here.`}>
+      <Empty title={`${site!.name}'s media isn't available here`}>
         <p>{blocked}</p>
       </Empty>
     );
   } else if (error) {
     body = (
-      <Empty alert title="The media library didn't load." action={<Button onClick={() => load(1)}>Try again</Button>}>
+      <Empty alert title="The media library didn't load" action={<Button onClick={() => load(1)}>Try again</Button>}>
         <p>{error}</p>
       </Empty>
     );
@@ -537,7 +538,7 @@ export function Media({ sites }: { sites: Site[] }) {
   } else if (items.length === 0) {
     body = (
       <Empty
-        title={filtered ? "Nothing matches." : "The media library is empty."}
+        title={filtered ? "Nothing matches" : "The media library is empty"}
         action={
           filtered && (
             <Button
@@ -562,19 +563,6 @@ export function Media({ sites }: { sites: Site[] }) {
         <p className="sr-only" id="media-legend">
           Newest first. Pick one to see its details, alt text and where it is used{canTrash ? ", or tick several to move them to the trash" : ""}.
         </p>
-        {canTrash && (
-          <div className="bulk" role="group" aria-label="Change the ticked items">
-            <b>{ticked.size === 0 ? "None ticked" : ticked.size === 1 ? "1 item ticked" : `${ticked.size} items ticked`}</b>
-            <Button small disabled={ticked.size === 0} onClick={trash}>
-              Move to the trash{ticked.size > 0 && ` (${ticked.size})`}
-              <Glyph name="trash" />
-            </Button>
-            <span className="grow" />
-            <Button small keys="Esc" disabled={ticked.size === 0} onClick={() => setTicked(new Set())}>
-              Clear selection
-            </Button>
-          </div>
-        )}
         {view === "grid" ? (
           <ul className="mthumbs mgrid" aria-label={`${site?.name} media`} aria-describedby="media-legend">
             {items.map((m) => (
@@ -590,7 +578,9 @@ export function Media({ sites }: { sites: Site[] }) {
                 <tr>
                   {canTrash && (
                     <th scope="col" className="tick">
-                      <input type="checkbox" aria-label="Tick every item shown" checked={ticked.size === items.length} onChange={(e) => setTicked(new Set(e.target.checked ? items.map((m) => m.id) : []))} />
+                      <input type="checkbox" aria-label="Tick every item shown" checked={ticked.size === items.length} ref={(el) => {
+                          if (el) el.indeterminate = ticked.size > 0 && ticked.size < items.length;
+                        }} onChange={(e) => setTicked(new Set(e.target.checked ? items.map((m) => m.id) : []))} />
                     </th>
                   )}
                   <th scope="col">File</th>
@@ -622,13 +612,25 @@ export function Media({ sites }: { sites: Site[] }) {
                     <td className="r">{m.size ? fileSize(m.size) : "not known"}</td>
                     <td>{m.width && m.height ? `${m.width} × ${m.height}` : "none"}</td>
                     <td>
-                      <span className="when">{dayLabel(m.date) || m.date || "not known"}</span>
+                      <span className="when">{day(m.date) || m.date || "not known"}</span>
                     </td>
                     <td className="who">{m.author || "not known"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {canTrash && ticked.size > 0 && (
+          <div className="selbar" role="group" aria-label="Change the ticked items">
+            <b>{ticked.size === 1 ? "1 item ticked" : `${ticked.size} items ticked`}</b>
+            <Button small onClick={trash}>
+              Move to the trash ({ticked.size})
+              <Glyph name="trash" />
+            </Button>
+            <Button small keys="Esc" onClick={() => setTicked(new Set())}>
+              Clear selection
+            </Button>
           </div>
         )}
       </>

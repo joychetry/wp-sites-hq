@@ -4,13 +4,14 @@ import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./compone
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
-import { Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
+import { ago, dayTime, time } from "./format";
+import { AddSiteButton, Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { Page } from "./components/page";
 import { AddSite } from "./screens/AddSite";
 import { Install } from "./screens/Install";
-import { attention, leaveGuard, planTitle, summary, updatesOf } from "./fleet";
+import { attention, leaveGuard, planTitle, summary, toFix, updatesOf } from "./fleet";
 import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
@@ -81,21 +82,6 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
   ["dark", "moon", "Theme: dark"],
 ];
 
-/** "just now", "5 min ago", "3 h ago", "yesterday", then a date. */
-export function shortAgo(unix: number, now = Date.now() / 1000): string {
-  const s = Math.max(0, now - unix);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
-  if (s < 2 * 86400) return "yesterday";
-  return `on ${new Date(unix * 1000).toLocaleDateString([], { day: "numeric", month: "short" })}`;
-}
-
-const checkedAt = (unix: number) => {
-  const d = new Date(unix * 1000);
-  return `${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} on ${d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}`;
-};
-
 export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
   // Anything that would close the editor asks first while it has unsaved changes.
@@ -122,6 +108,8 @@ export default function App() {
   const [searchFor, setSearchFor] = useState("");
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
+  // Under 900px wide (and at 200% zoom) the nav folds behind a Menu button, so the page comes first.
+  const [menu, setMenu] = useState(false);
   const [adding, setAdding] = useState<{ again?: Site } | null>(null);
   const [checking, setChecking] = useState(false);
   const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
@@ -198,22 +186,24 @@ export default function App() {
   const lastCheck = Math.max(0, ...all.map((s) => s.checked_at ?? 0)) || null;
   // A check that is already due shows the next round, never a time in the past.
   const nextCheck = lastCheck
-    ? new Date(Math.max(lastCheck + CHECK_EVERY, Date.now() / 1000 + 60) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? time(Math.max(lastCheck + CHECK_EVERY, Date.now() / 1000 + 60))
     : null;
+  const nextAt = `${nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."} Automatic checks run only while the app or its tray agent is open.`;
   const needs = scoped.filter((s) => attention(s)).length;
   const { lead, rest } = summary(scoped);
   const sentence = rest ? `${lead} ${rest}` : lead;
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
-  const vulnerable = (reports ?? []).reduce((n, r) => n + r.vulnerabilities.length, 0);
+  const inScope = new Set(scoped.map((s) => s.id));
+  const vulnerable = (reports ?? []).filter((r) => inScope.has(r.site_id)).reduce((n, r) => n + r.vulnerabilities.length, 0);
   const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
   const ofKind = (k: string) => new Set(waiting.filter((w) => w.kind === k).map((w) => w.name)).size;
   // The design's sidebar counts: what waits on each page, amber where something is wrong.
   const counts: Partial<Record<Section, { n: number; say: string; alert?: boolean }>> = Object.fromEntries(
     (
       [
-        ["Overview", needs, "need attention", true],
+        ["Overview", toFix(needs, vulnerable, livePlans, waiting.length), "to fix", true],
         ["Sites", scoped.length, scoped.length === 1 ? "site" : "sites"],
         ["Updates", waiting.length, "waiting"],
         ["Plugins", ofKind("Plugin"), "with an update waiting"],
@@ -308,6 +298,8 @@ export default function App() {
     ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${LABEL[s] ?? s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
   ];
 
+  // Counts, status pills and the generated summary only once the sites have loaded and the core is up.
+  const live = !!sites && !coreError && !error;
   let body;
   if (coreError) {
     body = (
@@ -315,7 +307,7 @@ export default function App() {
         <span className="danger-disc" aria-hidden="true">
           <Glyph name="alert" />
         </span>
-        <h2>WP Sites HQ couldn't start.</h2>
+        <h2>WP Sites HQ couldn't start</h2>
         <p>
           <b>Nothing was changed.</b> Close WP Sites HQ and open it again. If it keeps happening, restart the computer.
         </p>
@@ -332,7 +324,7 @@ export default function App() {
         <span className="danger-disc" aria-hidden="true">
           <Glyph name="alert" />
         </span>
-        <h2>Your sites didn't load.</h2>
+        <h2>Your sites didn't load</h2>
         <p>
           <b>Nothing was changed.</b> Try again; if it keeps happening, close WP Sites HQ and open it again.
         </p>
@@ -353,12 +345,8 @@ export default function App() {
         <section className="card">
           <Empty
             picture="sites"
-            title={`${section} fills in once you add a site.`}
-            action={
-              <Button kind="primary" keys="A" onClick={() => setAdding({})}>
-                Add a site
-              </Button>
-            }
+            title={`${section} fills in once you add a site`}
+            action={<AddSiteButton onClick={() => setAdding({})} />}
           >
             <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
           </Empty>
@@ -447,15 +435,19 @@ export default function App() {
       <a className="skip" href="#content">
         Skip to content
       </a>
-      <nav className="rail" aria-label="Main">
+      <nav className={menu ? "rail open" : "rail"} aria-label="Main">
         <div className="brand">
           <Logo />
           <p>
             WP Sites HQ
             <small>by Classic Monks</small>
           </p>
+          <button type="button" className="btn sm rail-menu" aria-expanded={menu} aria-controls="rail-nav" onClick={() => setMenu(!menu)}>
+            {menu ? "Close menu" : "Menu"}
+            <Glyph name={menu ? "x" : "menu"} />
+          </button>
         </div>
-        <div className="rail-nav">
+        <div className="rail-nav" id="rail-nav">
           {GROUPS.map(([g, items]) => (
             <div key={g || "top"}>
               {g && <p className="navgroup">{g}</p>}
@@ -466,13 +458,16 @@ export default function App() {
                       type="button"
                       className="navitem"
                       aria-current={s === section ? "page" : undefined}
-                      onClick={() => setSection(s)}
+                      onClick={() => {
+                        setSection(s);
+                        setMenu(false);
+                      }}
                       onPointerEnter={() => preload(s, scoped)}
                       onFocus={() => preload(s, scoped)}
                     >
                       {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
                       {LABEL[s] ?? s}
-                      {counts[s] && (
+                      {live && counts[s] && (
                         <span className={counts[s].alert ? "n alert" : "n"}>
                           {counts[s].n}
                           <span className="sr-only"> {counts[s].say}</span>
@@ -486,13 +481,6 @@ export default function App() {
           ))}
         </div>
         <div className="foot">
-          <p className="next">
-            <Glyph name="clock" />
-            <span>
-              <b>{nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."}</b> Automatic checks run only while the app
-              or its tray agent is open.
-            </span>
-          </p>
           <div className="foot-row">
             <div className="themes" role="group" aria-label="Theme">
               {THEMES.map(([t, icon, label]) => (
@@ -507,17 +495,19 @@ export default function App() {
       </nav>
       <div className="main">
         <header className="top">
-          <div className="scope-field">
-            <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
-              <option value="">All sites ({all.length})</option>
-              {groups.map((g) => (
-                <option key={g} value={g}>
-                  Group: {g}
-                </option>
-              ))}
-            </Select>
-          </div>
-          {sites && sites.length > 0 && (
+          {live && (
+            <div className="scope-field">
+              <Select className="scope sm" value={scope} onChange={(e) => guarded(() => setScope(e.target.value))} aria-label="Sites to show">
+                <option value="">All sites ({all.length})</option>
+                {groups.map((g) => (
+                  <option key={g} value={g}>
+                    Group: {g}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+          {live && sites.length > 0 && (
             <p className="fresh" role="status">
               {checking ? (
                 <span className="pill">
@@ -525,21 +515,23 @@ export default function App() {
                   Checking…
                 </span>
               ) : lastCheck ? (
-                <span className="pill" data-tip={`Last checked at ${checkedAt(lastCheck)}`}>
+                <span className="pill" tabIndex={0} data-tip={`Last checked: ${dayTime(lastCheck)}. ${nextAt}`}>
                   <span className="pulse" aria-hidden="true" />
-                  <span aria-hidden="true">Checked {shortAgo(lastCheck)}</span>
-                  <span className="sr-only">Last checked at {checkedAt(lastCheck)}</span>
+                  <span aria-hidden="true">Checked {ago(lastCheck)}</span>
+                  <span className="sr-only">
+                    Last checked: {dayTime(lastCheck)}. {nextAt}
+                  </span>
                 </span>
               ) : (
-                <span className="pill">
+                <span className="pill" tabIndex={0} data-tip={nextAt}>
                   <span className="pulse" aria-hidden="true" />
                   Not checked yet
+                  <span className="sr-only">. {nextAt}</span>
                 </span>
               )}
               {needs > 0 && (
                 <button type="button" className="pill warning" onClick={() => setSection("Sites")}>
-                  {/* The name keeps the visible words and adds "sites" and where it goes. */}
-                  {needs} {needs === 1 ? <><span className="sr-only">site</span> needs</> : <><span className="sr-only">sites</span> need</>} attention
+                  {needs} {needs === 1 ? "site needs" : "sites need"} attention
                   <span className="sr-only">, open Sites</span>
                   <Glyph name="alert" />
                 </button>
@@ -552,7 +544,7 @@ export default function App() {
               <span>Search or run…</span>
               <Kbd>Ctrl K</Kbd>
             </button>
-            {sites && sites.length > 0 && (
+            {live && sites.length > 0 && (
               // The page head holds each page's main action, so this is the same plain button on every page.
               <Button disabled={checking} onClick={checkAll}>
                 {checking ? "Checking…" : "Check all sites"}
@@ -566,15 +558,10 @@ export default function App() {
             <div className={section === "Classic Monks" ? "marked" : undefined}>
               {section === "Classic Monks" && <Logo />}
               <h1>{LABEL[section] ?? section}</h1>
-              <p>{section === "Overview" && all.length > 0 ? sentence : ABOUT[section]}</p>
+              <p>{section === "Overview" && all.length > 0 && live ? sentence : ABOUT[section]}</p>
             </div>
             <div className="phead-acts" ref={setHeadSlot}>
-              {section === "Overview" && all.length > 0 && (
-                <Button keys="A" onClick={() => setAdding({})}>
-                  Add a site
-                  <Glyph name="plus" />
-                </Button>
-              )}
+              {section === "Overview" && all.length > 0 && live && <AddSiteButton onClick={() => setAdding({})} />}
             </div>
           </header>
           <HeadSlot.Provider value={headSlot}>

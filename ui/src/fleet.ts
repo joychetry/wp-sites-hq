@@ -41,6 +41,10 @@ export function attention(s: Site): string | null {
   return null;
 }
 
+/** How many rows the Overview's Needs attention list holds: each site that needs a look, then one row
+ * each for known vulnerabilities, AI plans and waiting updates. The sidebar shows the same number. */
+export const toFix = (sites: number, vulns: number, plans: number, updates: number) => sites + +(vulns > 0) + +(plans > 0) + +(updates > 0);
+
 export type Kind = "WordPress" | "Plugin" | "Theme" | "Translations";
 export type Row = PlanRow & { key: string; kind: Kind; name: string; active?: boolean };
 

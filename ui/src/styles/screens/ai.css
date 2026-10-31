@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* AI (board 16, D08): tabs on the ground, plan cards beside the access and how-it-works cards */
-.ai .tabs .cnt { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
+.ai .tabs .cnt { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: var(--radius-pill); background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
 
 /* A plan: who asked in a well head, what changes per site, the decision in a well foot */
 .ai .plan .card-head, .ai .plan .card-foot { background: var(--panel); }
@@ -18,7 +18,7 @@
 .ai-diff { display: grid; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); }
 .ai-diff > div { display: grid; grid-template-columns: minmax(110px, 40%) minmax(0, 1fr); gap: 10px; align-items: center; font-size: var(--fs-sm); color: var(--text-3); }
 .ai-diff b { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text); font-weight: 600; min-width: 0; }
-.ai-diff code { justify-self: start; padding: 2px 7px; border-radius: 5px; background: var(--panel); color: var(--text); font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); overflow-wrap: anywhere; }
+.ai-diff code { justify-self: start; padding: 2px 7px; border-radius: var(--radius-sm); background: var(--panel); color: var(--text); font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); overflow-wrap: anywhere; }
 .ai-diff code.old { background: var(--danger-bg); color: var(--danger); text-decoration: line-through; }
 .ai-diff code.new { background: var(--tint); color: var(--brand-text); }
 .vdiff { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -38,7 +38,9 @@
 .access label b { font-weight: 600; }
 .access label small { font-size: var(--fs-xs); color: var(--text-3); }
 .access .dim { font-size: var(--fs-sm); }
-.access .note { border-bottom: 1px solid var(--line); padding: var(--sp-3) 20px; }
+/* The line under it spans the card; the words stop at a readable measure. */
+/* 58ch of Figtree is about 80 characters: ch is the width of "0", wider than the average letter. */
+.access .note { border-bottom: 1px solid var(--line); padding: var(--sp-3) max(20px, calc(100% - 58ch)) var(--sp-3) 20px; }
 .access .quiet { padding: var(--sp-4) 20px; }
 
 /* How agents work here: three ticks */

@@ -7,6 +7,7 @@ import { Button, Glyph, type GlyphName } from "./ui";
 import { Sheet } from "./Sheet";
 import { SiteTile } from "./SiteTile";
 import { ChangeTile } from "./PkgTile";
+import { planTitle } from "../fleet";
 
 /** One change as the plan shows it, before the core has it. Name, icon and note are for the pick list. */
 export type PlanRow = {
@@ -35,7 +36,17 @@ const STATE_ICON: Record<JobItem["state"], GlyphName> = { waiting: "clock", runn
 const STATE_WORD: Record<JobItem["state"], string> = { waiting: "Waiting", running: "Running", done: "Done", failed: "Failed", rolled_back: "Rolled back" };
 const STATE_TONE: Record<JobItem["state"], string> = { waiting: "", running: "", done: "ok", failed: "danger", rolled_back: "warning" };
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** Machine text from the site (a PHP error) that a person shouldn't have to read first. */
+const RAW = /PHP (Fatal|Parse) error|Uncaught |Stack trace| on line \d+/;
+
+/** A plain line for a failed or rolled back change whose reason is raw machine text. */
+function plainReason(i: JobItem): string {
+  if (i.state !== "rolled_back") return "The change failed on the site with an error.";
+  const v = /^Rolled back to (\S+)\.(\s|$)/.exec(i.message)?.[1];
+  return v ? `Rolled back to ${v} because the update broke the site.` : "Rolled back because the update broke the site.";
+}
+
+const plural =(n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** Indexes of rows, by site, in the order the sites first appear. */
 function bySiteOf(rows: PlanRow[], keep: (i: number) => boolean = () => true): [string, number[]][] {
@@ -72,6 +83,9 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
   const bySite = useMemo(() => bySiteOf(rows), [rows]);
   const siteCount = new Set(chosen.map((r) => r.change.site_id)).size;
   const danger = fromPlan && state.danger;
+  // A title made from these rows (Updates) follows the ticks; any other title stays as given.
+  const named = rows as (PlanRow & { name: string })[];
+  const title = chosen.length && state.title === planTitle(named) ? planTitle(chosen as typeof named) : state.title;
 
   const toggle = (ids: number[], on: boolean) =>
     setPicked((p) => {
@@ -116,7 +130,7 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
   const confirmLabel = chosen.length === 1 ? chosen[0].label : `Make these ${chosen.length} changes`;
   return (
     <Sheet
-      title={state.title}
+      title={title}
       steps={steps}
       intro={
         step === "plan"
@@ -150,7 +164,7 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
               kind={danger ? "danger" : "primary"}
               className={danger ? undefined : "disc"}
               disabled={busy || chosen.length === 0}
-              onClick={() => start(chosen.map((r) => r.change), state.title)}
+              onClick={() => start(chosen.map((r) => r.change), title)}
             >
               {busy ? "Starting…" : confirmLabel}
               {!danger && (
@@ -257,6 +271,17 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
           ? "Finished. The change is done."
           : `Finished. All ${items.length} changes done.`
       : `${finished} of ${items.length} finished${notDone ? `, ${notDone}` : ""}. You can close this panel; it keeps running.`;
+  const count = (s: JobItem["state"]) => items.filter((i) => i.state === s).length;
+  // The meter's parts, in order; running and waiting both sit on the empty track.
+  const parts = (
+    [
+      ["done", count("done"), "done"],
+      ["failed", failed.length, "failed"],
+      ["rolled_back", back, "rolled back"],
+      ["waiting", count("running"), "running"],
+      ["waiting", count("waiting"), "waiting"],
+    ] as const
+  ).filter(([, n]) => n > 0);
   return (
     <Sheet
       title={over ? title : `${title}: running`}
@@ -290,7 +315,6 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
         <b>
           {finished} of {items.length} finished
         </b>
-        {notDone && <span>{notDone}</span>}
       </div>
       <div
         className="jobmeter"
@@ -299,16 +323,29 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
         aria-valuemin={0}
         aria-valuemax={items.length || 1}
         aria-valuenow={finished}
+        aria-valuetext={`${finished} of ${items.length} finished${parts.length ? `: ${parts.map(([, n, w]) => `${n} ${w}`).join(", ")}` : ""}`}
       >
-        <i style={{ width: `${items.length ? (finished / items.length) * 100 : 0}%` }} />
+        {parts.map(([cls, n, w]) => (
+          <i key={w} className={cls} style={{ flexGrow: n }} />
+        ))}
       </div>
+      {/* The key in words, so colour is never the only way to read the meter. The bar's valuetext says the same. */}
+      <p className="jobmeter-key" aria-hidden="true">
+        {parts.map(([cls, n, w]) => (
+          <span key={w}>
+            <i className={cls} />
+            {n} {w}
+          </span>
+        ))}
+      </p>
       <ul className="jobprog">
         {items.map((i) => {
+          const raw = (i.state === "failed" || i.state === "rolled_back") && RAW.test(i.message);
           const say =
             i.state === "done"
               ? [i.to_version && `now ${i.to_version}`, i.message !== "Done." && i.message]
               : i.state === "failed" || i.state === "rolled_back"
-                ? [i.message]
+                ? [raw ? plainReason(i) : i.message]
                 : [i.from_version && i.to_version && `${i.from_version} → ${i.to_version}`];
           return (
             <li key={i.id} className={i.state}>
@@ -322,6 +359,15 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
                       <span key={k}>{t}</span>
                     ))}
                   </small>
+                  {raw && (
+                    <details className="jobraw">
+                      <summary>
+                        Show the details
+                        <Glyph name="chevron-down" />
+                      </summary>
+                      <p>{i.message}</p>
+                    </details>
+                  )}
                 </span>
               </span>
               <span className={`meta ${STATE_TONE[i.state]}`}>{STATE_WORD[i.state]}</span>

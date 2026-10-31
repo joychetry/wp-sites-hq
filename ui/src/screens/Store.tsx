@@ -8,11 +8,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import "../styles/screens/store.css";
 import { api, hasTool, type Action, type Product, type ProductQuery, type Products, type Site, type StoreOverview } from "../api";
-import { Button, Glyph } from "../components/ui";
+import { Button, Glyph, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { Sheet } from "../components/Sheet";
 import type { PlanRow } from "../components/JobSheet";
 import { money } from "./Clients";
+import { range } from "../format";
 
 const PERIODS: [number, string][] = [
   [7, "7 days"],
@@ -105,7 +106,7 @@ export function Store({ sites, onPlan }: Props) {
 
   if (sites.length === 0) {
     return (
-      <Empty picture="sites" title="No sites yet.">
+      <Empty picture="sites" title="No sites yet">
         <p>Add a site with WooCommerce and Classic Monks on Sites, then its store shows here.</p>
       </Empty>
     );
@@ -151,7 +152,7 @@ export function Store({ sites, onPlan }: Props) {
       </Toolbar>
       {!can || !site ? (
         <section className="card">
-          <Empty title={`${site?.name ?? "This site"} has no store WP Sites HQ can read.`}>
+          <Empty title={`${site?.name ?? "This site"} has no store WP Sites HQ can read`}>
             <p>It needs WooCommerce and Classic Monks Pro with the store tools. Update Classic Monks on the site, then check it again on Sites.</p>
           </Empty>
         </section>
@@ -164,9 +165,7 @@ export function Store({ sites, onPlan }: Props) {
                 Orders and revenue on {site.name}, last {days} days
               </h2>
               {overview && (
-                <span className="dim m">
-                  {overview.from} to {overview.to}
-                </span>
+                <span className="dim">{range(overview.from, overview.to)}</span>
               )}
             </div>
             {overview ? (
@@ -276,7 +275,7 @@ export function Store({ sites, onPlan }: Props) {
                 </Select>
               </label>
             </form>
-            {list && list.products.length === 0 && <Empty small title="No products match." />}
+            {list && list.products.length === 0 && <Empty small title="No products match" />}
             {list && list.products.length > 0 && (
               <table className="t" aria-label="Products" aria-describedby="products-legend">
                 <thead>
@@ -323,9 +322,9 @@ export function Store({ sites, onPlan }: Props) {
                           <span className="row nowrap">
                             {counted && <span className="m">{p.stock_quantity}</span>}
                             {out || p.stock_status === "onbackorder" ? (
-                              <span className={`tag ${out ? "danger" : "warning"}`}>{STOCK[p.stock_status]}</span>
+                              <Status pill tone={out ? "danger" : "warning"}>{STOCK[p.stock_status]}</Status>
                             ) : isLow ? (
-                              <span className="tag warning">Low</span>
+                              <Status pill tone="warning">Low</Status>
                             ) : (
                               !counted && <span className="tag">{STOCK[p.stock_status] ?? p.stock_status}</span>
                             )}
@@ -412,7 +411,7 @@ function ProductSheet({ product, site, thumb, currency, onClose, onPlan }: Sheet
   const change = productChange(product, regular, sale, stock);
   const footer = (
     <>
-      <Button onClick={onClose}>Close without changing</Button>
+      <Button onClick={onClose}>Close without saving</Button>
       <Button kind="primary" className="disc" disabled={typeof change === "string"} onClick={() => typeof change !== "string" && onPlan(change)}>
         Review the change
         <span className="btn-disc">

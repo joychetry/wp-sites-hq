@@ -10,6 +10,7 @@ import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type 
 import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
+import { dayTime } from "../format";
 
 type Tab = "features" | "settings" | "activity" | "approvals" | "reports";
 const TABS: [Tab, string, string][] = [
@@ -41,16 +42,6 @@ export const toolLabel = (tool: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-const DAYTIME = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" });
-/** The site's "2026-10-28 09:30:12" as "Today, 09:30", "Yesterday, 16:12" or "Oct 24, 14:20". */
-export function when(time: string, now = new Date()): string {
-  const at = new Date(time.replace(" ", "T"));
-  if (Number.isNaN(at.getTime())) return time;
-  const hm = time.slice(11, 16);
-  const days = Math.round((new Date(now.toDateString()).getTime() - new Date(at.toDateString()).getTime()) / 86_400_000);
-  return `${days === 0 ? "Today" : days === 1 ? "Yesterday" : DAYTIME.format(at)}, ${hm}`;
-}
-
 /** Who made a change, as the log names them: changes this app made are yours, also from before
  * its rename (older rows say Monks Central). */
 export const whoOf = (who: string) => (who === "WP Sites HQ" || who === "Monks Central" ? "You" : who || "Not known");
@@ -79,7 +70,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <EmptyState picture="sites" title="No sites yet.">
+      <EmptyState picture="sites" title="No sites yet">
         <p>Add a site with Classic Monks on Sites, then its features show here.</p>
       </EmptyState>
     );
@@ -120,7 +111,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
                 <b>{site.name}</b>
                 <small>{site.cm_version ? `${pluginName(site)} ${site.cm_version}` : pluginName(site)}</small>
               </div>
-              {update && <span className="tag ok">{update} ready</span>}
+              {update && <Status pill tone="ok">{update} ready</Status>}
             </div>
             <p className="dim">
               Each change applies to the site at once and is logged, so you can undo it from Activity. Locked features (security and login) change only in
@@ -249,7 +240,7 @@ function useRead<T>(read: () => Promise<T>, deps: unknown[]) {
 function Failed({ what, error, retry }: { what: string; error: string; retry: () => void }) {
   return (
     <section className="card">
-      <EmptyState alert title={`${what} didn't load.`} action={<Button onClick={retry}>Try again</Button>}>
+      <EmptyState alert title={`${what} didn't load`} action={<Button onClick={retry}>Try again</Button>}>
         <p>{error}</p>
       </EmptyState>
     </section>
@@ -312,13 +303,13 @@ function Features({ site, onDone, round }: Part) {
             ))}
           </Select>
         </label>
-        <SearchInput className="sm srch" aria-label="Find a feature" placeholder="Find a feature" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <SearchInput aria-label="Find a feature" placeholder="Find a feature" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <span className="end dim" role="status">
           <b>{on}</b> switched on
         </span>
       </Toolbar>
       {groups.every((g) => g.toggles.length === 0) ? (
-        <Empty title="No feature matches.">
+        <Empty title="No feature matches">
           <p>Try another word.</p>
         </Empty>
       ) : (
@@ -370,7 +361,7 @@ function Settings({ site, onDone, round }: Part) {
   if (!data) return <Loading label={`Reading Classic Monks' settings on ${site.name}…`} />;
   if (data.length === 0)
     return (
-      <Empty title="Nothing to change here.">
+      <Empty title="Nothing to change here">
         <p>This Classic Monks lets WP Sites HQ change no settings. Its features are under Features.</p>
       </Empty>
     );
@@ -457,7 +448,7 @@ function Change({ row, busy, onUndo }: { row: ActivityRow; busy: boolean; onUndo
       <div>
         <b>{what}</b>
         <span>
-          {who} · {when(row.time)}
+          {who} · {dayTime(row.time) || row.time}
         </span>
       </div>
       {row.can_undo ? (
@@ -511,7 +502,7 @@ function useUndo(site: Site, onDone: (d: Done) => void) {
         <dd>{asking.summary || toolLabel(asking.tool)}</dd>
         <dt>Made by</dt>
         <dd>
-          {whoOf(asking.who)} · {when(asking.time)}
+          {whoOf(asking.who)} · {dayTime(asking.time) || asking.time}
         </dd>
       </dl>
     </Sheet>
@@ -554,7 +545,7 @@ function Log({ site, onDone, round }: Part) {
   if (!data) return <Loading label={`Reading the activity log on ${site.name}…`} />;
   if (data.rows.length === 0)
     return (
-      <Empty title="Nothing in the log yet.">
+      <Empty title="Nothing in the log yet">
         <p>Changes made through Classic Monks' tools, by WP Sites HQ or an AI app, show here.</p>
       </Empty>
     );
@@ -592,7 +583,7 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
   if (!data) return <Loading label={`Reading ${site.name}…`} />;
   if (data.length === 0)
     return (
-      <Empty title="Nothing is waiting for approval.">
+      <Empty title="Nothing is waiting for approval">
         <p>When an AI app asks to change {site.name}, the request waits here until you approve it on the site.</p>
         <Button onClick={load}>Check again</Button>
       </Empty>
@@ -613,7 +604,7 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
             <div>
               <b>{toolLabel(a.tool)}</b>
               <span>
-                Asked by {a.who || "not known"} · {when(a.time)} · {Math.max(1, Math.round(a.expires_in / 60))} min left
+                Asked by {a.who || "not known"} · {dayTime(a.time) || a.time} · {Math.max(1, Math.round(a.expires_in / 60))} min left
               </span>
             </div>
             <Button small aria-label={`Approve or decline on the site: ${toolLabel(a.tool)}`} onClick={() => open(a)}>
@@ -671,7 +662,7 @@ function Reports({ site }: { site: Site }) {
     return (
       <section className="card" aria-label="Reports">
         {head}
-        <EmptyState alert title="The reports didn't load." action={<Button onClick={load}>Try again</Button>}>
+        <EmptyState alert title="The reports didn't load" action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
         </EmptyState>
       </section>
@@ -746,7 +737,7 @@ function Reports({ site }: { site: Site }) {
                 <tr key={u.id}>
                   <td className="m cut">{u.url}</td>
                   <td className="r">{u.hits}</td>
-                  <td className="dim">{u.last_seen}</td>
+                  <td className="dim">{dayTime(u.last_seen) || u.last_seen}</td>
                   <td className="dim cut">{u.referrer || "not known"}</td>
                 </tr>
               ))}
@@ -772,7 +763,7 @@ function Reports({ site }: { site: Site }) {
             {se.zero_result_queries.map((q) => (
               <li key={`0${q.query}`} className="fix two">
                 <b>{q.query}</b>
-                <span className="tag warning">Found nothing, {q.searches} times</span>
+                <Status pill tone="warning">Found nothing, {q.searches} times</Status>
               </li>
             ))}
           </ul>

@@ -10,7 +10,7 @@ import "../styles/screens/editor.css";
 import { Combobox, DateInput, NumberInput, Select } from "../components/controls";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, hasTool, type Block, type Draft, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
-import { Button, Glyph } from "../components/ui";
+import { Button, Glyph, Status } from "../components/ui";
 import { toast, Empty } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import { MediaPicker } from "../components/MediaPicker";
@@ -19,6 +19,7 @@ import { acfErrors, AcfGroups, invalid, type Acf } from "./AcfFields";
 import { STATUS_LABEL } from "./Content";
 import { leaveGuard } from "../fleet";
 import { Page } from "../components/page";
+import { dayTime } from "../format";
 
 
 /** "core/paragraph" -> "Paragraph", "acme/map" -> "Map (acme)", "" -> "Text". */
@@ -144,7 +145,7 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
     try {
       const msg = await api.restoreRevision(site.id, post.id, r.id);
       const p = await api.post(site.id, post.post_type, post.id);
-      onRestored(p, `${msg} "${p.title}" on ${site.name} is back to the version from ${r.date}.`);
+      onRestored(p, `${msg} “${p.title}” on ${site.name} is back to the version from ${dayTime(r.date) || r.date}.`);
       setAsking(null);
       setList(await api.revisions(site.id, post.id));
     } catch (e) {
@@ -178,10 +179,10 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
                 <span className="vwho">
                   <b>{r.author || "Someone"}</b>
                   <span>
-                    <span className="mono">{r.date}</span> · {r.title || "(no title)"}
+                    <span>{dayTime(r.date) || r.date}</span> · {r.title || "(no title)"}
                   </span>
                 </span>
-                <Button small className={on ? undefined : "quiet"} aria-pressed={on} aria-label={`Put back the version from ${r.date}`} onClick={() => setAsking(on ? null : r)}>
+                <Button small className={on ? undefined : "quiet"} aria-pressed={on} aria-label={`Put back the version from ${dayTime(r.date) || r.date}`} onClick={() => setAsking(on ? null : r)}>
                   Put back
                 </Button>
               </li>
@@ -194,7 +195,7 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
           <Glyph name="undo" />
           <div>
             <p>
-              <b>Put back the version from {asking.date}?</b> The title and body go back to that version. The current one is kept as a version too, so you can undo this.
+              <b>Put back the version from {dayTime(asking.date) || asking.date}?</b> The title and body go back to that version. The current one is kept as a version too, so you can undo this.
             </p>
             <div className="row">
               <Button small onClick={() => setAsking(null)}>
@@ -497,7 +498,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
       if (to) dr.status = to;
       if (isNew) {
         const p = await api.createPost(site.id, type.name, dr);
-        onSaved(`Added "${p.title}" to ${site.name} as ${(STATUS_LABEL[p.status] ?? p.status).toLowerCase()}.`);
+        onSaved(`Added “${p.title}” to ${site.name} as ${(STATUS_LABEL[p.status] ?? p.status).toLowerCase()}.`);
         leaveGuard.ask = null;
         onClose();
         return;
@@ -506,7 +507,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
       if (Object.keys(dr).some((k) => k !== "seen_modified")) {
         p = await api.editPost(site.id, type.name, postId, dr);
         fill(p);
-        onSaved(`Saved "${p.title}" on ${site.name}.`);
+        onSaved(`Saved “${p.title}” on ${site.name}.`);
       }
       if (acf && acfDirty) {
         try {
@@ -520,7 +521,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
           const done = await api.saveAcf(site.id, postId, acfValues);
           const n = Object.keys(acfValues).length;
           const back = done.undo;
-          toast(`Saved ${n === 1 ? "1 ACF field" : `${n} ACF fields`} of "${p.title}" on ${site.name}.`, back ? { undo: () => api.undo(site.id, back).then(() => (loadAcf(postId), toast("The ACF fields are back as they were."))) } : undefined);
+          toast(`Saved ${n === 1 ? "1 ACF field" : `${n} ACF fields`} of “${p.title}” on ${site.name}.`, back ? { undo: () => api.undo(site.id, back).then(() => (loadAcf(postId), toast("The ACF fields are back as they were."))) } : undefined);
           loadAcf(postId);
         } catch (e) {
           const { byKey, rest } = acfErrors(acf, String(e));
@@ -550,7 +551,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
     try {
       const now = await api.untrash(site.id, postId!);
       fill(await api.post(site.id, type.name, postId!));
-      onSaved(`Brought "${post?.title}" back from the trash on ${site.name}, as ${(STATUS_LABEL[now] ?? now).toLowerCase()}.`);
+      onSaved(`Brought “${post?.title}” back from the trash on ${site.name}, as ${(STATUS_LABEL[now] ?? now).toLowerCase()}.`);
     } catch (e) {
       toast(String(e), { tone: "danger" });
     } finally {
@@ -564,7 +565,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
       await api.trashPost(site.id, type.name, postId!);
       // Classic Monks can bring it straight back from the message.
       const back = cm && hasTool(site, "untrash-post") ? () => api.untrash(site.id, postId!) : undefined;
-      onSaved(`Moved "${post?.title}" to the trash on ${site.name}.`, back);
+      onSaved(`Moved “${post?.title}” to the trash on ${site.name}.`, back);
       leaveGuard.ask = null;
       onClose();
     } catch (e) {
@@ -606,7 +607,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             {back ?? `Back to ${type.label.toLowerCase()}`}
           </Button>
         </div>
-        <Empty alert title={`This ${noun} didn't open.`}>
+        <Empty alert title={`This ${noun} didn't open`}>
           <p>{loadError}</p>
         </Empty>
       </Page>
@@ -663,7 +664,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
         <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>
         </h2>
-        {dirty && <span className="tag warning">Unsaved changes</span>}
+        {dirty && <Status pill tone="warning">Unsaved changes</Status>}
       </div>
       <div className="ed-grid" inert={saving} aria-busy={saving || undefined}>
         <div className="ed-main stack">
@@ -860,7 +861,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
       {trashing && (
         <Sheet
           dialog
-          title={`Move "${post?.title}" to the trash?`}
+          title={`Move “${post?.title}” to the trash?`}
           onClose={() => setTrashing(false)}
           footer={
             <>
@@ -898,7 +899,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             </>
           }
         >
-          <p>Your changes to "{title || `this ${noun}`}" aren't saved. If you leave now, they are lost.</p>
+          <p>Your changes to {title ? <>&ldquo;{title}&rdquo;</> : `this ${noun}`} aren't saved. If you leave now, they are lost.</p>
         </Sheet>
       )}
     </Page>

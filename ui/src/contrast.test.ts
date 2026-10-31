@@ -44,7 +44,7 @@ const UI = 3;
 const pairs = (fgs: string[], bgs: string[], min: number) => fgs.flatMap((fg) => bgs.map((bg) => [fg, bg, min] as const));
 
 // Every surface text and controls sit on; the sidebar uses the same tokens as the content.
-const SURFACES = ["--bg", "--panel", "--raise", "--sel", "--ground", "--tint-2", "--warn-paper"];
+const SURFACES = ["--bg", "--panel", "--raise", "--sel", "--ground", "--tint", "--tint-2", "--warn-paper"];
 const PAIRS = [
   ...pairs(["--text", "--text-2", "--text-3"], SURFACES, TEXT),
   ...pairs(["--ok", "--warn", "--danger", "--brand-text"], ["--bg", "--panel", "--sel", "--raise", "--ground"], TEXT),
@@ -63,6 +63,8 @@ const PAIRS = [
   // Control borders, the focus ring, green fills (checkbox, switch) and status dots.
   ...pairs(["--line-ui", "--focus", "--accent", "--green"], ["--bg", "--panel", "--raise", "--ground"], UI),
   ...pairs(["--focus", "--accent"], ["--sel", "--tint-2"], UI),
+  // The ok word on a ticked row or an ok callout, now that the dark tint is green.
+  ...pairs(["--ok", "--brand-text"], ["--tint", "--tint-2"], TEXT),
 ] as const;
 
 const results = Object.entries(THEMES).flatMap(([theme, vars]) =>

@@ -5,7 +5,7 @@ import { dismiss, Empty, toast } from "../components/feedback";
 import { Combobox, SearchInput, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type PluginZip, type Site } from "../api";
-import { Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
+import { AddSiteButton, Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import { updatesOf } from "./Updates";
@@ -74,6 +74,17 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
 
   const focus = rows.find((s) => s.id === focusId) ?? rows[0] ?? null;
   const picked = sites.filter((s) => selected.has(s.id));
+  const moveToGroup = async () => {
+    const g = groupFor.trim();
+    // An empty box never ungroups the whole selection; one move at a time.
+    if (!g || grouping) return;
+    setGrouping(true);
+    const failed = (await Promise.all(picked.map((s) => api.setGroup(s.id, g).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
+    setGrouping(false);
+    setGroupFor("");
+    if (failed) toast(`${failed} of ${picked.length} sites didn't move to ${g}.`, { tone: "danger" });
+    else toast(`Put ${picked.length === 1 ? "1 site" : `${picked.length} sites`} in ${g}.`);
+  };
 
   useEffect(() => {
     // Removed sites leave the selection.
@@ -156,12 +167,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   return (
     <>
       <HeadActions>
-        <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
-          Add a site
-          <span className="btn-disc">
-            <Glyph name="plus" />
-          </span>
-        </Button>
+        <AddSiteButton onClick={onAdd} />
       </HeadActions>
       <Page className="sites" side={side}>
         <Toolbar>
@@ -207,19 +213,15 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           {rows.length === 0 ? (
             sites.length === 0 ? (
               <Empty
-                title="No sites yet."
-                action={
-                  <Button kind="primary" keys="A" onClick={onAdd}>
-                    Add a site
-                  </Button>
-                }
+                title="No sites yet"
+                action={<AddSiteButton onClick={onAdd} />}
               >
                 <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
               </Empty>
             ) : (
               <Empty
                 small
-                title="No site matches these filters."
+                title="No site matches these filters"
                 action={
                   <Button
                     onClick={() => {
@@ -407,24 +409,18 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                   aria-label="Group for the selected sites"
                   value={groupFor}
                   onChange={(e) => setGroupFor(e.target.value)}
-                  onKeyDown={async (e) => {
-                    const g = groupFor.trim();
-                    // An empty box never ungroups the whole selection; one Enter at a time.
-                    if (e.key !== "Enter" || !g || grouping) return;
-                    setGrouping(true);
-                    const failed = (await Promise.all(picked.map((s) => api.setGroup(s.id, g).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
-                    setGrouping(false);
-                    setGroupFor("");
-                    if (failed) toast(`${failed} of ${picked.length} sites didn't move to ${g}.`, { tone: "danger" });
-                    else toast(`Put ${picked.length === 1 ? "1 site" : `${picked.length} sites`} in ${g}.`);
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") moveToGroup();
                   }}
                 />
               </label>
+              <Button small disabled={!groupFor.trim() || grouping} onClick={moveToGroup}>
+                Apply
+              </Button>
               <Button small className="ghost" keys="R" onClick={() => check(picked.map((s) => s.id))}>
                 Check them now
                 <Glyph name="refresh" />
               </Button>
-              <span className="grow" />
               <Button small className="ghost" onClick={() => setSelected(new Set())} keys="Esc">
                 Clear selection
               </Button>

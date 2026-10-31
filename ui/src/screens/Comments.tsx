@@ -3,11 +3,12 @@
 import "../styles/screens/comments.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
-import { dayLabel, Menu } from "../components/controls";
+import { Menu } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Comment, type CommentState, type Moderation, type Site } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
 import { Button, Glyph } from "../components/ui";
+import { dayTime } from "../format";
 
 const SHOW: [CommentState, string][] = [
   ["pending", "Waiting for approval"],
@@ -87,7 +88,7 @@ export function Comments({ sites }: { sites: Site[] }) {
   if (sites.length === 0) {
     return (
       <Page narrow>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site on Sites, then its comments show here.</p>
         </Empty>
       </Page>
@@ -145,7 +146,7 @@ export function Comments({ sites }: { sites: Site[] }) {
   } else if (rows.length === 0) {
     body = (
       <section className="card">
-        <Empty picture="inbox" title={show === "pending" ? "No comments are waiting." : `No ${label} comments.`}>
+        <Empty picture="inbox" title={show === "pending" ? "No comments are waiting" : `No ${label} comments.`}>
           <p>{siteF != null ? "None on this site. Pick another site, or any site." : show === "pending" ? "New comments that need approval show here, from every site." : "Pick another list above."}</p>
         </Empty>
       </section>
@@ -161,8 +162,6 @@ export function Comments({ sites }: { sites: Site[] }) {
             const k = key(r);
             const who = r.c.author || "A visitor";
             const open = replying === k;
-            const day = dayLabel(r.c.date);
-            const time = r.c.date.slice(11, 16);
             return (
               <li key={k} className="card">
                 <div className="card-body">
@@ -177,8 +176,7 @@ export function Comments({ sites }: { sites: Site[] }) {
                         <b>{r.site.name}</b>, on <span data-tip={r.c.post_title}>{r.c.post_title || "a page with no title"}</span>
                       </span>
                     </div>
-                    <span className="when" data-tip={r.c.date}>
-                      {day ? `${day}${time ? `, ${time}` : ""}` : r.c.date}
+                    <span className="when">{dayTime(r.c.date) || r.c.date}
                     </span>
                   </div>
                   <p className="said">{plainText(r.c.content) || "(empty)"}</p>
