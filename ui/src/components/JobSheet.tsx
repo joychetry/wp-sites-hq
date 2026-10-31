@@ -132,7 +132,10 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
             {step === "plan" && `${chosen.length} selected`}
           </span>
           {step === "confirm" && fromPlan && state.start === "plan" && (
-            <Button onClick={() => setStep("plan")}>Back</Button>
+            <Button onClick={() => setStep("plan")}>
+              <Glyph name="arrow-left" />
+              Back
+            </Button>
           )}
           <Button onClick={onClose}>Close without changes</Button>
           {step === "plan" ? (
