@@ -121,7 +121,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 /* Number, search, tags, colour, files */
 .num-in { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .num-in .input { width: 104px; text-align: right; font-variant-numeric: tabular-nums; }
-.num-in .icon-btn { border: 1px solid var(--control-line); background: var(--bg); border-radius: 50%; }
+.num-in .icon-btn { width: var(--control); height: var(--control); border: 1px solid var(--control-line); background: var(--bg); border-radius: 50%; }
 .num-in.sm .icon-btn, .num-in.sm .input { height: var(--control-sm); }
 .srch { position: relative; display: inline-flex; align-items: center; }
 .srch > .ico { position: absolute; left: 14px; width: 15px; height: 15px; color: var(--text-3); pointer-events: none; }
