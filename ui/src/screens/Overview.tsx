@@ -9,7 +9,7 @@ import { SiteTile } from "../components/SiteTile";
 import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
-import { attention } from "../fleet";
+import { attention, toFix } from "../fleet";
 import { Page } from "../components/page";
 import { dayTime } from "../format";
 
@@ -323,7 +323,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
   const mon = new Map(monitors.map((m) => [m.site_id, m]));
   // Sites that need you first, then the rest, as many as fit a glance.
   const listed = [...needs, ...sites.filter((s) => !attention(s))].slice(0, SHOW_SITES);
-  const fixes = needs.length + (vulns.length ? 1 : 0) + (live.length ? 1 : 0) + (waiting.length ? 1 : 0);
+  const fixes = toFix(needs.length, vulns.length, live.length, waiting.length);
   if (sites.length === 0)
     return (
       <Page>
