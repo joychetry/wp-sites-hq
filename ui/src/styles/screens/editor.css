@@ -103,7 +103,9 @@
 .rte-bar { min-height: 84px; border-bottom: 1px solid var(--line); }
 /* contain: site HTML with position: fixed stays inside its box, never over the window. */
 .rte-body { position: relative; contain: paint; min-height: 320px; padding: var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius) var(--radius); }
-.rte-body:focus, .rte-body:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.rte-body:focus, .rte-body:focus-visible { outline: none; }
+.rte:has(.rte-body:focus, .rte-source:focus) { border-color: var(--focus); box-shadow: var(--ring); }
+.rte .rte-source:focus { outline: none; box-shadow: none; }
 .rte textarea.rte-source { display: block; width: 100%; min-height: 404px; border: 0; border-radius: 0 0 var(--radius) var(--radius); font: var(--fs-sm)/1.6 var(--mono); resize: vertical; }
 .rte-wait { position: absolute; top: var(--sp-3); left: var(--sp-4); margin: 0; color: var(--text-3); font-size: var(--fs-sm); }
 .rte-media { padding: var(--sp-3); border-bottom: 1px solid var(--line); }
@@ -132,7 +134,7 @@
 .blk-name { display: inline-flex; align-items: center; gap: 6px; }
 .blk-level { padding: 0 5px; border: 1px solid var(--line); border-radius: var(--radius-sm); font: 500 var(--fs-xs)/1.5 var(--mono); color: var(--text-3); }
 pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; }
-.blk-text:focus, .blk-text:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.blk-text:focus, .blk-text:focus-visible { outline: none; border-color: var(--focus); box-shadow: var(--ring); }
 .blk.locked .tag { margin-left: auto; }
 .blk.locked .tag .glyph { width: 12px; height: 12px; }
 
@@ -189,7 +191,7 @@ html .tox .tox-dialog__header, html .tox .tox-dialog__body, html .tox .tox-dialo
 html .tox .tox-dialog__title { font: 600 var(--fs-lg)/1.3 var(--display); color: var(--text); }
 html .tox .tox-label, html .tox .tox-form__group label, html .tox .tox-checkbox__label { color: var(--text); font-size: var(--fs-sm); font-weight: 600; }
 html .tox .tox-textfield, html .tox .tox-textarea, html .tox .tox-listboxfield .tox-listbox--select, html .tox .tox-selectfield select { background: var(--bg); color: var(--text); border-color: var(--line-ui); border-radius: var(--radius); font-family: var(--sans); }
-html .tox .tox-textfield:focus, html .tox .tox-listboxfield .tox-listbox--select:focus { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+html .tox .tox-textfield:focus, html .tox .tox-listboxfield .tox-listbox--select:focus { border-color: var(--focus); box-shadow: var(--ring); outline: none; }
 html .tox .tox-listbox__select-label { color: var(--text); }
 html .tox .tox-button { border-radius: var(--radius-pill); background: var(--green); border-color: var(--green); color: var(--on-green); font: 600 var(--fs)/1 var(--sans); }
 html .tox .tox-button:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); }
