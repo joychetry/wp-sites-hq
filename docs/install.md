@@ -67,7 +67,7 @@ If you updated from Monks Central, the app may still be called
    an administrator. The `.msi` installs for every user and asks for one.
 
 **Command line (`wpshq`, for AI apps):** `wpshq.exe` sits next to
-`WP Sites HQ.exe` in the install folder (right-click WP Sites HQ in the
+`wp-sites-hq.exe` in the install folder (right-click WP Sites HQ in the
 Start menu > **Open file location** shows it). Add that folder to your PATH:
 Start > "Edit environment variables for your account" > Path > Edit > New.
 
