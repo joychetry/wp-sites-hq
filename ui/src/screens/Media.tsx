@@ -370,7 +370,7 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
               )}
             </>
           ) : (
-            <p className="dim">{cm ? "Replacing files needs a newer Classic Monks on the site." : "Replacing files needs Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode."}</p>
+            <p className="dim">{cm ? "Replacing files needs a newer Classic Monks on the site." : "Replacing files needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode."}</p>
           )}
         </div>
         <Button className="quiet" onClick={() => api.openLink(item.url).catch((e) => toast(String(e), { tone: "danger" }))}>

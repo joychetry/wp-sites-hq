@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Add a site (or sign one in again): OAuth in the browser through the site's plugin
-// (Monks Central, Classic Monks or Classic Monks Pro), or
+// (the WP Sites HQ plugin, Classic Monks or Classic Monks Pro), or
 // Basic mode with an application password.
 import { useState, type ReactNode } from "react";
 import { api, pluginName, type Site } from "../api";
@@ -166,8 +166,8 @@ export function AddSite({ again, onClose, onDone }: Props) {
           <>
             <p className="lead">
               {expired
-                ? "Sign in on the site once and Monks Central picks up where it left off. Your notes, tags and group stay as they are."
-                : "Sign in on the site again and tick the tool groups Monks Central may use. Your notes, tags and group stay as they are."}
+                ? "Sign in on the site once and WP Sites HQ picks up where it left off. Your notes, tags and group stay as they are."
+                : "Sign in on the site again and tick the tool groups WP Sites HQ may use. Your notes, tags and group stay as they are."}
             </p>
             {basic && credentials}
             <p className="callout">
@@ -270,10 +270,10 @@ export function AddSite({ again, onClose, onDone }: Props) {
                 <Logo />
               </span>
               <b>
-                A Monks Central plugin <span className="tag ok">Recommended</span>
+                A WP Sites HQ plugin <span className="tag ok">Recommended</span>
               </b>
               <span>
-                Monks Central, Classic Monks or Classic Monks Pro on the site. Any of them works. Sign in on the site once and
+                The WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. Any of them works. Sign in on the site once and
                 every tool works, including undo.
               </span>
             </label>
@@ -290,8 +290,8 @@ export function AddSite({ again, onClose, onDone }: Props) {
             <p className="callout">
               <Glyph name="info" />
               <span>
-                Your browser opens the site. Sign in as an administrator. Tick the tool groups Monks Central may use; with none
-                ticked it can't do anything. Tick <b>This is my Monks Central app (operator)</b> and press Connect. The site
+                Your browser opens the site. Sign in as an administrator. Tick the tool groups WP Sites HQ may use; with none
+                ticked it can't do anything. Tick <b>This is my WP Sites HQ app (operator)</b> (older plugins say Monks Central app) and press Connect. The site
                 appears here on its own. It needs WordPress 7.1 or newer.
               </span>
             </p>

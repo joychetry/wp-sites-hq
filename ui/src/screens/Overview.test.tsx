@@ -12,7 +12,7 @@ beforeEach(() => mockInvoke.mockResolvedValue([]));
 afterEach(() => mockInvoke.mockReset());
 
 test("the sentence counts down sites and sites that need a look", () => {
-  expect(summary([])).toEqual({ lead: "Welcome to Monks Central.", rest: "Add your first site to get started." });
+  expect(summary([])).toEqual({ lead: "Welcome to WP Sites HQ.", rest: "Add your first site to get started." });
   expect(summary([site()]).lead).toBe("Your one site is healthy.");
   const many = [
     site({ id: 1, health: "down" }),

@@ -145,7 +145,7 @@ const FLEET: Site[] = [
         version: "1.1.0",
         hosts: [
           { name: "Classic Monks Pro", version: "2.6.0", connector: "1.1.0" },
-          { name: "Monks Central", version: "1.0.0", connector: "1.1.0" },
+          { name: "WP Sites HQ", version: "1.0.0", connector: "1.1.0" },
         ],
       },
     },
@@ -157,7 +157,7 @@ const FLEET: Site[] = [
   site({ id: 2, client_id: 1, client: "Corner Bakery", name: "Corner Bakery", url: "https://corner-bakery-and-cafe-downtown.local", group: "Clients", health: "down", health_detail: "The site didn't answer within 20 seconds.", checked_at: now - 60 }),
   site({ id: 3, name: "mc-c", url: "https://mc-c.local", mode: "basic", username: "admin", cm_version: null, capabilities: {}, health_detail: "Answered in 0.7 s." }),
   // 4 and 5 have no icon, so their tiles show the monogram.
-  site({ id: 4, icon: null, name: "Monks Central Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
+  site({ id: 4, icon: null, name: "WP Sites HQ Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
   site({ id: 5, icon: null, name: "Studio Blog", url: "https://studio-blog.local", wp_version: "7.1.2", php_version: "8.3.14", cm_version: null, capabilities: { abilities: [], hq_status: false, degraded: true }, health_detail: "Answered in 0.5 s." }),
   site({ id: 6, client_id: 2, client: "Studio North", name: "Portfolio", url: "https://portfolio.local", group: "Personal", tags: ["static"], php_version: "8.3.14", health: "ok", health_detail: "Slow: the home page took 4.2 s.", checked_at: now - 3600 * 2 }),
 ];
@@ -571,7 +571,7 @@ const SECURITY: SecurityReport[] =
           vulnerabilities: [],
           abandoned: [{ id: "hello-dolly/hello.php", name: "Hello Dolly", version: "1.7.2", last_updated: null, closed: true, reason: "author-request" }],
           checksums: null,
-          notes: ["Checksums need Monks Central, Classic Monks or Classic Monks Pro on the site."],
+          notes: ["Checksums need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site."],
         },
         { site_id: 6, checked_at: now - 2 * 3600, vulnerabilities: [], abandoned: [], checksums: { checked: 3, not_verifiable: [], changed: [] }, notes: [] },
       ];
@@ -674,7 +674,7 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "site_remove":
       sites = sites.filter((s) => s.id !== id);
       changed();
-      return r({ signed_out: true, message: "Removed. Monks Central signed out on the site." });
+      return r({ signed_out: true, message: "Removed. WP Sites HQ signed out on the site." });
     case "sign_in_cancel":
     case "site_open":
       return r(null);
@@ -763,7 +763,7 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       const who = CLIENTS.find((c) => c.id === ask.client_id)?.name ?? "Website report";
       const preview = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${who}</title><style>body{font:15px/1.5 system-ui;max-width:760px;margin:40px auto;padding:0 24px;color:#1b1b1b}h2{color:#1f6feb;border-top:2px solid #1f6feb;padding-top:16px}dl{display:grid;grid-template-columns:200px 1fr}dt{color:#555}dd{margin:0}</style></head><body><p style="color:#1f6feb;font-weight:600">Studio North</p><h1>${who}: ${ask.month}</h1>${own
         .map((s) => `<h2>${s.name}</h2><p>${s.url}</p><dl><dt>Uptime</dt><dd>99.95% (2,880 checks)</dd><dt>Changes made</dt><dd>6</dd><dt>Security</dt><dd>No known problems</dd></dl><h3>Work done</h3><ul><li>Update WooCommerce to 10.3.0</li><li>Publish “Autumn menu”</li></ul>`)
-        .join("")}<footer>hello@studio-north.test. Made with Monks Central</footer></body></html>`;
+        .join("")}<footer>hello@studio-north.test. Made with WP Sites HQ</footer></body></html>`;
       const stem = who.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       return r({ html: `/home/you/Downloads/${stem}-report-${ask.month}.html`, pdf: `/home/you/Downloads/${stem}-report-${ask.month}.pdf`, preview, sites: own.length, notes: ["Corner Bakery: store: The site didn't answer within 20 seconds."] });
     }
@@ -839,7 +839,7 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       COSTS = COSTS.filter((c) => c.id !== id);
       return r(null);
     case "sites_export":
-      return r(`/home/you/Downloads/monks-central-sites-2026-10-28.${args.csv ? "csv" : "json"}`);
+      return r(`/home/you/Downloads/wp-sites-hq-sites-2026-10-28.${args.csv ? "csv" : "json"}`);
     case "sites_import":
       return r({ sites: 2, clients: 1, costs: 3, not_connected: ["https://old-shop.example"] });
     case "file_show":
@@ -922,7 +922,7 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(FEATURES);
     case "cm_set_feature":
       FEATURES = FEATURES.map((g) => ({ ...g, toggles: g.toggles.map((t) => (t.name === args.name ? { ...t, on: args.on as boolean } : t)) }));
-      ACTIVITY = [{ id: 42, time: "2026-10-28 10:00:00", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true }, ...ACTIVITY];
+      ACTIVITY = [{ id: 42, time: "2026-10-28 10:00:00", who: "WP Sites HQ", tool: "update-features", status: "ok", summary: "", can_undo: true }, ...ACTIVITY];
       return r(42);
     case "cm_settings":
       return r(SETTINGS);
@@ -969,10 +969,10 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(null);
     case "plugin_download":
       await new Promise((ok) => setTimeout(ok, 300));
-      return r({ version: "1.2.0", path: "/home/joy/Downloads/monks-central-1.2.0.zip" });
+      return r({ version: "1.2.0", path: "/home/joy/Downloads/wp-sites-hq-1.2.0.zip" });
     case "site_connect_plugin": {
       const s = sites.find((x) => x.id === id)!;
-      Object.assign(s, { mode: "classic_monks", cm_version: "1.2.0", capabilities: { ...FLEET[0].capabilities, plugin: { name: "Monks Central", version: "1.2.0" } } });
+      Object.assign(s, { mode: "classic_monks", cm_version: "1.2.0", capabilities: { ...FLEET[0].capabilities, plugin: { name: "WP Sites HQ", version: "1.2.0" } } });
       return r({ ...s });
     }
     case "monitors_list":

@@ -271,7 +271,7 @@ export function Content({ sites, onPlan }: Props) {
       <>
         <p className={inTrash && !canBack ? "legend" : "sr-only"} id="content-legend">
           Select a title to open it, or tick entries to change several at once. Dates are in the site's own time zone.
-          {inTrash && !canBack && " Bringing entries back from the trash needs Monks Central, Classic Monks or Classic Monks Pro on the site."}
+          {inTrash && !canBack && " Bringing entries back from the trash needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site."}
         </p>
         {onPlan && actions.length > 0 && (
           <div className="bulk" role="group" aria-label="Change the ticked entries">

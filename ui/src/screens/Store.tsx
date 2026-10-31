@@ -151,7 +151,7 @@ export function Store({ sites, onPlan }: Props) {
       </Toolbar>
       {!can || !site ? (
         <section className="card">
-          <Empty title={`${site?.name ?? "This site"} has no store Monks Central can read.`}>
+          <Empty title={`${site?.name ?? "This site"} has no store WP Sites HQ can read.`}>
             <p>It needs WooCommerce and Classic Monks Pro with the store tools. Update Classic Monks on the site, then check it again on Sites.</p>
           </Empty>
         </section>

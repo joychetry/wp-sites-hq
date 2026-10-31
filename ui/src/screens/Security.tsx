@@ -373,11 +373,11 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
           )}
           <p className="note" id="security-legend">
             {scanned.length === 0
-              ? "Every site is scanned once a day while Monks Central runs."
+              ? "Every site is scanned once a day while WP Sites HQ runs."
               : vulns.length + abandoned.length + changed.length === 0
                 ? `No known problems on ${plural(scanned.length, "site")}.`
                 : `${plural(vulns.length, "known vulnerability", "known vulnerabilities")}, ${plural(abandoned.length, "abandoned plugin")} and ${plural(changed.length, "changed install", "changed installs")} on ${plural(scanned.length, "site")}.`}{" "}
-            Vulnerabilities come from WPVulnerability, checked against the version each site runs. Sites are scanned once a day while Monks Central runs.
+            Vulnerabilities come from WPVulnerability, checked against the version each site runs. Sites are scanned once a day while WP Sites HQ runs.
           </p>
         </div>
       </div>

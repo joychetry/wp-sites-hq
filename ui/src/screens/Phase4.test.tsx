@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
-import { ClassicMonks, toolLabel, when } from "./ClassicMonks";
+import { ClassicMonks, toolLabel, when, whoOf } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
@@ -324,4 +324,10 @@ describe("Classic Monks", () => {
     expect(peopleBlocked(CM, "get-users")).toBeNull();
     expect(peopleBlocked(OLD, "get-users")).toMatch(/tick the user and comment tool groups/);
   });
+});
+
+test("log rows from this app read as You, under its old and new name", () => {
+  expect(whoOf("WP Sites HQ")).toBe("You");
+  expect(whoOf("Monks Central")).toBe("You");
+  expect(whoOf("Claude")).toBe("Claude");
 });

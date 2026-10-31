@@ -16,7 +16,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** "Two sites are down. One needs a look." and the quieter rest. */
 export function summary(sites: Site[]): { lead: string; rest: string } {
   const n = sites.length;
-  if (n === 0) return { lead: "Welcome to Monks Central.", rest: "Add your first site to get started." };
+  if (n === 0) return { lead: "Welcome to WP Sites HQ.", rest: "Add your first site to get started." };
   const tones = sites.map((s) => siteStatus(s).tone);
   const down = tones.filter((t) => t === "danger").length;
   const look = tones.filter((t) => t === "warning").length;

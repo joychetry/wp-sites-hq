@@ -58,7 +58,7 @@ type Props = {
 
 const TIPS = "mc-tips-hidden";
 
-/** First run: what Monks Central does, in three steps, with the first one as the main button. */
+/** First run: what WP Sites HQ does, in three steps, with the first one as the main button. */
 function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
   return (
     <section className="welcome" aria-label="Getting started">
@@ -68,7 +68,7 @@ function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
             <Logo />
           </span>
           <h2>Every WordPress site you look after, in one place</h2>
-          <p>Monks Central checks your sites, keeps them updated and tells you what needs you. Add your first site to start.</p>
+          <p>WP Sites HQ checks your sites, keeps them updated and tells you what needs you. Add your first site to start.</p>
           <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onAdd}>
             Add a site
             <span className="btn-disc">
@@ -92,7 +92,7 @@ function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
         </div>
       </div>
       <p className="dim">
-        Your sign-ins stay on this computer, encrypted. Nothing goes to a Monks Central server. Press <Kbd>Ctrl K</Kbd> to find any page, site
+        Your sign-ins stay on this computer, encrypted. Nothing goes to a WP Sites HQ server. Press <Kbd>Ctrl K</Kbd> to find any page, site
         or action
         {onGo ? (
           <>
@@ -285,7 +285,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
       {error ? (
         <p className="quiet">The activity log didn't load. It reads again after the next change.</p>
       ) : rows && shown.length === 0 ? (
-        <p className="quiet">{who === "All" ? "Nothing has changed through Monks Central yet." : `No changes by ${who === "You" ? "you" : "AI agents"} yet.`}</p>
+        <p className="quiet">{who === "All" ? "Nothing has changed through WP Sites HQ yet." : `No changes by ${who === "You" ? "you" : "AI agents"} yet.`}</p>
       ) : (
         <ul className="feed">
           {shown.map((r) => (
@@ -557,7 +557,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
           </section>
         </div>
       </div>
-      <p className="note">Monks Central checks your sites while it is open. Sites cannot send alerts to it on their own.</p>
+      <p className="note">WP Sites HQ checks your sites while it is open. Sites cannot send alerts to it on their own.</p>
     </Page>
   );
 }

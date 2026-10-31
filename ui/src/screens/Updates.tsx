@@ -19,9 +19,9 @@ function unseen(sites: Site[], inventory: Map<number, SiteInventory>): [Site, st
     const inv = inventory.get(s.id);
     const why =
       blocked(s, inv) ??
-      (!inv!.inventory.updates_known ? "Basic mode can't see updates. They need Monks Central, Classic Monks or Classic Monks Pro on the site." : null) ??
+      (!inv!.inventory.updates_known ? "Basic mode can't see updates. They need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site." : null) ??
       (inv!.inventory.needs_credentials
-        ? "WordPress here needs FTP details to update, so its updates can't run from Monks Central."
+        ? "WordPress here needs FTP details to update, so its updates can't run from WP Sites HQ."
         : null);
     return why ? [[s, why]] : [];
   });
@@ -238,7 +238,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
       <p className="callout">
         <Glyph name="history" />
         <span>
-          <b>A release misbehaves?</b> After each plugin update on a site with current Classic Monks, Monks Central checks that the
+          <b>A release misbehaves?</b> After each plugin update on a site with current Classic Monks, WP Sites HQ checks that the
           site still works and puts the old version back if it doesn't. To go back later, open the plugin in Plugins and choose an
           older version.
         </span>
@@ -279,7 +279,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
             <p>
               {sites.length === 0
                 ? "Add a site to see its updates here."
-                : "Every site that Monks Central can read is up to date. Sites read their updates from WordPress.org about twice a day."}
+                : "Every site that WP Sites HQ can read is up to date. Sites read their updates from WordPress.org about twice a day."}
             </p>
           </Empty>
         ) : shown.length === 0 ? (

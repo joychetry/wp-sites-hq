@@ -45,7 +45,7 @@ test("which sites can take a zip or a bundle", () => {
   const zip = { zip: { file: "f", name: "x.zip", size: 1 }, kind: "plugin" as const, overwrite: false, name: "x.zip" };
   expect(cannot(A, INV.get(1), zip)).toBeNull();
   expect(cannot(OLD, INV.get(2), zip)).toBe("Update Classic Monks here to install zips.");
-  expect(cannot(BASIC, INV.get(3), zip)).toBe("Zips need Monks Central, Classic Monks or Classic Monks Pro on the site.");
+  expect(cannot(BASIC, INV.get(3), zip)).toBe("Zips need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.");
   const bundle = { bundle: SHOP, name: SHOP.name };
   expect(missing(SHOP, INV.get(1)).map((p) => p.source)).toEqual(["wp-mail-smtp"]);
   expect(cannot(A, INV.get(1), { bundle: { ...SHOP, plugins: [SHOP.plugins[0]] }, name: "x" })).toBe("Has them all.");

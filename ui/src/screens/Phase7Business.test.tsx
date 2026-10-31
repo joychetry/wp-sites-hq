@@ -158,7 +158,7 @@ test("text size is a slider that scales the whole app and is remembered", () => 
   expect(document.documentElement.style.fontSize).toBe("");
 });
 
-test("Monks Central checks for a new version on request and installs only on a click", async () => {
+test("WP Sites HQ checks for a new version on request and installs only on a click", async () => {
   const status = (found: object | null) => ({ current: "0.1.0", checked_at: 1761696000, found, ready: false, progress: null as number[] | null });
   let now = status(null);
   const calls = core({
@@ -171,7 +171,7 @@ test("Monks Central checks for a new version on request and installs only on a c
   expect(await screen.findByText("0.1.0")).toBeInTheDocument();
   expect(screen.getByText("None, you have the newest")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Check now" }));
-  expect(await screen.findByText("You have the newest version of Monks Central.")).toBeInTheDocument();
+  expect(await screen.findByText("You have the newest version of WP Sites HQ.")).toBeInTheDocument();
   // Notes are shown as text: markup in latest.json stays words on the screen.
   now = { ...status({ version: "0.2.0", notes: "### Media\n- Grid view <img src=x onerror=alert(1)>", date: 1761696000 }), progress: [3145728, 10485760] };
   fireEvent.click(screen.getByRole("button", { name: "Check now" }));

@@ -237,7 +237,7 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
               {(brand?.report_footer || !brand?.white_label) && (
                 <footer>
                   <span>{brand?.report_footer || "[Line at the bottom of each page]"}</span>
-                  {!brand?.white_label && <span>Made with Monks Central</span>}
+                  {!brand?.white_label && <span>Made with WP Sites HQ</span>}
                 </footer>
               )}
             </div>

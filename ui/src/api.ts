@@ -43,7 +43,7 @@ export type Site = {
   icon: string | null;
 };
 
-/** The Monks Central plugin saved on this computer. */
+/** The WP Sites HQ plugin saved on this computer. */
 export type PluginZip = { version: string; path: string };
 
 export type Client = { id: number; name: string; email: string; notes: string };
@@ -69,7 +69,7 @@ export type AppSettings = {
   agentedseo: boolean;
   auto_update: boolean;
 };
-/** A newer Monks Central; `notes` is plain text from the release's CHANGELOG section. */
+/** A newer WP Sites HQ; `notes` is plain text from the release's CHANGELOG section. */
 export type AppUpdateFound = { version: string; notes: string; date: number | null };
 export type AppUpdate = {
   current: string;
@@ -82,7 +82,7 @@ export type AppUpdate = {
 };
 export type BundlePlugin = { source: string; name: string };
 export type Bundle = { id: number; name: string; plugins: BundlePlugin[] };
-/** A zip kept in Monks Central for an install job. */
+/** A zip kept in WP Sites HQ for an install job. */
 export type Staged = { file: string; name: string; size: number };
 export type ContentHit = { site_id: number; post_type: string; id: number; title: string; status: string; link: string };
 export type ContentFound = { hits: ContentHit[]; failed: [number, string][] };
@@ -202,7 +202,7 @@ export type Job = {
   items: JobItem[];
 };
 
-/** Who started something done through Monks Central. */
+/** Who started something done through WP Sites HQ. */
 export type Actor = "human" | "agent" | "agent_confirmed";
 export type Entry = {
   id: number;
@@ -454,7 +454,7 @@ export const api = {
   cancelSignIn: () => invoke<void>("sign_in_cancel"),
   /** Switch a Basic mode site to the plugin installed on it, through the browser sign-in. */
   connectPlugin: (id: number) => invoke<Site>("site_connect_plugin", { id }),
-  /** The Monks Central plugin's newest release, checksum checked, saved in Downloads. */
+  /** The WP Sites HQ plugin's newest release, checksum checked, saved in Downloads. */
   downloadPlugin: (id: number) => invoke<PluginZip>("plugin_download", { id }),
   signInAgain: (id: number, username?: string, password?: string) =>
     invoke<Site>("site_sign_in_again", { id, username, password }),
@@ -639,7 +639,7 @@ function useLive<T>(load: () => Promise<T>, event: string) {
   return { data, error, reload };
 }
 
-/** New versions of Monks Central: checked at start and every six hours by the app itself. */
+/** New versions of WP Sites HQ: checked at start and every six hours by the app itself. */
 export function useAppUpdate() {
   return useLive(api.updateStatus, "app-update");
 }
@@ -793,7 +793,7 @@ type Host = { name?: unknown; version?: unknown };
 /** Classic Monks Free calls itself Classic Monks. */
 const hostName = (name: unknown) => (name === "Classic Monks" ? "Classic Monks Free" : typeof name === "string" && name ? name : null);
 
-/** The plugin running the site's connector: Monks Central, Classic Monks Free or Classic Monks Pro.
+/** The plugin running the site's connector: WP Sites HQ, Classic Monks Free or Classic Monks Pro.
  * A Classic Monks from before the shared connector doesn't say which. */
 export function pluginName(s: Site): string {
   return hostName((s.capabilities.plugin as Host | undefined)?.name) ?? "Classic Monks";

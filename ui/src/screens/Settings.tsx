@@ -136,7 +136,7 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
       </div>
       <label className="row check">
         <input type="checkbox" checked={s.white_label} onChange={(e) => setS({ ...s, white_label: e.target.checked })} />
-        <span>White label: leave out &ldquo;Made with Monks Central&rdquo;</span>
+        <span>White label: leave out &ldquo;Made with WP Sites HQ&rdquo;</span>
       </label>
       <div className="rpreview" aria-label="Preview" role="group">
         <span className="label">Preview</span>
@@ -146,7 +146,7 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
           {(s.report_footer || !s.white_label) && (
             <small>
               <span>{s.report_footer}</span>
-              {!s.white_label && <span>Made with Monks Central</span>}
+              {!s.white_label && <span>Made with WP Sites HQ</span>}
             </small>
           )}
         </div>
@@ -311,7 +311,7 @@ function AppUpdate({ s, save, saving }: { s: AppSettings | null; save: ReportSet
   const check = async () => {
     setBusy("check");
     try {
-      if (!(await api.updateCheck()).found) toast("You have the newest version of Monks Central.");
+      if (!(await api.updateCheck()).found) toast("You have the newest version of WP Sites HQ.");
       reload();
     } catch (e) {
       fail(e);
@@ -333,9 +333,9 @@ function AppUpdate({ s, save, saving }: { s: AppSettings | null; save: ReportSet
   const found = st?.found;
   const progress = st?.progress;
   return (
-    <Card icon="refresh" title="Updates for Monks Central" id="set-app">
+    <Card icon="refresh" title="Updates for WP Sites HQ" id="set-app">
       <p className="hint">
-        New versions come from the Monks Central releases on GitHub. Each one is signed, and Monks Central checks the signature before it
+        New versions come from the WP Sites HQ releases on GitHub. Each one is signed, and WP Sites HQ checks the signature before it
         installs anything. It looks for one at start and every six hours. Installing restarts the app; your sites and settings stay.
       </p>
       <dl className="upd-facts">
@@ -451,7 +451,7 @@ export function Settings({ theme, setTheme, density, setDensity }: Props) {
                   setTextSize(n);
                 }}
               />
-              <small>Makes every word in Monks Central bigger or smaller. Your computer&rsquo;s own text size still applies.</small>
+              <small>Makes every word in WP Sites HQ bigger or smaller. Your computer&rsquo;s own text size still applies.</small>
             </div>
           </Card>
           {rs.s && <DataSources {...rs} s={rs.s} />}

@@ -16,7 +16,7 @@ export const kind = (mime: string) => (mime.split("/")[1] ?? mime).replace(/^x-/
 /** Sizes as WordPress writes them (1 MB = 1024 KB), so "64 MB" here is the site's own "64 MB". */
 export const fileSize = (n: number) => (n >= 2 ** 30 ? `${+(n / 2 ** 30).toFixed(1)} GB` : n >= 2 ** 20 ? `${+(n / 2 ** 20).toFixed(1)} MB` : n >= 1024 ? `${Math.round(n / 1024)} KB` : `${n} bytes`);
 
-/** The largest file this site takes from Monks Central. */
+/** The largest file this site takes from WP Sites HQ. */
 export const limitOf = (lib: Library | null) => Math.min(lib?.limit || MAX_FILE, MAX_FILE);
 
 /** Why this file can't go to the site, checked before sending it; null when it can. */

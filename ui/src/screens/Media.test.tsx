@@ -191,7 +191,7 @@ test("Basic mode edits details but says why it can't replace or trash", async ()
   core();
   render(<Media sites={[BASIC]} />);
   await screen.findByRole("form", { name: "Details of door" });
-  expect(screen.getByText("Replacing files needs Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.")).toBeInTheDocument();
+  expect(screen.getByText("Replacing files needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.")).toBeInTheDocument();
   expect(screen.queryByRole("group", { name: "Change the ticked items" })).toBeNull();
   expect(screen.queryByText("Used in")).toBeNull();
 });

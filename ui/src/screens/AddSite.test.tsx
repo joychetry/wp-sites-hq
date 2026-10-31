@@ -30,7 +30,7 @@ test("Classic Monks waits for the browser and can be cancelled", async () => {
   );
   const onClose = vi.fn();
   render(<AddSite onClose={onClose} onDone={vi.fn()} />);
-  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("This is my Monks Central app (operator)");
+  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("This is my WP Sites HQ app (operator)");
   fireEvent.change(screen.getByRole("textbox", { name: "Site address" }), { target: { value: "https://mc-a.local" } });
   fireEvent.click(screen.getByRole("button", { name: /Open the sign-in page/ }));
   expect(await screen.findByText("Waiting for you in the browser")).toHaveAttribute("role", "status");
@@ -50,7 +50,7 @@ test("a refusal is shown in plain words", async () => {
 
 test("the Classic Monks steps say to tick the tool groups", () => {
   render(<AddSite onClose={vi.fn()} onDone={vi.fn()} />);
-  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("Tick the tool groups Monks Central may use");
+  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("Tick the tool groups WP Sites HQ may use");
 });
 
 test("the address is checked when you leave the box, in words, and blocks adding", () => {

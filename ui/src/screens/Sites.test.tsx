@@ -52,9 +52,9 @@ test("keys: j moves, x selects, / filters, a adds", () => {
 });
 
 test("remove asks first, then reports what happened on the site", async () => {
-  mockInvoke.mockImplementation(async (c) => (c === "inventory_list" ? [] : { signed_out: true, message: "Removed. Monks Central signed out of the site." }));
+  mockInvoke.mockImplementation(async (c) => (c === "inventory_list" ? [] : { signed_out: true, message: "Removed. WP Sites HQ signed out of the site." }));
   render(<Harness />);
-  fireEvent.click(screen.getByRole("button", { name: "Remove from Monks Central" }));
+  fireEvent.click(screen.getByRole("button", { name: "Remove from WP Sites HQ" }));
   expect(screen.getByRole("alertdialog", { name: "Remove Alpha" })).toHaveTextContent("signs out on the site");
   fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
   await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("site_remove", { id: 1 }));
@@ -174,7 +174,7 @@ test("the inspector names the plugin running the connector and the spare copies"
         operator: true,
         abilities: ["get-hq-status"],
         plugin: { name: "Classic Monks", version: "1.9.0" },
-        connector: { version: "1.1.0", hosts: [{ name: "Classic Monks", version: "1.9.0" }, { name: "Monks Central", version: "1.0.0" }] },
+        connector: { version: "1.1.0", hosts: [{ name: "Classic Monks", version: "1.9.0" }, { name: "WP Sites HQ", version: "1.0.0" }] },
       },
       cm_version: "1.9.0",
     }),
@@ -183,7 +183,7 @@ test("the inspector names the plugin running the connector and the spare copies"
   const { rerender } = render(<Sites sites={sites} groups={[]} focusId={7} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   let insp = screen.getByRole("complementary", { name: "Both details" });
   expect(insp).toHaveTextContent("PluginClassic Monks Free 1.9.0, connector 1.1.0");
-  expect(insp).toHaveTextContent("Also on the siteMonks Central 1.0.0, not running");
+  expect(insp).toHaveTextContent("Also on the siteWP Sites HQ 1.0.0, not running");
   expect(insp).toHaveTextContent("Classic Monks Free, full access");
   rerender(<Sites sites={sites} groups={[]} focusId={8} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   insp = screen.getByRole("complementary", { name: "Old details" });
@@ -195,10 +195,10 @@ test("the inspector names the plugin running the connector and the spare copies"
   expect(screen.getByRole("complementary", { name: "Older details" })).toHaveTextContent("PluginClassic Monks, built-in connector");
 });
 
-test("Basic mode: install Monks Central for me saves the checked zip, opens the upload page, then connects", async () => {
+test("Basic mode: install WP Sites HQ for me saves the checked zip, opens the upload page, then connects", async () => {
   mockInvoke.mockImplementation(async (c) =>
     c === "plugin_download"
-      ? { version: "1.2.0", path: "/home/me/Downloads/monks-central-1.2.0.zip" }
+      ? { version: "1.2.0", path: "/home/me/Downloads/wp-sites-hq-1.2.0.zip" }
       : c === "site_connect_plugin"
         ? site({ id: 2, name: "Beta" })
         : c === "link_open"
@@ -207,9 +207,9 @@ test("Basic mode: install Monks Central for me saves the checked zip, opens the 
   );
   render(<Sites sites={SITES} groups={[]} focusId={2} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   const insp = screen.getByRole("complementary", { name: "Beta details" });
-  expect(insp).toHaveTextContent("Monks Central, Classic Monks or Classic Monks Pro. Any of them works.");
-  fireEvent.click(within(insp).getByRole("button", { name: "Install Monks Central for me" }));
-  await waitFor(() => expect(insp).toHaveTextContent("Monks Central 1.2.0 is saved as /home/me/Downloads/monks-central-1.2.0.zip, checked against the SHA-256"));
+  expect(insp).toHaveTextContent("the WP Sites HQ plugin, Classic Monks or Classic Monks Pro. Any of them works.");
+  fireEvent.click(within(insp).getByRole("button", { name: "Install the WP Sites HQ plugin for me" }));
+  await waitFor(() => expect(insp).toHaveTextContent("The WP Sites HQ plugin 1.2.0 is saved as /home/me/Downloads/wp-sites-hq-1.2.0.zip, checked against the SHA-256"));
   expect(mockInvoke).toHaveBeenCalledWith("plugin_download", { id: 2 });
   expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://mc-a.local/wp-admin/plugin-install.php?tab=upload", site: 2 });
   fireEvent.click(within(insp).getByRole("button", { name: "Connect through the plugin" }));

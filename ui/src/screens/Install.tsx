@@ -36,7 +36,7 @@ export function cannot(s: Site, inv: SiteInventory | undefined, pick: Pick): str
   const stop = blocked(s, inv);
   if (stop) return stop;
   if (pick.zip) {
-    if (s.mode === "basic") return "Zips need Monks Central, Classic Monks or Classic Monks Pro on the site.";
+    if (s.mode === "basic") return "Zips need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.";
     if (!hasTool(s, "install-zip")) return "Update Classic Monks here to install zips.";
   } else if (!can(s, "install_plugin")) return "This connection can't install plugins.";
   if (inv?.inventory.needs_credentials) return "WordPress here needs FTP details to install.";
@@ -373,7 +373,7 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
               </span>
             </label>
             <FilePicker label="Choose a zip file" busy={reading ? "Reading the zip…" : undefined} accept=".zip,application/zip" disabled={reading} onFile={useZip} />
-            <small>Needs Monks Central, Classic Monks or Classic Monks Pro on the site. Only use zips you trust: they run as code on the site.</small>
+            <small>Needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. Only use zips you trust: they run as code on the site.</small>
           </fieldset>
           <hr className="ins-rule" />
           <Bundles onPick={(b) => choose({ bundle: b, name: b.name })} />

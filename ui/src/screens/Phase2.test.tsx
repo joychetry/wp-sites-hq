@@ -319,7 +319,7 @@ test("a finished job of one change says so in words", async () => {
 });
 
 test("a risky single change starts at confirm with a red button, and a refused start says why", async () => {
-  mockInvoke.mockRejectedValue("That site isn't in Monks Central any more.");
+  mockInvoke.mockRejectedValue("That site isn't in WP Sites HQ any more.");
   render(<JobSheet state={{ title: "Roll back WooCommerce on Alpha", rows: [ROWS[0]], start: "confirm", danger: true }} onClose={vi.fn()} />);
   expect(screen.getByText("This runs on the site as soon as you confirm.")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
