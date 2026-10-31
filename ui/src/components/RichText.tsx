@@ -22,7 +22,8 @@ export const BASE: RawEditorOptions = {
   // The page scrolls inside the app, so menus and dialogs go to the body.
   ui_mode: "split",
   plugins: "lists link charmap",
-  toolbar_mode: "wrap",
+  // What doesn't fit slides out from a More button instead of wrapping into a ragged second row.
+  toolbar_mode: "sliding",
   // WordPress keeps text as typed: no &eacute;, no rewritten links.
   entity_encoding: "raw",
   convert_urls: false,
