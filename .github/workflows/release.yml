@@ -31,7 +31,7 @@ jobs:
       - id: draft
         run: |
           gh release view "$TAG" >/dev/null 2>&1 ||
-            gh release create "$TAG" --draft --verify-tag --title "Monks Central $TAG" --notes "$NOTES"
+            gh release create "$TAG" --draft --verify-tag --title "WP Sites HQ $TAG" --notes "$NOTES"
           echo "id=$(gh release view "$TAG" --json databaseId -q .databaseId)" >> "$GITHUB_OUTPUT"
 
   installers:

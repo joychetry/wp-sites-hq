@@ -1,6 +1,6 @@
 [package]
-name = "monks-central"
-description = "Monks Central desktop app"
+name = "wp-sites-hq"
+description = "WP Sites HQ desktop app"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
