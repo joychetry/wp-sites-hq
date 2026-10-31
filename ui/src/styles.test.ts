@@ -78,6 +78,19 @@ describe("page system", () => {
     expect(bad).toEqual([]);
   });
 
+  it("puts an inline svg icon after a button's words too", () => {
+    // A raw <svg> (or a const that holds one, like the month field's calendar) that opens a button with words after it.
+    const bad = tsx.flatMap(([f, s]) => {
+      const names = [...s.matchAll(/const (\w+) = \(\s*<svg\b/g)].map((m) => m[1]);
+      const icon = new RegExp(`<svg\\b[\\s\\S]*?<\\/svg>${names.map((n) => `|\\{${n}\\}`).join("")}`, "g");
+      return [...s.matchAll(icon)]
+        .filter((m) => opensButton(s, m.index) && /^\s*$/.test(s.slice(s.lastIndexOf(">", m.index - 1) + 1, m.index)))
+        .filter((m) => !/^\s*<\//.test(s.slice(m.index + m[0].length)))
+        .map((m) => `${f}: ${s.slice(m.index, m.index + 40)}`);
+    });
+    expect(bad).toEqual([]);
+  });
+
   it("starts every back and previous button with the left arrow", () => {
     // Words like "Back to pages" right after a button opens, with no arrow before them.
     const bad = tsx.flatMap(([f, s]) =>

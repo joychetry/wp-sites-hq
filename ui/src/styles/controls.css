@@ -109,7 +109,8 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 /* Dates */
 .dt { display: inline-flex; gap: var(--sp-2); align-items: center; }
 .dt-btn { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 168px; text-align: left; cursor: pointer; }
-.dt-btn .ico { color: var(--text-3); }
+.dt-btn > span { flex: 1; min-width: 0; }
+.dt-btn .ico { color: var(--text-2); }
 .dt.sm .dt-btn, .srch.sm .input { height: var(--control-sm); }
 .dt-time { width: 84px; font-variant-numeric: tabular-nums; }
 .cal { padding: var(--sp-3); }
