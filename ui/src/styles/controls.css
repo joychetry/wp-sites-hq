@@ -20,7 +20,7 @@ input[type="checkbox"], input[type="radio"], .t td, .linkish, .link, .kbar, .sco
 
 /* Text boxes: a firmer border on hover, ink on focus, red with words when wrong */
 .input { box-shadow: var(--field-shadow); }
-.input:hover:not(:disabled):not(:focus) { border-color: var(--line-ui); }
+.input:hover:not(:disabled):not(:focus) { border-color: var(--text-2); }
 /* Focus, one look per family: a field shows the green edge and the soft ring, no outline;
    everything else (buttons, chips, boxes, tabs, rows) the 2px outline from base.css, no ring. */
 .input:focus, .input[aria-expanded="true"] { border-color: var(--focus); box-shadow: var(--ring); outline: none; }
@@ -75,8 +75,10 @@ input[type="range"]::-moz-range-progress { height: 4px; border-radius: var(--rad
 input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--bg); border: 2px solid var(--green); }
 
 /* Select: a button that looks like a box, with a chevron. It rests on the button border, never a bright ring. */
-.select { box-shadow: none; display: inline-flex; align-items: center; gap: var(--sp-2); text-align: left; cursor: pointer; min-width: 0; font-weight: 500; }
-.select:hover:not(:disabled) { background-color: var(--panel); }
+.select { box-shadow: none; display: inline-flex; align-items: center; gap: var(--sp-2); text-align: left; cursor: pointer; min-width: 0; font-weight: 400; }
+/* In a bar a select filters or applies, so it wears the button's pill and line. */
+.toolbar .select, .top .select, .selbar .select, .card-head .select { border-color: var(--control-line); }
+.toolbar .select:hover:not(:disabled):not([aria-expanded="true"]), .top .select:hover:not(:disabled):not([aria-expanded="true"]), .card-head .select:hover:not(:disabled):not([aria-expanded="true"]) { border-color: var(--line-ui); }
 .select .select-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* A site's tile in a select's value and in its options: 20px, centred on the words, 8px from them. */
 .select-v:has(.fav), .lb li > span:has(> .fav) { display: inline-flex; align-items: center; gap: var(--sp-2); }

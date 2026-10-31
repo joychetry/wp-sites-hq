@@ -3,7 +3,7 @@
    picker, custom fields, earlier versions, the trash confirm and the site list. */
 
 /* The title is the one larger field (--fs-lg); every block field below it is body size. */
-.input.title-lg { height: 44px; font: 600 var(--fs-lg)/1 var(--sans); }
+.input.title-lg { height: var(--control-lg); font: 600 var(--fs-lg)/1 var(--sans); }
 .blk textarea.input { min-height: 72px; }
 .sheet .btn.quiet { border-color: transparent; background: none; }
 .sheet .btn.quiet:hover:not(:disabled) { background: var(--panel); }
