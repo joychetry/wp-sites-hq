@@ -120,7 +120,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
                 <b>{site.name}</b>
                 <small>{site.cm_version ? `${pluginName(site)} ${site.cm_version}` : pluginName(site)}</small>
               </div>
-              {update && <span className="tag ok">{update} ready</span>}
+              {update && <Status pill tone="ok">{update} ready</Status>}
             </div>
             <p className="dim">
               Each change applies to the site at once and is logged, so you can undo it from Activity. Locked features (security and login) change only in
@@ -772,7 +772,7 @@ function Reports({ site }: { site: Site }) {
             {se.zero_result_queries.map((q) => (
               <li key={`0${q.query}`} className="fix two">
                 <b>{q.query}</b>
-                <span className="tag warning">Found nothing, {q.searches} times</span>
+                <Status pill tone="warning">Found nothing, {q.searches} times</Status>
               </li>
             ))}
           </ul>

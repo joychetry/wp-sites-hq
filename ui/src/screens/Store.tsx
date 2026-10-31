@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import "../styles/screens/store.css";
 import { api, hasTool, type Action, type Product, type ProductQuery, type Products, type Site, type StoreOverview } from "../api";
-import { Button, Glyph } from "../components/ui";
+import { Button, Glyph, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { Sheet } from "../components/Sheet";
 import type { PlanRow } from "../components/JobSheet";
@@ -323,9 +323,9 @@ export function Store({ sites, onPlan }: Props) {
                           <span className="row nowrap">
                             {counted && <span className="m">{p.stock_quantity}</span>}
                             {out || p.stock_status === "onbackorder" ? (
-                              <span className={`tag ${out ? "danger" : "warning"}`}>{STOCK[p.stock_status]}</span>
+                              <Status pill tone={out ? "danger" : "warning"}>{STOCK[p.stock_status]}</Status>
                             ) : isLow ? (
-                              <span className="tag warning">Low</span>
+                              <Status pill tone="warning">Low</Status>
                             ) : (
                               !counted && <span className="tag">{STOCK[p.stock_status] ?? p.stock_status}</span>
                             )}

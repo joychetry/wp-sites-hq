@@ -7,7 +7,7 @@ import { DateInput, dayLabel, MultiSelect, Select } from "../components/controls
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
-import { Button, Glyph, HeadActions } from "../components/ui";
+import { Button, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 
 /** "€12.50"; an unknown code still reads ("XYZ 12.50"). `whole` drops ".00" (the stat cards: "€340"). */
@@ -314,9 +314,9 @@ export function Clients({ sites }: { sites: Site[] }) {
                           {dayLabel(k.renews_on!) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency, true)}
                         </span>
                       </div>
-                      <span className={`tag ${days < 0 ? "danger" : days <= 30 ? "warning" : ""}`}>
+                      <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>
                         {days < 0 ? `${-days} ${days === -1 ? "day" : "days"} ago` : days === 0 ? "today" : `${days} ${days === 1 ? "day" : "days"}`}
-                      </span>
+                      </Status>
                     </li>
                   ))}
                 </ul>

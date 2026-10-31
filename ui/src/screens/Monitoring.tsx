@@ -2,7 +2,7 @@
 // Monitoring: is each site up, how fast, and when its certificate and domain expire.
 import "../styles/screens/monitoring.css";
 import { useState } from "react";
-import { ago, api, type Monitor, type Site } from "../api";
+import { ago, api, type Monitor, type Site, type Tone } from "../api";
 import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty } from "../components/feedback";
@@ -234,9 +234,9 @@ export function Monitoring({ sites, monitors }: Props) {
                       <span className="tag">Couldn't load</span>
                     ) : ps ? (
                       <>
-                        <span className={`tag ${tone}`}>
+                        <Status pill tone={(tone || "unknown") as Tone}>
                           {ps.score} · {word}
-                        </span>
+                        </Status>
                         <span className="why">
                           LCP {ps.lcp}, CLS {ps.cls}, TBT {ps.tbt}. Tested {ago(ps.at)}.
                         </span>

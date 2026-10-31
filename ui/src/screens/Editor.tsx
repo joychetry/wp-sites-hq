@@ -10,7 +10,7 @@ import "../styles/screens/editor.css";
 import { Combobox, DateInput, NumberInput, Select } from "../components/controls";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, hasTool, type Block, type Draft, type Post, type PostType, type Revision, type Site, type Taxonomy, type TermRef } from "../api";
-import { Button, Glyph } from "../components/ui";
+import { Button, Glyph, Status } from "../components/ui";
 import { toast, Empty } from "../components/feedback";
 import { Sheet } from "../components/Sheet";
 import { MediaPicker } from "../components/MediaPicker";
@@ -663,7 +663,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
         <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>
         </h2>
-        {dirty && <span className="tag warning">Unsaved changes</span>}
+        {dirty && <Status pill tone="warning">Unsaved changes</Status>}
       </div>
       <div className="ed-grid" inert={saving} aria-busy={saving || undefined}>
         <div className="ed-main stack">

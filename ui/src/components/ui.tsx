@@ -70,9 +70,10 @@ export function Icon({ tone }: { tone: Tone | "info" }) {
   );
 }
 
-export function Status({ tone, children }: { tone: Tone | "info"; children: ReactNode }) {
+/** A state: an icon and a word, never colour alone. `pill` puts it on its tinted ground (every state in a list or table). */
+export function Status({ tone, pill, children }: { tone: Tone | "info"; pill?: boolean; children: ReactNode }) {
   return (
-    <span className={`st ${tone}`}>
+    <span className={`st ${pill ? "pill " : ""}${tone}`}>
       <Icon tone={tone} />
       {children}
     </span>

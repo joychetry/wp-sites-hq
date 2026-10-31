@@ -2,10 +2,10 @@
 // Security: known vulnerabilities, abandoned plugins and changed files on every site.
 import "../styles/screens/security.css";
 import { useState } from "react";
-import { ago, api, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
+import { ago, api, type SecurityReport, type Site, type SiteInventory, type Tone, type Vulnerability } from "../api";
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, slugOf } from "../components/PkgTile";
-import { Button, Glyph, HeadActions, Icon } from "../components/ui";
+import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty, toast } from "../components/feedback";
 import { Page } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
@@ -178,7 +178,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                         </span>
                         <div>
                           <span className="row">
-                            <span className={`tag ${tone}`}>{x.severity ? x.severity[0].toUpperCase() + x.severity.slice(1) : "Not rated"}</span>
+                            <Status pill tone={(tone || "unknown") as Tone}>{x.severity ? x.severity[0].toUpperCase() + x.severity.slice(1) : "Not rated"}</Status>
                             <span className="meta named">
                               {x.kind !== "wordpress" && <PkgTile kind={x.kind} slug={x.kind === "plugin" ? slugOf(x.id) : x.id} name={x.name} size="xs" />}
                               {x.name}
