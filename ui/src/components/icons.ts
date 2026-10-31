@@ -2,6 +2,7 @@
 // The design's line icons (docs/design/redesign: the cm-i set), drawn on a 24 grid in currentColor.
 // [stroke width, or 0 for a filled shape; the SVG elements inside the 24x24 box]
 export const ICONS = {
+  "arrow-left": [2, "<path d=\"M19 12H5M11 6l-6 6 6 6\"/>"],
   "arrow-right": [2, "<path d=\"M5 12h14M13 6l6 6-6 6\"/>"],
   "arrow-up": [2, "<path d=\"M12 19V5M6 11l6-6 6 6\"/>"],
   check: [2, "<path d=\"M5 12.5l4.5 4.5L19 7.5\"/>"],
