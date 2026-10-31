@@ -16,9 +16,14 @@
 .terms .term .glyph { width: 12px; height: 12px; }
 
 /* The featured image picker: four thumbnails a row, the picked one ringed, Use under them. */
+.imgpick, .imgpick > * { min-width: 0; }
 .imgpick { gap: var(--sp-3); }
 .mthumbs.small { width: 100%; padding: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
 .imgpick > .row { gap: var(--sp-2); flex-wrap: wrap; }
+/* The search field takes what is left beside its button, so a narrow side box keeps both inside. */
+.imgpick > form.row { flex-wrap: nowrap; }
+.imgpick > form .srch { flex: 1 1 auto; min-width: 0; }
+.imgpick > form .srch .input { width: 100%; min-width: 0; }
 
 /* Custom fields: the field's name as its label, an outlined x to remove it. */
 .fields .icon-btn.line { width: var(--control); height: var(--control); border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--bg); color: var(--text-2); }
@@ -69,6 +74,7 @@
 .ed-box-title { margin: 0; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); font: 600 var(--fs)/1.4 var(--sans); }
 .ed-box-body { display: grid; gap: var(--sp-3); padding: var(--sp-4); min-width: 0; }
 .ed-box-body > .field, .ed-box-body > fieldset { margin: 0; }
+.ed-box-body > .btn { justify-self: start; }
 .ed-box .imgpick .mthumbs.small { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ed-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 /* Trash and Update: two equal columns, same height and shape. */
@@ -88,15 +94,17 @@
    toolbar (room for its two rows is kept, so nothing jumps when it opens) and the text. */
 .rte { border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); min-width: 0; }
 .rte-head { display: flex; align-items: flex-end; gap: var(--sp-2); padding: var(--sp-2) var(--sp-2) 0; border-bottom: 1px solid var(--line); }
-.rte-head > .btn { margin-bottom: var(--sp-2); }
-.rte-head .tabs { border: 0; padding: 0; }
+/* 2px under a 32px button centres it on the 36px tabs beside it. */
+.rte-head > .btn { margin-bottom: 2px; }
+/* The tabs take the rest of the row, so their overflow check sees room for both. */
+.rte-head .tabs { flex: 1 1 auto; min-width: 0; border: 0; padding: 0; }
 .rte-head .tabs [role="tab"] { height: 36px; }
 .rte [role="tabpanel"] { position: relative; }
 .rte-bar { min-height: 84px; border-bottom: 1px solid var(--line); }
 /* contain: site HTML with position: fixed stays inside its box, never over the window. */
 .rte-body { position: relative; contain: paint; min-height: 320px; padding: var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius) var(--radius); }
 .rte-body:focus, .rte-body:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.rte-source { display: block; width: 100%; min-height: 404px; border: 0; border-radius: 0 0 var(--radius) var(--radius); font: var(--fs-sm)/1.6 var(--mono); resize: vertical; }
+.rte textarea.rte-source { display: block; width: 100%; min-height: 404px; border: 0; border-radius: 0 0 var(--radius) var(--radius); font: var(--fs-sm)/1.6 var(--mono); resize: vertical; }
 .rte-wait { position: absolute; top: var(--sp-3); left: var(--sp-4); margin: 0; color: var(--text-3); font-size: var(--fs-sm); }
 .rte-media { padding: var(--sp-3); border-bottom: 1px solid var(--line); }
 
