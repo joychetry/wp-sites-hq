@@ -434,6 +434,8 @@ test("a rolled back update shows why, and only the failed change is offered agai
   await show(page, SCREENS.find((s) => s.name === "updates-progress")!, "light");
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Rolled back", { exact: true })).toBeVisible();
+  await expect(sheet.getByText("Rolled back to 5.3 because the update broke the site.")).toBeVisible();
+  await sheet.getByText("Show the details").click();
   await expect(sheet.getByText(/^Rolled back to 5\.3\. The home page answered 500/)).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Try the 1 failed change again" })).toBeVisible();
 });

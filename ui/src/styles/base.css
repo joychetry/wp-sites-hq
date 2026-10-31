@@ -400,12 +400,19 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 /* Run: a 6px meter, then a row per change with a state icon, what it did, and the state word */
 .jobmeter-head { display: flex; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-2); }
 .jobmeter-head b { font-weight: 600; }
-.jobmeter-head span { color: var(--text-3); font-size: var(--fs-sm); }
-.jobmeter { height: 6px; border-radius: var(--radius-pill); background: var(--panel); overflow: hidden; margin-bottom: var(--sp-4); }
-.jobmeter i { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--green); transition: width 300ms var(--ease); }
+/* One segment per outcome, sized by its count; running and waiting leave the track showing. */
+.jobmeter { display: flex; gap: 2px; height: 6px; border-radius: var(--radius-pill); background: var(--panel); overflow: hidden; margin-bottom: var(--sp-2); }
+.jobmeter i { flex: 0 1 0; min-width: 0; transition: flex-grow 300ms var(--ease); }
+.jobmeter .done, .jobmeter-key .done { background: var(--green); }
+.jobmeter .failed, .jobmeter-key .failed { background: var(--danger); }
+.jobmeter .rolled_back, .jobmeter-key .rolled_back { background: var(--warn); }
+.jobmeter-key { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin: 0 0 var(--sp-4); font-size: var(--fs-sm); color: var(--text-2); }
+.jobmeter-key span { display: inline-flex; align-items: center; gap: 6px; }
+.jobmeter-key i { width: 8px; height: 8px; border-radius: 50%; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-ui); }
+.jobmeter-key i:not(.waiting) { box-shadow: none; }
 .jobprog { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .jobprog li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px; border-radius: var(--radius); }
-.jobprog li:nth-child(odd) { background: var(--panel); }
+.jobprog li.failed { background: var(--danger-bg); }
 .jobprog li > .glyph { width: 18px; height: 18px; color: var(--text-3); }
 .jobprog .done > .glyph { color: var(--brand-text); }
 .jobprog .failed > .glyph { color: var(--danger); }
@@ -416,6 +423,12 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .jobprog small { display: block; font-size: var(--fs-sm); color: var(--text-3); overflow-wrap: anywhere; }
 .jobprog small span + span::before { content: " · "; }
 .jobprog .failed small { color: var(--danger); }
+/* Raw machine text sits behind a disclosure the app draws: words first, the chevron after. */
+.jobraw summary { list-style: none; display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 24px; cursor: pointer; font-size: var(--fs-sm); font-weight: 600; color: var(--brand-text); }
+.jobraw summary::-webkit-details-marker { display: none; }
+.jobraw summary .glyph { width: 14px; height: 14px; transition: transform 150ms var(--ease); }
+.jobraw[open] summary .glyph { transform: rotate(180deg); }
+.jobraw p { margin: var(--sp-1) 0 0; font: 400 var(--fs-xs)/1.5 var(--mono); color: var(--text-2); overflow-wrap: anywhere; }
 .jobprog .meta { font: 400 var(--fs-xs)/1.3 var(--mono); color: var(--text-3); }
 .plan-list { list-style: none; margin: 0; padding: 0; }
 .plan-list li { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-1) 0; }
