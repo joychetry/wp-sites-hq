@@ -21,6 +21,19 @@ export function Logo() {
   );
 }
 
+/** Raw text from a site or a feed, behind "Show the details"; the plain summary sits before it. */
+export function Details({ children }: { children: ReactNode }) {
+  return (
+    <details className="more">
+      <summary>
+        Show the details
+        <Glyph name="chevron-down" />
+      </summary>
+      <div>{children}</div>
+    </details>
+  );
+}
+
 /** The design's line icons (components/icons.ts), drawn in currentColor. */
 export type GlyphName = keyof typeof ICONS | "arrow";
 

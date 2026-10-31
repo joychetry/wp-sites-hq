@@ -5,11 +5,11 @@ import { useState } from "react";
 import { ago, api, type SecurityReport, type Site, type SiteInventory, type Tone, type Vulnerability } from "../api";
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, slugOf } from "../components/PkgTile";
-import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
+import { Button, Details, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty, toast } from "../components/feedback";
 import { Page } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
-import { month } from "../format";
+import { month, vulnSummary } from "../format";
 
 const SEVERITY_TONE: Record<string, "danger" | "warning"> = { critical: "danger", high: "danger" };
 const KIND: Record<string, string> = { plugin: "plugin", theme: "theme", wordpress: "WordPress" };
@@ -186,7 +186,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                             </span>
                           </span>
                           <h3>{x.kind === "wordpress" ? "Vulnerability in WordPress" : `Vulnerability in a ${kind}: ${x.name}`}</h3>
-                          <p>{x.title}</p>
+                          <p>{vulnSummary(x.title)}</p>
+                          <Details>{x.title}</Details>
                         </div>
                       </div>
                       <dl className="dl well">
