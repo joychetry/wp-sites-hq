@@ -160,7 +160,8 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
         </td>
         <td>
           {tone ? (
-            <span className={`tag ${tone}`} data-tip={r.vuln?.title}>
+            <span className={`st pill ${tone}`} data-tip={r.vuln?.title}>
+              <Icon tone={tone} />
               {words}
             </span>
           ) : (
@@ -215,7 +216,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
                 <Glyph name="alert" />
               </span>
               <b id="upd-alert-t">Action needed</b>
-              <span className="tag">{plural(security.length, "security fix", "security fixes")}</span>
+              <span className="st pill danger">{plural(security.length, "security fix", "security fixes")}</span>
             </div>
             <p className="dim">
               {security.length === 1 ? "This update fixes a known vulnerability" : "These updates fix known vulnerabilities"}, from the last

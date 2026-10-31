@@ -36,6 +36,8 @@
 .mx-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) 18px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--text-3); }
 .mx-legend li { display: flex; align-items: center; gap: 6px; }
 .mx-legend .cell { width: 14px; min-width: 0; height: 14px; padding: 0; border-radius: 4px; cursor: default; }
+/* Pale fills need an edge to show as a swatch on the page ground. */
+.mx-legend .cell:not(.none) { border-color: var(--line-2); }
 .mx-legend .end { margin-left: auto; }
 .mx-label { margin: 0; font: 500 var(--fs-xs)/var(--lh-tight) var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 /* Sites the table can't show, as notes */
