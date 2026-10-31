@@ -281,7 +281,7 @@ export type Query = { post_type: string; status?: string; search?: string; page?
 export type Term = { id: number; name: string };
 
 /** One block of a body. Editable blocks carry their text as HTML; others a short preview. */
-export type Block = { index: number; name: string; depth: number; editable: boolean; html: string };
+export type Block = { index: number; name: string; depth: number; editable: boolean; html: string; level?: number };
 
 export type Post = {
   id: number;

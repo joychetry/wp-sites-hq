@@ -271,15 +271,26 @@ function TermsField({ site, tax, value, onChange }: { site: Site; tax: Taxonomy;
 }
 
 function BlockRow({ b, onChange }: { b: Block; onChange: (html: string | null) => void }) {
-  const label = `${blockLabel(b.name)} ${b.index + 1}`;
+  // The type shows; the position is only in the accessible name, so every box's name is unique.
+  const type = blockLabel(b.name);
+  const label = `${type}${b.level ? `, H${b.level}` : ""} (block ${b.index + 1})`;
+  const name = (
+    <span className="blk-name" aria-hidden="true">
+      {type}
+      {b.level && <span className="blk-level">H{b.level}</span>}
+    </span>
+  );
   const style = { marginLeft: `calc(${b.depth} * var(--sp-4))` };
   if (!b.editable) {
     return (
       <li className="blk locked" style={style}>
-        <span className="blk-name">{label}</span>
-        <span className="dim cut" data-tip={b.html || undefined}>
-          {b.html || "No text"}
-        </span>
+        {name}
+        <span className="sr-only">{label}</span>
+        {b.html !== type && (
+          <span className="dim cut" data-tip={b.html || undefined}>
+            {b.html || "No text"}
+          </span>
+        )}
         <span className="tag">
           <Glyph name="lock" />
           Kept as is
@@ -289,7 +300,7 @@ function BlockRow({ b, onChange }: { b: Block; onChange: (html: string | null) =
   }
   return (
     <li className="blk" style={style}>
-      <span className="blk-name">{label}</span>
+      {name}
       <InlineText label={label} html={b.html} pre={b.name === "core/preformatted" || b.name === "core/verse"} heading={b.name === "core/heading"} onChange={onChange} />
     </li>
   );
@@ -591,8 +602,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
       <Page className="ed-page">
         <div className="ed-top">
           <Button onClick={onClose}>
+            <Glyph name="arrow-left" />
             {back ?? `Back to ${type.label.toLowerCase()}`}
-            <Glyph name="arrow" />
           </Button>
         </div>
         <Empty alert title={`This ${noun} didn't open.`}>
@@ -646,8 +657,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
     <Page className="ed-page">
       <div className="ed-top">
         <Button onClick={leave}>
+          <Glyph name="arrow-left" />
           {back ?? `Back to ${type.label.toLowerCase()}`}
-          <Glyph name="arrow" />
         </Button>
         <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>
@@ -729,20 +740,17 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             </div>
             <div className="ed-acts end">
               {!isNew && post && post.status !== "trash" && type.can_delete && (
-                <Button small kind="danger" className="quiet" onClick={() => setTrashing(true)}>
+                <Button kind="danger" onClick={() => setTrashing(true)}>
                   Move to the trash
                 </Button>
               )}
               {!isNew && post?.status === "trash" && canHistory ? (
-                <Button small disabled={saving} onClick={untrash}>
+                <Button disabled={saving} onClick={untrash}>
                   {saving ? "Bringing it back…" : "Bring it back from the trash"}
                 </Button>
               ) : (
-                <Button kind="primary" className="disc" disabled={saving || (live && !dirty) || (!isNew && !post)} onClick={() => save(primaryTo)}>
+                <Button kind="primary" disabled={saving || (live && !dirty) || (!isNew && !post)} onClick={() => save(primaryTo)}>
                   {saving ? "Saving…" : primary}
-                  <span className="btn-disc">
-                    <Glyph name="check" />
-                  </span>
                 </Button>
               )}
             </div>

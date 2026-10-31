@@ -124,9 +124,9 @@ test("the content editor works from the keyboard and gives focus back", async ({
   await page.keyboard.press("Tab");
   await expect(page.getByRole("textbox", { name: "Slug" })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("textbox", { name: "Heading 1" })).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Heading, H2 (block 1)" })).toBeFocused();
   await page.keyboard.press("Tab");
-  const text = page.getByRole("textbox", { name: "Paragraph 2" });
+  const text = page.getByRole("textbox", { name: "Paragraph (block 2)" });
   await expect(text).toBeFocused();
   await expect(text).toHaveAttribute("contenteditable", "true");
   await page.keyboard.press("End");
