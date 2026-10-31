@@ -363,7 +363,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 /* Segmented: a pill track in the well, the chosen one lifted */
 /* As wide as its options, never stretched to its container. */
 .segmented { display: flex; width: fit-content; max-width: 100%; justify-self: start; gap: 2px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); padding: 3px; margin: 0 0 var(--sp-4); }
-.segmented button { flex: 1; height: calc(var(--control) - 8px); padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--text-2); font-weight: 500; }
+.segmented button { flex: 1; height: calc(var(--control) - 8px); padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--text-2); font-weight: 500; white-space: nowrap; }
 .segmented button:hover { color: var(--text); }
 /* The chosen option is lifted with a 3:1 edge, so it reads as a fill and not only as bolder words. */
 .segmented button[aria-pressed="true"] { background: var(--bg); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line-ui), var(--shadow-soft); }
@@ -484,7 +484,6 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .settings h2 { margin: 0 0 var(--sp-1); font: 600 var(--fs-md)/1.4 var(--sans); }
 .settings p { margin: 0 0 var(--sp-3); color: var(--text-2); }
 .settings .segmented { margin: 0; max-width: 520px; flex-wrap: wrap; }
-.settings .segmented button { white-space: nowrap; }
 /* A choice that has fields under it (Reports) keeps the same space as between two fields. */
 .settings .segmented:not(:last-child) { margin-bottom: var(--sp-4); }
 
