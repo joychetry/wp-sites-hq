@@ -23,7 +23,7 @@ const ABANDONED_AFTER: i64 = 2 * 365 * 24 * 3600;
 /// Each site is scanned again after this long while the core runs.
 pub const SCAN_EVERY: i64 = 24 * 3600;
 
-/// Outside services Monks Central reads. Tests point them at a local server.
+/// Outside services WP Sites HQ reads. Tests point them at a local server.
 #[derive(Debug, Clone)]
 pub struct Feeds {
     pub vulnerabilities: String,
@@ -37,7 +37,7 @@ pub struct Feeds {
     pub wordpress_org: String,
     /// Tests: a local server standing in for WordPress.org's image hosts.
     pub wordpress_org_images: Option<String>,
-    /// The Monks Central plugin's latest GitHub release (the API's `releases/latest`).
+    /// The WP Sites HQ plugin's latest GitHub release (the API's `releases/latest`).
     pub plugin_release: String,
 }
 
@@ -60,7 +60,7 @@ impl Default for Feeds {
             plugin_release: if cfg!(test) {
                 "http://127.0.0.1:9".into()
             } else {
-                "https://api.github.com/repos/joychetry/monks-central-wp/releases/latest".into()
+                "https://api.github.com/repos/joychetry/wp-sites-hq-plugin/releases/latest".into()
             },
         }
     }
@@ -393,7 +393,7 @@ impl Core {
     ) -> Option<Checksums> {
         if site.mode == Mode::Basic {
             notes.push(
-                "Checksums need Monks Central, Classic Monks or Classic Monks Pro on the site."
+                "Checksums need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site."
                     .into(),
             );
             return None;

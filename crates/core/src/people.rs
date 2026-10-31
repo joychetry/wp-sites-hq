@@ -392,7 +392,7 @@ impl Core {
     async fn reset_inner(&self, site: &Site, user_id: i64) -> Result<String, SiteError> {
         if site.mode == Mode::Basic {
             return Err(plain(
-                "A password reset email needs Monks Central, Classic Monks or Classic Monks Pro on the site. The person can use \"Lost your password?\" on the login screen.",
+                "A password reset email needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. The person can use \"Lost your password?\" on the login screen.",
             ));
         }
         if !has_tool(site, "send-password-reset") {
@@ -465,7 +465,7 @@ impl Core {
         let _work = self.working().await;
         let site = self.people_site(id, "moderate-comment")?;
         if !MODERATE.contains(&action) {
-            return Err(plain(format!("Monks Central can't {action} a comment.")));
+            return Err(plain(format!("WP Sites HQ can't {action} a comment.")));
         }
         match site.mode {
             Mode::ClassicMonks => {

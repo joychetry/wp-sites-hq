@@ -31,7 +31,7 @@ const WRITE_WAIT: Duration = Duration::from_secs(300);
 /// token request's body. Requests with no credentials use [`probe`].
 pub fn client() -> reqwest::Result<reqwest::Client> {
     reqwest::Client::builder()
-        .user_agent(concat!("MonksCentral/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("WPSitesHQ/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(10))
         .timeout(Duration::from_secs(30))
         .redirect(reqwest::redirect::Policy::custom(|a| {
@@ -53,7 +53,7 @@ pub fn client() -> reqwest::Result<reqwest::Client> {
 pub fn probe() -> reqwest::Result<reqwest::Client> {
     reqwest::Client::builder()
         .user_agent(concat!(
-            "MonksCentral/",
+            "WPSitesHQ/",
             env!("CARGO_PKG_VERSION"),
             " (uptime)"
         ))
@@ -221,10 +221,10 @@ pub fn explain_status(reply: &Reply) -> Option<&'static str> {
         .is_some_and(|v| v.contains("text/html"));
     match reply.status {
         429 => Some(
-            "The site is limiting requests right now. Monks Central slowed down; try again in a minute.",
+            "The site is limiting requests right now. WP Sites HQ slowed down; try again in a minute.",
         ),
         403 | 503 if html => Some(
-            "A firewall or security check in front of the site blocked the request. Allow Monks Central in it, or try again later.",
+            "A firewall or security check in front of the site blocked the request. Allow WP Sites HQ in it, or try again later.",
         ),
         500..=599 => Some("The site had an error answering. Try again in a minute."),
         _ => None,

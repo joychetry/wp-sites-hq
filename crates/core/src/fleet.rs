@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Plugins, themes and updates across sites (plan Phase 2): what each site runs
-//! (a cached inventory), the changes Monks Central can make, and jobs that make
+//! (a cached inventory), the changes WP Sites HQ can make, and jobs that make
 //! them on many sites with progress per site.
 //!
 //! Every change runs as a job the human confirmed in the app window. An AI
@@ -202,7 +202,7 @@ impl Action {
             UpdatePlugin { plugin } => ("update-plugin", json!({ "plugin_file": plugin })),
             RollbackPlugin { plugin, version } => (
                 "rollback-plugin",
-                json!({ "plugin": plugin, "version": version, "note": "Rolled back from Monks Central." }),
+                json!({ "plugin": plugin, "version": version, "note": "Rolled back from WP Sites HQ." }),
             ),
             ActivatePlugin { plugin } => ("activate-plugin", json!({ "plugin_file": plugin })),
             DeactivatePlugin { plugin } => ("deactivate-plugin", json!({ "plugin_file": plugin })),
@@ -703,7 +703,7 @@ pub const AGENT_PLAN_ONLY: &str = "An AI agent's plan can only update, roll back
      translations. Changes to posts, products and zips are made by a person in the app.";
 
 const UNREADABLE: &str =
-    "This change couldn't be read (another version of Monks Central saved it). Nothing was sent.";
+    "This change couldn't be read (another version of WP Sites HQ saved it). Nothing was sent.";
 const STOPPED: &str = "This change stopped unexpectedly. Check the site before trying again.";
 
 fn job_items(conn: &Connection, job: i64) -> rusqlite::Result<Vec<JobItem>> {
@@ -784,10 +784,10 @@ fn done_message(out: &Value) -> String {
         .to_string()
 }
 
-const FTP_NEEDED: &str = "WordPress on this site needs FTP details to change files, so Monks Central can't install or update here. Set FS_METHOD to direct in wp-config.php, or do it in wp-admin.";
+const FTP_NEEDED: &str = "WordPress on this site needs FTP details to change files, so WP Sites HQ can't install or update here. Set FS_METHOD to direct in wp-config.php, or do it in wp-admin.";
 
 /// Agents get this for any change on a site they have no grant on (plan 5.6).
-pub const NO_AGENT_ACCESS: &str = "AI agents can only read this site: it has no AI agent access. Propose the change as a plan, which a person confirms in the Monks Central app, or ask them to turn on AI agent access for this site there (AI), so the site asks them to approve each change.";
+pub const NO_AGENT_ACCESS: &str = "AI agents can only read this site: it has no AI agent access. Propose the change as a plan, which a person confirms in the WP Sites HQ app, or ask them to turn on AI agent access for this site there (AI), so the site asks them to approve each change.";
 
 impl Core {
     pub(crate) fn inventory_of(&self, id: i64) -> Result<Option<Inventory>, SiteError> {
@@ -872,7 +872,7 @@ impl Core {
                 let read = |r: &net::Reply| -> Result<Value, SiteError> {
                     match r.status {
                         200 => r.json().ok_or_else(|| {
-                            plain("The site sent a plugin list Monks Central couldn't read.")
+                            plain("The site sent a plugin list WP Sites HQ couldn't read.")
                         }),
                         401 | 403 => Err(plain(
                             "This application password's user can't manage plugins. Use an administrator's application password.",
@@ -1129,7 +1129,7 @@ impl Core {
 
     pub fn job(&self, id: i64) -> Result<Job, SiteError> {
         self.db(|c| get_job(c, id))?
-            .ok_or_else(|| plain("That job isn't in Monks Central any more."))
+            .ok_or_else(|| plain("That job isn't in WP Sites HQ any more."))
     }
 
     /// The latest jobs, newest first.
@@ -1223,7 +1223,7 @@ impl Core {
             // Plans still waiting for a person stay waiting.
             c.execute(
                 "UPDATE job_items SET state = 'failed',
-                 message = 'Monks Central closed before this finished. Check the site, then try again.'
+                 message = 'WP Sites HQ closed before this finished. Check the site, then try again.'
                  WHERE state IN ('waiting', 'running')
                  AND job_id IN (SELECT id FROM jobs WHERE proposed_by = 'human' OR confirmed_at IS NOT NULL)",
                 [],
@@ -1290,7 +1290,7 @@ impl Core {
     /// Update a plugin with Classic Monks' checks (M10). The site checks itself
     /// in the same request and puts the old version back if the new one fails
     /// to load, since a fatal error there would stop every later request too.
-    /// Then Monks Central looks at the home page from outside and at the error
+    /// Then WP Sites HQ looks at the home page from outside and at the error
     /// log, and rolls back over MCP if either shows the update broke the site.
     async fn update_plugin_safely(&self, site: &Site, plugin: &str) -> Result<String, SiteError> {
         let id = site.id;
@@ -1299,7 +1299,7 @@ impl Core {
             .await?;
         if before["ok"] != true {
             return Err(plain(format!(
-                "Not updated: the site wasn't working before the update ({}), so Monks Central couldn't tell whether the update broke it. Fix the site, then try again.",
+                "Not updated: the site wasn't working before the update ({}), so WP Sites HQ couldn't tell whether the update broke it. Fix the site, then try again.",
                 http_problem(&before)
             )));
         }
@@ -1330,7 +1330,7 @@ impl Core {
             .call_ability_inner(
                 id,
                 "rollback-plugin",
-                json!({ "plugin": plugin, "version": previous, "note": format!("Safe update from Monks Central: {reason}") }),
+                json!({ "plugin": plugin, "version": previous, "note": format!("Safe update from WP Sites HQ: {reason}") }),
             )
             .await;
         match back {
@@ -1401,12 +1401,12 @@ impl Core {
             ),
             Action::InstallPlugin { .. } => {
                 return Err(plain(
-                    "Basic mode installs from WordPress.org only. Install Monks Central, Classic Monks or Classic Monks Pro on the site to install from a link.",
+                    "Basic mode installs from WordPress.org only. Install the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site to install from a link.",
                 ));
             }
             _ => {
                 return Err(plain(
-                    "Basic mode can't do this. It needs Monks Central, Classic Monks or Classic Monks Pro on the site.",
+                    "Basic mode can't do this. It needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.",
                 ));
             }
         };
@@ -1852,7 +1852,7 @@ mod tests {
             (Outcome::Failed, item.message.as_str())
         );
 
-        // Only a visitor sees it: Monks Central rolls back over MCP.
+        // Only a visitor sees it: WP Sites HQ rolls back over MCP.
         site.state().update_breaks_home = true;
         let item = update_woo(&core, s.id).await;
         assert_eq!(item.state, ItemState::RolledBack, "{}", item.message);
@@ -2186,7 +2186,7 @@ mod tests {
         assert!(
             job.items[3]
                 .message
-                .contains("needs Monks Central, Classic Monks or Classic Monks Pro")
+                .contains("needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro")
         );
         let inv = core.inventory_of(s.id).unwrap().unwrap();
         assert!(!inv.plugins[0].active);

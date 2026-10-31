@@ -681,7 +681,7 @@ mod tests {
         core.check_uptime(&core.site(s.id).unwrap()).await.unwrap();
         assert_eq!(core.monitors().unwrap()[0].down_since, None, "up again");
 
-        // While Monks Central changes the site (a safe update's maintenance mode), its home page isn't checked.
+        // While WP Sites HQ changes the site (a safe update's maintenance mode), its home page isn't checked.
         site.state().home_status = 503;
         core.db(|c| {
             c.execute("INSERT INTO jobs (title) VALUES ('update')", [])?;

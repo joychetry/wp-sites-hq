@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Where Monks Central keeps its data.
+//! Where WP Sites HQ keeps its data.
 
 use std::io;
 use std::path::{Path, PathBuf};

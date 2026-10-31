@@ -499,7 +499,7 @@ fn credit(s: &AppSettings) -> Vec<String> {
         f.push(s.report_footer.trim().to_string());
     }
     if !s.white_label {
-        f.push("Made with Monks Central".into());
+        f.push("Made with WP Sites HQ".into());
     }
     f
 }
@@ -981,7 +981,7 @@ mod tests {
             "curly quotes as WinAnsi"
         );
         assert!(text.contains("\\200") && text.contains("caf\\351") && text.contains("\\\\"));
-        assert!(text.contains("Made with Monks Central"));
+        assert!(text.contains("Made with WP Sites HQ"));
         assert!(text.contains("0.122 0.435 0.922 rg"), "the accent colour");
         let pages = check_pdf_offsets(&full);
         assert!(pages >= 3, "{pages} pages");
@@ -994,7 +994,7 @@ mod tests {
             },
             "x",
         );
-        assert!(!String::from_utf8_lossy(&quiet).contains("Monks Central"));
+        assert!(!String::from_utf8_lossy(&quiet).contains("WP Sites HQ"));
     }
 
     #[test]
@@ -1092,7 +1092,7 @@ mod tests {
         assert!(h.contains(r#".p0{background-image:url("data:image/png;base64,AA==")}.p1{"#));
         assert!(h.contains("<ul>\n<li><i class=\"p0\"></i>Update A</li>\n<li><i class=\"p1\"></i>Update B</li>\n<li><i class=\"p0\"></i>Update A again</li>\n</ul>"));
         assert_eq!(h.matches("AA==").count(), 1);
-        assert!(h.contains("color:#aa0000") && h.contains("Made with Monks Central"));
+        assert!(h.contains("color:#aa0000") && h.contains("Made with WP Sites HQ"));
         assert!(
             !html(
                 &doc,
@@ -1102,7 +1102,7 @@ mod tests {
                 },
                 "T"
             )
-            .contains("Monks Central")
+            .contains("WP Sites HQ")
         );
     }
 

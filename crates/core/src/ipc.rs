@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Local socket for the CLI and `monks mcp`: a Unix socket in a 0700 folder, or
+//! Local socket for the CLI and `wpshq mcp`: a Unix socket in a 0700 folder, or
 //! an owner-only Windows named pipe. One JSON object per line.
 //!
 //! Every socket client is an agent (plan D6). The app window is the only
@@ -33,7 +33,7 @@ pub const SOCKET_METHODS: &[&str] = &[
 pub enum Role {
     /// The human in the app window.
     Operator,
-    /// Anything that came in over the socket: the CLI, `monks mcp`, scripts.
+    /// Anything that came in over the socket: the CLI, `wpshq mcp`, scripts.
     Agent,
 }
 
@@ -163,7 +163,7 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
         }
         "core.shutdown" => Err(RpcError::new(
             "app_open",
-            "The Monks Central app is already open. Use it, or close it first.",
+            "The WP Sites HQ app is already open. Use it, or close it first.",
         )),
         m => Err(RpcError::new(
             "method_not_found",
@@ -241,13 +241,13 @@ async fn serve_conn<S: AsyncRead + AsyncWrite>(
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
-    #[error("Monks Central isn't running. Start it with `monks core` or open the app.")]
+    #[error("WP Sites HQ isn't running. Start it with `wpshq core` or open the app.")]
     NotRunning,
     #[error("{0}")]
     Rpc(RpcError),
-    #[error("lost the connection to Monks Central: {0}")]
+    #[error("lost the connection to WP Sites HQ: {0}")]
     Io(#[from] io::Error),
-    #[error("Monks Central sent an answer this version can't read: {0}")]
+    #[error("WP Sites HQ sent an answer this version can't read: {0}")]
     Protocol(#[from] serde_json::Error),
 }
 

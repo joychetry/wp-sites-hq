@@ -18,9 +18,9 @@ use crate::net::{self, Limits, Reply, Retry};
 
 /// Registered once per site; the loopback port is ignored by the server (RFC 8252 7.3).
 pub const REDIRECT_URI: &str = "http://127.0.0.1/callback";
-pub const CLIENT_NAME: &str = "Monks Central";
+pub const CLIENT_NAME: &str = "WP Sites HQ";
 /// The grant AI agents use: not the operator, so the site's approvals apply.
-pub const AGENT_CLIENT_NAME: &str = "Monks Central (AI agents)";
+pub const AGENT_CLIENT_NAME: &str = "WP Sites HQ (AI agents)";
 
 #[derive(Debug, thiserror::Error)]
 pub enum OAuthError {
@@ -180,7 +180,7 @@ pub async fn register(
         .ok_or_else(|| {
             site_err(oauth_message(
                 &reply,
-                "The site refused to register Monks Central.",
+                "The site refused to register WP Sites HQ.",
             ))
         })
 }
@@ -297,7 +297,7 @@ impl Loopback {
                 Err("The site didn't complete the sign-in.")
             };
             let said = match &result {
-                Ok(_) => "Monks Central is connected. You can close this tab.",
+                Ok(_) => "WP Sites HQ is connected. You can close this tab.",
                 Err(msg) => msg,
             };
             let _ = conn.write_all(&page(said)).await;
@@ -306,12 +306,12 @@ impl Loopback {
     }
 }
 
-const STRANGER: &str = "This sign-in didn't come from the request Monks Central made. Try again.";
+const STRANGER: &str = "This sign-in didn't come from the request WP Sites HQ made. Try again.";
 
 /// The page the browser shows after coming back.
 fn page(said: &str) -> Vec<u8> {
     let html = format!(
-        "<!doctype html><meta charset=utf-8><title>Monks Central</title><p style=\"font:16px system-ui;margin:3em\">{said}</p>"
+        "<!doctype html><meta charset=utf-8><title>WP Sites HQ</title><p style=\"font:16px system-ui;margin:3em\">{said}</p>"
     );
     format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n{html}",

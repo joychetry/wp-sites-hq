@@ -14,8 +14,8 @@ use crate::net::Retry;
 use crate::sites::{self, Mode, Site};
 use crate::{Core, oauth};
 
-/// The human ticked "This is my Monks Central app" while giving agents access.
-pub const AGENT_IS_OPERATOR: &str = "That sign-in was marked \"This is my Monks Central app (operator)\", which would let AI agents change the site without asking you. Monks Central gave it back. Turn on AI agent access again and leave that box unticked.";
+/// The human ticked "This is my WP Sites HQ app" while giving agents access.
+pub const AGENT_IS_OPERATOR: &str = "That sign-in was marked \"This is my WP Sites HQ app (operator)\", which would let AI agents change the site without asking you. WP Sites HQ gave it back. Turn on AI agent access again and leave that box unticked.";
 
 impl Core {
     /// A site by its number, address or name, as an agent names it.
@@ -31,7 +31,7 @@ impl Core {
                         .is_some_and(|(_, host)| host == wanted)
                     || s.name.eq_ignore_ascii_case(wanted)
             })
-            .ok_or_else(|| plain(format!("No site called {wanted} in Monks Central.")))
+            .ok_or_else(|| plain(format!("No site called {wanted} in WP Sites HQ.")))
     }
 
     /// Give AI agents their own grant on a Classic Monks site. `open` shows the
@@ -127,7 +127,7 @@ impl Core {
         // A login link signs in as the app's own user: it is never an agent's, even
         // if the site marks the tool read-only or approves it.
         if tool == "create-login-link" {
-            return Err(plain("Login links are only made in the Monks Central app."));
+            return Err(plain("Login links are only made in the WP Sites HQ app."));
         }
         // Files come only from what the person picked in the window (the site also keeps
         // these to the operator; this holds even if a site tags them otherwise).
@@ -136,7 +136,7 @@ impl Core {
             "upload-media" | "replace-media" | "restore-replaced-media"
         ) {
             return Err(plain(
-                "Files are only uploaded or replaced in the Monks Central app.",
+                "Files are only uploaded or replaced in the WP Sites HQ app.",
             ));
         }
         if site.mode != Mode::ClassicMonks || !has_tool(&site, tool) {
@@ -248,7 +248,7 @@ mod tests {
             .unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Login links are only made in the Monks Central app."
+            "Login links are only made in the WP Sites HQ app."
         );
         assert_eq!(called(&site, "create-login-link"), 0);
         for tool in ["upload-media", "replace-media", "restore-replaced-media"] {

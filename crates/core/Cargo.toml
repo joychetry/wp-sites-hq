@@ -1,6 +1,6 @@
 [package]
 name = "monks-core"
-description = "Monks Central core: store, vault, network, core lock and local socket"
+description = "WP Sites HQ core: store, vault, network, core lock and local socket"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

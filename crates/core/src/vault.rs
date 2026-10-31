@@ -21,10 +21,10 @@ pub enum VaultError {
     #[error("Couldn't use the system keychain: {0}")]
     Keychain(#[from] KeyringError),
     #[error(
-        "The Monks Central key in the system keychain is damaged ({0} bytes). Nothing was changed."
+        "The WP Sites HQ key in the system keychain is damaged ({0} bytes). Nothing was changed."
     )]
     BadMasterKey(usize),
-    #[error("The system keychain didn't keep the Monks Central key. Check that it is unlocked.")]
+    #[error("The system keychain didn't keep the WP Sites HQ key. Check that it is unlocked.")]
     KeychainReadBack,
     #[error("This saved sign-in can't be read. Sign in again.")]
     SignInAgain,

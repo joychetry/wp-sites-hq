@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Monks Central's own log of what was done through it, and who started it:
+//! WP Sites HQ's own log of what was done through it, and who started it:
 //! the person in the app, or an AI agent (plan 5.8). Each site's Classic Monks
 //! keeps its own log too; this one covers every site, Basic mode included.
 
@@ -43,7 +43,7 @@ impl Actor {
 pub enum Outcome {
     Done,
     Failed,
-    /// Monks Central said no before anything was sent.
+    /// WP Sites HQ said no before anything was sent.
     Refused,
     /// Waiting for a person: a plan to confirm, or a change to approve on the site.
     Waiting,

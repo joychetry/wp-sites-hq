@@ -36,7 +36,7 @@ const INTERNAL: &[&str] = &[
     "wp_font_face",
 ];
 
-/// The statuses Monks Central sets. A future `date` with publish schedules an entry.
+/// The statuses WP Sites HQ sets. A future `date` with publish schedules an entry.
 const STATUSES: &[&str] = &["publish", "draft", "pending", "private", "future"];
 /// "All" in the list: everything but the trash.
 const ALL: &str = "publish,draft,pending,private,future";
@@ -44,9 +44,9 @@ const PER_PAGE: u32 = 20;
 /// The largest file "import from a link" downloads in Basic mode.
 const MAX_IMPORT: usize = 25 * 1024 * 1024;
 
-pub const NEEDS_CM_FIELDS: &str = "Custom fields need Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
+pub const NEEDS_CM_FIELDS: &str = "Custom fields need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
 
-pub const OLD_CLASSIC_MONKS: &str = "This site's Classic Monks is older and has no content tools for Monks Central. Update Classic Monks on the site, then check it again.";
+pub const OLD_CLASSIC_MONKS: &str = "This site's Classic Monks is older and has no content tools for WP Sites HQ. Update Classic Monks on the site, then check it again.";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Taxonomy {
@@ -249,7 +249,7 @@ pub struct Revision {
     pub title: String,
 }
 
-pub const NEEDS_CM_HISTORY: &str = "Revisions and the trash need Monks Central, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
+pub const NEEDS_CM_HISTORY: &str = "Revisions and the trash need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.";
 
 pub(crate) fn text(v: &Value) -> String {
     match v {
@@ -545,14 +545,14 @@ fn done(out: &Value, fallback: &str) -> String {
 fn check_draft(d: &Draft) -> Result<(), SiteError> {
     if let Some(s) = d.status.as_deref().filter(|s| !STATUSES.contains(s)) {
         return Err(plain(format!(
-            "Monks Central can't set the status {s}. Use publish, draft, pending or private."
+            "WP Sites HQ can't set the status {s}. Use publish, draft, pending or private."
         )));
     }
     if let Some(date) = &d.date
         && !is_date(date)
     {
         return Err(plain(format!(
-            "The date {date} isn't one Monks Central can send. Use 2026-11-02 09:30:00."
+            "The date {date} isn't one WP Sites HQ can send. Use 2026-11-02 09:30:00."
         )));
     }
     Ok(())
@@ -664,9 +664,7 @@ impl Core {
         match reply.status {
             200 | 201 => match reply.json::<Value>() {
                 Some(v) => Ok((v, reply)),
-                None => Err(plain(
-                    "The site sent an answer Monks Central couldn't read.",
-                )),
+                None => Err(plain("The site sent an answer WP Sites HQ couldn't read.")),
             },
             401 => {
                 self.db(|c| sites::set_sign_in_again(c, site.id, true))?;

@@ -115,7 +115,7 @@ async fn app_takes_over_from_a_headless_core() {
     .unwrap();
     let status = ipc::call(home.path(), "status", json!(null)).await.unwrap();
     assert_eq!(status["headless"], true);
-    // What `monks core` does when asked: finish, then let go of the lock.
+    // What `wpshq core` does when asked: finish, then let go of the lock.
     let stopped = tokio::spawn(async move {
         headless.shutdown_requested().await;
         headless.finish().await;

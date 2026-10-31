@@ -98,7 +98,7 @@ pub struct State {
     /// `{ id, post_id, post_title, author, email, content, date, status, parent }`;
     /// status as core REST says it: hold, approved, spam, trash.
     pub comments: Vec<serde_json::Value>,
-    /// Classic Monks' on/off features and the ones Monks Central can't change.
+    /// Classic Monks' on/off features and the ones WP Sites HQ can't change.
     pub features: serde_json::Map<String, serde_json::Value>,
     pub locked: Vec<String>,
     pub settings: serde_json::Map<String, serde_json::Value>,
@@ -224,7 +224,7 @@ impl Default for State {
             hq_plugin: json!({ "name": "Classic Monks Pro", "version": "2.6.0-dev" }),
             hq_connector: json!({ "version": "1.1.0", "hosts": [
                 { "name": "Classic Monks Pro", "version": "2.6.0-dev", "connector": "1.1.0" },
-                { "name": "Monks Central", "version": "1.0.0", "connector": "1.1.0" },
+                { "name": "WP Sites HQ", "version": "1.0.0", "connector": "1.1.0" },
             ] }),
             login_link: None,
             codes: HashMap::new(),
@@ -1901,7 +1901,7 @@ impl State {
         let id = self.activity.len() as i64 + 1;
         self.activity.insert(0, json!({
             "id": id, "created_at": "2026-10-28 10:00:00", "user": "admin", "source": "mcp",
-            "client_label": "Monks Central [operator]", "tool": tool, "status": "ok", "summary": "",
+            "client_label": "WP Sites HQ [operator]", "tool": tool, "status": "ok", "summary": "",
             "input": input, "can_undo": true, "undo": undo,
         }));
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Monks Central core.
+//! WP Sites HQ core.
 
 pub mod activity;
 pub mod agents;
@@ -64,7 +64,7 @@ pub enum Changed {
     Inventory,
     /// A job started, moved on or finished, or an agent proposed one.
     Jobs,
-    /// A row was added to Monks Central's activity log.
+    /// A row was added to WP Sites HQ's activity log.
     Activity,
     /// A site's security scan finished.
     Security,
@@ -88,7 +88,7 @@ impl Changed {
 
 #[derive(Clone)]
 pub struct Options {
-    /// Started by `monks core` (or by the CLI for itself), not by the app.
+    /// Started by `wpshq core` (or by the CLI for itself), not by the app.
     /// Only a headless core stops when asked over the socket.
     pub headless: bool,
     /// Where the master key lives, or why there is none. Read on first use,
@@ -194,8 +194,7 @@ impl Core {
             }
         }
         Err(CoreError::TakeOver(
-            "The Monks Central core running in the background didn't stop in time. Try again."
-                .into(),
+            "The WP Sites HQ core running in the background didn't stop in time. Try again.".into(),
         ))
     }
 
