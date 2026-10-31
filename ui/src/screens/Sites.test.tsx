@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Sites } from "./Sites";
 import { Select } from "../components/controls";
 import { site } from "../test-fixtures";
+import { connectorInfo, pluginName } from "../api";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -214,4 +215,17 @@ test("Basic mode: install WP Sites HQ for me saves the checked zip, opens the up
   expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://mc-a.local/wp-admin/plugin-install.php?tab=upload", site: 2 });
   fireEvent.click(within(insp).getByRole("button", { name: "Connect through the plugin" }));
   await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("site_connect_plugin", { id: 2 }));
+});
+
+test("the plugin shows under its old and new names, also mid-move with both on the site", () => {
+  const old = site({ cm_version: "0.1.3", capabilities: { plugin: { name: "Monks Central", version: "0.1.3" }, connector: { version: "1.1.0" } } });
+  expect(pluginName(old)).toBe("Monks Central");
+  const moving = site({
+    cm_version: "0.2.0",
+    capabilities: {
+      plugin: { name: "WP Sites HQ", version: "0.2.0" },
+      connector: { version: "1.2.0", hosts: [{ name: "WP Sites HQ", version: "0.2.0" }, { name: "Monks Central (old)", version: "0.1.4" }] },
+    },
+  });
+  expect(connectorInfo(moving)).toEqual({ running: "WP Sites HQ 0.2.0, connector 1.2.0", spare: ["Monks Central (old) 0.1.4"] });
 });
