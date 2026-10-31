@@ -454,7 +454,7 @@ const POSTS: Post[] = [
     featured_image: 31,
     featured_url: MEDIA[0].url,
     blocks: [
-      { index: 0, name: "core/heading", depth: 0, editable: true, html: "Fresh every morning" },
+      { index: 0, name: "core/heading", depth: 0, editable: true, html: "Fresh every morning", level: 2 },
       { index: 1, name: "core/paragraph", depth: 0, editable: true, html: "Bread from 7, cakes from 9. Ask about <strong>gluten free</strong> loaves." },
       { index: 2, name: "core/columns", depth: 0, editable: false, html: "Columns" },
       { index: 3, name: "core/image", depth: 1, editable: false, html: "Image" },
