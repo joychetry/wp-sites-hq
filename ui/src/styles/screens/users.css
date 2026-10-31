@@ -3,7 +3,7 @@
 .users .t th, .users .t td { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 .users .t td { height: 60px; }
 .users .site small { overflow-wrap: anywhere; }
-.users .conn .fav { width: 22px; height: 22px; border-radius: 6px; font-size: var(--fs-xs); }
+.users .conn .fav { width: 22px; height: 22px; font-size: var(--fs-xs); }
 .users .when { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .users .rowacts { gap: var(--sp-1); }
 .users .rowacts .btn.ghost .glyph { width: 14px; height: 14px; }

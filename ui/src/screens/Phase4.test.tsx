@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
-import { ClassicMonks, toolLabel, when, whoOf } from "./ClassicMonks";
+import { ClassicMonks, toolLabel, whoOf } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
@@ -160,7 +160,7 @@ describe("Users", () => {
     expect(await screen.findByText("Alpha: the users didn't load. The site answered 500.")).toBeInTheDocument();
     unmount();
     render(<Users sites={[]} />);
-    expect(screen.getByText("No sites yet.")).toBeInTheDocument();
+    expect(screen.getByText("No sites yet")).toBeInTheDocument();
   });
 });
 
@@ -230,7 +230,7 @@ describe("Comments", () => {
   it("says when nothing waits, and when a change fails", async () => {
     core({ comments_list: () => ({ comments: [], total: 0 }) });
     const { unmount } = render(<Comments sites={[CM]} />);
-    expect(await screen.findByText("No comments are waiting.")).toBeInTheDocument();
+    expect(await screen.findByText("No comments are waiting")).toBeInTheDocument();
     unmount();
     core({ comment_moderate: () => Promise.reject("Comment not found.") });
     render(<Comments sites={[CM]} />);
@@ -270,7 +270,7 @@ describe("Classic Monks", () => {
     expect(within(list).getByText("Locked")).toBeInTheDocument();
     expect(within(list).queryByRole("button")).toBeNull();
     fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "zzz" } });
-    expect(screen.getByText("No feature matches.")).toBeInTheDocument();
+    expect(screen.getByText("No feature matches")).toBeInTheDocument();
   });
 
   it("saves a setting, undoes from the log and opens an approval on the site", async () => {
@@ -314,10 +314,6 @@ describe("Classic Monks", () => {
 
   it("names tools and blocks plainly", () => {
     expect(toolLabel("classic-monks/update-features")).toBe("Update features");
-    const noon = new Date(2026, 9, 28, 12);
-    expect(when("2026-10-28 09:30:12", noon)).toBe("Today, 09:30");
-    expect(when("2026-10-27 16:12:00", noon)).toBe("Yesterday, 16:12");
-    expect(when("2026-10-24 14:20:00", noon)).toBe("Oct 24, 14:20");
     expect(cmBlocked(OLD)).toMatch(/can't change Classic Monks/);
     expect(cmBlocked(site({ sign_in_again: true }))).toBe("Sign in again first.");
     expect(peopleBlocked(BASIC, "get-users")).toBeNull();

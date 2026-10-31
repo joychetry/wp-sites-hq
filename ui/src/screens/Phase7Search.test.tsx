@@ -55,13 +55,13 @@ test("search shows local results and posts from each site, and names sites it co
 test("a new search runs on submit, and a short one asks for more", async () => {
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "clients_list" ? [] : { hits: [], failed: [] }));
   render(<Search sites={[A]} inventory={inv} query="" onGo={() => {}} />);
-  expect(screen.getByRole("heading", { name: "Search every site at once." })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Search every site at once" })).toBeInTheDocument();
   const box = screen.getByRole("searchbox", { name: "Search everything" });
   fireEvent.change(box, { target: { value: "a" } });
   expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
   fireEvent.change(box, { target: { value: "zz" } });
   fireEvent.submit(box.closest("form")!);
-  expect(await screen.findByText("Nothing matches on any site: no sites, plugins, themes, clients, posts or pages.")).toBeInTheDocument();
+  expect(await screen.findByText("Nothing matches on any site: no sites, plugins, themes, clients, posts or pages")).toBeInTheDocument();
 });
 
 test("the palette offers to search everything once two letters are typed", () => {

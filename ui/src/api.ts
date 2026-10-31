@@ -813,13 +813,4 @@ export function connectorInfo(s: Site): { running: string; spare: string[] } | n
   return { running: `${plugin}, connector ${c.version}`, spare };
 }
 
-/** "just now", "3 min ago", "2 hr ago", "4 days ago". */
-export function ago(unix: number | null, now = Date.now() / 1000): string {
-  if (unix == null) return "never";
-  const s = Math.max(0, now - unix);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
-  const d = Math.floor(s / 86400);
-  return d === 1 ? "yesterday" : `${d} days ago`;
-}
+export { ago } from "./format";

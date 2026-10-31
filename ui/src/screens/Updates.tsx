@@ -3,7 +3,8 @@
 import { Fragment, useMemo, useState } from "react";
 import "../styles/screens/updates.css";
 import { ago, api, blocked, siteStatus, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
-import { Button, Glyph, HeadActions, Icon } from "../components/ui";
+import { Button, Details, Glyph, HeadActions, Icon } from "../components/ui";
+import { vulnSummary } from "../format";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
 import { Empty, toast } from "../components/feedback";
@@ -160,7 +161,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
         </td>
         <td>
           {tone ? (
-            <span className={`st pill ${tone}`} data-tip={r.vuln?.title}>
+            <span className={`st pill ${tone}`} data-tip={r.vuln && vulnSummary(r.vuln.title)}>
               <Icon tone={tone} />
               {words}
             </span>
@@ -229,7 +230,8 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
                     {r.name} {r.to}
                   </b>{" "}
                   on {r.site}
-                  <small>{r.vuln!.title}</small>
+                  <small>{vulnSummary(r.vuln!.title)}</small>
+                  <Details>{r.vuln!.title}</Details>
                 </li>
               ))}
             </ul>
@@ -276,7 +278,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
       </Toolbar>
       <section className="card" aria-label="Pending updates">
         {rows.length === 0 ? (
-          <Empty picture="done" title="No updates waiting.">
+          <Empty picture="done" title="No updates waiting">
             <p>
               {sites.length === 0
                 ? "Add a site to see its updates here."
@@ -284,7 +286,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
             </p>
           </Empty>
         ) : shown.length === 0 ? (
-          <Empty small title="Nothing of this kind is waiting." />
+          <Empty small title="Nothing of this kind is waiting" />
         ) : (
           <table className="t" aria-label="Updates waiting">
             <thead>

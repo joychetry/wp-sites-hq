@@ -4,7 +4,7 @@
 import "../styles/screens/matrix.css";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { api, blocked, can, type Action, type Change, type Item, type PluginVersions, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
-import { Button, Glyph, HeadActions, Icon } from "../components/ui";
+import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Menu, SearchInput } from "../components/controls";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
@@ -179,7 +179,9 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
           vuln={vulnOf(reports, kind, selSite.id, itemAt(selSite.id, selCol.id))}
           others={read.flatMap((s) => {
             const it = itemAt(s.id, selCol.id);
-            return it ? [{ site: s, item: it }] : [];
+            // Why an update listed here is not in the update button below it.
+            const held = !it?.update ? null : blocked(s, inventory.get(s.id)) ?? (can(s, plugin ? "update_plugin" : "update_theme") ? null : "This connection has no tool to update it.");
+            return it ? [{ site: s, item: it, held }] : [];
           })}
           everywhere={updateRows(selCol.id)}
           onPlan={onPlan}
@@ -203,7 +205,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                       <span>{it ? `${it.name} ${it.version}` : "Not known"}</span>
                     </span>
                     {it?.update ? (
-                      <span className="tag ok">Update ready</span>
+                      <Status pill tone="ok">Update ready</Status>
                     ) : it ? (
                       <span className="st pill ok">
                         <Icon tone="ok" />
@@ -368,7 +370,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
           )}
           {notReady.length > 0 && (
             <section className="mx-notes" aria-label="Sites not in this table">
-              <h3 className="mx-label">Not in this table</h3>
+              <h2 className="mx-label">Not in this table</h2>
               <ul>
                 {notReady.map((s) => (
                   <li key={s.id} className="callout">
@@ -397,7 +399,7 @@ type InspectorProps = {
   col: Col;
   item: Item | undefined;
   vuln: Vulnerability | undefined;
-  others: { site: Site; item: Item }[];
+  others: { site: Site; item: Item; held: string | null }[];
   everywhere: PlanRow[];
   onPlan: Props["onPlan"];
   onRun: Props["onRun"];
@@ -410,6 +412,8 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
   const plugin = kind === "plugins";
   const name = item?.name || col.name;
   const one = (action: Action) => [{ site_id: s.id, action }];
+  const updateAll = `Update ${name} on ${everywhere.length === 1 ? everywhere[0].site : `${everywhere.length} sites`}`;
+  const held = others.filter((o) => o.held);
   const row = (label: string, action: Action, from?: string | null, to?: string | null): PlanRow[] => [
     { site: s.name, label, from, to, change: { site_id: s.id, action } },
   ];
@@ -556,11 +560,16 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
           )}
           {everywhere.length > 0 && (
             <div>
-              <Button small kind="soft" onClick={() => onPlan(`Update ${name} on ${everywhere.length === 1 ? "1 site" : `${everywhere.length} sites`}`, everywhere, "plan")}>
-                Update {name} on {everywhere.length === 1 ? "1 site" : `${everywhere.length} sites`}
+              <Button small kind="soft" onClick={() => onPlan(updateAll, everywhere, "plan")}>
+                {updateAll}
               </Button>
             </div>
           )}
+          {held.map((o) => (
+            <p key={o.site.id} className="dim">
+              Not in this update: {o.site.name}. {o.held}
+            </p>
+          ))}
         </div>
         {(roll || canDelete) && (
           <div className="mx-foot">

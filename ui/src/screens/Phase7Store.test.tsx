@@ -8,6 +8,7 @@ import { ClassicMonks } from "./ClassicMonks";
 import { site } from "../test-fixtures";
 import type { Product } from "../api";
 import { HeadSlot } from "../components/ui";
+import { JobSheet } from "../components/JobSheet";
 
 // The page head's action slot, as App gives it: the site and period pickers render there.
 const head = document.body.appendChild(document.createElement("div"));
@@ -71,6 +72,23 @@ test("the store shows how it did, what runs low, and plans a product change to c
   expect(mockInvoke).toHaveBeenCalledWith("store_overview", { id: 1, days: 7 });
 });
 
+test("the form starts from the product's prices, and removing the sale reaches the review", async () => {
+  core();
+  const plan = vi.fn();
+  render(<Store sites={[A, B]} onPlan={plan} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Change price or stock of Rye" }));
+  expect(screen.getByRole("textbox", { name: /^Price/ })).toHaveValue("3.50");
+  expect(screen.getByRole("textbox", { name: /^Sale price/ })).toHaveValue("3.00");
+  expect(screen.getByRole("textbox", { name: /^Stock/ })).toHaveValue("1");
+  fireEvent.change(screen.getByRole("textbox", { name: /^Sale price/ }), { target: { value: "" } });
+  fireEvent.change(screen.getByRole("textbox", { name: /^Stock/ }), { target: { value: "30" } });
+  fireEvent.click(screen.getByRole("button", { name: "Review the change" }));
+  const rows = plan.mock.calls[0][1];
+  expect(rows[0].change.action).toEqual({ do: "update_product", product_id: 62, name: "Rye", sale_price: "", stock_quantity: 30 });
+  render(<JobSheet state={{ title: "Change Rye", rows, start: "confirm" }} onClose={() => {}} />);
+  expect(screen.getByRole("region", { name: "On Shop" })).toHaveTextContent("Change “Rye”: no sale price, stock 30");
+});
+
 test("a slow answer for an older period never replaces the newer one", async () => {
   core();
   let slow: (v: unknown) => void = () => {};
@@ -92,7 +110,7 @@ test("a slow answer for an older period never replaces the newer one", async () 
 test("a site without the store tools says what it needs", () => {
   core();
   render(<Store sites={[B]} onPlan={() => {}} />);
-  expect(screen.getByRole("heading", { name: "Blog has no store WP Sites HQ can read." })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Blog has no store WP Sites HQ can read" })).toBeInTheDocument();
 });
 
 test("Classic Monks' reports show what the site has and name what failed", async () => {

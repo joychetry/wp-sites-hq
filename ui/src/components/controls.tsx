@@ -36,8 +36,11 @@ function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: 
       const below = innerHeight - r.bottom;
       const up = below < 260 && r.top > below;
       const w = Math.max(r.width, width ?? 0);
+      // Inside a sheet the list stays 8px inside the sheet's edges, not just the window's.
+      const box = anchor.current?.closest('[aria-modal="true"]')?.getBoundingClientRect();
+      const [minL, maxR] = box ? [box.left + 8, box.right - 8] : [8, innerWidth - 8];
       setStyle({
-        left: Math.max(8, Math.min(r.left, innerWidth - w - 8)),
+        left: Math.max(minL, Math.min(r.left, maxR - w)),
         minWidth: r.width,
         width: width,
         maxHeight: Math.max(160, (up ? r.top : below) - 16),
@@ -661,8 +664,8 @@ export function DateInput({ type, value, onChange, max, className, disabled, id,
     <span className={cx("dt", className?.includes("sm") && "sm")} id={id} role="group" aria-label={aria["aria-labelledby"] ? undefined : name} aria-labelledby={aria["aria-labelledby"]}>
       {type === "month" ? (
         <button ref={btn} type="button" className="input dt-btn" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={`${name}: ${shown || "not set"}. ${shown ? "Choose a month" : "Pick a month"}`} onClick={() => setOpen(!open)}>
-          {calendar}
           <span className={shown ? "" : "dim"}>{shown || "Pick a month"}</span>
+          {calendar}
         </button>
       ) : (
         <>
@@ -783,7 +786,7 @@ export function TimeField({ value, onChange, label, disabled }: { value: string;
       aria-label={label}
       aria-invalid={bad || undefined}
       inputMode="numeric"
-      placeholder="09:00"
+      placeholder={disabled ? "Not set" : "hh:mm"}
       disabled={disabled}
       value={draft}
       onChange={(e) => {
@@ -1060,10 +1063,10 @@ export function FilePicker({ label, accept, disabled, busy, onFile, onFiles, hin
       }}
     >
       <button type="button" className="btn" disabled={disabled} onClick={() => ref.current?.click()}>
+        {busy ?? label}
         <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M8 10.5V2.5M4.5 6 8 2.5 11.5 6M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />
         </svg>
-        {busy ?? label}
       </button>
       <span className="dim">{name ? `Chosen: ${name}` : hint}</span>
       <input

@@ -8,6 +8,7 @@ import { Day, Monitoring, expiry } from "./Monitoring";
 import { site } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import type { Monitor, SecurityReport, SiteInventory } from "../api";
+import { month } from "../format";
 
 // The page head's action slot, as App gives it: the screen's main actions render there.
 const head = document.body.appendChild(document.createElement("div"));
@@ -57,7 +58,7 @@ describe("Security", () => {
   test("lists vulnerabilities, abandoned plugins and changed files, and fixes through the plan", () => {
     const onPlan = vi.fn();
     render(<Security sites={[A, B]} reports={[report]} inventory={new Map([[1, inv("10.3.0")]])} onPlan={onPlan} />);
-    expect(screen.getByText("2 known vulnerabilities, 2 abandoned plugins and 1 changed install on 1 site.", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Across 1 scanned site: 2 known vulnerabilities, 2 abandoned plugins and 1 changed install.", { exact: false })).toBeInTheDocument();
     const vulns = screen.getByRole("list", { name: "Known vulnerabilities" });
     expect(within(vulns).getByText("Alpha, on 10.2.0")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Security at a glance" })).toHaveTextContent("Sites clear0 of 2");
@@ -72,7 +73,7 @@ describe("Security", () => {
     expect(onPlan).toHaveBeenLastCalledWith("Fix 1 vulnerable plugin", [expect.objectContaining({ label: "Update WooCommerce" })]);
     fireEvent.click(within(vulns).getByRole("button", { name: "Read more about WooCommerce < 10.3 - Stored XSS" }));
     expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://wpscan.com/v" });
-    expect(screen.getByText("No release since Mar 2023. Look for a maintained one.")).toBeInTheDocument();
+    expect(screen.getByText(`No release since ${month("2023-03")}. Look for a maintained one.`)).toBeInTheDocument();
     expect(screen.getByText("WordPress.org closed it (security issue): it gets no more updates. Replace it.")).toBeInTheDocument();
     expect(screen.getByText("wp-includes/version.php (changed), wp-x.php (extra)")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Not checked" })).getByText("Not scanned yet.")).toBeInTheDocument();

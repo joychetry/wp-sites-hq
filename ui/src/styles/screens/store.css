@@ -28,7 +28,7 @@
 .store .card-foot .grow { flex: 1; font-size: var(--fs-sm); }
 .store .t .site small { font-family: var(--sans); }
 .store .row.nowrap { gap: var(--sp-2); }
-.pthumb { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 10px; }
+.pthumb { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--radius-tile); }
 .pthumb .glyph { width: 14px; height: 14px; }
 .pthumb.lg { width: 44px; height: 44px; }
 .pthumb.lg .glyph { width: 18px; height: 18px; }

@@ -3,7 +3,7 @@
    picker, custom fields, earlier versions, the trash confirm and the site list. */
 
 /* The title is the one larger field (--fs-lg); every block field below it is body size. */
-.input.title-lg { height: 44px; font: 600 var(--fs-lg)/1 var(--sans); }
+.input.title-lg { height: var(--control-lg); font: 600 var(--fs-lg)/1 var(--sans); }
 .blk textarea.input { min-height: 72px; }
 .sheet .btn.quiet { border-color: transparent; background: none; }
 .sheet .btn.quiet:hover:not(:disabled) { background: var(--panel); }
@@ -32,7 +32,7 @@
 
 /* Earlier versions: who and when beside an avatar; the one being put back is tinted. */
 .vlist { list-style: none; margin: 0; padding: 0; }
-.vlist li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); margin: 0 calc(-1 * var(--sp-3)); padding: var(--sp-3); border-radius: 10px; }
+.vlist li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); margin: 0 calc(-1 * var(--sp-3)); padding: var(--sp-3); border-radius: var(--radius); }
 .vlist li.on { background: var(--tint); }
 .vlist .av { background: var(--panel); color: var(--text-2); }
 .vwho { display: grid; gap: 2px; min-width: 0; }
@@ -100,10 +100,13 @@
 .rte-head .tabs { flex: 1 1 auto; min-width: 0; border: 0; padding: 0; }
 .rte-head .tabs [role="tab"] { height: 36px; }
 .rte [role="tabpanel"] { position: relative; }
-.rte-bar { min-height: 84px; border-bottom: 1px solid var(--line); }
+/* One row: what doesn't fit slides out from More (toolbar_mode "sliding"); the row is kept while the editor loads. */
+.rte-bar { min-height: 42px; border-bottom: 1px solid var(--line); }
 /* contain: site HTML with position: fixed stays inside its box, never over the window. */
 .rte-body { position: relative; contain: paint; min-height: 320px; padding: var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius) var(--radius); }
-.rte-body:focus, .rte-body:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.rte-body:focus, .rte-body:focus-visible { outline: none; }
+.rte:has(.rte-body:focus, .rte-source:focus) { border-color: var(--focus); box-shadow: var(--ring); }
+.rte .rte-source:focus { outline: none; box-shadow: none; }
 .rte textarea.rte-source { display: block; width: 100%; min-height: 404px; border: 0; border-radius: 0 0 var(--radius) var(--radius); font: var(--fs-sm)/1.6 var(--mono); resize: vertical; }
 .rte-wait { position: absolute; top: var(--sp-3); left: var(--sp-4); margin: 0; color: var(--text-3); font-size: var(--fs-sm); }
 .rte-media { padding: var(--sp-3); border-bottom: 1px solid var(--line); }
@@ -120,19 +123,28 @@
 .prose ul, .prose ol { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); }
 .prose img { max-width: 100%; height: auto; }
 .prose a, .blk-text a { color: var(--brand-text); }
-.prose pre { padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--panel); font: var(--fs-sm)/1.5 var(--mono); white-space: pre-wrap; }
+.prose pre { padding: var(--sp-3); border-radius: var(--radius); background: var(--panel); font: var(--fs-sm)/1.5 var(--mono); white-space: pre-wrap; }
 .prose hr { border: 0; border-top: 1px solid var(--line-ui); }
 .prose .mce-pagebreak, .prose img.mce-object { display: block; }
 
 /* A block page: each text block is its own box that becomes an editor when it gets focus; the
    other blocks are locked rows. */
-.blk { display: grid; gap: var(--sp-1); margin-bottom: var(--sp-3); }
+.blk { position: relative; display: grid; gap: var(--sp-1); margin-bottom: var(--sp-3); }
+.blk > .blk-name { min-height: 20px; }
+/* A block's floating toolbar sits on its label row at the right, its foot on the field's top edge,
+   so it never covers the field's own name or the text being edited. */
+html .blk > .tox.tox-tinymce-inline { top: auto !important; left: auto !important; right: 0; bottom: calc(100% - 20px - var(--sp-1)); }
+/* Small buttons, so the bar fits the label row and the gap above it. */
+html .blk .tox .tox-toolbar__group { padding: 0 2px; }
+html .blk .tox .tox-tbtn { width: 28px; height: 28px; margin: 2px 0; }
+html .blk .tox .tox-split-button { height: 28px; margin: 2px 0; }
+html .blk .tox .tox-split-button .tox-tbtn { height: 26px; margin: 0; }
 .blk-text { position: relative; contain: paint; min-height: var(--control); margin: 0; padding: 8px 12px; border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); color: var(--text); font: var(--fs)/1.5 var(--sans); cursor: text; overflow-wrap: anywhere; }
 .blk-text.heading { font-weight: 600; }
 .blk-name { display: inline-flex; align-items: center; gap: 6px; }
 .blk-level { padding: 0 5px; border: 1px solid var(--line); border-radius: var(--radius-sm); font: 500 var(--fs-xs)/1.5 var(--mono); color: var(--text-3); }
 pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; }
-.blk-text:focus, .blk-text:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.blk-text:focus, .blk-text:focus-visible { outline: none; border-color: var(--focus); box-shadow: var(--ring); }
 .blk.locked .tag { margin-left: auto; }
 .blk.locked .tag .glyph { width: 12px; height: 12px; }
 
@@ -175,10 +187,10 @@ html .tox .tox-tbtn.tox-tbtn--disabled, html .tox .tox-tbtn.tox-tbtn--disabled:h
 html .tox .tox-tbtn--disabled svg, html .tox .tox-tbtn:disabled svg { fill: var(--text-3); }
 html .tox .tox-tbtn:focus-visible, html .tox .tox-split-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; background: var(--panel); }
 html .tox .tox-tbtn__select-label { color: var(--text); }
-html .tox .tox-tbtn--select svg, html .tox .tox-split-button__chevron svg { fill: var(--text-2); }
-html .tox.tox-tinymce-inline .tox-editor-header { background: var(--bg); border: 1px solid var(--line-ui); border-radius: var(--radius); box-shadow: var(--shadow-pop); overflow: hidden; }
+html .tox .tox-tbtn--select svg, html .tox .tox-split-button__chevron svg, html .tox .tox-split-button .tox-tbtn__select-chevron svg { fill: var(--text-2); }
+html .tox.tox-tinymce-inline .tox-editor-header { background: var(--bg); border: 1px solid var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: hidden; }
 html .rte .tox.tox-tinymce-inline .tox-editor-header { border: 0; border-radius: 0; box-shadow: none; }
-html .tox .tox-menu, html .tox .tox-collection--list, html .tox .tox-collection--toolbar, html .tox .tox-collection--grid { background: var(--bg); border-color: var(--line-ui); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+html .tox .tox-menu, html .tox .tox-collection--list, html .tox .tox-collection--toolbar, html .tox .tox-collection--grid { background: var(--bg); border-color: var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
 html .tox .tox-collection__item { color: var(--text); }
 html .tox .tox-collection__item--active, html .tox .tox-collection__item--enabled { background: var(--panel); color: var(--text); }
 html .tox .tox-collection__item-icon svg, html .tox .tox-collection__item-checkmark svg, html .tox .tox-collection__item-caret svg { fill: var(--text); }
@@ -189,7 +201,7 @@ html .tox .tox-dialog__header, html .tox .tox-dialog__body, html .tox .tox-dialo
 html .tox .tox-dialog__title { font: 600 var(--fs-lg)/1.3 var(--display); color: var(--text); }
 html .tox .tox-label, html .tox .tox-form__group label, html .tox .tox-checkbox__label { color: var(--text); font-size: var(--fs-sm); font-weight: 600; }
 html .tox .tox-textfield, html .tox .tox-textarea, html .tox .tox-listboxfield .tox-listbox--select, html .tox .tox-selectfield select { background: var(--bg); color: var(--text); border-color: var(--line-ui); border-radius: var(--radius); font-family: var(--sans); }
-html .tox .tox-textfield:focus, html .tox .tox-listboxfield .tox-listbox--select:focus { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+html .tox .tox-textfield:focus, html .tox .tox-listboxfield .tox-listbox--select:focus { border-color: var(--focus); box-shadow: var(--ring); outline: none; }
 html .tox .tox-listbox__select-label { color: var(--text); }
 html .tox .tox-button { border-radius: var(--radius-pill); background: var(--green); border-color: var(--green); color: var(--on-green); font: 600 var(--fs)/1 var(--sans); }
 html .tox .tox-button:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); }

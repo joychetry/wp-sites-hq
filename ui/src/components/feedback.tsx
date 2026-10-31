@@ -195,6 +195,7 @@ const PICTURES: Record<string, ReactNode> = {
   inbox: <path d="M4 18l4-12h16l4 12v8H4zM4 18h7l2 3h6l2-3h7" />,
   plug: <path d="M12 4v6M20 4v6M8 10h16v4a8 8 0 0 1-16 0zM16 22v6" />,
   lock: <path d="M8 14h16v13H8zM11 14v-4a5 5 0 0 1 10 0v4M16 19v3" />,
+  alert: <path d="M16 5 3.5 26h25zM16 13v6M16 22.5v.5" />,
 };
 
 /** An empty or error state: a picture, a heading, plain words and the next step. */
@@ -202,12 +203,11 @@ const PICTURES: Record<string, ReactNode> = {
 export function Empty({ picture, title, children, action, alert, small }: { picture?: keyof typeof PICTURES; title: string; children?: ReactNode; action?: ReactNode; alert?: boolean; small?: boolean }) {
   return (
     <div className={small ? "empty sm" : "empty"} role={alert ? "alert" : undefined}>
-      {picture && (
-        <svg className="empty-pic" viewBox="0 0 32 32" aria-hidden="true">
-          {PICTURES[picture]}
-        </svg>
-      )}
-      <h2>{title}</h2>
+      {/* One shape for every empty state: a picture in a tinted disc, a title without a full stop, words, one action. */}
+      <svg className="empty-pic" viewBox="0 0 32 32" aria-hidden="true">
+        {PICTURES[picture ?? (alert ? "alert" : "inbox")]}
+      </svg>
+      <h2>{title.replace(/\.$/, "")}</h2>
       {children}
       {action && <div className="row">{action}</div>}
     </div>

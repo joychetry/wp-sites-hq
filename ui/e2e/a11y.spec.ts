@@ -44,12 +44,13 @@ test("every focusable control shows a focus ring", async ({ page }) => {
       const el = document.activeElement as HTMLElement;
       // Focus leaves the page for the browser between the last control and the first.
       if (el === document.body) return { name: "the browser", shown: true };
-      const box = el.closest(".scope") ?? el;
-      const cs = getComputedStyle(box);
+      el.getAnimations().forEach((a) => a.finish());
       const own = getComputedStyle(el);
+      // Fields show the green edge and the soft ring; everything else shows a 2px outline.
+      const ring = el.matches(".input") && own.boxShadow.includes("3px") && own.boxShadow !== "none";
       return {
         name: el.getAttribute("aria-label") ?? el.textContent?.trim().slice(0, 30),
-        shown: (cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) >= 2) || (own.outlineStyle !== "none" && parseFloat(own.outlineWidth) >= 2),
+        shown: ring || (own.outlineStyle !== "none" && parseFloat(own.outlineWidth) >= 2),
       };
     });
     expect(ring, `focus ring on ${ring.name}`).toMatchObject({ shown: true });
@@ -103,6 +104,16 @@ test("Tab stays inside the Add a site sheet", async ({ page }) => {
   }
 });
 
+// Next swaps the step's content under the focused button; focus must land on the new step, not the page behind.
+test("focus stays in the Add a site sheet at step 2", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "add-site-basic")!, "light");
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
+  }
+});
+
 test("the palette gives focus back when it closes", async ({ page }) => {
   await show(page, SCREENS[0], "light");
   const search = page.getByRole("button", { name: /^Search or run/ });
@@ -134,7 +145,7 @@ test("the content editor works from the keyboard and gives focus back", async ({
   await expect(page.getByText("Unsaved changes")).toBeVisible();
   // Ctrl+S saves from inside the editor.
   await page.keyboard.press("Control+s");
-  await expect(page.getByText('Saved "Our menu" on MC A.')).toBeVisible();
+  await expect(page.getByText('Saved “Our menu” on MC A.')).toBeVisible();
   await expect(page.getByText("Unsaved changes")).toHaveCount(0);
   await page.getByRole("button", { name: "Back to pages" }).focus();
   await page.keyboard.press("Enter");
@@ -171,7 +182,7 @@ test("saving and its messages never move the page: title, a body edit and an ACF
   await expect(page.getByText("Unsaved changes")).toBeVisible();
   expect(await y(title)).toBe(top);
   await page.getByRole("button", { name: "Update", exact: true }).click();
-  await expect(page.getByText('Saved "Winter opening hours" on MC A.')).toBeVisible();
+  await expect(page.getByText('Saved “Winter opening hours” on MC A.')).toBeVisible();
   expect(await y(title)).toBe(top);
 
   await show(page, SCREENS.find((s) => s.name === "content-acf")!, "light");
@@ -310,7 +321,7 @@ test("the palette searches everything, and a result opens its site from the keyb
   await page.keyboard.type("bakery");
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("table", { name: "Posts and pages found" }).or(page.getByText("No posts or pages match on any site."))).toBeVisible();
+  await expect(page.getByRole("table", { name: "Posts and pages found" }).or(page.getByText("No posts or pages match on any site"))).toBeVisible();
   const open = page.getByRole("button", { name: "Open on Sites: Corner Bakery" });
   for (let i = 0; i < 40 && !(await open.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
   await expect(open).toBeFocused();
@@ -424,6 +435,8 @@ test("a rolled back update shows why, and only the failed change is offered agai
   await show(page, SCREENS.find((s) => s.name === "updates-progress")!, "light");
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByText("Rolled back", { exact: true })).toBeVisible();
+  await expect(sheet.getByText("Rolled back to 5.3 because the update broke the site.")).toBeVisible();
+  await sheet.getByText("Show the details").click();
   await expect(sheet.getByText(/^Rolled back to 5\.3\. The home page answered 500/)).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Try the 1 failed change again" })).toBeVisible();
 });

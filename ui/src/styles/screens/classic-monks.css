@@ -10,7 +10,7 @@
 .cm-side { max-height: 100%; overflow: auto; }
 
 /* The waiting count on its tab: a small pill */
-.cm-n { display: inline-grid; place-items: center; min-width: 22px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
+.cm-n { display: inline-grid; place-items: center; min-width: 22px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
 
 /* Features: a mono label per section, then rows of a switch, the name and what it does */
 .feats { gap: 0; padding-top: var(--sp-4); }

@@ -2,17 +2,17 @@
 // Security: known vulnerabilities, abandoned plugins and changed files on every site.
 import "../styles/screens/security.css";
 import { useState } from "react";
-import { ago, api, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
+import { ago, api, type SecurityReport, type Site, type SiteInventory, type Tone, type Vulnerability } from "../api";
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, slugOf } from "../components/PkgTile";
-import { Button, Glyph, HeadActions, Icon } from "../components/ui";
+import { Button, Details, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty, toast } from "../components/feedback";
 import { Page } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
+import { month, vulnSummary } from "../format";
 
 const SEVERITY_TONE: Record<string, "danger" | "warning"> = { critical: "danger", high: "danger" };
 const KIND: Record<string, string> = { plugin: "plugin", theme: "theme", wordpress: "WordPress" };
-const MONTH = new Intl.DateTimeFormat("en", { month: "short", year: "numeric" });
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -80,7 +80,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site to scan it for known vulnerabilities, abandoned plugins and changed files.</p>
         </Empty>
       </Page>
@@ -178,7 +178,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                         </span>
                         <div>
                           <span className="row">
-                            <span className={`tag ${tone}`}>{x.severity ? x.severity[0].toUpperCase() + x.severity.slice(1) : "Not rated"}</span>
+                            <Status pill tone={(tone || "unknown") as Tone}>{x.severity ? x.severity[0].toUpperCase() + x.severity.slice(1) : "Not rated"}</Status>
                             <span className="meta named">
                               {x.kind !== "wordpress" && <PkgTile kind={x.kind} slug={x.kind === "plugin" ? slugOf(x.id) : x.id} name={x.name} size="xs" />}
                               {x.name}
@@ -186,7 +186,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                             </span>
                           </span>
                           <h3>{x.kind === "wordpress" ? "Vulnerability in WordPress" : `Vulnerability in a ${kind}: ${x.name}`}</h3>
-                          <p>{x.title}</p>
+                          <p>{vulnSummary(x.title)}</p>
+                          <Details>{x.title}</Details>
                         </div>
                       </div>
                       <dl className="dl well">
@@ -275,7 +276,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                       <td className="wrap">
                         {x.closed
                           ? `WordPress.org closed it${x.reason ? ` (${x.reason.replace(/-/g, " ")})` : ""}: it gets no more updates. Replace it.`
-                          : `No release since ${x.last_updated ? MONTH.format(x.last_updated * 1000) : "a long time"}. Look for a maintained one.`}
+                          : `No release since ${x.last_updated ? month(x.last_updated) : "a long time"}. Look for a maintained one.`}
                       </td>
                     </tr>
                   ))}
@@ -328,7 +329,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
               <h2 id="sec-clear">Sites with nothing known</h2>
             </div>
             {clear.length === 0 ? (
-              <Empty small title={scanned.length ? "Every scanned site has something to look at." : "No site scanned yet."} />
+              <Empty small title={scanned.length ? "Every scanned site has something to look at" : "No site scanned yet"} />
             ) : (
               <ul className="fixes">
                 {clear.map((s) => {
@@ -376,7 +377,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
               ? "Every site is scanned once a day while WP Sites HQ runs."
               : vulns.length + abandoned.length + changed.length === 0
                 ? `No known problems on ${plural(scanned.length, "site")}.`
-                : `${plural(vulns.length, "known vulnerability", "known vulnerabilities")}, ${plural(abandoned.length, "abandoned plugin")} and ${plural(changed.length, "changed install", "changed installs")} on ${plural(scanned.length, "site")}.`}{" "}
+                : `Across ${plural(scanned.length, "scanned site")}: ${plural(vulns.length, "known vulnerability", "known vulnerabilities")}, ${plural(abandoned.length, "abandoned plugin")} and ${plural(changed.length, "changed install", "changed installs")}.`}{" "}
             Vulnerabilities come from WPVulnerability, checked against the version each site runs. Sites are scanned once a day while WP Sites HQ runs.
           </p>
         </div>
