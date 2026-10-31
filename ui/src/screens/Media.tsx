@@ -628,7 +628,6 @@ export function Media({ sites }: { sites: Site[] }) {
               Move to the trash ({ticked.size})
               <Glyph name="trash" />
             </Button>
-            <span className="grow" />
             <Button small keys="Esc" onClick={() => setTicked(new Set())}>
               Clear selection
             </Button>

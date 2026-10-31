@@ -366,7 +366,6 @@ export function Content({ sites, onPlan }: Props) {
                 {a === "trash" && <Glyph name="trash" />}
               </Button>
             ))}
-            <span className="grow" />
             <Button small keys="Esc" onClick={() => setPicked(new Set())}>
               Clear selection
             </Button>
