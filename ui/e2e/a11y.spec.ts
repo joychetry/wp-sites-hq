@@ -103,6 +103,16 @@ test("Tab stays inside the Add a site sheet", async ({ page }) => {
   }
 });
 
+// Next swaps the step's content under the focused button; focus must land on the new step, not the page behind.
+test("focus stays in the Add a site sheet at step 2", async ({ page }) => {
+  await show(page, SCREENS.find((s) => s.name === "add-site-basic")!, "light");
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => !!document.activeElement?.closest(".sheet"))).toBe(true);
+  }
+});
+
 test("the palette gives focus back when it closes", async ({ page }) => {
   await show(page, SCREENS[0], "light");
   const search = page.getByRole("button", { name: /^Search or run/ });

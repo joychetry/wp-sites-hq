@@ -36,8 +36,11 @@ function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: 
       const below = innerHeight - r.bottom;
       const up = below < 260 && r.top > below;
       const w = Math.max(r.width, width ?? 0);
+      // Inside a sheet the list stays 8px inside the sheet's edges, not just the window's.
+      const box = anchor.current?.closest('[aria-modal="true"]')?.getBoundingClientRect();
+      const [minL, maxR] = box ? [box.left + 8, box.right - 8] : [8, innerWidth - 8];
       setStyle({
-        left: Math.max(8, Math.min(r.left, innerWidth - w - 8)),
+        left: Math.max(minL, Math.min(r.left, maxR - w)),
         minWidth: r.width,
         width: width,
         maxHeight: Math.max(160, (up ? r.top : below) - 16),
