@@ -10,6 +10,7 @@ import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type 
 import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
+import { dayTime } from "../format";
 
 type Tab = "features" | "settings" | "activity" | "approvals" | "reports";
 const TABS: [Tab, string, string][] = [
@@ -40,16 +41,6 @@ export const toolLabel = (tool: string) => {
   const s = tool.replace(/^classic-monks\//, "").replace(/-/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
-
-const DAYTIME = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" });
-/** The site's "2026-10-28 09:30:12" as "Today, 09:30", "Yesterday, 16:12" or "Oct 24, 14:20". */
-export function when(time: string, now = new Date()): string {
-  const at = new Date(time.replace(" ", "T"));
-  if (Number.isNaN(at.getTime())) return time;
-  const hm = time.slice(11, 16);
-  const days = Math.round((new Date(now.toDateString()).getTime() - new Date(at.toDateString()).getTime()) / 86_400_000);
-  return `${days === 0 ? "Today" : days === 1 ? "Yesterday" : DAYTIME.format(at)}, ${hm}`;
-}
 
 /** Who made a change, as the log names them: changes this app made are yours, also from before
  * its rename (older rows say Monks Central). */
@@ -457,7 +448,7 @@ function Change({ row, busy, onUndo }: { row: ActivityRow; busy: boolean; onUndo
       <div>
         <b>{what}</b>
         <span>
-          {who} · {when(row.time)}
+          {who} · {dayTime(row.time) || row.time}
         </span>
       </div>
       {row.can_undo ? (
@@ -511,7 +502,7 @@ function useUndo(site: Site, onDone: (d: Done) => void) {
         <dd>{asking.summary || toolLabel(asking.tool)}</dd>
         <dt>Made by</dt>
         <dd>
-          {whoOf(asking.who)} · {when(asking.time)}
+          {whoOf(asking.who)} · {dayTime(asking.time) || asking.time}
         </dd>
       </dl>
     </Sheet>
@@ -613,7 +604,7 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
             <div>
               <b>{toolLabel(a.tool)}</b>
               <span>
-                Asked by {a.who || "not known"} · {when(a.time)} · {Math.max(1, Math.round(a.expires_in / 60))} min left
+                Asked by {a.who || "not known"} · {dayTime(a.time) || a.time} · {Math.max(1, Math.round(a.expires_in / 60))} min left
               </span>
             </div>
             <Button small aria-label={`Approve or decline on the site: ${toolLabel(a.tool)}`} onClick={() => open(a)}>

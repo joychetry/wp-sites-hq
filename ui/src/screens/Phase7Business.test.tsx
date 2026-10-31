@@ -13,6 +13,7 @@ const head = document.body.appendChild(document.createElement("div"));
 const InHead = ({ children }: { children: ReactNode }) => <HeadSlot.Provider value={head}>{children}</HeadSlot.Provider>;
 const render = (ui: ReactElement) => draw(ui, { wrapper: InHead });
 import type { Cost } from "../api";
+import { day } from "../format";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
@@ -69,7 +70,7 @@ test("lists clients with their sites and what is left each month", async () => {
   const none = within(table).getByText("No client yet").closest("tr")!;
   expect(within(none).getByText("Beta")).toBeInTheDocument();
   // Each cost or charge is a row under its client, with how often and when it renews or is due.
-  expect(within(table).getByRole("button", { name: "Domain" }).closest("tr")).toHaveTextContent("Cost · once · due 1 Dec 2026$15.00");
+  expect(within(table).getByRole("button", { name: "Domain" }).closest("tr")).toHaveTextContent(`Cost · once · due ${day("2026-12-01")}$15.00`);
   expect(within(table).getByRole("button", { name: "Care plan" }).closest("tr")).toHaveTextContent("Charge · monthly€99.00");
   // What renews soon, in date order.
   const soon = screen.getByRole("region", { name: "Renewing soon" });

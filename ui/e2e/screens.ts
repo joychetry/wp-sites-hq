@@ -378,7 +378,7 @@ export const SCREENS: Screen[] = [
       await page.getByRole("button", { name: "Pages", exact: true }).click();
       await page.getByRole("button", { name: "Our menu" }).click();
       await page.getByRole("button", { name: "Show earlier versions" }).click();
-      await page.getByRole("button", { name: "Put back the version from 2026-10-20 09:10:00" }).click();
+      await page.getByRole("button", { name: /^Put back the version from .*20.*9:10/ }).click();
     },
   },
   {

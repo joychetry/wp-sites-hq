@@ -4,6 +4,7 @@ import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./compone
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
+import { ago, dayTime, time } from "./format";
 import { AddSiteButton, Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
@@ -80,21 +81,6 @@ const THEMES: [ThemeChoice, GlyphName, string][] = [
   ["light", "sun", "Theme: light"],
   ["dark", "moon", "Theme: dark"],
 ];
-
-/** "just now", "5 min ago", "3 h ago", "yesterday", then a date. */
-export function shortAgo(unix: number, now = Date.now() / 1000): string {
-  const s = Math.max(0, now - unix);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
-  if (s < 2 * 86400) return "yesterday";
-  return `on ${new Date(unix * 1000).toLocaleDateString([], { day: "numeric", month: "short" })}`;
-}
-
-const checkedAt = (unix: number) => {
-  const d = new Date(unix * 1000);
-  return `${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} on ${d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}`;
-};
 
 export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
@@ -200,7 +186,7 @@ export default function App() {
   const lastCheck = Math.max(0, ...all.map((s) => s.checked_at ?? 0)) || null;
   // A check that is already due shows the next round, never a time in the past.
   const nextCheck = lastCheck
-    ? new Date(Math.max(lastCheck + CHECK_EVERY, Date.now() / 1000 + 60) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? time(Math.max(lastCheck + CHECK_EVERY, Date.now() / 1000 + 60))
     : null;
   const nextAt = `${nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."} Automatic checks run only while the app or its tray agent is open.`;
   const needs = scoped.filter((s) => attention(s)).length;
@@ -528,11 +514,11 @@ export default function App() {
                   Checking…
                 </span>
               ) : lastCheck ? (
-                <span className="pill" tabIndex={0} data-tip={`Last checked at ${checkedAt(lastCheck)}. ${nextAt}`}>
+                <span className="pill" tabIndex={0} data-tip={`Last checked: ${dayTime(lastCheck)}. ${nextAt}`}>
                   <span className="pulse" aria-hidden="true" />
-                  <span aria-hidden="true">Checked {shortAgo(lastCheck)}</span>
+                  <span aria-hidden="true">Checked {ago(lastCheck)}</span>
                   <span className="sr-only">
-                    Last checked at {checkedAt(lastCheck)}. {nextAt}
+                    Last checked: {dayTime(lastCheck)}. {nextAt}
                   </span>
                 </span>
               ) : (

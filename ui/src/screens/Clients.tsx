@@ -3,12 +3,13 @@
 import "../styles/screens/clients.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page } from "../components/page";
-import { DateInput, dayLabel, MultiSelect, Select } from "../components/controls";
+import { DateInput, MultiSelect, Select } from "../components/controls";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { api, type Client, type Cost, type Every, type Site } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
+import { day } from "../format";
 
 /** "€12.50"; an unknown code still reads ("XYZ 12.50"). `whole` drops ".00" (the stat cards: "€340"). */
 export function money(cents: number, currency: string, whole = false): string {
@@ -261,7 +262,7 @@ export function Clients({ sites }: { sites: Site[] }) {
                         </tr>
                         {list.map((k) => {
                           const on = k.site_id != null && own.length > 1 ? siteOf(k.site_id)?.name : null;
-                          const when = k.renews_on ? `${k.every === "once" ? "due" : "renews"} ${dayLabel(k.renews_on) || k.renews_on}` : null;
+                          const when = k.renews_on ? `${k.every === "once" ? "due" : "renews"} ${day(k.renews_on) || k.renews_on}` : null;
                           return (
                             <tr key={k.id} className="item">
                               <td>
@@ -311,7 +312,7 @@ export function Clients({ sites }: { sites: Site[] }) {
                           {k.label} · {whose(k)}
                         </b>
                         <span>
-                          {dayLabel(k.renews_on!) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency, true)}
+                          {day(k.renews_on) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency, true)}
                         </span>
                       </div>
                       <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>

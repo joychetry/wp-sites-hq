@@ -8,6 +8,7 @@ import { Day, Monitoring, expiry } from "./Monitoring";
 import { site } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import type { Monitor, SecurityReport, SiteInventory } from "../api";
+import { month } from "../format";
 
 // The page head's action slot, as App gives it: the screen's main actions render there.
 const head = document.body.appendChild(document.createElement("div"));
@@ -72,7 +73,7 @@ describe("Security", () => {
     expect(onPlan).toHaveBeenLastCalledWith("Fix 1 vulnerable plugin", [expect.objectContaining({ label: "Update WooCommerce" })]);
     fireEvent.click(within(vulns).getByRole("button", { name: "Read more about WooCommerce < 10.3 - Stored XSS" }));
     expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://wpscan.com/v" });
-    expect(screen.getByText("No release since Mar 2023. Look for a maintained one.")).toBeInTheDocument();
+    expect(screen.getByText(`No release since ${month("2023-03")}. Look for a maintained one.`)).toBeInTheDocument();
     expect(screen.getByText("WordPress.org closed it (security issue): it gets no more updates. Replace it.")).toBeInTheDocument();
     expect(screen.getByText("wp-includes/version.php (changed), wp-x.php (extra)")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Not checked" })).getByText("Not scanned yet.")).toBeInTheDocument();

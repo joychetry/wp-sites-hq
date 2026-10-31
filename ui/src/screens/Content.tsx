@@ -3,7 +3,7 @@
 import "../styles/screens/content.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
-import { dayLabel, SearchInput, Segmented, Select } from "../components/controls";
+import { SearchInput, Segmented, Select } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { api, contentBlocked, hasTool, type Action, type Listing, type PostType, type Site, type Summary, type Tone } from "../api";
@@ -12,6 +12,7 @@ import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { Editor } from "./Editor";
 import { PublishMany } from "./PublishMany";
+import { day, dayTime } from "../format";
 
 export const STATUS_LABEL: Record<string, string> = {
   publish: "Published",
@@ -346,8 +347,8 @@ export function Content({ sites, onPlan }: Props) {
                   </td>
                   <td className="who">{p.author || "not known"}</td>
                   <td>
-                    <span className="when" data-tip={when || undefined}>
-                      {dayLabel(when) || when || "not known"}
+                    <span className="when" data-tip={dayTime(when) || undefined}>
+                      {day(when) || when || "not known"}
                     </span>
                   </td>
                 </tr>

@@ -13,7 +13,8 @@ import { Button, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
-import { said, when } from "./Overview";
+import { said } from "./Overview";
+import { day, dayTime } from "../format";
 
 type Tab = "plans" | "access" | "activity";
 type Note = { text: string; ok: boolean };
@@ -394,8 +395,8 @@ function Log() {
                   " on several sites."
                 )}
                 {r.detail && <span className="why">{r.detail}</span>}
-                <time dateTime={new Date(r.at * 1000).toISOString()} data-tip={new Date(r.at * 1000).toLocaleString()}>
-                  {when(r.at)}
+                <time dateTime={new Date(r.at * 1000).toISOString()} data-tip={day(r.at)}>
+                  {dayTime(r.at)}
                 </time>
               </p>
               {r.outcome !== "done" && <Status tone={RESULT[r.outcome][1]}>{RESULT[r.outcome][0]}</Status>}

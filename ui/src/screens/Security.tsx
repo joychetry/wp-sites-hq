@@ -9,10 +9,10 @@ import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty, toast } from "../components/feedback";
 import { Page } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
+import { month } from "../format";
 
 const SEVERITY_TONE: Record<string, "danger" | "warning"> = { critical: "danger", high: "danger" };
 const KIND: Record<string, string> = { plugin: "plugin", theme: "theme", wordpress: "WordPress" };
-const MONTH = new Intl.DateTimeFormat("en", { month: "short", year: "numeric" });
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -275,7 +275,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                       <td className="wrap">
                         {x.closed
                           ? `WordPress.org closed it${x.reason ? ` (${x.reason.replace(/-/g, " ")})` : ""}: it gets no more updates. Replace it.`
-                          : `No release since ${x.last_updated ? MONTH.format(x.last_updated * 1000) : "a long time"}. Look for a maintained one.`}
+                          : `No release since ${x.last_updated ? month(x.last_updated) : "a long time"}. Look for a maintained one.`}
                       </td>
                     </tr>
                   ))}
