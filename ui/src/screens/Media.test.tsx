@@ -159,7 +159,7 @@ test("replace keeps the address unless asked, then Undo the replace puts the ear
   expect(await screen.findByText("Replaced the file of door. Its address stays the same.")).toBeInTheDocument();
   expect(calls.find((c) => c[0] === "media_replace")?.[1]).toMatchObject({ id: 1, mediaId: 5, name: "door-2.jpg", keepName: true });
   // The preview asks for the new pixels at the same address.
-  expect(screen.getByRole("img", { name: "A red door" }).getAttribute("src")).toMatch(/door\.jpg\?v=\d+$/);
+  await waitFor(() => expect(screen.getByRole("img", { name: "A red door" }).getAttribute("src")).toMatch(/door\.jpg\?v=\d+$/));
   fireEvent.click(screen.getByRole("button", { name: "Undo the replace" }));
   expect(await screen.findByText("Put the earlier file of door back.")).toBeInTheDocument();
   expect(calls.find((c) => c[0] === "media_restore_file")?.[1]).toEqual({ id: 1, mediaId: 5 });
