@@ -30,14 +30,17 @@
 .mx .cell.vuln { background: var(--danger-bg); }
 .mx .cell.vuln .w { color: var(--danger); font-weight: 600; }
 .mx .cell[aria-pressed="true"] { box-shadow: 0 0 0 1px var(--bg), 0 0 0 3px var(--green); }
-[data-theme="dark"] .mx .cell.up .w::before { content: "↑ "; color: var(--accent); }
 
 /* The key under the table: a small swatch of each cell */
 .mx-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) 18px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--text-3); }
 .mx-legend li { display: flex; align-items: center; gap: 6px; }
-.mx-legend .cell { width: 14px; min-width: 0; height: 14px; padding: 0; border-radius: var(--radius-tile); cursor: default; }
-/* Pale fills need an edge to show as a swatch on the page ground. */
-.mx-legend .cell:not(.none) { border-color: var(--line-2); }
+/* A key is a small cell (wider than tall, so it never reads as a checkbox), with the cell's own fill and edge. */
+.mx-legend .cell { width: 22px; min-width: 0; height: 12px; padding: 0; border-radius: var(--radius-xs); cursor: default; }
+.mx-legend .cell.up { border-color: var(--accent); }
+.mx-legend .cell.on { border-color: var(--line-2); }
+.mx-legend .cell.idle { border-color: var(--line-ui); }
+.mx-legend .cell.none { border-color: var(--line-ui); }
+.mx-legend .cell.vuln { border-color: var(--danger); }
 .mx-legend .end { margin-left: auto; }
 .mx-label { margin: 0; font: 500 var(--fs-xs)/var(--lh-tight) var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
 /* Sites the table can't show, as notes */

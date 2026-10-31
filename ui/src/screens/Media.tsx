@@ -590,7 +590,9 @@ export function Media({ sites }: { sites: Site[] }) {
                 <tr>
                   {canTrash && (
                     <th scope="col" className="tick">
-                      <input type="checkbox" aria-label="Tick every item shown" checked={ticked.size === items.length} onChange={(e) => setTicked(new Set(e.target.checked ? items.map((m) => m.id) : []))} />
+                      <input type="checkbox" aria-label="Tick every item shown" checked={ticked.size === items.length} ref={(el) => {
+                          if (el) el.indeterminate = ticked.size > 0 && ticked.size < items.length;
+                        }} onChange={(e) => setTicked(new Set(e.target.checked ? items.map((m) => m.id) : []))} />
                     </th>
                   )}
                   <th scope="col">File</th>
