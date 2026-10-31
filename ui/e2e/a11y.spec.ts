@@ -44,12 +44,13 @@ test("every focusable control shows a focus ring", async ({ page }) => {
       const el = document.activeElement as HTMLElement;
       // Focus leaves the page for the browser between the last control and the first.
       if (el === document.body) return { name: "the browser", shown: true };
-      const box = el.closest(".scope") ?? el;
-      const cs = getComputedStyle(box);
+      el.getAnimations().forEach((a) => a.finish());
       const own = getComputedStyle(el);
+      // Fields show the green edge and the soft ring; everything else shows a 2px outline.
+      const ring = el.matches(".input") && own.boxShadow.includes("3px") && own.boxShadow !== "none";
       return {
         name: el.getAttribute("aria-label") ?? el.textContent?.trim().slice(0, 30),
-        shown: (cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) >= 2) || (own.outlineStyle !== "none" && parseFloat(own.outlineWidth) >= 2),
+        shown: ring || (own.outlineStyle !== "none" && parseFloat(own.outlineWidth) >= 2),
       };
     });
     expect(ring, `focus ring on ${ring.name}`).toMatchObject({ shown: true });

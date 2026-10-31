@@ -143,7 +143,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .srch { position: relative; display: inline-flex; align-items: center; }
 .srch > .ico { position: absolute; left: 14px; width: 15px; height: 15px; color: var(--text-3); pointer-events: none; }
 .srch .input { padding-left: 38px; padding-right: 34px; border-radius: var(--radius-pill); background: var(--panel); box-shadow: none; }
-.srch .input:focus { background: var(--bg); }
+.srch .input:focus { background: var(--bg); box-shadow: var(--ring); }
 .srch .icon-btn { position: absolute; right: 5px; width: 28px; height: 28px; border-radius: 50%; }
 .tagin { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; }
 .tagin .input { flex: 1 1 140px; width: auto; }
