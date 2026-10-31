@@ -4,6 +4,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Glyph } from "./ui";
 
 const FOCUSABLE = "input:not([disabled]), textarea:not([disabled]), select, button:not([disabled]), [href]";
+const FIRST = "input, textarea, select, button:not(.sheet-x)";
+const focusables = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent);
 
 type Props = {
   title: string;
@@ -25,8 +27,26 @@ export function Sheet({ title, intro, steps, icon, dialog, footer, onClose, chil
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     // The head's close button is last in line, so focus lands on the sheet's first real control.
-    ref.current?.querySelector<HTMLElement>("input, textarea, select, button:not(.sheet-x)")?.focus();
-    return () => opener?.focus?.();
+    ref.current?.querySelector<HTMLElement>(FIRST)?.focus();
+    const top = () => [...document.querySelectorAll('[aria-modal="true"]')].pop() === ref.current;
+    // A step that replaces the focused button drops focus to the page: put it back on the new step's first control.
+    const lost = new MutationObserver(() => {
+      if (top() && !ref.current?.contains(document.activeElement)) ref.current?.querySelector<HTMLElement>(`.content :is(${FIRST})`)?.focus();
+    });
+    lost.observe(ref.current!, { childList: true, subtree: true });
+    // And Tab from anywhere outside (the page behind the scrim) comes back into the sheet.
+    const tab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !top() || ref.current?.contains(document.activeElement)) return;
+      e.preventDefault();
+      const all = focusables(ref.current!);
+      (e.shiftKey ? all[all.length - 1] : all[0])?.focus();
+    };
+    document.addEventListener("keydown", tab, true);
+    return () => {
+      lost.disconnect();
+      document.removeEventListener("keydown", tab, true);
+      opener?.focus?.();
+    };
   }, []);
   return (
     <>
@@ -43,7 +63,7 @@ export function Sheet({ title, intro, steps, icon, dialog, footer, onClose, chil
             onClose();
           } else if (e.key === "Tab") {
             // Keep Tab inside the sheet while it is open.
-            const all = [...ref.current!.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent);
+            const all = focusables(ref.current!);
             const [first, last] = [all[0], all[all.length - 1]];
             if (e.shiftKey && document.activeElement === first) {
               e.preventDefault();
