@@ -85,7 +85,9 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .toolbar .select:hover:not(:disabled):not([aria-expanded="true"]), .top .select:hover:not(:disabled):not([aria-expanded="true"]), .card-head .select:hover:not(:disabled):not([aria-expanded="true"]) { border-color: var(--line-ui); }
 .select .select-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* A site's tile in a select's value and in its options: 20px, centred on the words, 8px from them. */
-.select-v:has(.fav), .lb li > span:has(> .fav) { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.lb li > span:has(> .fav) { display: inline-flex; align-items: center; gap: var(--sp-2); }
+/* The value stays a block so a long name ends in an ellipsis rather than being clipped. */
+.select-v .fav { margin-right: var(--sp-2); vertical-align: middle; }
 .select-v .fav, .lb li .fav { width: 20px; height: 20px; font-size: var(--fs-xs); }
 .select-v .fav.pic, .lb li .fav.pic { padding: 2px; }
 .chev { width: 16px; height: 16px; flex: none; fill: none; stroke: var(--text-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--dur) var(--ease); }
