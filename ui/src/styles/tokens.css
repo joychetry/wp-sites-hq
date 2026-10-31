@@ -83,11 +83,14 @@
   --sp-7: 48px;
 
   /* Shape and rhythm. Rows are comfortable; [data-density="compact"] tightens them. */
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px; /* cards */
-  --radius-xl: 18px; /* dialogs, sheets */
-  --radius-pill: 999px;
+  /* You press pills, you type in boxes, things sit on cards, small squares scale (docs/ux/impeccable/audit.md, section 3). */
+  --radius-xs: 4px; /* text highlights, paper previews */
+  --radius-sm: 6px; /* inline marks: tag, kbd, code, tooltip, calendar day */
+  --radius: 10px; /* fields, and everything nested in a card */
+  --radius-lg: 14px; /* cards, popovers, menus, toasts */
+  --radius-xl: 18px; /* dialogs, sheets, the palette */
+  --radius-pill: 999px; /* buttons, chips, filters, bars */
+  --radius-tile: 27%; /* tiles, favicons, checkboxes: the corner scales with the square */
   /* Motion: short and calm; prefers-reduced-motion turns it off (base.css). */
   --dur: 150ms;
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
@@ -95,8 +98,8 @@
   /* Every button, text box, select, search, date and segmented track: one of two heights. */
   --control: 36px;
   --control-sm: 32px;
-  --radius-control: var(--radius-pill); /* toolbar controls; form fields in sheets keep --radius */
-  --control-line: var(--line-2); /* every control at rest (the button border); --line-ui on hover */
+  --control-lg: 44px; /* the one large field on a page: the editor title, the Search everything query */
+  --control-line: var(--line-2); /* buttons and chips at rest (their words identify them); fields use --line-ui */
   --ring: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
   /* Page rhythm: under the page head, and between a page's toolbar, cards and sections */
   --head-gap: var(--sp-5);
@@ -120,8 +123,8 @@
   --panel: #1b1b1b;
   --raise: #222222;
   --sel: #222222;
-  --tint: #222222;
-  --tint-2: #2c2c2c;
+  --tint: #16261e; /* green-tinted, so ticked rows, ready cells and ok callouts keep their hue */
+  --tint-2: #1d3328;
   --highlight: #3a3a3a;
   --line: #262626;
   --line-2: #343434;
