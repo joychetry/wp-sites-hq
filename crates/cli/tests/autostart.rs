@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `monks status` starts a headless core when none runs; the app can stop it.
+//! `wpshq status` starts a headless core when none runs; the app can stop it.
 
 use std::process::Command;
 use std::time::Duration;
@@ -8,7 +8,7 @@ use monks_core::ipc::{self, ClientError};
 use serde_json::Value;
 
 fn monks_status(home: &std::path::Path) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_monks"))
+    Command::new(env!("CARGO_BIN_EXE_wpshq"))
         .arg("status")
         .env("MONKS_HOME", home)
         .output()
@@ -21,7 +21,7 @@ async fn status_starts_a_headless_core_once() {
 
     let first = monks_status(home.path());
     assert!(first.status.success(), "{first:?}");
-    assert!(String::from_utf8_lossy(&first.stderr).contains("Started a Monks Central core"));
+    assert!(String::from_utf8_lossy(&first.stderr).contains("Started a WP Sites HQ core"));
     assert!(String::from_utf8_lossy(&first.stdout).contains("This client is an agent"));
 
     let second = monks_status(home.path());
@@ -47,7 +47,7 @@ async fn status_starts_a_headless_core_once() {
     panic!("the headless core did not stop");
 }
 
-// Multi-thread: the core answers on the socket while this thread waits for `monks`.
+// Multi-thread: the core answers on the socket while this thread waits for `wpshq`.
 #[tokio::test(flavor = "multi_thread")]
 async fn run_asks_the_core_and_says_why_it_failed() {
     let home = tempfile::tempdir().unwrap();
@@ -55,7 +55,7 @@ async fn run_asks_the_core_and_says_why_it_failed() {
         .await
         .unwrap();
     let run = |args: &[&str]| {
-        Command::new(env!("CARGO_BIN_EXE_monks"))
+        Command::new(env!("CARGO_BIN_EXE_wpshq"))
             .arg("run")
             .args(args)
             .env("MONKS_HOME", home.path())

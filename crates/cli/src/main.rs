@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `monks`: the Monks Central command line. A console program on every OS.
+//! `wpshq`: the WP Sites HQ command line. A console program on every OS.
+//! Installers also ship it as `monks`, its name before 0.4.0, until 1.0.
 
 mod doctor;
 mod mcp;
@@ -14,7 +15,7 @@ use monks_core::{Core, Options, ipc, paths, vault};
 use serde_json::Value;
 
 #[derive(Parser)]
-#[command(name = "monks", version = monks_core::VERSION, about = "Monks Central from the command line")]
+#[command(name = "wpshq", version = monks_core::VERSION, about = "WP Sites HQ from the command line")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -22,7 +23,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Run the Monks Central core without a window, until Ctrl-C or until
+    /// Run the WP Sites HQ core without a window, until Ctrl-C or until
     /// the app takes over.
     Core,
     /// Ask the core how it is. Starts one in the background if none runs.
@@ -51,6 +52,15 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    let mut args = std::env::args_os();
+    let called_monks = args
+        .next()
+        .and_then(|a| Path::new(&a).file_stem().map(|s| s == "monks"))
+        .unwrap_or(false);
+    // Never for mcp: AI apps show stderr as server errors.
+    if called_monks && args.next().is_none_or(|a| a != "mcp") {
+        eprintln!("`monks` is now `wpshq`. The old name works until 1.0.");
+    }
     let cli = Cli::parse();
     let home = match paths::data_dir() {
         Ok(h) => h,
@@ -61,7 +71,7 @@ async fn main() -> ExitCode {
         Command::Status => match call_or_start(&home, "status", Value::Null).await {
             Ok(s) => {
                 println!(
-                    "Monks Central {} is running (pid {}). This client is an {}.",
+                    "WP Sites HQ {} is running (pid {}). This client is an {}.",
                     s["version"].as_str().unwrap_or("?"),
                     s["pid"],
                     s["role"].as_str().unwrap_or("?")
@@ -98,7 +108,7 @@ async fn main() -> ExitCode {
             }
         }
         Command::Doctor { url } => {
-            println!("Monks Central doctor ({})", monks_core::VERSION);
+            println!("WP Sites HQ doctor ({})", monks_core::VERSION);
             let keychain = vault::os_keychain();
             let kc = keychain.as_deref().map_err(|e| e.to_string());
             let checks = doctor::run(&home, kc, url.as_deref()).await;
@@ -129,7 +139,7 @@ async fn run_core(home: PathBuf) -> ExitCode {
     // Renew every grant, then check sites every 15 minutes.
     core.start_background();
     println!(
-        "Monks Central core {} is running for {}. Press Ctrl-C to stop.",
+        "WP Sites HQ core {} is running for {}. Press Ctrl-C to stop.",
         monks_core::VERSION,
         core.home.display()
     );
@@ -149,7 +159,7 @@ async fn call_or_start(home: &Path, method: &str, params: Value) -> Result<Value
     }
     let exe = std::env::current_exe()?;
     spawn_headless(&exe, home)?;
-    eprintln!("Started a Monks Central core in the background.");
+    eprintln!("Started a WP Sites HQ core in the background.");
     for _ in 0..100 {
         tokio::time::sleep(Duration::from_millis(100)).await;
         match ipc::call(home, method, params.clone()).await {
@@ -160,7 +170,7 @@ async fn call_or_start(home: &Path, method: &str, params: Value) -> Result<Value
     Err(ClientError::NotRunning)
 }
 
-/// `monks core` for this data folder, detached so it outlives this command.
+/// `wpshq core` for this data folder, detached so it outlives this command.
 fn spawn_headless(exe: &Path, home: &Path) -> std::io::Result<()> {
     let mut cmd = std::process::Command::new(exe);
     cmd.arg("core")

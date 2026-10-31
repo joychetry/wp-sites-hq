@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // AI apps and Monks Central (plan Phase 5): plans AI agents proposed, waiting
 // for you to confirm them; which sites agents may change; the activity log of
-// who did what; and how to connect an AI app with `monks mcp`.
+// who did what; and how to connect an AI app with `wpshq mcp`.
 import "../styles/screens/ai.css";
 import { Empty, Skeleton, toast } from "../components/feedback";
 import { Page } from "../components/page";
@@ -24,8 +24,8 @@ const RESULT: Record<Exclude<Entry["outcome"], "done">, [string, "danger" | "war
   waiting: ["Waiting for you", "warning"],
 };
 const PER_PAGE = 50;
-const CLAUDE = "claude mcp add monks-central -- monks mcp";
-const CONFIG = '{ "mcpServers": { "monks-central": { "command": "monks", "args": ["mcp"] } } }';
+const CLAUDE = "claude mcp add wp-sites-hq -- wpshq mcp";
+const CONFIG = '{ "mcpServers": { "wp-sites-hq": { "command": "wpshq", "args": ["mcp"] } } }';
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 const sitesIn = (j: Job) => new Set(j.items.map((i) => i.site_name)).size;
@@ -421,8 +421,8 @@ function Log() {
 const SNIPPET = (
   <>
     {"{\n  \"mcpServers\": {\n    "}
-    <em>"monks-central"</em>
-    {': {\n      "command": "monks",\n      "args": ["mcp"]\n    }\n  }\n}'}
+    <em>"wp-sites-hq"</em>
+    {': {\n      "command": "wpshq",\n      "args": ["mcp"]\n    }\n  }\n}'}
   </>
 );
 

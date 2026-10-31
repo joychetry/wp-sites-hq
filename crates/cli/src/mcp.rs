@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `monks mcp`: an MCP server on stdin and stdout for Claude, Cursor, VS Code and
+//! `wpshq mcp`: an MCP server on stdin and stdout for Claude, Cursor, VS Code and
 //! other AI apps. A few general tools for every site, never one tool per site
 //! ability (plan 5.6). Each call goes to the core over the socket, as an agent:
 //! there is no tool, and no socket method, that confirms a plan.
@@ -12,11 +12,11 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 const PROTOCOLS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 
-const INSTRUCTIONS: &str = "Monks Central manages the person's WordPress sites. Start with sites_list. \
+const INSTRUCTIONS: &str = "WP Sites HQ manages the person's WordPress sites. Start with sites_list. \
 Reading is always allowed. A change on one site runs only where the person gave AI agents access in the \
-Monks Central app, and the site asks them to approve it first: give them the approval link, and after they \
+WP Sites HQ app, and the site asks them to approve it first: give them the approval link, and after they \
 approve, call run_ability again with exactly the same arguments. For changes on many sites, use plan_changes: \
-the plan waits until the person confirms it in the Monks Central app. You cannot confirm a plan yourself.";
+the plan waits until the person confirms it in the WP Sites HQ app. You cannot confirm a plan yourself.";
 
 fn tools() -> Value {
     let site = json!({ "type": "string", "description": "The site's number, address or name, from sites_list." });
@@ -24,7 +24,7 @@ fn tools() -> Value {
         {
             "name": "sites_list",
             "title": "List sites",
-            "description": "Every site in Monks Central: its number, name, address, health, WordPress version, the plugin that connects it (Monks Central, Classic Monks or Classic Monks Pro) with its connector version, and whether AI agents may change it.",
+            "description": "Every site in WP Sites HQ: its number, name, address, health, WordPress version, the plugin that connects it (WP Sites HQ, Classic Monks or Classic Monks Pro) with its connector version, and whether AI agents may change it.",
             "inputSchema": { "type": "object", "properties": {}, "additionalProperties": false },
             "annotations": { "readOnlyHint": true, "openWorldHint": false },
         },
@@ -38,7 +38,7 @@ fn tools() -> Value {
         {
             "name": "run_ability",
             "title": "Run a Classic Monks tool on one site",
-            "description": "Run one Classic Monks tool (from site_describe) on one site. Tools that only read run at once. A change runs only where the person gave AI agents access in the Monks Central app, and the site asks them to approve it first: you get a link to give them; after they approve, call again with exactly the same arguments.",
+            "description": "Run one Classic Monks tool (from site_describe) on one site. Tools that only read run at once. A change runs only where the person gave AI agents access in the WP Sites HQ app, and the site asks them to approve it first: you get a link to give them; after they approve, call again with exactly the same arguments.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -54,7 +54,7 @@ fn tools() -> Value {
         {
             "name": "plan_changes",
             "title": "Plan changes on many sites",
-            "description": "Propose plugin, theme or WordPress changes on one or more sites, as one plan. Any connected site can be in a plan, with or without AI agent access: once confirmed, it runs as the person. Nothing changes until the person confirms the plan in the Monks Central app (AI); you cannot confirm it. Tell them it is waiting there, then follow it with plan_status.",
+            "description": "Propose plugin, theme or WordPress changes on one or more sites, as one plan. Any connected site can be in a plan, with or without AI agent access: once confirmed, it runs as the person. Nothing changes until the person confirms the plan in the WP Sites HQ app (AI); you cannot confirm it. Tell them it is waiting there, then follow it with plan_status.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -115,7 +115,7 @@ fn site_summary(s: &Value) -> Value {
         "health": s["health"],
         "health_detail": s["health_detail"],
         "wordpress": s["wp_version"],
-        // Monks Central, Classic Monks or Classic Monks Pro: whichever runs the connector.
+        // WP Sites HQ, Classic Monks or Classic Monks Pro: whichever runs the connector.
         "plugin": { "name": s["capabilities"]["plugin"]["name"], "version": s["cm_version"] },
         "connector": s["capabilities"]["connector"]["version"],
         "group": s["group"],
@@ -131,7 +131,7 @@ fn plan_summary(p: &Value) -> Value {
     } else if p["expired"] == true {
         "expired: nobody confirmed it within 7 days, it will never run; plan it again if still needed"
     } else if p["confirmed_at"].is_null() {
-        "waiting for the person to confirm it in the Monks Central app"
+        "waiting for the person to confirm it in the WP Sites HQ app"
     } else if p["finished_at"].is_null() {
         "confirmed by the person, running"
     } else {
@@ -203,7 +203,7 @@ where
         }
         "plan_changes" => call("plan.create", args.clone()).await.map(|p| {
             let mut s = plan_summary(&p);
-            s["next"] = json!("Tell the person the plan is waiting in the Monks Central app under AI. It runs only after they confirm it there. Follow it with plan_status.");
+            s["next"] = json!("Tell the person the plan is waiting in the WP Sites HQ app under AI. It runs only after they confirm it there. Follow it with plan_status.");
             s
         }),
         "plan_status" => call("plan.get", json!({ "id": args["plan_id"] }))
@@ -235,7 +235,7 @@ where
             json!({
                 "protocolVersion": version,
                 "capabilities": { "tools": { "listChanged": false } },
-                "serverInfo": { "name": "monks-central", "title": "Monks Central", "version": monks_core::VERSION },
+                "serverInfo": { "name": "wp-sites-hq", "title": "WP Sites HQ", "version": monks_core::VERSION },
                 "instructions": INSTRUCTIONS,
             })
         }
