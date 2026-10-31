@@ -39,7 +39,8 @@
 .access label small { font-size: var(--fs-xs); color: var(--text-3); }
 .access .dim { font-size: var(--fs-sm); }
 /* The line under it spans the card; the words stop at a readable measure. */
-.access .note { border-bottom: 1px solid var(--line); padding: var(--sp-3) max(20px, calc(100% - 76ch)) var(--sp-3) 20px; }
+/* 58ch of Figtree is about 80 characters: ch is the width of "0", wider than the average letter. */
+.access .note { border-bottom: 1px solid var(--line); padding: var(--sp-3) max(20px, calc(100% - 58ch)) var(--sp-3) 20px; }
 .access .quiet { padding: var(--sp-4) 20px; }
 
 /* How agents work here: three ticks */
