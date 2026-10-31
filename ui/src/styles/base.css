@@ -46,7 +46,6 @@ button:disabled { cursor: default; opacity: 0.55; }
 .field small { color: var(--text-3); font-size: var(--fs-sm); }
 .input { height: var(--control); border: 1px solid var(--control-line); border-radius: var(--radius); background: var(--bg); padding: 0 var(--sp-3); width: 100%; }
 textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resize: vertical; }
-.input:focus { border-color: var(--green); }
 .input.sm { height: var(--control-sm); font-size: var(--fs-sm); }
 
 /* Status: an icon shape and a word, never colour alone */
@@ -433,7 +432,10 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .pal-search { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4) 20px; border-bottom: 1px solid var(--line); }
 .pal-search > .glyph { width: 20px; height: 20px; color: var(--text-3); }
 .pal-search input { flex: 1; min-width: 0; height: var(--control); border: 0; border-radius: var(--radius); background: none; font: 400 var(--fs-md) var(--sans); padding: 0 var(--sp-2); }
-.pal-search input:focus-visible { outline-offset: 0; }
+/* The search row is the field: its bottom edge turns green on focus; the input inside draws no frame. */
+.pal-search { transition: border-color var(--dur) var(--ease); }
+.pal-search:focus-within { border-bottom-color: var(--focus); }
+.pal-search input:focus-visible { outline: none; }
 .pal ul { list-style: none; margin: 0; padding: var(--sp-2); max-height: 420px; overflow: auto; display: grid; gap: 2px; }
 .pal-group { font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); padding: var(--sp-3) var(--sp-3) var(--sp-1); }
 .pal-group:first-child { padding-top: var(--sp-2); }
