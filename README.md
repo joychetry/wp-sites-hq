@@ -1,4 +1,4 @@
-# Monks Central
+# WP Sites HQ
 
 Every WordPress site you run, in one app on your computer. Free, open source,
 nothing to host.
@@ -8,40 +8,40 @@ agents for 3 to 300 WordPress sites, from one desktop app on macOS, Windows and
 Linux. No account, no cloud, no per-site price: your sites and their keys stay
 on your computer ([privacy](PRIVACY.md)).
 
-Status: 0.3.2 beta.
+Status: 0.4.0 beta.
 
 ## Install
 
 Download the installer for your computer from the
-[releases page](https://github.com/joychetry/monks-central/releases/latest).
+[releases page](https://github.com/joychetry/wp-sites-hq/releases/latest).
 The builds aren't code-signed yet, so macOS and Windows warn you the first time;
 [the install guide](docs/install.md) shows the one-time steps (macOS Open
 Anyway, Windows SmartScreen, Linux AppImage, .deb and .rpm). The app updates
 itself from GitHub Releases, and checks each update's signature first.
 
-### macOS says Apple could not verify Monks Central
+### macOS says Apple could not verify WP Sites HQ
 
 The macOS build is ad-hoc signed, not signed by an Apple-registered developer,
 so the first open is blocked once. To open it:
 
-1. Drag **Monks Central** from the `.dmg` into **Applications** and open it.
+1. Drag **WP Sites HQ** from the `.dmg` into **Applications** and open it.
    When macOS says it could not verify the app, click **Done**.
 2. Open **System Settings > Privacy & Security**, scroll down to **Security**
-   and click **Open Anyway** next to "Monks Central was blocked". Confirm with
+   and click **Open Anyway** next to "WP Sites HQ was blocked". Confirm with
    your password or Touch ID.
 
-If macOS instead says "Monks Central is damaged and can't be opened" (older
+If macOS instead says "WP Sites HQ is damaged and can't be opened" (older
 builds, or a download that lost its signature), the app isn't damaged. Click
 **Cancel** (not "Move to Bin"), then run this in **Terminal** and open it again:
 
 ```bash
-xattr -cr "/Applications/Monks Central.app"
+xattr -cr "/Applications/WP Sites HQ.app"
 ```
 
 This removes the "downloaded from the internet" mark macOS put on the app.
 If it still won't open, run
-`codesign -dv "/Applications/Monks Central.app" 2>&1 | head -5` and include
-what it prints in an [issue](https://github.com/joychetry/monks-central/issues).
+`codesign -dv "/Applications/WP Sites HQ.app" 2>&1 | head -5` and include
+what it prints in an [issue](https://github.com/joychetry/wp-sites-hq/issues).
 Signed and notarised macOS builds will remove these steps.
 
 Your sites need WordPress 7.1 or newer. With the
@@ -54,12 +54,12 @@ Documentation: [docs/site](docs/site) (build it with `mdbook serve docs/site`).
 ## Build from source
 
 - `crates/core`: store, vault, network, core lock, local socket, sites (OAuth and Basic mode)
-- `crates/cli`: the `monks` command (`monks doctor`, `monks core`, `monks status`, `monks run`, `monks mcp`)
+- `crates/cli`: the `wpshq` command (`wpshq doctor`, `wpshq core`, `wpshq status`, `wpshq run`, `wpshq mcp`)
 - `crates/app`: the desktop app (Tauri 2)
 - `ui/`: the app's web UI (React + TypeScript)
 
 ```sh
-scripts/sidecar.sh               # once after cloning: the app needs the monks command beside it
+scripts/sidecar.sh               # once after cloning: the app needs the wpshq command beside it
 cargo test --workspace
 cd ui && npm ci && npm test
 cargo run -p monks-cli -- doctor https://example.com
@@ -70,17 +70,17 @@ scripts/bundle.sh                # installers for this computer, in target/relea
 Linux needs the WebKitGTK 4.1 development packages for the app. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the checks every change passes.
 
-## AI apps (`monks mcp`)
+## AI apps (`wpshq mcp`)
 
-`monks mcp` is an MCP server on stdio for Claude Code, Claude Desktop, Cursor
+`wpshq mcp` is an MCP server on stdio for Claude Code, Claude Desktop, Cursor
 and VS Code. It reaches every site through the running app (or starts a core
 without a window), always as an agent:
 
 ```sh
-claude mcp add monks-central -- monks mcp
+claude mcp add wp-sites-hq -- wpshq mcp
 ```
 
-or in an MCP config file: `{"mcpServers": {"monks-central": {"command": "monks", "args": ["mcp"]}}}`.
+or in an MCP config file: `{"mcpServers": {"wp-sites-hq": {"command": "wpshq", "args": ["mcp"]}}}`.
 
 Five tools: `sites_list`, `site_describe`, `run_ability`, `plan_changes`,
 `plan_status`. Agents read every site. A change on one site needs AI agent
@@ -95,7 +95,7 @@ Plans live in `docs/plans/`. Linux notes: `docs/dev-linux.md`.
 - **Safe plugin updates.** With Classic Monks 2.6 or newer on the site, each plugin
   update is checked: the site must work before it, the site checks itself right
   after it in the same request and puts the old version back if the new one fails
-  to load, and Monks Central then loads the home page and reads the error log. A
+  to load, and WP Sites HQ then loads the home page and reads the error log. A
   rolled back update says why in the job.
 - **Security.** Once a day each site's WordPress, plugins and themes are looked up
   in [WPVulnerability](https://www.wpvulnerability.net) (free, no key). The same
@@ -104,7 +104,7 @@ Plans live in `docs/plans/`. Linux notes: `docs/dev-linux.md`.
 - **Monitoring.** Every 5 minutes each home page is loaded (up or down, how fast,
   certificate expiry); domains are looked up over RDAP once a day; Google
   PageSpeed runs on request for public sites (no key, so Google's shared daily
-  limit applies). Closing the window keeps Monks Central in the tray, still
+  limit applies). Closing the window keeps WP Sites HQ in the tray, still
   checking, with a desktop notice when a site goes down or comes back.
 
 ## Content and business
@@ -136,4 +136,4 @@ Plans live in `docs/plans/`. Linux notes: `docs/dev-linux.md`.
 
 ## Licence
 
-GPL-3.0-or-later. See `LICENSE`. Copyright (C) 2026 Classic Monks.
+GPL-3.0-or-later. See `LICENSE`. Copyright (C) 2026 Good Monks.

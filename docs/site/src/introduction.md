@@ -1,9 +1,9 @@
-# Monks Central
+# WP Sites HQ
 
 Every WordPress site you run, in one app on your computer. Free, open source,
 nothing to host.
 
-Monks Central is a desktop app for macOS, Windows and Linux that looks after 3
+WP Sites HQ is a desktop app for macOS, Windows and Linux that looks after 3
 to 300 WordPress sites from one place: updates, plugins, themes, posts and
 pages, media, users, comments, uptime, security, client reports and AI agents.
 

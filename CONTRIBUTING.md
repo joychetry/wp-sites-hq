@@ -1,4 +1,4 @@
-# Contributing to Monks Central
+# Contributing to WP Sites HQ
 
 Thanks for helping. Bug reports, fixes, docs and translations of the docs are
 all welcome. For a bigger change, open an issue first so we can agree on the
@@ -12,7 +12,7 @@ an issue.
 | Folder | What |
 |---|---|
 | `crates/core` | The core (Rust): store, vault, network, the local socket, sites, jobs, monitoring |
-| `crates/cli` | The `monks` command and `monks mcp` |
+| `crates/cli` | The `wpshq` command and `wpshq mcp` |
 | `crates/app` | The desktop app (Tauri 2) |
 | `ui/` | The app's screens (React + TypeScript) |
 | `docs/` | Install guide, UX rules (`docs/ux/README.md`), plans, docs site (`docs/site`) |
@@ -69,5 +69,5 @@ The core keeps at least 80% test coverage
 
 ## Licence
 
-Monks Central is GPL-3.0-or-later. By sending a contribution you agree that it
+WP Sites HQ is GPL-3.0-or-later. By sending a contribution you agree that it
 is released under the same licence.

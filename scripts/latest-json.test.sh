@@ -6,22 +6,22 @@ here=$(cd "$(dirname "$0")" && pwd)
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-for f in Monks.Central_0.2.0_amd64.AppImage Monks.Central_0.2.0_amd64.deb \
-  Monks.Central-0.2.0-1.x86_64.rpm Monks.Central_aarch64.app.tar.gz \
-  Monks.Central_x64.app.tar.gz Monks.Central_0.2.0_x64-setup.exe \
-  Monks.Central_0.2.0_x64_en-US.msi; do
+for f in WP.Sites.HQ_0.2.0_amd64.AppImage WP.Sites.HQ_0.2.0_amd64.deb \
+  WP.Sites.HQ-0.2.0-1.x86_64.rpm WP.Sites.HQ_aarch64.app.tar.gz \
+  WP.Sites.HQ_x64.app.tar.gz WP.Sites.HQ_0.2.0_x64-setup.exe \
+  WP.Sites.HQ_0.2.0_x64_en-US.msi; do
   printf 'sig of %s' "$f" > "$tmp/$f.sig"
 done
 base=https://example.test/download/v0.2.0
 out=$("$here/latest-json.sh" "$tmp" 0.2.0 "$base" "Notes")
 [ "$(jq -r .version <<<"$out")" = 0.2.0 ] || fail "version"
 [ "$(jq '.platforms | length' <<<"$out")" = 11 ] || fail "want 11 platform keys"
-[ "$(jq -r '.platforms["linux-x86_64"].url' <<<"$out")" = "$base/Monks.Central_0.2.0_amd64.AppImage" ] || fail "linux-x86_64 is the AppImage"
-[ "$(jq -r '.platforms["windows-x86_64"].url' <<<"$out")" = "$base/Monks.Central_0.2.0_x64-setup.exe" ] || fail "windows-x86_64 is the setup exe"
-[ "$(jq -r '.platforms["darwin-x86_64"].signature' <<<"$out")" = "sig of Monks.Central_x64.app.tar.gz" ] || fail "darwin-x86_64 signature"
-[ "$(jq -r '.platforms["windows-x86_64-msi"].url' <<<"$out")" = "$base/Monks.Central_0.2.0_x64_en-US.msi" ] || fail "msi"
+[ "$(jq -r '.platforms["linux-x86_64"].url' <<<"$out")" = "$base/WP.Sites.HQ_0.2.0_amd64.AppImage" ] || fail "linux-x86_64 is the AppImage"
+[ "$(jq -r '.platforms["windows-x86_64"].url' <<<"$out")" = "$base/WP.Sites.HQ_0.2.0_x64-setup.exe" ] || fail "windows-x86_64 is the setup exe"
+[ "$(jq -r '.platforms["darwin-x86_64"].signature' <<<"$out")" = "sig of WP.Sites.HQ_x64.app.tar.gz" ] || fail "darwin-x86_64 signature"
+[ "$(jq -r '.platforms["windows-x86_64-msi"].url' <<<"$out")" = "$base/WP.Sites.HQ_0.2.0_x64_en-US.msi" ] || fail "msi"
 
-rm "$tmp/Monks.Central_0.2.0_x64_en-US.msi.sig"
+rm "$tmp/WP.Sites.HQ_0.2.0_x64_en-US.msi.sig"
 "$here/latest-json.sh" "$tmp" 0.2.0 "$base" "Notes" >/dev/null 2>&1 && fail "a missing .sig must fail"
 echo "latest-json.sh: all checks passed"
 

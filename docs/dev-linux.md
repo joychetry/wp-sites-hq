@@ -11,8 +11,8 @@ of the script). Notes:
   with `sudo`, then starts it. Studio sees the entry and skips its own edit.
 - The Studio CA must be trusted system-wide
   (`/etc/ca-certificates/trust-source/anchors/wordpress-studio-ca.crt`, then
-  `sudo trust extract-compat`). Monks Central uses the OS trust store, so no
-  `SSL_CERT_FILE` or other TLS variables are needed. `monks doctor` lists any
+  `sudo trust extract-compat`). WP Sites HQ uses the OS trust store, so no
+  `SSL_CERT_FILE` or other TLS variables are needed. `wpshq doctor` lists any
   that are set.
 - `nsswitch.conf` must check `files` before mDNS so `*.local` resolves from
   `/etc/hosts`.

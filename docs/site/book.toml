@@ -1,14 +1,14 @@
-# The Monks Central docs site. Build: mdbook build docs/site (output: docs/site/book).
+# The WP Sites HQ docs site. Build: mdbook build docs/site (output: docs/site/book).
 # Preview: mdbook serve docs/site. Install, privacy, security and the changelog
 # are included from the repo's own files, so there is one copy of each.
 [book]
-title = "Monks Central"
+title = "WP Sites HQ"
 description = "Every WordPress site you run, in one app on your computer."
 authors = ["Classic Monks"]
 language = "en"
 src = "src"
 
 [output.html]
-git-repository-url = "https://github.com/joychetry/monks-central"
-edit-url-template = "https://github.com/joychetry/monks-central/edit/main/docs/site/{path}"
+git-repository-url = "https://github.com/joychetry/wp-sites-hq"
+edit-url-template = "https://github.com/joychetry/wp-sites-hq/edit/main/docs/site/{path}"
 no-section-label = true
