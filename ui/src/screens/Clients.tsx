@@ -543,7 +543,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
         <label htmlFor="cost-amount">
           Amount
         </label>
-        <input id="cost-amount" className="input mono" inputMode="decimal" placeholder="120.00" aria-describedby={cents == null ? "cost-amount-why" : undefined} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <input id="cost-amount" className="input mono" inputMode="decimal" placeholder="e.g. 120.00" aria-describedby={cents == null ? "cost-amount-why" : undefined} value={amount} onChange={(e) => setAmount(e.target.value)} />
         {amount.trim() !== "" && cents == null && (
           <small id="cost-amount-why" className="why danger">
             Write the amount as a number, like 120 or 9.99.

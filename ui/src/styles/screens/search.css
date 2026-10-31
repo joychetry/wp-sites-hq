@@ -4,7 +4,7 @@
 .srch-go .srch { flex: 1; width: auto; }
 .srch-go .srch .input { width: 100%; height: var(--control-lg); padding-left: 40px; border-radius: var(--radius-pill); border-color: var(--line-ui); font-size: var(--fs-md); }
 .srch-go .srch > .ico { width: 16px; height: 16px; }
-.srch-go .btn { height: 48px; padding: 0 22px 0 var(--sp-2); }
+.srch-go .btn { height: var(--control-lg); padding: 0 22px 0 var(--sp-2); }
 .search .toolbar .end { font-size: var(--fs-sm); color: var(--text-3); }
 /* A post hit has Edit and View after its words; other hits have one button. */
 .search .fix { grid-template-columns: auto minmax(0, 1fr) auto auto; }

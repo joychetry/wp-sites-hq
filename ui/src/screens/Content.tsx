@@ -442,7 +442,7 @@ export function Content({ sites, onPlan }: Props) {
               </label>
               {/* Enter searches; clearing the box shows everything again. */}
               <SearchInput
-                className="sm end"
+                className="end"
                 aria-label={`Search ${type.label.toLowerCase()}`}
                 placeholder={`Search ${type.label.toLowerCase()}`}
                 value={typed}

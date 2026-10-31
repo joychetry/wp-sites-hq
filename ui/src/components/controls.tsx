@@ -783,7 +783,7 @@ export function TimeField({ value, onChange, label, disabled }: { value: string;
       aria-label={label}
       aria-invalid={bad || undefined}
       inputMode="numeric"
-      placeholder="09:00"
+      placeholder={disabled ? "Not set" : "hh:mm"}
       disabled={disabled}
       value={draft}
       onChange={(e) => {

@@ -312,7 +312,7 @@ function Features({ site, onDone, round }: Part) {
             ))}
           </Select>
         </label>
-        <SearchInput className="sm srch" aria-label="Find a feature" placeholder="Find a feature" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <SearchInput aria-label="Find a feature" placeholder="Find a feature" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <span className="end dim" role="status">
           <b>{on}</b> switched on
         </span>

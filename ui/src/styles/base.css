@@ -44,8 +44,11 @@ button:disabled { cursor: default; opacity: 0.55; }
 .field { display: grid; gap: 6px; margin: 0 0 var(--sp-4); }
 .field > span { font-size: var(--fs-sm); color: var(--text); font-weight: 600; }
 .field small { color: var(--text-3); font-size: var(--fs-sm); }
-.input { height: var(--control); border: 1px solid var(--control-line); border-radius: var(--radius); background: var(--bg); padding: 0 var(--sp-3); width: 100%; }
-textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resize: vertical; }
+.input { height: var(--control); border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); padding: 0 var(--sp-3); width: 100%; }
+textarea.input { height: auto; min-height: 72px; padding: 10px var(--sp-3); resize: vertical; }
+/* The resize corner is drawn by the app: two short diagonal strokes, never the OS grip. */
+textarea::-webkit-resizer { background: linear-gradient(135deg, transparent 0 48%, var(--line-ui) 48% 56%, transparent 56% 68%, var(--line-ui) 68% 76%, transparent 76%) no-repeat right 2px bottom 2px / 10px 10px; }
+small { font-size: var(--fs-sm); }
 .input.sm { height: var(--control-sm); font-size: var(--fs-sm); }
 
 /* Status: an icon shape and a word, never colour alone */
@@ -85,7 +88,7 @@ textarea.input { height: auto; min-height: 56px; padding: 10px var(--sp-3); resi
 .brand small { display: block; font: 500 var(--fs-xs)/1.3 var(--mono); letter-spacing: 0; color: var(--text-3); }
 /* "Sites to show" group select in the top bar (no visible label; the select is named for screen readers) */
 .scope-field { display: inline-flex; align-items: center; gap: var(--sp-2); margin: 0; }
-.scope { width: auto; min-width: 168px; max-width: 260px; font-weight: 500; }
+.scope { width: auto; min-width: 168px; max-width: 260px; }
 /* Same height and pill shape as the status pills beside it. */
 .top .select.scope.sm { height: var(--control-sm); border-radius: var(--radius-pill); font-size: var(--fs-sm); padding: 0 var(--sp-2) 0 var(--sp-3); }
 .navgroup { padding: 14px var(--sp-3) var(--sp-1); margin: 0; }
