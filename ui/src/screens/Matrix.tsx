@@ -4,7 +4,7 @@
 import "../styles/screens/matrix.css";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { api, blocked, can, type Action, type Change, type Item, type PluginVersions, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
-import { Button, Glyph, HeadActions, Icon } from "../components/ui";
+import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Menu, SearchInput } from "../components/controls";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
@@ -203,7 +203,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                       <span>{it ? `${it.name} ${it.version}` : "Not known"}</span>
                     </span>
                     {it?.update ? (
-                      <span className="tag ok">Update ready</span>
+                      <Status pill tone="ok">Update ready</Status>
                     ) : it ? (
                       <span className="st pill ok">
                         <Icon tone="ok" />

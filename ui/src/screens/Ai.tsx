@@ -130,7 +130,7 @@ function Plans({ plans, sites, onWatch, focusPlan }: PlansProps) {
                 <b>AI agent</b>
                 <small>Connected AI app · asked {ago(p.created_at)}</small>
               </div>
-              {p.expired ? <span className="tag">Expired</span> : <span className="tag warning">Waiting for you</span>}
+              {p.expired ? <Status pill tone="unknown">Expired</Status> : <Status pill tone="warning">Waiting for you</Status>}
             </div>
             <div className="card-body">
               <div className="plan-t">
