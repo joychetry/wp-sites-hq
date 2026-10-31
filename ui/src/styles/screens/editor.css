@@ -32,7 +32,7 @@
 
 /* Earlier versions: who and when beside an avatar; the one being put back is tinted. */
 .vlist { list-style: none; margin: 0; padding: 0; }
-.vlist li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); margin: 0 calc(-1 * var(--sp-3)); padding: var(--sp-3); border-radius: 10px; }
+.vlist li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); margin: 0 calc(-1 * var(--sp-3)); padding: var(--sp-3); border-radius: var(--radius); }
 .vlist li.on { background: var(--tint); }
 .vlist .av { background: var(--panel); color: var(--text-2); }
 .vwho { display: grid; gap: 2px; min-width: 0; }
@@ -120,7 +120,7 @@
 .prose ul, .prose ol { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); }
 .prose img { max-width: 100%; height: auto; }
 .prose a, .blk-text a { color: var(--brand-text); }
-.prose pre { padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--panel); font: var(--fs-sm)/1.5 var(--mono); white-space: pre-wrap; }
+.prose pre { padding: var(--sp-3); border-radius: var(--radius); background: var(--panel); font: var(--fs-sm)/1.5 var(--mono); white-space: pre-wrap; }
 .prose hr { border: 0; border-top: 1px solid var(--line-ui); }
 .prose .mce-pagebreak, .prose img.mce-object { display: block; }
 
@@ -176,9 +176,9 @@ html .tox .tox-tbtn--disabled svg, html .tox .tox-tbtn:disabled svg { fill: var(
 html .tox .tox-tbtn:focus-visible, html .tox .tox-split-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; background: var(--panel); }
 html .tox .tox-tbtn__select-label { color: var(--text); }
 html .tox .tox-tbtn--select svg, html .tox .tox-split-button__chevron svg { fill: var(--text-2); }
-html .tox.tox-tinymce-inline .tox-editor-header { background: var(--bg); border: 1px solid var(--line-ui); border-radius: var(--radius); box-shadow: var(--shadow-pop); overflow: hidden; }
+html .tox.tox-tinymce-inline .tox-editor-header { background: var(--bg); border: 1px solid var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: hidden; }
 html .rte .tox.tox-tinymce-inline .tox-editor-header { border: 0; border-radius: 0; box-shadow: none; }
-html .tox .tox-menu, html .tox .tox-collection--list, html .tox .tox-collection--toolbar, html .tox .tox-collection--grid { background: var(--bg); border-color: var(--line-ui); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+html .tox .tox-menu, html .tox .tox-collection--list, html .tox .tox-collection--toolbar, html .tox .tox-collection--grid { background: var(--bg); border-color: var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
 html .tox .tox-collection__item { color: var(--text); }
 html .tox .tox-collection__item--active, html .tox .tox-collection__item--enabled { background: var(--panel); color: var(--text); }
 html .tox .tox-collection__item-icon svg, html .tox .tox-collection__item-checkmark svg, html .tox .tox-collection__item-caret svg { fill: var(--text); }

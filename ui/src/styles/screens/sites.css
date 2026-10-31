@@ -37,7 +37,7 @@
 .site-pane .dim-2 { margin: 0; color: var(--text-2); }
 .site-pane .field-label { margin: var(--sp-1) 0 -6px; }
 .site-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
-.site-notes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: 12px; background: var(--panel); }
+.site-notes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: var(--radius); background: var(--panel); }
 .site-notes b { display: block; font-weight: 600; white-space: pre-wrap; overflow-wrap: anywhere; }
 .site-notes small { display: block; margin-top: 2px; font: 400 var(--fs-xs) var(--mono); color: var(--text-3); }
 .site-notes .icon-btn { margin: -6px -8px 0 0; }

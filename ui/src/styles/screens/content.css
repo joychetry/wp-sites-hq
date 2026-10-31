@@ -3,9 +3,6 @@
 
 /* Site and Show pickers (Media's too): the mono label beside the box, not .pick's plain words; a site shows its tile. */
 .pick > .label { font-size: var(--fs-xs); font-weight: 500; color: var(--text-3); }
-.pick .select-v:has(.fav), .lb li > span:has(> .fav) { display: inline-flex; align-items: center; gap: var(--sp-2); }
-.pick .select-v .fav, .lb li .fav { width: 20px; height: 20px; border-radius: 5px; font-size: var(--fs-xs); }
-.pick .select-v .fav img, .lb li .fav img { width: 14px; height: 14px; }
 
 /* The bulk bar: the ink band on the card's top edge, always there so nothing moves when ticking. */
 .ctable .bulk, .mlib .bulk { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); min-height: 46px; padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); background: var(--btn-ink); color: var(--btn-on-ink); }

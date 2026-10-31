@@ -14,11 +14,11 @@
 .mx-plug > span:last-child { display: grid; min-width: 0; }
 .mx-plug b { font-weight: 600; }
 .mx-plug small { font-size: var(--fs-xs); color: var(--text-3); }
-.ptile.lg { width: 40px; height: 40px; border-radius: 10px; }
+.ptile.lg { width: 40px; height: 40px; }
 
 /* A cell: the version in mono over its state. Update tinted, active in the well, inactive outlined,
    not installed dashed, a known vulnerability on the danger ground. The open cell has a green ring. */
-.mx .cell { display: grid; gap: 1px; width: 100%; min-width: 128px; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
+.mx .cell { display: grid; gap: 1px; width: 100%; min-width: 128px; padding: 7px 10px; border: 1px solid transparent; border-radius: var(--radius); background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
 .mx .cell:hover { border-color: var(--line-2); }
 .mx .cell .v { font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); color: var(--text); }
 .mx .cell .w { font-size: var(--fs-xs); line-height: var(--lh-tight); color: var(--text-3); }
@@ -35,7 +35,7 @@
 /* The key under the table: a small swatch of each cell */
 .mx-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) 18px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--text-3); }
 .mx-legend li { display: flex; align-items: center; gap: 6px; }
-.mx-legend .cell { width: 14px; min-width: 0; height: 14px; padding: 0; border-radius: 4px; cursor: default; }
+.mx-legend .cell { width: 14px; min-width: 0; height: 14px; padding: 0; border-radius: var(--radius-tile); cursor: default; }
 /* Pale fills need an edge to show as a swatch on the page ground. */
 .mx-legend .cell:not(.none) { border-color: var(--line-2); }
 .mx-legend .end { margin-left: auto; }
@@ -72,7 +72,7 @@
 .mx-roll { display: grid; gap: var(--sp-3); }
 .mx-sub { margin: 0; font: 600 var(--fs-sm)/1.4 var(--sans); }
 .mx-vers { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
-.mx-vers label { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: 14px var(--sp-4); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.mx-vers label { position: relative; display: flex; align-items: center; gap: var(--sp-3); padding: 14px var(--sp-4); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; }
 .mx-vers label:hover { border-color: var(--line-2); }
 .mx-vers label.on { background: var(--tint); border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
 .mx-vers label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }

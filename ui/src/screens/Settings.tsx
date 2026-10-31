@@ -2,7 +2,7 @@
 // Settings: how the app looks (remembered on this computer), how reports look,
 // Search Console and AgentedSEO, and your site list in and out.
 import { ColorInput, FilePicker, Slider } from "../components/controls";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import "../styles/screens/settings.css";
 import { api, useAppUpdate, type AppSettings, type GscStatus, type Imported } from "../api";
 import { when } from "./Overview";
@@ -140,7 +140,7 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
       </label>
       <div className="rpreview" aria-label="Preview" role="group">
         <span className="label">Preview</span>
-        <div style={{ borderTopColor: accent }}>
+        <div style={{ "--band": accent } as CSSProperties}>
           <b>{s.report_name || "[Your business name]"}</b>
           <span>Monthly report · your client</span>
           {(s.report_footer || !s.white_label) && (
