@@ -475,7 +475,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
         </Button>
       )}
       <Button className="ghost" onClick={onClose}>
-        {isNew ? "Close" : "Close without saving"}
+        Close without saving
       </Button>
       <Button kind="primary" className="disc" disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
         {busy ? "Saving…" : isNew ? "Add it" : "Save changes"}

@@ -240,7 +240,7 @@ function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: 
           onClose={() => setSetup(false)}
           footer={
             <>
-              <Button onClick={() => setSetup(false)}>Cancel</Button>
+              <Button onClick={() => setSetup(false)}>Close without saving</Button>
               <Button
                 kind="primary"
                 className="disc"

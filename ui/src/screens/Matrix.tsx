@@ -370,7 +370,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
           )}
           {notReady.length > 0 && (
             <section className="mx-notes" aria-label="Sites not in this table">
-              <h3 className="mx-label">Not in this table</h3>
+              <h2 className="mx-label">Not in this table</h2>
               <ul>
                 {notReady.map((s) => (
                   <li key={s.id} className="callout">

@@ -73,7 +73,7 @@ test("declining says nothing changed, and an error is shown in words", async () 
   const calls = core();
   render(<Ai sites={[]} plans={[PLAN]} onWatch={() => {}} />);
   fireEvent.click(screen.getByRole("button", { name: `Decline ${PLAN.title}` }));
-  expect(await screen.findByText(`Declined "${PLAN.title}". Nothing changed.`)).toBeInTheDocument();
+  expect(await screen.findByText(`Declined “${PLAN.title}”. Nothing changed.`)).toBeInTheDocument();
   expect(calls).toContainEqual(["plan_decline", { id: 7 }]);
 
   core({ plan_confirm: () => Promise.reject("This plan isn't waiting any more: it was confirmed or declined already.") });
@@ -91,7 +91,7 @@ test("an expired plan says it never runs and can only be removed", async () => {
   expect(within(card).getByText(/so it will never run/)).toBeInTheDocument();
   expect(within(card).queryByRole("button", { name: /Confirm/ })).toBeNull();
   fireEvent.click(within(card).getByRole("button", { name: "Remove Old plan" }));
-  expect(await screen.findByText('Removed "Old plan". Nothing changed.')).toBeInTheDocument();
+  expect(await screen.findByText('Removed “Old plan”. Nothing changed.')).toBeInTheDocument();
   expect(calls).toContainEqual(["plan_decline", { id: 8 }]);
 });
 
