@@ -59,7 +59,7 @@ test("Updates lists every waiting update, says which sites are left out, and pla
 test("Updates: nothing waiting, and reading every site again", async () => {
   mockInvoke.mockResolvedValue(null);
   render(<HeadSlot.Provider value={document.body}><Updates sites={[BASIC]} inventory={INV} onPlan={vi.fn()} /></HeadSlot.Provider>);
-  expect(screen.getByText("No updates waiting.")).toBeInTheDocument();
+  expect(screen.getByText("No updates waiting")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Read every site again" }));
   expect(mockInvoke).toHaveBeenCalledWith("inventory_refresh", { id: undefined });
   await waitFor(() => expect(screen.getByRole("button", { name: "Read every site again" })).toBeEnabled());

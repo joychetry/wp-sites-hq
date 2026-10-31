@@ -75,7 +75,7 @@ export function Monitoring({ sites, monitors }: Props) {
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site to watch whether it's up, how fast it answers, and when its certificate and domain expire.</p>
         </Empty>
       </Page>

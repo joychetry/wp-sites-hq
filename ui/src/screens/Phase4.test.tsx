@@ -160,7 +160,7 @@ describe("Users", () => {
     expect(await screen.findByText("Alpha: the users didn't load. The site answered 500.")).toBeInTheDocument();
     unmount();
     render(<Users sites={[]} />);
-    expect(screen.getByText("No sites yet.")).toBeInTheDocument();
+    expect(screen.getByText("No sites yet")).toBeInTheDocument();
   });
 });
 
@@ -230,7 +230,7 @@ describe("Comments", () => {
   it("says when nothing waits, and when a change fails", async () => {
     core({ comments_list: () => ({ comments: [], total: 0 }) });
     const { unmount } = render(<Comments sites={[CM]} />);
-    expect(await screen.findByText("No comments are waiting.")).toBeInTheDocument();
+    expect(await screen.findByText("No comments are waiting")).toBeInTheDocument();
     unmount();
     core({ comment_moderate: () => Promise.reject("Comment not found.") });
     render(<Comments sites={[CM]} />);
@@ -270,7 +270,7 @@ describe("Classic Monks", () => {
     expect(within(list).getByText("Locked")).toBeInTheDocument();
     expect(within(list).queryByRole("button")).toBeNull();
     fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "zzz" } });
-    expect(screen.getByText("No feature matches.")).toBeInTheDocument();
+    expect(screen.getByText("No feature matches")).toBeInTheDocument();
   });
 
   it("saves a setting, undoes from the log and opens an approval on the site", async () => {

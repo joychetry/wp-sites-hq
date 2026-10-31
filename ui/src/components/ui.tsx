@@ -96,6 +96,19 @@ export function Button({ kind, small, keys, className, children, ...rest }: BtnP
   );
 }
 
+/** The one "Add a site" button: primary, the A key, and the plus disc, wherever it appears. */
+export function AddSiteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onClick}>
+      Add a site
+      <Kbd>A</Kbd>
+      <span className="btn-disc">
+        <Glyph name="plus" />
+      </span>
+    </Button>
+  );
+}
+
 /** The page head's action area (App.tsx); a screen puts its main actions there with <HeadActions>. */
 export const HeadSlot = createContext<HTMLElement | null>(null);
 

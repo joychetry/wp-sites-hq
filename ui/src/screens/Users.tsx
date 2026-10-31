@@ -48,7 +48,7 @@ export function Users({ sites }: { sites: Site[] }) {
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site on Sites, then its users show here.</p>
         </Empty>
       </Page>
@@ -86,7 +86,7 @@ export function Users({ sites }: { sites: Site[] }) {
     body = (
       <Empty
         picture="search"
-        title={filtered ? "Nobody matches." : "No users to show."}
+        title={filtered ? "Nobody matches" : "No users to show"}
         action={
           filtered && (
             <Button

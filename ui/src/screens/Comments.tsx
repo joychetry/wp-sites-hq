@@ -87,7 +87,7 @@ export function Comments({ sites }: { sites: Site[] }) {
   if (sites.length === 0) {
     return (
       <Page narrow>
-        <Empty picture="sites" title="No sites yet.">
+        <Empty picture="sites" title="No sites yet">
           <p>Add a site on Sites, then its comments show here.</p>
         </Empty>
       </Page>
@@ -145,7 +145,7 @@ export function Comments({ sites }: { sites: Site[] }) {
   } else if (rows.length === 0) {
     body = (
       <section className="card">
-        <Empty picture="inbox" title={show === "pending" ? "No comments are waiting." : `No ${label} comments.`}>
+        <Empty picture="inbox" title={show === "pending" ? "No comments are waiting" : `No ${label} comments.`}>
           <p>{siteF != null ? "None on this site. Pick another site, or any site." : show === "pending" ? "New comments that need approval show here, from every site." : "Pick another list above."}</p>
         </Empty>
       </section>

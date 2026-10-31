@@ -435,7 +435,7 @@ export function Media({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <Empty title="No sites yet.">
+      <Empty title="No sites yet">
         <p>Add a site on Sites, then its media library shows here.</p>
       </Empty>
     );
@@ -522,13 +522,13 @@ export function Media({ sites }: { sites: Site[] }) {
   let body;
   if (blocked) {
     body = (
-      <Empty title={`${site!.name}'s media isn't available here.`}>
+      <Empty title={`${site!.name}'s media isn't available here`}>
         <p>{blocked}</p>
       </Empty>
     );
   } else if (error) {
     body = (
-      <Empty alert title="The media library didn't load." action={<Button onClick={() => load(1)}>Try again</Button>}>
+      <Empty alert title="The media library didn't load" action={<Button onClick={() => load(1)}>Try again</Button>}>
         <p>{error}</p>
       </Empty>
     );
@@ -537,7 +537,7 @@ export function Media({ sites }: { sites: Site[] }) {
   } else if (items.length === 0) {
     body = (
       <Empty
-        title={filtered ? "Nothing matches." : "The media library is empty."}
+        title={filtered ? "Nothing matches" : "The media library is empty"}
         action={
           filtered && (
             <Button

@@ -90,7 +90,7 @@ export function Clients({ sites }: { sites: Site[] }) {
   if (error) {
     return (
       <Page>
-        <Empty alert title="Clients didn't load." action={<Button onClick={load}>Try again</Button>}>
+        <Empty alert title="Clients didn't load" action={<Button onClick={load}>Try again</Button>}>
           <p>{error}</p>
         </Empty>
       </Page>
@@ -159,7 +159,7 @@ export function Clients({ sites }: { sites: Site[] }) {
       </HeadActions>
       {clients.length === 0 && costs.length === 0 ? (
         <section className="card">
-          <Empty title="No clients yet.">
+          <Empty title="No clients yet">
             <p>Add a client, tick their sites, then note what the sites cost you (hosting, domains, licences) and what you charge. Client reports use the same list.</p>
           </Empty>
         </section>

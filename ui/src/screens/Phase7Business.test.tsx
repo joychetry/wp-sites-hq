@@ -126,7 +126,7 @@ test("deleting a client asks first; site errors show in the sheet", async () => 
 test("an empty list explains what clients are for", async () => {
   core({ clients_list: () => [], costs_list: () => [] });
   render(<Clients sites={[]} />);
-  expect(await screen.findByText("No clients yet.")).toBeInTheDocument();
+  expect(await screen.findByText("No clients yet")).toBeInTheDocument();
 });
 
 test("exports into Downloads and imports a file, saying what was left out", async () => {
