@@ -17,7 +17,7 @@
 .clients .t tr.item td:first-child { padding-left: 62px; }
 .clients .item-t { display: grid; gap: 2px; min-width: 0; }
 .clients .item-t .linkish { font-weight: 500; }
-.clients .item-t span { font-size: var(--fs-sm); line-height: var(--lh-tight); color: var(--text-2); white-space: normal; }
+.clients .item-t span { font-size: var(--fs-sm); line-height: var(--lh); color: var(--text-2); white-space: normal; }
 .clients .card-foot .count { color: var(--text-3); font-size: var(--fs-sm); }
 .clients .card-head h2 .glyph { width: 16px; height: 16px; color: var(--text-2); }
 .clients .fix .tag { white-space: nowrap; }

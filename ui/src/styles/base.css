@@ -187,7 +187,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .t tbody tr { cursor: default; }
 .t tbody tr:hover td { background: var(--panel); }
 .t tbody tr.sel td { background: var(--sel); }
-.t tbody tr.sel:hover td { background: color-mix(in srgb, var(--sel) 90%, var(--text)); }
+.t tbody tr.sel:hover td { background: var(--tint-2); }
 .t tr.focus td { background: var(--sel); }
 .t tr.focus td:first-child { box-shadow: inset 3px 0 0 var(--green); }
 .t .name { font-weight: 600; }
@@ -489,7 +489,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .settings .segmented:not(:last-child) { margin-bottom: var(--sp-4); }
 
 /* Content and Media (screens/Content.tsx, Editor.tsx, Media.tsx) */
-.pick span { font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; white-space: nowrap; }
+.pick > span { font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; white-space: nowrap; }
 .pick .input { width: auto; min-width: 160px; }
 .segmented.types button { flex: none; padding: 0 var(--sp-3); }
 .linkish { border: 0; background: none; padding: 0; font-weight: 500; text-align: left; text-decoration: underline; text-decoration-color: var(--line-ui); text-underline-offset: 3px; max-width: 420px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -565,7 +565,7 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .dl > div { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 10px 0; border-top: 1px solid var(--line); font-size: var(--fs-sm); }
 .dl > div:first-child { border-top: 0; }
 .dl dt { color: var(--text-3); }
-.dl dd { margin: 0; color: var(--text); font-weight: 500; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.dl dd { margin: 0; color: var(--text); font-weight: 500; text-align: right; min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
 /* Callouts: a well with an icon; warning, danger and ok (green) grounds */
 .callout { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; margin: 0; padding: var(--sp-3) 14px; border-radius: var(--radius); background: var(--panel); color: var(--text-2); font-size: var(--fs-sm); line-height: 1.45; }
 .callout > .glyph { width: 18px; height: 18px; margin-top: 1px; }
