@@ -150,7 +150,7 @@ test("the editor changes only edited text blocks and keeps the others", async ()
   expect(within(blocks).getAllByRole("textbox")).toHaveLength(2);
   const save = screen.getByRole("button", { name: "Save draft" });
   expect(save).toBeDisabled();
-  fireEvent.change(within(blocks).getByRole("textbox", { name: "Paragraph 3" }), { target: { value: "Bread at <b>7</b>." } });
+  fireEvent.change(within(blocks).getByRole("textbox", { name: "Paragraph (block 3)" }), { target: { value: "Bread at <b>7</b>." } });
   fireEvent.change(screen.getByRole("textbox", { name: "Title" }), { target: { value: "Our menu" } });
   expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
   fireEvent.click(save);

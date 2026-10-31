@@ -52,11 +52,30 @@ describe("page system", () => {
     expect(tsx.filter(([, s]) => /"scroll page|className="filters|"split-r"/.test(s)).map(([f]) => f)).toEqual([]);
   });
 
-  it("puts a button's icon after its words", () => {
+  // Back / previous / return buttons start with the left arrow; every other button puts its icon after its words.
+  const BACK = /^\s*(Back|Previous|Return|Go back|\{back\b)/;
+  const opensButton = (s: string, at: number) => /^<(Button|button)\b/.test(s.slice(s.lastIndexOf("<", at - 1)));
+
+  it("puts a button's icon after its words, except the back arrow", () => {
     // An icon (a Glyph, a conditional Glyph or the disc) that opens a button with words after it is the old, reversed order.
     const ICON = /(<span className="btn-disc">\s*<Glyph[^>]*\/>\s*<\/span>|\{[^{}]*&&\s*<Glyph[^>]*\/>\}|<Glyph[^>]*\/>)\s*[^\s<}):]/g;
-    const opensButton = (s: string, at: number) => /^<(Button|button)\b/.test(s.slice(s.lastIndexOf("<", at - 1)));
-    const bad = tsx.flatMap(([f, s]) => [...s.matchAll(ICON)].filter((m) => opensButton(s, m.index)).map(() => f));
+    const bad = tsx.flatMap(([f, s]) =>
+      [...s.matchAll(ICON)]
+        .filter((m) => opensButton(s, m.index))
+        .filter((m) => !(m[1] === '<Glyph name="arrow-left" />' && BACK.test(s.slice(m.index + m[1].length))))
+        .map(() => f),
+    );
     expect(bad).toEqual([]);
+  });
+
+  it("starts every back and previous button with the left arrow", () => {
+    // Words like "Back to pages" right after a button opens, with no arrow before them.
+    const bad = tsx.flatMap(([f, s]) =>
+      [...s.matchAll(/>(?=\s*(Back|Previous|Return|Go back|\{back\b))/g)].filter((m) => opensButton(s, m.index + 1)).map((m) => `${f}: ${s.slice(m.index, m.index + 40)}`),
+    );
+    expect(bad).toEqual([]);
+    // And the left arrow means back: it never sits before other words, nor after any.
+    const misused = tsx.flatMap(([f, s]) => [...s.matchAll(/<Glyph name="arrow-left" \/>/g)].filter((m) => !BACK.test(s.slice(m.index + m[0].length))).map(() => f));
+    expect(misused).toEqual([]);
   });
 });

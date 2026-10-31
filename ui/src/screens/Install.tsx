@@ -276,7 +276,12 @@ export function Install({ sites, inventory, onClose, onPlan }: Props) {
       onClose={onClose}
       footer={
         <>
-          {pick && <Button onClick={() => setPick(null)}>Back</Button>}
+          {pick && (
+            <Button onClick={() => setPick(null)}>
+              <Glyph name="arrow-left" />
+              Back
+            </Button>
+          )}
           <Button onClick={onClose}>Close without changes</Button>
           {pick && (
             <Button kind="primary" disabled={chosen.size === 0} onClick={review}>

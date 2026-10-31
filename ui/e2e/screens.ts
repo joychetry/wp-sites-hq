@@ -311,7 +311,7 @@ export const SCREENS: Screen[] = [
       await nav("Content")(page);
       await page.getByRole("button", { name: "Pages", exact: true }).click();
       await page.getByRole("button", { name: "Our menu" }).click();
-      await page.getByRole("textbox", { name: "Paragraph 2" }).click();
+      await page.getByRole("textbox", { name: "Paragraph (block 2)" }).click();
       await page.locator(".tox-tinymce-inline .tox-toolbar__group").first().waitFor();
     },
   },

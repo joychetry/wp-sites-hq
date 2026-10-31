@@ -1106,7 +1106,7 @@ export function Slider({ label, value, min, max, step: by = 1, format = String, 
 export type MenuItem = { label: string; run: () => void; danger?: boolean; disabled?: boolean };
 
 /** A menu button (WAI-ARIA): arrows move, Enter runs, Escape closes and gives focus back. */
-/** `className` replaces the button's look (a dashed filter chip: "chip"). */
+/** `className` replaces the button's look (a filter chip: "chip"). */
 export function Menu({ label, items, children, small, className }: { label: string; items: MenuItem[]; children?: ReactNode; small?: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
