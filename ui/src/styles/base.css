@@ -48,6 +48,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .field { display: grid; gap: 6px; margin: 0 0 var(--sp-4); }
 .field > span { font-size: var(--fs-sm); color: var(--text); font-weight: 600; }
 .field small { color: var(--text-3); font-size: var(--fs-sm); }
+/* In a card body the grid gap spaces fields; a choice that ends a field adds nothing under it. */
+.card-body > .field, .field > .segmented:last-child { margin-bottom: 0; }
 .input { height: var(--control); border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); padding: 0 var(--sp-3); width: 100%; }
 textarea.input { height: auto; min-height: 72px; padding: 10px var(--sp-3); resize: vertical; }
 /* The resize corner is drawn by the app: two short diagonal strokes, never the OS grip. */
@@ -85,7 +87,7 @@ small { font-size: var(--fs-sm); }
 /* The brand and the foot stay put; only the nav between them scrolls. */
 /* The logo block lines up with the top bar: same 64px height, same bottom border. */
 .rail > .brand { flex: none; box-sizing: border-box; min-height: 64px; margin: 0; padding: 0 calc(var(--sp-3) + 6px); border-bottom: 1px solid var(--line); }
-.rail-nav { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 2px; padding: var(--sp-3) var(--sp-3); }
+.rail-nav { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 2px; padding: var(--sp-2) var(--sp-3); }
 .brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; }
 .brand .mark { width: 30px; height: 30px; }
 .brand p { margin: 0; font: 600 var(--fs-md)/var(--lh-tight) var(--display); letter-spacing: -0.02em; color: var(--text); }
@@ -95,7 +97,10 @@ small { font-size: var(--fs-sm); }
 .scope { width: auto; min-width: 168px; max-width: 260px; }
 /* Same height and pill shape as the status pills beside it. */
 .top .select.scope.sm { height: var(--control-sm); border-radius: var(--radius-pill); font-size: var(--fs-sm); padding: 0 var(--sp-2) 0 var(--sp-3); }
-.navgroup { padding: 14px var(--sp-3) var(--sp-1); margin: 0; }
+.navgroup { padding: var(--sp-2) var(--sp-3) var(--sp-1); margin: 0; }
+.rail-menu { display: none; }
+/* 32px rows (the small control height) so the whole nav fits a 900px-tall window without scrolling. */
+.rail .navitem { min-height: var(--control-sm); }
 .navitem .glyph, .navitem .mark { width: 17px; height: 17px; }
 .rail ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .navitem { display: flex; width: 100%; align-items: center; min-height: var(--control); padding: 0 10px 0 var(--sp-3); border-radius: var(--radius); color: var(--text-2); gap: 10px; border: 0; background: none; text-align: left; font-weight: 500; }
@@ -107,9 +112,6 @@ small { font-size: var(--fs-sm); }
 .navitem[aria-current] .n { background: var(--green); color: var(--on-green); }
 .rail .foot { flex: none; padding: var(--sp-3) var(--sp-3) var(--sp-4); border-top: 1px solid var(--line); display: grid; gap: var(--sp-3); }
 .rail .foot p { margin: 0; }
-.next { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: var(--sp-2); padding: 10px var(--sp-3); border-radius: var(--radius); background: var(--panel); color: var(--text-2); font-size: var(--fs-xs); line-height: 1.4; }
-.next .glyph { margin-top: 1px; color: var(--accent); }
-.next b { color: var(--text); font-weight: 600; }
 .foot-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 0 var(--sp-1); }
 .themes { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-pill); background: var(--panel); border: 1px solid var(--line); }
 .themes button { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); padding: 0; }
@@ -130,7 +132,8 @@ small { font-size: var(--fs-sm); }
 .kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(200px, 17vw, 232px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--radius-pill); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
 .kbar span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kbar:hover { border-color: var(--line-ui); color: var(--text-2); }
-.body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--head-gap) 0; padding: 28px var(--sp-6) var(--sp-5); }
+/* No bottom padding here: the scroller runs to the window's edge and its content ends with its own margin. */
+.body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--head-gap) 0; padding: 28px var(--sp-6) 0; }
 .phead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-4) var(--sp-5); }
 .phead > div:first-child { display: grid; gap: 6px; min-width: 0; max-width: 760px; }
 .phead-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
@@ -151,6 +154,8 @@ small { font-size: var(--fs-sm); }
 /* The bulk bar: ink, stuck to the bottom of the card so rows never move under the pointer */
 .selbar { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--pad); background: var(--btn-ink); color: var(--btn-on-ink); border-top: 1px solid var(--line-2); }
 .selbar b { font-weight: 600; margin-right: var(--sp-2); }
+.selbar .grow { flex: 1; }
+.card > .selbar:last-child { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
 .selbar .btn { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 30%, transparent); box-shadow: none; }
 .selbar .btn:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); border-color: color-mix(in srgb, currentColor 50%, transparent); }
 .selbar .btn.primary { background: var(--green); color: var(--on-green); border-color: var(--green); }
@@ -356,7 +361,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .sheet.dialog .content { padding: var(--sp-1) 24px 20px; }
 .sheet.dialog footer { padding: 14px 24px; }
 /* Segmented: a pill track in the well, the chosen one lifted */
-.segmented { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); padding: 3px; margin: 0 0 var(--sp-4); }
+/* As wide as its options, never stretched to its container. */
+.segmented { display: flex; width: fit-content; max-width: 100%; justify-self: start; gap: 2px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel); padding: 3px; margin: 0 0 var(--sp-4); }
 .segmented button { flex: 1; height: calc(var(--control) - 8px); padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--text-2); font-weight: 500; }
 .segmented button:hover { color: var(--text); }
 /* The chosen option is lifted with a 3:1 edge, so it reads as a fill and not only as bolder words. */
@@ -464,7 +470,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
 .settings { max-width: 640px; padding: var(--sp-6) var(--pad); display: grid; gap: var(--sp-6); }
 .settings h2 { margin: 0 0 var(--sp-1); font: 600 var(--fs-md)/1.4 var(--sans); }
 .settings p { margin: 0 0 var(--sp-3); color: var(--text-2); }
-.settings .segmented { margin: 0; max-width: 520px; display: inline-flex; flex-wrap: wrap; }
+.settings .segmented { margin: 0; max-width: 520px; flex-wrap: wrap; }
 .settings .segmented button { white-space: nowrap; }
 /* A choice that has fields under it (Reports) keeps the same space as between two fields. */
 .settings .segmented:not(:last-child) { margin-bottom: var(--sp-4); }
@@ -512,10 +518,11 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 
 /* The page system (components/page.tsx): Page, Toolbar, SidePanel. Cards, tables and empty states sit in it. */
 /* Rows are as tall as their content: in a scrolling grid an auto row can otherwise shrink to nothing. */
-.page { position: relative; min-width: 0; min-height: 0; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
+.page { position: relative; min-width: 0; min-height: 0; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; padding-bottom: var(--sp-5); }
 .page.narrow { max-width: 1000px; width: 100%; }
-.page.with-side { grid-template-columns: minmax(0, 1fr) var(--inspector); grid-template-rows: minmax(0, 1fr); align-content: stretch; align-items: start; overflow: hidden; }
-.page-main { position: relative; min-width: 0; min-height: 0; max-height: 100%; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; }
+.page.with-side { grid-template-columns: minmax(0, 1fr) var(--inspector); grid-template-rows: minmax(0, 1fr); align-content: stretch; align-items: start; overflow: hidden; padding-bottom: 0; }
+.page.with-side > .insp { max-height: calc(100% - var(--sp-5)); }
+.page-main { position: relative; min-width: 0; min-height: 0; max-height: 100%; overflow: auto; display: grid; grid-auto-rows: max-content; gap: var(--page-gap); align-content: start; padding-bottom: var(--sp-5); }
 .stack { display: grid; gap: var(--page-gap); align-content: start; min-width: 0; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .toolbar > .end { margin-left: auto; }
@@ -615,13 +622,15 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
   .app { display: block; height: auto; }
   .rail { flex-direction: row; flex-wrap: wrap; align-items: center; height: auto; padding: var(--sp-4) var(--sp-3); gap: 2px; border-right: 0; border-bottom: 1px solid var(--line); }
   .rail > .brand { width: 100%; margin: 0; }
+  .rail-menu { display: inline-flex; margin-left: auto; }
+  .rail:not(.open) .rail-nav, .rail:not(.open) .foot { display: none; }
   .rail-nav, .rail-nav > div { display: contents; }
   .rail ul { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
   .navgroup { display: none; }
   .navitem { width: auto; }
   .rail .foot { width: 100%; margin-top: var(--sp-2); padding: var(--sp-3) 0 0; }
   .main, .body { height: auto; }
-  .body { display: flex; flex-direction: column; padding: var(--sp-4); }
+  .body { display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-4) 0; }
   .insp { width: auto; max-height: none; }
   .page.with-side { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow: visible; }
   /* The whole page scrolls down; a wide table scrolls sideways inside it, never the window. */

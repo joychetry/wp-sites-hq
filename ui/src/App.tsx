@@ -122,6 +122,8 @@ export default function App() {
   const [searchFor, setSearchFor] = useState("");
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
+  // Under 900px wide (and at 200% zoom) the nav folds behind a Menu button, so the page comes first.
+  const [menu, setMenu] = useState(false);
   const [adding, setAdding] = useState<{ again?: Site } | null>(null);
   const [checking, setChecking] = useState(false);
   const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
@@ -200,6 +202,7 @@ export default function App() {
   const nextCheck = lastCheck
     ? new Date(Math.max(lastCheck + CHECK_EVERY, Date.now() / 1000 + 60) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : null;
+  const nextAt = `${nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."} Automatic checks run only while the app or its tray agent is open.`;
   const needs = scoped.filter((s) => attention(s)).length;
   const { lead, rest } = summary(scoped);
   const sentence = rest ? `${lead} ${rest}` : lead;
@@ -447,15 +450,19 @@ export default function App() {
       <a className="skip" href="#content">
         Skip to content
       </a>
-      <nav className="rail" aria-label="Main">
+      <nav className={menu ? "rail open" : "rail"} aria-label="Main">
         <div className="brand">
           <Logo />
           <p>
             WP Sites HQ
             <small>by Classic Monks</small>
           </p>
+          <button type="button" className="btn sm rail-menu" aria-expanded={menu} aria-controls="rail-nav" onClick={() => setMenu(!menu)}>
+            {menu ? "Close menu" : "Menu"}
+            <Glyph name={menu ? "x" : "menu"} />
+          </button>
         </div>
-        <div className="rail-nav">
+        <div className="rail-nav" id="rail-nav">
           {GROUPS.map(([g, items]) => (
             <div key={g || "top"}>
               {g && <p className="navgroup">{g}</p>}
@@ -466,7 +473,10 @@ export default function App() {
                       type="button"
                       className="navitem"
                       aria-current={s === section ? "page" : undefined}
-                      onClick={() => setSection(s)}
+                      onClick={() => {
+                        setSection(s);
+                        setMenu(false);
+                      }}
                       onPointerEnter={() => preload(s, scoped)}
                       onFocus={() => preload(s, scoped)}
                     >
@@ -486,13 +496,6 @@ export default function App() {
           ))}
         </div>
         <div className="foot">
-          <p className="next">
-            <Glyph name="clock" />
-            <span>
-              <b>{nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."}</b> Automatic checks run only while the app
-              or its tray agent is open.
-            </span>
-          </p>
           <div className="foot-row">
             <div className="themes" role="group" aria-label="Theme">
               {THEMES.map(([t, icon, label]) => (
@@ -525,15 +528,18 @@ export default function App() {
                   Checking…
                 </span>
               ) : lastCheck ? (
-                <span className="pill" data-tip={`Last checked at ${checkedAt(lastCheck)}`}>
+                <span className="pill" tabIndex={0} data-tip={`Last checked at ${checkedAt(lastCheck)}. ${nextAt}`}>
                   <span className="pulse" aria-hidden="true" />
                   <span aria-hidden="true">Checked {shortAgo(lastCheck)}</span>
-                  <span className="sr-only">Last checked at {checkedAt(lastCheck)}</span>
+                  <span className="sr-only">
+                    Last checked at {checkedAt(lastCheck)}. {nextAt}
+                  </span>
                 </span>
               ) : (
-                <span className="pill">
+                <span className="pill" tabIndex={0} data-tip={nextAt}>
                   <span className="pulse" aria-hidden="true" />
                   Not checked yet
+                  <span className="sr-only">. {nextAt}</span>
                 </span>
               )}
               {needs > 0 && (

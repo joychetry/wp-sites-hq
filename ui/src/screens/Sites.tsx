@@ -74,6 +74,17 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
 
   const focus = rows.find((s) => s.id === focusId) ?? rows[0] ?? null;
   const picked = sites.filter((s) => selected.has(s.id));
+  const moveToGroup = async () => {
+    const g = groupFor.trim();
+    // An empty box never ungroups the whole selection; one move at a time.
+    if (!g || grouping) return;
+    setGrouping(true);
+    const failed = (await Promise.all(picked.map((s) => api.setGroup(s.id, g).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
+    setGrouping(false);
+    setGroupFor("");
+    if (failed) toast(`${failed} of ${picked.length} sites didn't move to ${g}.`, { tone: "danger" });
+    else toast(`Put ${picked.length === 1 ? "1 site" : `${picked.length} sites`} in ${g}.`);
+  };
 
   useEffect(() => {
     // Removed sites leave the selection.
@@ -407,19 +418,14 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                   aria-label="Group for the selected sites"
                   value={groupFor}
                   onChange={(e) => setGroupFor(e.target.value)}
-                  onKeyDown={async (e) => {
-                    const g = groupFor.trim();
-                    // An empty box never ungroups the whole selection; one Enter at a time.
-                    if (e.key !== "Enter" || !g || grouping) return;
-                    setGrouping(true);
-                    const failed = (await Promise.all(picked.map((s) => api.setGroup(s.id, g).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
-                    setGrouping(false);
-                    setGroupFor("");
-                    if (failed) toast(`${failed} of ${picked.length} sites didn't move to ${g}.`, { tone: "danger" });
-                    else toast(`Put ${picked.length === 1 ? "1 site" : `${picked.length} sites`} in ${g}.`);
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") moveToGroup();
                   }}
                 />
               </label>
+              <Button small disabled={!groupFor.trim() || grouping} onClick={moveToGroup}>
+                Apply
+              </Button>
               <Button small className="ghost" keys="R" onClick={() => check(picked.map((s) => s.id))}>
                 Check them now
                 <Glyph name="refresh" />
