@@ -180,9 +180,10 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .tabs .n { margin-left: 6px; font: 600 var(--fs-xs) var(--mono); color: var(--danger); }
 
 /* Toasts */
-.toasts { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: 60; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+/* Clear of the page's 32px edge, so a toast never sits on the last field of a form. */
+.toasts { position: fixed; right: var(--sp-6); bottom: var(--sp-6); z-index: 60; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
 /* A sheet's buttons are at its bottom right; messages go to the other corner while it is open. */
-body:has(.sheet) .toasts { right: auto; left: var(--sp-4); }
+body:has(.sheet) .toasts { right: auto; left: var(--sp-6); }
 .toasts ol { list-style: none; margin: 0; padding: 0; display: grid; justify-items: end; gap: var(--sp-2); }
 body:has(.sheet) .toasts ol { justify-items: start; }
 /* The design's toast: an ink pill as wide as its words, quiet buttons, green icons */

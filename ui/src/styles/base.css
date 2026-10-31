@@ -699,3 +699,5 @@ details.more > summary:hover { color: var(--text); }
 details.more > summary .glyph { width: 14px; height: 14px; transition: transform .15s var(--ease); }
 details.more[open] > summary .glyph { transform: rotate(180deg); }
 details.more > div { margin-top: var(--sp-1); color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+/* A site address that must wrap breaks evenly at the edge, not at its own hyphens (which reads as two words). */
+.site small, .ihead small { word-break: break-all; hyphens: none; }
