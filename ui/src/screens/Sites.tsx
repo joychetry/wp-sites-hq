@@ -421,7 +421,6 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 Check them now
                 <Glyph name="refresh" />
               </Button>
-              <span className="grow" />
               <Button small className="ghost" onClick={() => setSelected(new Set())} keys="Esc">
                 Clear selection
               </Button>
