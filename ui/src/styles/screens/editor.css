@@ -100,7 +100,8 @@
 .rte-head .tabs { flex: 1 1 auto; min-width: 0; border: 0; padding: 0; }
 .rte-head .tabs [role="tab"] { height: 36px; }
 .rte [role="tabpanel"] { position: relative; }
-.rte-bar { min-height: 84px; border-bottom: 1px solid var(--line); }
+/* One row: what doesn't fit slides out from More (toolbar_mode "sliding"); the row is kept while the editor loads. */
+.rte-bar { min-height: 42px; border-bottom: 1px solid var(--line); }
 /* contain: site HTML with position: fixed stays inside its box, never over the window. */
 .rte-body { position: relative; contain: paint; min-height: 320px; padding: var(--sp-4) var(--sp-5); border-radius: 0 0 var(--radius) var(--radius); }
 .rte-body:focus, .rte-body:focus-visible { outline: none; }
@@ -128,7 +129,16 @@
 
 /* A block page: each text block is its own box that becomes an editor when it gets focus; the
    other blocks are locked rows. */
-.blk { display: grid; gap: var(--sp-1); margin-bottom: var(--sp-3); }
+.blk { position: relative; display: grid; gap: var(--sp-1); margin-bottom: var(--sp-3); }
+.blk > .blk-name { min-height: 20px; }
+/* A block's floating toolbar sits on its label row at the right, its foot on the field's top edge,
+   so it never covers the field's own name or the text being edited. */
+html .blk > .tox.tox-tinymce-inline { top: auto !important; left: auto !important; right: 0; bottom: calc(100% - 20px - var(--sp-1)); }
+/* Small buttons, so the bar fits the label row and the gap above it. */
+html .blk .tox .tox-toolbar__group { padding: 0 2px; }
+html .blk .tox .tox-tbtn { width: 28px; height: 28px; margin: 2px 0; }
+html .blk .tox .tox-split-button { height: 28px; margin: 2px 0; }
+html .blk .tox .tox-split-button .tox-tbtn { height: 26px; margin: 0; }
 .blk-text { position: relative; contain: paint; min-height: var(--control); margin: 0; padding: 8px 12px; border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); color: var(--text); font: var(--fs)/1.5 var(--sans); cursor: text; overflow-wrap: anywhere; }
 .blk-text.heading { font-weight: 600; }
 .blk-name { display: inline-flex; align-items: center; gap: 6px; }
@@ -177,7 +187,7 @@ html .tox .tox-tbtn.tox-tbtn--disabled, html .tox .tox-tbtn.tox-tbtn--disabled:h
 html .tox .tox-tbtn--disabled svg, html .tox .tox-tbtn:disabled svg { fill: var(--text-3); }
 html .tox .tox-tbtn:focus-visible, html .tox .tox-split-button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; background: var(--panel); }
 html .tox .tox-tbtn__select-label { color: var(--text); }
-html .tox .tox-tbtn--select svg, html .tox .tox-split-button__chevron svg { fill: var(--text-2); }
+html .tox .tox-tbtn--select svg, html .tox .tox-split-button__chevron svg, html .tox .tox-split-button .tox-tbtn__select-chevron svg { fill: var(--text-2); }
 html .tox.tox-tinymce-inline .tox-editor-header { background: var(--bg); border: 1px solid var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: hidden; }
 html .rte .tox.tox-tinymce-inline .tox-editor-header { border: 0; border-radius: 0; box-shadow: none; }
 html .tox .tox-menu, html .tox .tox-collection--list, html .tox .tox-collection--toolbar, html .tox .tox-collection--grid { background: var(--bg); border-color: var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
