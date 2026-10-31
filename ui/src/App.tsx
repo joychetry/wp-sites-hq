@@ -452,7 +452,7 @@ export default function App() {
           <Logo />
           <p>
             WP Sites HQ
-            <small>by Good Monks</small>
+            <small>by Classic Monks</small>
           </p>
         </div>
         <div className="rail-nav">
@@ -549,7 +549,7 @@ export default function App() {
           <div className="top-end">
             <button type="button" className="kbar" onClick={() => setPalette(true)}>
               <Glyph name="search" />
-              <span>Search or run a command</span>
+              <span>Search or run…</span>
               <Kbd>Ctrl K</Kbd>
             </button>
             {sites && sites.length > 0 && (
