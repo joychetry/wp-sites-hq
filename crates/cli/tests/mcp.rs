@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `monks mcp` speaks MCP on stdio and asks the running core, as an agent.
+//! `wpshq mcp` speaks MCP on stdio and asks the running core, as an agent.
 
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 
 use serde_json::{Value, json};
 
-// Multi-thread: the core answers on the socket while this thread waits for `monks`.
+// Multi-thread: the core answers on the socket while this thread waits for `wpshq`.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_ai_app_lists_sites_and_its_plans_reach_the_core() {
     let home = tempfile::tempdir().unwrap();
     let _core = monks_core::Core::start(home.path(), Default::default())
         .await
         .unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_monks"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_wpshq"))
         .arg("mcp")
         .env("MONKS_HOME", home.path())
         .stdin(Stdio::piped())
@@ -42,7 +42,7 @@ async fn an_ai_app_lists_sites_and_its_plans_reach_the_core() {
         "initialize",
         json!({ "protocolVersion": "2025-06-18", "capabilities": {} }),
     );
-    assert_eq!(init["result"]["serverInfo"]["name"], "monks-central");
+    assert_eq!(init["result"]["serverInfo"]["name"], "wp-sites-hq");
     let tools = ask(2, "tools/list", json!({}));
     assert_eq!(tools["result"]["tools"].as_array().unwrap().len(), 5);
     let sites = ask(

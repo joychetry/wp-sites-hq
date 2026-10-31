@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `monks doctor`: checks the pieces a user can't see, in plain words.
+//! `wpshq doctor`: checks the pieces a user can't see, in plain words.
 //! Prints no secret.
 
 use std::fmt;
@@ -99,7 +99,7 @@ pub async fn run(
             Err(ClientError::NotRunning) => check(
                 Level::Info,
                 "Core",
-                "not running (start it with `monks core` or open the app)",
+                "not running (start it with `wpshq core` or open the app)",
             ),
             Err(e) => check(Level::Fail, "Core", e.to_string()),
         },
@@ -120,7 +120,7 @@ pub async fn run(
         check(
             Level::Warn,
             "TLS settings",
-            format!("set: {} (Monks Central doesn't need them)", set.join(", ")),
+            format!("set: {} (WP Sites HQ doesn't need them)", set.join(", ")),
         )
     });
 

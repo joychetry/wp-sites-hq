@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Build the installers for this computer: the `monks` command goes inside each
-# one (next to the app), then Tauri bundles the app.
+# Build the installers for this computer: the `wpshq` command (and its old name
+# `monks`) goes inside each one (next to the app), then Tauri bundles the app.
 #
 #   scripts/bundle.sh [extra tauri build arguments, e.g. --bundles deb]
 #   TARGET=aarch64-apple-darwin scripts/bundle.sh --target aarch64-apple-darwin

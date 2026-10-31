@@ -42,7 +42,7 @@ jobs:
       - name: Format
         if: runner.os == 'Linux'
         run: cargo fmt --all --check
-      - name: Sidecar (the app bundles the monks command)
+      - name: Sidecar (the app bundles the wpshq command)
         shell: bash
         run: scripts/sidecar.sh
       - name: Clippy

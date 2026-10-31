@@ -26,6 +26,7 @@
     "targets": "all",
     "createUpdaterArtifacts": true,
     "externalBin": [
+      "binaries/wpshq",
       "binaries/monks"
     ],
     "publisher": "Good Monks",
