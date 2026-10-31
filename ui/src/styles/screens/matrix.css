@@ -4,7 +4,8 @@
 .mx-box { overflow-x: auto; }
 .mx .mx-t th[scope="col"] { min-width: 0; max-width: 180px; }
 .mx .mx-t th[scope="col"]:first-child { position: sticky; left: 0; z-index: 3; }
-.colname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+/* A site keeps its own name's case in the mono uppercase head ("mc-c", not "MC-C"). */
+.colname { text-transform: none; letter-spacing: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
 /* The plugin's name stays put while the sites scroll sideways. */
 .mx .mx-t th[scope="row"] { position: sticky; left: 0; z-index: 1; min-width: 200px; max-width: 240px; height: 64px; padding: 0 var(--sp-4) 0 var(--pad); background: var(--bg); text-align: left; font: inherit; text-transform: none; letter-spacing: 0; color: var(--text); white-space: normal; }
 .mx .mx-t td { height: 56px; padding: var(--sp-2) var(--sp-4); }
