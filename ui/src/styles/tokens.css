@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * WP Sites HQ design tokens: Joy's redesign (docs/design/redesign/spec.md), built on the
+ * WP Sites HQ design tokens: the app's design, built on the
  * Classic Monks design system. Light by default, dark on [data-theme="dark"] (the design's
  * "dark v2": neutral greys, green only for the main action, the current page, on states and dots).
  * The sidebar uses the same tokens as the content in both themes.
@@ -83,7 +83,7 @@
   --sp-7: 48px;
 
   /* Shape and rhythm. Rows are comfortable; [data-density="compact"] tightens them. */
-  /* You press pills, you type in boxes, things sit on cards, small squares scale (docs/ux/impeccable/audit.md, section 3). */
+  /* You press pills, you type in boxes, things sit on cards, small squares scale. */
   --radius-xs: 4px; /* text highlights, paper previews */
   --radius-sm: 6px; /* inline marks: tag, kbd, code, tooltip, calendar day */
   --radius: 10px; /* fields, and everything nested in a card */

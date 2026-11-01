@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Components of the redesign (docs/design/redesign). Values come from tokens.css. */
+/* The app's components. Values come from tokens.css. */
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; background: var(--ground); color: var(--text); }
 body { font: 400 var(--fs)/var(--lh) var(--sans); -webkit-font-smoothing: antialiased; }

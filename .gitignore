@@ -9,5 +9,11 @@ playwright-report/
 /crates/app/binaries
 /docs/site/book
 
-# Design source bundles (11-13 MB each), kept out of the repo
-/docs/design/redesign/source/
+*.tsbuildinfo
+# Local screenshots from ui/e2e/shots.spec.ts and compare.spec.ts
+/ui/screenshots/
+# Agent and design-tool working folders
+.claude/
+.impeccable/
+.playwright-mcp/
+.DS_Store

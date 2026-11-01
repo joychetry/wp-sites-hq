@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Overview: what needs you across the fleet (docs/design/redesign, board 01). The fleet sentence is
+// Overview: what needs you across the fleet. The fleet sentence is
 // the page head's line; here are the stat cards, the fixes, your sites, the latest changes and versions.
 import { ago, api, noTools, pluginName, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
