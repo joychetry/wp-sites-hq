@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The shell: sidebar, top bar, page head, Ctrl K palette, theme (docs/design/redesign).
+// The shell: sidebar, top bar, page head, Ctrl K palette, theme.
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";

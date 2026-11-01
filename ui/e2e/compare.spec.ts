@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The design beside the app, page by page: COMPARE=1 npx playwright test compare
-// Writes docs/ux/redesign/compare/<page>-<theme>.png: the design board on the left
-// (docs/design/redesign/screens/<theme>-<board>-full.png), the app on the right at the same width.
+// Writes ui/screenshots/compare/<page>-<theme>.png (not committed): the design board on the left
+// ($DESIGN_DIR/<theme>-<board>-full.png), the app on the right at the same width.
 import { test } from "@playwright/test";
 import fs from "node:fs";
 import { SCREENS, show } from "./screens";
 
-test.skip(!process.env.COMPARE, "set COMPARE=1 to write the side-by-side pages");
+const designDir = process.env.DESIGN_DIR ?? "";
+test.skip(!process.env.COMPARE || !designDir, "set COMPARE=1 and DESIGN_DIR=<folder of design boards> to write the side-by-side pages");
 
 const PAGES: [page: string, board: string, screens: string[]][] = [
   ["01-overview", "01-overview", ["overview"]],
@@ -41,7 +42,7 @@ const PAGES: [page: string, board: string, screens: string[]][] = [
 ];
 
 const only = process.env.COMPARE?.split(",").filter((p) => p !== "1") ?? [];
-const out = "../docs/ux/redesign/compare";
+const out = "screenshots/compare";
 const png = (file: string) => `data:image/png;base64,${fs.readFileSync(file).toString("base64")}`;
 
 for (const [name, board, screens] of PAGES) {
@@ -49,7 +50,7 @@ for (const [name, board, screens] of PAGES) {
     test(`${name}-${theme}`, async ({ page }) => {
       test.skip(only.length > 0 && !only.some((o) => name.startsWith(o)));
       test.skip(board === "component-sidebar" && theme === "dark", "the sidebar board is light only");
-      const design = `../docs/design/redesign/screens/${theme}-${board}-full.png`;
+      const design = `${designDir}/${theme}-${board}-full.png`;
       // Pages render as tall as their design board, so the whole page compares, not just the first 900px.
       const tall = /^\d|sidebar/.test(board) ? 1320 : 900;
       await page.setViewportSize({ width: 1440, height: tall });

@@ -1,5 +1,8 @@
 # Docs
 
-`install.md`, `dev-linux.md` and `site/` describe the app as it is now. The
-other folders (acceptance, design, pipeline, plans, release, review, ux) are
-records written when the app was called Monks Central, and keep that name.
+- `install.md`: installing the app on macOS, Windows and Linux.
+- `dev-linux.md`: building on Linux.
+- `ui-rules.md`: the bar every screen meets (type, spacing, contrast, accessibility).
+- `release/licences.md`: the licence audit of every dependency.
+- `site/`: the docs site (`mdbook serve docs/site`).
+- `images/`: screenshots used in the README.

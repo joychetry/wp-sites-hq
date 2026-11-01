@@ -8,12 +8,21 @@ agents for 3 to 300 WordPress sites, from one desktop app on macOS, Windows and
 Linux. No account, no cloud, no per-site price: your sites and their keys stay
 on your computer ([privacy](PRIVACY.md)).
 
-Status: 0.4.0 beta.
+Website: [wpsiteshq.com](https://wpsiteshq.com). Status: 0.4.0 beta.
+
+![The Overview: what needs you across every site](docs/images/overview.webp)
+
+<p>
+  <img src="docs/images/sites.webp" alt="Sites: every site with its status, WordPress version and connection" width="49%">
+  <img src="docs/images/updates.webp" alt="Updates: every waiting update across the sites, reviewed before it runs" width="49%">
+</p>
 
 ## Install
 
-Download the installer for your computer from the
-[releases page](https://github.com/joychetry/wp-sites-hq/releases/latest).
+Download the installer for your computer (macOS, Windows, Linux) from the
+[latest release](https://github.com/joychetry/wp-sites-hq/releases/latest).
+For the most tools on a site, also install the
+[WP Sites HQ plugin](https://github.com/joychetry/wp-sites-hq-plugin/releases/latest).
 The builds aren't code-signed yet, so macOS and Windows warn you the first time;
 [the install guide](docs/install.md) shows the one-time steps (macOS Open
 Anyway, Windows SmartScreen, Linux AppImage, .deb and .rpm). The app updates
@@ -88,7 +97,7 @@ access for that site (turned on in the app, under AI) and the site's own
 approval. Changes on many sites become a plan that runs only after you
 confirm it in the app; no tool can confirm it.
 
-Plans live in `docs/plans/`. Linux notes: `docs/dev-linux.md`.
+Linux notes: `docs/dev-linux.md`.
 
 ## Safety and monitoring
 

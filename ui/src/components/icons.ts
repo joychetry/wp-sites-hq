@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The design's line icons (docs/design/redesign: the cm-i set), drawn on a 24 grid in currentColor.
+// The design's line icons (the cm-i set), drawn on a 24 grid in currentColor.
 // [stroke width, or 0 for a filled shape; the SVG elements inside the 24x24 box]
 export const ICONS = {
   "arrow-left": [2, "<path d=\"M19 12H5M11 6l-6 6 6 6\"/>"],
