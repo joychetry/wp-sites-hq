@@ -5,7 +5,7 @@ name: Release
 # updater, from every build's .sig file (one writer, so no upload race). Nothing
 # is published until a person publishes the draft. Needs the repo secret
 # TAURI_SIGNING_PRIVATE_KEY (the updater key; its password, if any, in
-# TAURI_SIGNING_PRIVATE_KEY_PASSWORD). See docs/release/checklist.md.
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD).
 on:
   push:
     tags: ["v*"]

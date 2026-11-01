@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Screenshots of every screen into docs/ux/<SHOTS>: SHOTS=phase-2 npx playwright test shots
+// Screenshots of every screen into ui/screenshots/<SHOTS> (not committed): SHOTS=before npx playwright test shots
 import { test } from "@playwright/test";
 import { SCREENS, show } from "./screens";
 
 const dir = process.env.SHOTS ?? "";
-test.skip(!dir, "set SHOTS=<folder under docs/ux> to take screenshots");
+test.skip(!dir, "set SHOTS=<folder under ui/screenshots> to take screenshots");
 
 for (const s of SCREENS) {
   for (const theme of ["dark", "light"]) {
@@ -13,7 +13,7 @@ for (const s of SCREENS) {
       const file = `${s.name}-${theme}${density === "compact" ? "-compact" : ""}.png`;
       test(file, async ({ page }) => {
         await show(page, s, theme, density);
-        await page.screenshot({ path: `../docs/ux/${dir}/${file}`, animations: "disabled" });
+        await page.screenshot({ path: `screenshots/${dir}/${file}`, animations: "disabled" });
       });
     }
   }
@@ -27,7 +27,7 @@ test.describe("200% zoom", () => {
       test(`${name}-${theme}-zoom200.png`, async ({ page }) => {
         test.skip(dir.endsWith("before"));
         await show(page, SCREENS.find((s) => s.name === name)!, theme);
-        await page.screenshot({ path: `../docs/ux/${dir}/${name}-${theme}-zoom200.png`, fullPage: true, animations: "disabled" });
+        await page.screenshot({ path: `screenshots/${dir}/${name}-${theme}-zoom200.png`, fullPage: true, animations: "disabled" });
       });
     }
   }
@@ -41,7 +41,7 @@ test.describe("960px wide", () => {
       test(`${name}-${theme}-960.png`, async ({ page }) => {
         test.skip(dir.endsWith("before"));
         await show(page, SCREENS.find((s) => s.name === name)!, theme);
-        await page.screenshot({ path: `../docs/ux/${dir}/${name}-${theme}-960.png`, animations: "disabled" });
+        await page.screenshot({ path: `screenshots/${dir}/${name}-${theme}-960.png`, animations: "disabled" });
       });
     }
   }

@@ -1,4 +1,0 @@
-job 24 "Publish Autumn opening hours (phase 7) on 3 sites": 3 changes
-  Done  MC A, Publish “Autumn opening hours (phase 7)”  ? -> ?  (Published at https://mc-a.local/2026/10/28/autumn-opening-hours-phase-7/)
-  Done  Monks Central Test, Publish “Autumn opening hours (phase 7)”  ? -> ?  (Published at https://monks-central-test.local/autumn-opening-hours-phase-7/)
-  Done  mc-c, Publish “Autumn opening hours (phase 7)”  ? -> ?  (Published at https://mc-c.local/2026/10/28/autumn-opening-hours-phase-7/)

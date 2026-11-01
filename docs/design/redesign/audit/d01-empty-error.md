@@ -1,7 +1,0 @@
-| Page | Section | Design | App (before) | Fix | Status |
-|---|---|---|---|---|---|
-| D01 Overview empty | Layout | One centred card: brand disc, "Every WordPress site you look after, in one place" (Outfit), one line, primary Add a site with a plus disc, "or press A", stepper 1 Add a site, 2 Sign in once, 3 See what needs you | Three step cards with long text, Add a site in the first, Open the command palette in the third | The design's card and stepper; the privacy line and the palette (now a link) stay under the card | done |
-| D01 Overview empty | Brand disc | Logo image in a tint disc (broken image in the bundle) | none | Classic Monks mark in a 56px tint disc | done |
-| D01 Error | Card | Danger disc with the alert icon, "Couldn't load the fleet", "**Nothing was changed.** Check this computer's internet connection, then try again.", Try again (refresh icon), mono detail | Inbox picture, title, error text and advice in body text, Try again | Danger disc, bold "Nothing was changed.", Try again with the icon, the error in mono under it; the card is as tall as its content | done |
-| D01 Error | Wording | Internet connection advice | Restart advice | Kept the app's advice for each case (the core didn't start; the sites list didn't load) | kept: the app's two errors have different causes, so each says its own next step |
-| D01 Toast | Toast | Ink box, green tick, words, close | Ink toast with tick and close | See D09 | done |

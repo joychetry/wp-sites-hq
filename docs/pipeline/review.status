@@ -1,2 +1,0 @@
-PASS
-Review done: 1 High, 10 Medium, 19 Low found and fixed with tests (5 decided); every app and plugin check green except the known 300-site perf flake (also on the pre-review commit); every live phase plus media, editor and hostile-content flows pass.

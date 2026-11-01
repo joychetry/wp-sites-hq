@@ -1,2 +1,0 @@
-PASS
-Every audit row is done (232) or kept with a reason (93), 0 open. cargo fmt, clippy -D warnings, cargo test 144, tsc, vitest 291, Playwright 457 passed (1 flaky perf, passes alone), tauri build green. Favicons load live on mc-a, mc-b, mc-c, monks-central-test.

@@ -1,2 +1,0 @@
-PASS
-Media manager, details, replace and undo, bulk trash and picker built and tested (cargo 150, vitest 302, Playwright 476 + known perf flake); live on mc-a and monks-central-test verified with studio wp

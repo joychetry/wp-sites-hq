@@ -15,7 +15,7 @@ an issue.
 | `crates/cli` | The `wpshq` command and `wpshq mcp` |
 | `crates/app` | The desktop app (Tauri 2) |
 | `ui/` | The app's screens (React + TypeScript) |
-| `docs/` | Install guide, UX rules (`docs/ux/README.md`), plans, docs site (`docs/site`) |
+| `docs/` | Install guide, UI rules (`docs/ui-rules.md`), docs site (`docs/site`) |
 
 ## Set up
 
@@ -36,14 +36,23 @@ The UI also runs in a browser with a stand-in core (no Rust, no sites):
 
 ## Before you open a pull request
 
-Every check runs locally; please run them all.
+Run the fast checks for what you touched; they take seconds:
 
 ```sh
 cargo fmt --all --check
+cd ui && npx tsc --noEmit && npx vitest run src/<what you changed>   # types, the tests you touched
+bash -n scripts/*.sh && scripts/check-headers.sh   # script syntax; every source file says GPL-3.0-or-later
+```
+
+CI (`.github/workflows/ci.yml`) runs the full suites on every pull request:
+clippy and `cargo test` (Linux; macOS and Windows nightly), shellcheck and the script
+tests, the licence audit, the UI build, every Vitest test and the Playwright
+checks (axe, keyboard, zoom). To run them locally too:
+
+```sh
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cd ui && npm run build && npm test && npx playwright test   # axe, keyboard, zoom
-scripts/check-headers.sh        # every source file says GPL-3.0-or-later
+cd ui && npm run build && npm test && npx playwright test
 scripts/licence-audit.sh        # needs cargo-deny
 ```
 
@@ -60,7 +69,7 @@ The core keeps at least 80% test coverage
   (`scripts/check-headers.sh --fix` adds it).
 - Match the code around you: names, comment density, error handling.
 - UI copy is plain English: short sentences, every button says what it does,
-  no jargon and no em dashes. Read [docs/ux/README.md](docs/ux/README.md) before
+  no jargon and no em dashes. Read [docs/ui-rules.md](docs/ui-rules.md) before
   touching a screen: base text 15px, WCAG 2.2 AA in both themes, status never
   by colour alone, everything by keyboard, nothing moves under the pointer.
 - No new dependency for a few lines of code. Rust dependencies must pass
