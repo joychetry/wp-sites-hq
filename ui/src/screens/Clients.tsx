@@ -333,15 +333,18 @@ export function Clients({ sites }: { sites: Site[] }) {
                       <span className="tile sm neutral">
                         <Glyph name={/domain/i.test(k.label) ? "globe" : /host/i.test(k.label) ? "monitor" : "package"} />
                       </span>
+                      {/* The pill shares the title's line, so the facts under it get the card's full width. */}
                       <div>
-                        <b>{k.label}</b>
+                        <div className="renew-t">
+                          <b title={k.label}>{k.label}</b>
+                          <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>
+                            {days < 0 ? `Overdue ${-days} ${days === -1 ? "day" : "days"}` : days === 0 ? "Today" : `In ${days} ${days === 1 ? "day" : "days"}`}
+                          </Status>
+                        </div>
                         <span>
                           {whose(k)} · {day(k.renews_on) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency)}
                         </span>
                       </div>
-                      <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>
-                        {days < 0 ? `Overdue ${-days} ${days === -1 ? "day" : "days"}` : days === 0 ? "Today" : `In ${days} ${days === 1 ? "day" : "days"}`}
-                      </Status>
                     </li>
                   ))}
                 </ul>

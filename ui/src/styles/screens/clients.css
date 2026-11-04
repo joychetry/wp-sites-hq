@@ -35,3 +35,8 @@
 .cl-split { display: grid; grid-template-columns: minmax(0, 1fr) var(--inspector); gap: var(--page-gap); align-items: start; }
 /* Under 1360px the clients table takes the whole width and Renewing soon goes under it, so neither is squeezed. */
 @media (max-width: 1360px) { .cl-split { grid-template-columns: minmax(0, 1fr); } }
+/* Renewing soon: two columns (icon, words); the title and its pill share the first line. */
+.clients .fix:has(.renew-t) { grid-template-columns: auto minmax(0, 1fr); }
+.clients .renew-t { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-width: 0; }
+.clients .renew-t b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clients .renew-t .st { flex: none; }
