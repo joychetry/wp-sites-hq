@@ -31,7 +31,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 [data-theme="dark"] .btn.primary { background: var(--green); color: var(--on-green); border-color: var(--green); }
 [data-theme="dark"] .btn.primary:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); }
 .btn.primary .kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 35%, transparent); }
-.btn.soft { background: var(--sel); color: var(--brand-text); border-color: transparent; }
+.btn.soft { background: var(--tint); color: var(--brand-text); border-color: transparent; }
 .btn.soft:hover:not(:disabled) { background: var(--tint-2); border-color: transparent; }
 .btn.danger { color: var(--danger); }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
@@ -65,7 +65,7 @@ small { font-size: var(--fs-sm); }
 .st.danger { color: var(--danger); }
 .st.unknown, .st.info { color: var(--text-2); }
 /* The design's status pill: the same shape and word on a tinted ground */
-.st.pill { height: 24px; padding: 0 10px 0 8px; gap: 6px; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; background: var(--panel); }
+.st.pill { height: 24px; padding: 0 var(--sp-3) 0 var(--sp-2); gap: var(--sp-1); border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 600; background: var(--panel); }
 .st.pill.ok { background: var(--ok-bg); color: var(--ok); }
 .st.pill.warning { background: var(--warn-bg); }
 .st.pill.danger { background: var(--danger-bg); }
@@ -215,6 +215,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .t tbody tr { cursor: default; }
 .t tbody tr:hover td { background: var(--panel); }
 .t tbody tr.sel td { background: var(--sel); }
+/* A pill keeps its ground on a selected or open row, whose tint matches the ok pill's. */
+.t tr.sel .st.pill.ok, .t tr.focus .st.pill.ok { background: var(--bg); }
 .t tbody tr.sel:hover td { background: var(--tint-2); }
 .t tr.focus td { background: var(--sel); }
 .t tr.focus td:first-child { box-shadow: inset 3px 0 0 var(--green); }
@@ -263,10 +265,10 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 
 /* Overview (board 01): stat cards, then two columns of cards */
 .ov > .note { padding: 0 var(--sp-1); }
-.card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; overflow: hidden; }
-.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); min-height: 56px; padding: var(--sp-3) 20px; border-bottom: 1px solid var(--line); }
 .ov .note-row { display: flex; align-items: baseline; gap: var(--sp-2); }
 .ov .note-row .st { flex: none; align-self: center; }
+.card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; overflow: hidden; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); min-height: 56px; padding: var(--sp-3) 20px; border-bottom: 1px solid var(--line); }
 .card-head h2 { margin: 0 auto 0 0; display: flex; align-items: center; gap: var(--sp-2); font: 600 var(--fs-md)/1.4 var(--sans); }
 .card-head .dim { font-size: var(--fs-sm); }
 .card-head .segmented { margin: 0; }
@@ -369,6 +371,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 /* Side sheet over the page: the design's drawer and dialog */
 .scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 20; }
 .sheet { position: fixed; top: 12px; right: 12px; bottom: 12px; width: var(--sheet); max-width: calc(100vw - 24px); background: var(--bg); border-radius: var(--radius-xl); box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 21; overflow: hidden; }
+/* A short plan's sheet ends under its last row instead of leaving the page height empty. */
+.sheet.fit { bottom: auto; max-height: calc(100vh - 24px); }
 /* Head: title, a quiet line, an optional stepper, and Close at the top right */
 .sheet > header { display: flex; align-items: flex-start; gap: var(--sp-3); padding: 20px var(--sp-4) var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line); }
 .sheet > header > div { flex: 1; min-width: 0; display: grid; gap: var(--sp-1); }
@@ -377,8 +381,6 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .sheet-x { width: 32px; height: 32px; margin-top: -3px; color: var(--text-3); }
 .sheet-x .glyph { width: 16px; height: 16px; }
 .sheet .content { flex: 1; overflow: auto; padding: 20px var(--sp-5); }
-/* A short plan's sheet ends under its last row instead of leaving the page height empty. */
-.sheet.fit { bottom: auto; max-height: calc(100vh - 24px); }
 .sheet footer { padding: 14px var(--sp-5); border-top: 1px solid var(--line); background: var(--panel); display: flex; gap: var(--sp-2); align-items: center; justify-content: flex-end; }
 /* The foot's other buttons are quiet (the design's ghost buttons); only the main one is filled. */
 .sheet footer .btn:not(.primary):not(.danger) { background: transparent; border-color: transparent; color: var(--text-2); }
@@ -500,9 +502,9 @@ p.jobraw { margin: var(--sp-1) 0 0; font: 400 var(--fs-xs)/1.5 var(--mono); colo
 .pal-row small { color: var(--text-3); font-size: var(--fs-sm); }
 .pal-row .keys { margin-left: auto; display: flex; gap: var(--sp-1); }
 .pal-row[aria-selected="true"] { background: var(--sel); }
+.pal-row[aria-selected="true"] .tile.neutral { background: var(--tint-2); color: var(--brand-text); }
 .pal-row[aria-selected="true"] .pal-label { font-weight: 600; }
 .pal mark { background: var(--highlight); color: inherit; border-radius: var(--radius-xs); padding: 0 2px; }
-.pal-row[aria-selected="true"] .tile.neutral { background: var(--tint-2); color: var(--brand-text); }
 .pal-empty { padding: var(--sp-4) var(--sp-3); color: var(--text-3); }
 .pal .foot { display: flex; flex-wrap: wrap; gap: var(--sp-4); padding: 14px var(--sp-5); border-top: 1px solid var(--line); color: var(--text-3); font-size: var(--fs-sm); background: var(--panel); }
 .pal .foot .grow { margin-left: auto; }

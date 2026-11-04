@@ -642,8 +642,9 @@ export default function App() {
         <Install
           sites={scoped}
           inventory={inv}
+          start={typeof installing === "object" ? installing : undefined}
           onClose={() => setInstalling(false)}
-          onPlan={(t, r) => {
+          onPlan={(t, r, back) => {
             setInstalling(false);
             plan(t, r, "confirm", false, () => setInstalling(back), "Back to the sites");
           }}
@@ -664,4 +665,3 @@ export default function App() {
     </div>
   );
 }
-          start={typeof installing === "object" ? installing : undefined}

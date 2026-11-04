@@ -14,6 +14,5 @@
 .ctable .who { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctable .when { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
 /* --sel is the ok pill's own tint: on a selected row the pill keeps a ground. */
-.ctable tr.sel .st.pill { background: var(--panel); }
 .ctable .card-foot .count { margin-right: auto; color: var(--text-3); font-size: var(--fs-sm); }
 .ctable > .legend { border-bottom: 1px solid var(--line); }
