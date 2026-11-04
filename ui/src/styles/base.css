@@ -307,7 +307,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .mix-key li { display: inline-flex; align-items: center; gap: 6px; }
 .mix-key b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .mix-key.lines { display: grid; gap: var(--sp-1); }
-.mix-key.lines li { display: block; }
+.mix-key.lines li { display: block; text-wrap: balance; }
 .mix-key i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
 .k-up { --k: var(--green); }
 .k-down { --k: var(--danger); }
