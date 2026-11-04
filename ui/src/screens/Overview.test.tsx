@@ -34,7 +34,7 @@ test("needs attention offers the right next step", () => {
     site({ id: 4, name: "Fine" }),
   ];
   render(<Overview sites={sites} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={vi.fn()} />);
-  const panel = screen.getByRole("region", { name: "Needs attention" });
+  const panel = screen.getByRole("region", { name: "To do" });
   expect(panel).toHaveTextContent("Couldn't reach this site.");
   expect(panel).toHaveTextContent("Update it on the site for every feature");
   expect(panel).not.toHaveTextContent("Fine");
@@ -49,11 +49,11 @@ test("a connection with no tools says so and offers to sign in again; slow is on
     site({ id: 2, name: "Slow site", health_detail: "Slow: the home page took 4.2 s." }),
   ];
   render(<Overview sites={sites} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={onSignInAgain} onAdd={vi.fn()} />);
-  const panel = screen.getByRole("region", { name: "Needs attention" });
+  const panel = screen.getByRole("region", { name: "To do" });
   expect(panel).toHaveTextContent("Connected, but WP Sites HQ was given no permissions. Sign in again and allow what it may do.");
   screen.getByRole("button", { name: "Sign in again" }).click();
   expect(onSignInAgain).toHaveBeenCalledWith(1);
-  expect(panel).toHaveTextContent("Slow site. Slow: the home page took 4.2 s. It still works.");
+  expect(panel).toHaveTextContent("Slow site is slow: the home page took 4.2 s. It still works.");
 });
 
 test("a new user gets three steps, then next steps that can be hidden for good", () => {
@@ -62,9 +62,8 @@ test("a new user gets three steps, then next steps that can be hidden for good",
   const { rerender } = render(<Overview sites={[]} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={onAdd} onGo={onGo} />);
   const start = screen.getByRole("region", { name: "Getting started" });
   fireEvent.click(within(start).getByRole("button", { name: /^Add a site/ }));
-  fireEvent.click(within(start).getByRole("button", { name: "open the command palette" }));
+  expect(start).toHaveTextContent("Press Ctrl K to search or run a command from any page.");
   expect(onAdd).toHaveBeenCalled();
-  expect(onGo).toHaveBeenCalledWith("palette");
 
   localStorage.removeItem("mc-tips-hidden");
   rerender(<Overview sites={[site()]} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={onAdd} onGo={onGo} />);
@@ -88,11 +87,11 @@ test("updates, plans and vulnerabilities each get one fix, and the latest change
   const waiting = [{ kind: "Plugin", site: "Alpha", label: "Update Akismet", change: { site_id: 1, action: { do: "update_translations" } } }] as never;
   const reports = [{ site_id: 1, checked_at: 1, vulnerabilities: [{ kind: "plugin", id: "f", name: "Forms", installed: "2.3.1", title: "XSS", severity: null, fixed_in: "2.3.2", link: null }], abandoned: [], checksums: null, notes: [] }] as never;
   render(<Overview sites={[site({ name: "Alpha" })]} waiting={waiting} plans={[plan]} reports={reports} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={vi.fn()} onGo={onGo} />);
-  const fixes = screen.getByRole("region", { name: "Needs attention" });
+  const fixes = screen.getByRole("region", { name: "To do" });
   expect(fixes).toHaveTextContent("Forms 2.3.1 has a known vulnerability");
   expect(fixes).toHaveTextContent("On Alpha. Fixed in 2.3.2.");
-  fireEvent.click(within(fixes).getByRole("button", { name: "Review the plan" }));
-  fireEvent.click(within(fixes).getByRole("button", { name: "Review updates" }));
+  fireEvent.click(within(fixes).getByRole("button", { name: "Open AI" }));
+  fireEvent.click(within(fixes).getByRole("button", { name: "Open Updates" }));
   expect(onGo.mock.calls).toEqual([["AI"], ["Updates"]]);
   const feed = screen.getByRole("region", { name: "Latest changes" });
   expect(await within(feed).findByText("Update post")).toBeInTheDocument();

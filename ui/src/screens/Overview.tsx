@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Overview: what needs you across the fleet. The fleet sentence is
+// Overview: what needs you across your sites. The summary sentence is
 // the page head's line; here are the stat cards, the fixes, your sites, the latest changes and versions.
-import { ago, api, noTools, pluginName, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
+import { ago, api, noTools, siteStatus, slow, type Entry, type Job, type Monitor, type SecurityReport, type Site, type SiteInventory, useInventory } from "../api";
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { AddSiteButton, Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
@@ -15,29 +15,22 @@ import { dayTime } from "../format";
 
 export { attention, summary } from "../fleet";
 
-const UNKNOWN = "not known yet";
+const UNKNOWN = "Not known";
 
-/** One bar per value, then "5 sites on 7.1.3" for each. */
-function Dist({ label, values, versions }: { label: string; values: string[]; versions?: boolean }) {
+const KEYS = ["k-core", "k-plugin", "k-theme"];
+
+/** One bar per value with the same dot key as the stat cards: "5 sites on 7.1.3" for each. */
+function Dist({ label, values }: { label: string; values: string[] }) {
   const counts = new Map<string, number>();
   values.forEach((v) => counts.set(v, (counts.get(v) ?? 0) + 1));
   const rows = [...counts].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]));
   return (
     <>
       <h3>{label}</h3>
-      <div className="seg" aria-hidden="true">
-        {rows.map(([v, n]) => (
-          <i key={v} style={{ flex: n }} />
-        ))}
-      </div>
-      <p>
-        {rows.map(([v, n]) => (
-          <span key={v}>
-            <b>{n}</b> {n === 1 ? "site" : "sites"}{" "}
-            {v === UNKNOWN ? `where the version is ${UNKNOWN}` : <>on {versions ? <span className="mono">{v}</span> : v}</>}
-          </span>
-        ))}
-      </p>
+      <Mix
+        label={label}
+        parts={rows.map(([v, n], i) => [`${n === 1 ? "site" : "sites"} ${v === UNKNOWN ? "where the version is not known" : `${v.endsWith("mode") ? "in" : "on"} ${v}`}`, n, KEYS[i] ?? "k-off"])}
+      />
     </>
   );
 }
@@ -60,7 +53,7 @@ type Props = {
 const TIPS = "mc-tips-hidden";
 
 /** First run: what WP Sites HQ does, in three steps, with the first one as the main button. */
-function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
+function Welcome({ onAdd }: Pick<Props, "onAdd">) {
   return (
     <section className="welcome" aria-label="Getting started">
       <div className="card">
@@ -71,9 +64,6 @@ function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
           <h2>Every WordPress site you look after, in one place</h2>
           <p>WP Sites HQ checks your sites, keeps them updated and tells you what needs you. Add your first site to start.</p>
           <AddSiteButton onClick={onAdd} />
-          <p className="dim or">
-            or press <Kbd>A</Kbd>
-          </p>
           <ol className="steps-line" aria-label="Three steps">
             <li aria-current="step">
               <i>1</i>Add a site
@@ -88,19 +78,8 @@ function Welcome({ onAdd, onGo }: Pick<Props, "onAdd" | "onGo">) {
         </div>
       </div>
       <p className="dim">
-        Your sign-ins stay on this computer, encrypted. Nothing goes to a WP Sites HQ server. Press <Kbd>Ctrl K</Kbd> to find any page, site
-        or action
-        {onGo ? (
-          <>
-            {", or "}
-            <button type="button" className="link" onClick={() => onGo("palette")}>
-              open the command palette
-            </button>
-            .
-          </>
-        ) : (
-          "."
-        )}
+        Your sign-ins stay on this computer, encrypted. Nothing goes to a WP Sites HQ server. Press <Kbd>Ctrl K</Kbd> to search or run a
+        command from any page.
       </p>
     </section>
   );
@@ -115,7 +94,7 @@ function NextSteps({ sites, onGo, onAdd }: { sites: Site[]; onGo: NonNullable<Pr
     ["Review the updates waiting", false, "Open Updates", () => onGo("Updates")],
     ["Let an AI app plan work for you, with your confirmation", false, "Connect an AI app", () => onGo("AI")],
   ];
-  // Only while the fleet is new; after that the steps are in the way.
+  // Only while the list of sites is new; after that the steps are in the way.
   if (hidden || sites.length > 2 || steps.every(([, done]) => done)) return null;
   return (
     <section className="next-steps" aria-label="Next steps">
@@ -306,7 +285,9 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
   );
 }
 
-const pct = (n: number | null | undefined) => (n == null ? "not yet" : `${n >= 99.95 || n === 0 ? n.toFixed(0) : n.toFixed(2)}%`);
+const pct = (n: number | null | undefined) => (n == null ? "Not known" : `${n >= 99.95 || n === 0 ? n.toFixed(0) : n.toFixed(2)}%`);
+/** "840 ms", and seconds from one second up ("4.2 s"), as the slow note says it. */
+const speed = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
 const SHOW_SITES = 8;
 
 export function Overview({ sites, waiting = [], plans = [], reports = [], monitors = [], onOpen, onCheck, onSignInAgain, onAdd, onGo }: Props) {
@@ -327,7 +308,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
   if (sites.length === 0)
     return (
       <Page>
-        <Welcome onAdd={onAdd} onGo={onGo} />
+        <Welcome onAdd={onAdd} />
       </Page>
     );
   return (
@@ -344,16 +325,16 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
               ["not checked", tone("unknown"), "k-off"],
             ]}
           />
-          <p className="stat-note">{plural(cm, "site")} through a plugin</p>
+          <p className="stat-note">{plural(cm, "site")} on the WP Sites HQ plugin</p>
         </Stat>
         <Stat label="Updates waiting" icon="download" n={waiting.length} unit={waiting.length ? `on ${plural(updateSites, "site")}` : "nothing waiting"}>
           <Mix
             label="Updates waiting"
             parts={[
-              ["core", kinds("WordPress"), "k-core"],
+              ["WordPress", kinds("WordPress"), "k-core"],
               [kinds("Plugin") === 1 ? "plugin" : "plugins", kinds("Plugin"), "k-plugin"],
               [kinds("Theme") === 1 ? "theme" : "themes", kinds("Theme"), "k-theme"],
-              ["translations", kinds("Translations"), "k-off"],
+              [kinds("Translations") === 1 ? "translation" : "translations", kinds("Translations"), "k-off"],
             ]}
           />
         </Stat>
@@ -377,12 +358,11 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
       </div>
       <div className="ov-split">
         <div className="ov-col">
-          <section className="card" aria-label="Needs attention">
+          <section className="card" aria-label="To do">
             <div className="card-head">
               <h2>
-                Needs attention {fixes > 0 && <span className="tag warning">{fixes}</span>}
+                To do {fixes > 0 && <span className="tag warning">{fixes}</span>}
               </h2>
-              <span className="dim">Fix each one from here</span>
             </div>
             {fixes === 0 && <p className="quiet">Nothing needs you right now.</p>}
             <ul className="fixes">
@@ -399,6 +379,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                       again ? (
                         <Button small onClick={() => onSignInAgain(s.id)}>
                           Sign in again
+                          <Glyph name="login" />
                         </Button>
                       ) : s.health === "down" ? (
                         <Button small onClick={() => onCheck(s.id)}>
@@ -439,7 +420,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                   title={live.length === 1 ? `An AI agent wants to: ${live[0].title}` : `${live.length} AI agent plans are waiting`}
                   action={
                     <Button small onClick={() => onGo("AI")}>
-                      Review the plan{live.length === 1 ? "" : "s"}
+                      Open AI
                     </Button>
                   }
                 >
@@ -452,8 +433,8 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                   tone=""
                   title={`${plural(waiting.length, "update is", "updates are")} waiting on ${plural(updateSites, "site")}`}
                   action={
-                    <Button small kind="soft" onClick={() => onGo("Updates")}>
-                      Review updates
+                    <Button small onClick={() => onGo("Updates")}>
+                      Open Updates
                     </Button>
                   }
                 >
@@ -462,8 +443,12 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
               )}
             </ul>
             {slows.map((s) => (
-              <p key={s.id} className="quiet">
-                <Status tone="info">Note</Status> {s.name}. {s.health_detail} It still works.
+              <p key={s.id} className="quiet note-row">
+                <Status tone="info">Note</Status>
+                <span>
+                  {s.name} is {s.health_detail.charAt(0).toLowerCase()}
+                  {s.health_detail.slice(1)} It still works.
+                </span>
               </p>
             ))}
           </section>
@@ -477,17 +462,22 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                 </button>
               )}
             </div>
-            <table className="t">
-              <caption className="sr-only">
-                {sites.length > SHOW_SITES ? `${SHOW_SITES} of your ${sites.length} sites, the ones that need you first` : "Your sites"}
-              </caption>
+            <table className="t" aria-label={sites.length > SHOW_SITES ? `${SHOW_SITES} of your ${sites.length} sites, the ones that need you first` : "Your sites"}>
+              <colgroup>
+                <col className="c-fill" />
+                {/* "Sign-in expired" as a pill is 128px: wider than c-status. */}
+                <col className="c-text" />
+                <col className="c-version" />
+                <col className="c-num" />
+                <col className="c-num" />
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col">Site</th>
                   <th scope="col">Status</th>
                   <th scope="col">WordPress</th>
-                  <th scope="col" className="r">
-                    Uptime, 30 days
+                  <th scope="col" className="r" data-tip="Uptime over the last 30 days">
+                    Uptime<span className="sr-only">, 30 days</span>
                   </th>
                   <th scope="col" className="r">
                     Response
@@ -501,7 +491,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                   return (
                     <tr key={s.id} className={st.tone === "danger" || st.tone === "warning" ? "warn" : ""}>
                       <td>
-                        <span className="site">
+                        <span className="site" data-tip={`${s.name}, ${s.url.replace(/^https?:\/\//, "")}`}>
                           <SiteTile site={s} />
                           <span>
                             <b>{s.name}</b>
@@ -515,9 +505,9 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                           {st.label}
                         </span>
                       </td>
-                      <td className="m">{s.wp_version ?? <span className="dim">not known</span>}</td>
-                      <td className="m r">{pct(m?.uptime_month)}</td>
-                      <td className="m r">{m?.up ? `${m.ms} ms` : <span className="dim">none</span>}</td>
+                      <td className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "Not known"}</td>
+                      <td className={m?.uptime_month == null ? "dim r" : "m r"}>{pct(m?.uptime_month)}</td>
+                      <td className={m?.up ? "m r" : "dim r"}>{m?.up ? speed(m.ms) : "No answer"}</td>
                     </tr>
                   );
                 })}
@@ -533,12 +523,9 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
               <span className="dim">How many of your sites run each version</span>
             </div>
             <div className="dist">
-              <Dist label="WordPress" versions values={sites.map((s) => s.wp_version ?? UNKNOWN)} />
-              <Dist label="PHP" versions values={sites.map((s) => s.php_version?.split(".").slice(0, 2).join(".") ?? UNKNOWN)} />
-              <Dist
-                label="Connection"
-                values={sites.map((s) => (s.mode === "basic" ? "Basic mode" : noTools(s) ? `${pluginName(s)}, no tools` : s.capabilities.degraded ? `${pluginName(s)}, older` : pluginName(s)))}
-              />
+              <Dist label="WordPress" values={sites.map((s) => s.wp_version ?? UNKNOWN)} />
+              <Dist label="PHP" values={sites.map((s) => s.php_version?.split(".").slice(0, 2).join(".") ?? UNKNOWN)} />
+              <Dist label="Connection" values={sites.map((s) => (s.mode === "basic" ? "Basic mode" : "the WP Sites HQ plugin"))} />
             </div>
           </section>
         </div>

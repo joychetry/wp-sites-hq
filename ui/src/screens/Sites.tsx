@@ -2,13 +2,14 @@
 // Sites: a dense keyboard table, a selection bar and an inspector for the
 // focused site.
 import { dismiss, Empty, toast } from "../components/feedback";
-import { Combobox, SearchInput, TagInput } from "../components/controls";
+import { Combobox, SearchInput, Select, TagInput } from "../components/controls";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ago, api, connectionLabel, connectorInfo, hasTool, pluginName, NO_TOOLS, noTools, siteStatus, slow, useInventory, type PluginZip, type Site } from "../api";
+import { ago, api, connectionLabel, connectorInfo, hasTool, NO_TOOLS, noTools, siteStatus, slow, useInventory, type PluginZip, type Site } from "../api";
 import { AddSiteButton, Button, Glyph, HeadActions, Icon, Kbd, Logo, Status } from "../components/ui";
 import { SiteTile } from "../components/SiteTile";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import { updatesOf } from "./Updates";
+import { ANY_PLUGIN } from "./AddSite";
 import "../styles/screens/sites.css";
 
 type Props = {
@@ -19,9 +20,11 @@ type Props = {
   onAdd: () => void;
   onSignInAgain: (site: Site) => void;
   onUpdates?: () => void;
+  /** The tab to open on: the top bar's attention chip opens Needs attention. */
+  show?: StatusFilter;
 };
 
-type StatusFilter = "any" | "attention" | "danger" | "ok";
+export type StatusFilter = "any" | "attention" | "danger" | "ok";
 
 // The design's tabs, plus Down on its own (a filter the app had before the redesign).
 const FILTERS: [StatusFilter, string][] = [
@@ -50,10 +53,10 @@ function busyKeys(e: KeyboardEvent) {
   );
 }
 
-export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain, onUpdates }: Props) {
+export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain, onUpdates, show = "any" }: Props) {
   const { inventory } = useInventory();
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("any");
+  const [status, setStatus] = useState<StatusFilter>(show);
   const [mode, setMode] = useState<ModeFilter>("any");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [groupFor, setGroupFor] = useState("");
@@ -111,8 +114,9 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   const check = async (ids: number[]) => {
     // A toast, not a line above the table, so the rows stay where they are.
     const t = toast(`Checking ${ids.length === 1 ? "the site" : `${ids.length} sites`}…`, { tone: "info" });
-    await Promise.all(ids.map((id) => api.check(id).catch(() => {})));
+    const failed = (await Promise.all(ids.map((id) => api.check(id).then(() => 0, () => 1)))).reduce<number>((a, b) => a + b, 0);
     dismiss(t);
+    if (failed) toast(`${failed === ids.length ? "The check" : `${failed} of ${ids.length} checks`} didn't run. Try again.`, { tone: "danger" });
   };
 
   useEffect(() => {
@@ -136,13 +140,6 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
 
   const host = (s: Site) => s.url.replace(/^https?:\/\//, "");
   const count = (f: StatusFilter) => sites.filter((s) => matches(s, f)).length;
-  const modes: [ModeFilter, string][] = [
-    ["any", "Connection and group"],
-    ["classic_monks", "Through a plugin"],
-    ["basic", "Basic mode"],
-  ];
-  const modeAt = modes.findIndex(([m]) => m === mode);
-
   const side = (
     <SidePanel className="site-pane" label={focus ? `${focus.name} details` : "Site details"} empty="Pick a site to see its details, notes and actions.">
       {focus && (
@@ -166,10 +163,14 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
 
   return (
     <>
-      <HeadActions>
-        <AddSiteButton onClick={onAdd} />
-      </HeadActions>
-      <Page className="sites" side={side}>
+      {/* With no sites the empty state holds the one Add a site button, and there is nothing to filter or inspect. */}
+      {sites.length > 0 && (
+        <HeadActions>
+          <AddSiteButton onClick={onAdd} />
+        </HeadActions>
+      )}
+      <Page className="sites" side={sites.length > 0 ? side : undefined}>
+        {sites.length > 0 && (
         <Toolbar>
           <div className="segmented inline" role="group" aria-label="Show sites">
             {FILTERS.map(([f, label]) => (
@@ -193,22 +194,13 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               } else if (e.key === "Enter" || e.key === "ArrowDown") table.current?.focus();
             }}
           />
-          <button
-            type="button"
-            className={`chip ${mode !== "any" ? "on" : ""}`}
-            onClick={() => setMode(modes[(modeAt + 1) % modes.length][0])}
-            aria-label={`${mode === "any" ? "Connection and group" : `Connection ${modes[modeAt][1]}`}, change`}
-          >
-            {mode === "any" ? (
-              "Connection and group"
-            ) : (
-              <>
-                Connection <b>{modes[modeAt][1]}</b>
-              </>
-            )}
-            <Glyph name="sliders" />
-          </button>
+          <Select className="conn-filter" aria-label="Connection" value={mode} onChange={(e) => setMode(e.target.value as ModeFilter)}>
+            <option value="any">Any connection</option>
+            <option value="classic_monks">WP Sites HQ plugin</option>
+            <option value="basic">Basic mode</option>
+          </Select>
         </Toolbar>
+        )}
         <section className="card" aria-label="All sites">
           {rows.length === 0 ? (
             sites.length === 0 ? (
@@ -216,7 +208,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 title="No sites yet"
                 action={<AddSiteButton onClick={onAdd} />}
               >
-                <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+                <p>{ANY_PLUGIN} Or use Basic mode on any WordPress 7.1 site.</p>
               </Empty>
             ) : (
               <Empty
@@ -246,6 +238,15 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               aria-describedby="sites-legend"
               aria-activedescendant={focus ? `site-${focus.id}` : undefined}
             >
+              <colgroup>
+                <col className="c-tick" />
+                <col className="c-fill" />
+                {/* "Sign-in expired" as a pill is 128px: wider than c-status. */}
+                <col className="c-text" />
+                <col className="c-version" />
+                <col className="c-text" />
+                <col className="c-act" />
+              </colgroup>
               <thead>
                 <tr>
                   <th className="tick">
@@ -254,7 +255,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       className="box"
                       role="checkbox"
                       aria-checked={rows.every((r) => selected.has(r.id)) ? true : rows.some((r) => selected.has(r.id)) ? "mixed" : false}
-                      aria-label="Tick every site shown"
+                      aria-label="Select all shown"
                       onClick={() =>
                         setSelected((sel) => {
                           const all = rows.every((r) => sel.has(r.id));
@@ -268,11 +269,11 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       }
                     />
                   </th>
-                  <th className="fill">Site</th>
-                  <th className="c-status">Status</th>
-                  <th className="c-wp">WordPress</th>
-                  <th className="c-conn">Connection</th>
-                  <th className="acts-col">
+                  <th>Site</th>
+                  <th>Status</th>
+                  <th>WordPress</th>
+                  <th className="conn-col">Connection</th>
+                  <th className="act acts-col">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -292,7 +293,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       aria-selected={on}
                       onClick={() => setFocusId(s.id)}
                     >
-                      <td>
+                      <td className="tick">
                         <button
                           type="button"
                           className="box"
@@ -318,12 +319,11 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                         <span className={`st pill ${st.tone}`}>
                           <Icon tone={st.tone} />
                           {st.label}
-                          {slow(s) && ", slow"}
                         </span>
                       </td>
                       <td>
                         <span className="row nowrap">
-                          <span className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "not known"}</span>
+                          <span className={s.wp_version ? "m" : "dim"}>{s.wp_version ?? "Not known"}</span>
                           {core && (
                             <span className="tag ok" data-tip={`WordPress ${core} is waiting`}>
                               <Glyph name="arrow-up" />
@@ -333,14 +333,15 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                           )}
                         </span>
                       </td>
-                      <td>
+                      <td className="conn-col">
                         <span className="conn">
                           {s.mode === "basic" ? <Glyph name="link" /> : <Logo />}
-                          {s.mode === "basic" ? "Basic" : pluginName(s)}
+                          {s.mode === "basic" ? "Basic mode" : "WP Sites HQ plugin"}
                         </span>
                       </td>
-                      <td className="acts-col">
-                        {/* Mouse shortcuts; the keyboard reaches the same actions in the panel (R, and its buttons). */}
+                      <td className="act acts-col">
+                        {/* Mouse shortcuts; the keyboard reaches the same actions in the panel (R, and its buttons).
+                            Each action keeps its own icon, and Open the site always sits in the right-hand slot. */}
                         <span className="rowacts">
                           {again ? (
                             <button type="button" className="icon-btn" tabIndex={-1} aria-label={`Sign in to ${s.name} again`} data-tip="Sign in again" onClick={() => onSignInAgain(s)}>
@@ -351,31 +352,29 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                               <Glyph name="refresh" />
                             </button>
                           ) : (
-                            <>
-                              {hasTool(s, "create-login-link") && (
-                                <button
-                                  type="button"
-                                  className="icon-btn"
-                                  tabIndex={-1}
-                                  aria-label={`Log in to the ${s.name} dashboard`}
-                                  data-tip="Log in to the dashboard"
-                                  onClick={() => api.login(s.id).catch((e) => toast(String(e), { tone: "danger" }))}
-                                >
-                                  <Glyph name="login" />
-                                </button>
-                              )}
+                            hasTool(s, "create-login-link") && (
                               <button
                                 type="button"
                                 className="icon-btn"
                                 tabIndex={-1}
-                                aria-label={`Open ${s.name} in the browser`}
-                                data-tip="Open the site"
-                                onClick={() => api.open(s.id).catch((e) => toast(String(e), { tone: "danger" }))}
+                                aria-label={`Log in to the ${s.name} dashboard`}
+                                data-tip="Log in to the dashboard"
+                                onClick={() => api.login(s.id).catch((e) => toast(String(e), { tone: "danger" }))}
                               >
-                                <Glyph name="external" />
+                                <Glyph name="dashboard" />
                               </button>
-                            </>
+                            )
                           )}
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            tabIndex={-1}
+                            aria-label={`Open ${s.name} in the browser`}
+                            data-tip="Open the site"
+                            onClick={() => api.open(s.id).catch((e) => toast(String(e), { tone: "danger" }))}
+                          >
+                            <Glyph name="external" />
+                          </button>
                         </span>
                       </td>
                     </tr>
@@ -384,26 +383,28 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
               </tbody>
             </table>
           )}
+          {sites.length > 0 && (
           <p className="card-foot" id="sites-legend">
             <span className="dim">
               Showing {rows.length} of {sites.length} {sites.length === 1 ? "site" : "sites"}.
             </span>
             <span className="keys dim">
-              <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> tick · <Kbd>/</Kbd> filter · <Kbd>R</Kbd> check the open site ·{" "}
+              <Kbd>J</Kbd> <Kbd>K</Kbd> move · <Kbd>X</Kbd> select · <Kbd>/</Kbd> filter · <Kbd>R</Kbd> check again ·{" "}
               <Kbd>A</Kbd> add a site
             </span>
           </p>
-          {/* Under the table and stuck to the bottom: ticking a row never moves the rows. */}
+          )}
+          {/* Under the table and stuck to the bottom: selecting a row never moves the rows. */}
           {picked.length > 0 && (
             <div className="selbar" role="region" aria-label="Selection">
-              <b>
-                {picked.length} {picked.length === 1 ? "site" : "sites"} ticked
-              </b>
+              <b>{picked.length} selected</b>
+              <Button small className="ghost" aria-label="Clear selection" onClick={() => setSelected(new Set())} keys="Esc">
+                Clear
+              </Button>
               <label className="row">
                 <span>Move to group</span>
                 <Combobox
                   className="input sm"
-                  style={{ width: 170 }}
                   suggestions={groups}
                   placeholder="Choose a group"
                   aria-label="Group for the selected sites"
@@ -418,11 +419,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                 Apply
               </Button>
               <Button small className="ghost" keys="R" onClick={() => check(picked.map((s) => s.id))}>
-                Check them now
+                Check {picked.length === 1 ? "1 site" : `${picked.length} sites`}
                 <Glyph name="refresh" />
-              </Button>
-              <Button small className="ghost" onClick={() => setSelected(new Set())} keys="Esc">
-                Clear selection
               </Button>
             </div>
           )}
@@ -443,14 +441,17 @@ type InspectorProps = {
   onRemoved: (message: string, signedOut: boolean) => void;
 };
 
-/** "3 plugin updates", "1 core update and 2 plugin updates". */
+/** "3 plugin updates", "1 WordPress update and 2 plugin updates". */
 function waitingWords(updates: { kind: string }[]) {
   const by = new Map<string, number>();
   for (const u of updates) by.set(u.kind, (by.get(u.kind) ?? 0) + 1);
-  const name: Record<string, string> = { WordPress: "core", Plugin: "plugin", Theme: "theme", Translations: "translation" };
+  const name: Record<string, string> = { WordPress: "WordPress", Plugin: "plugin", Theme: "theme", Translations: "translation" };
   const parts = [...by].map(([k, n]) => `${n} ${name[k] ?? k.toLowerCase()} ${n === 1 ? "update" : "updates"}`);
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
 }
+
+/** Module slugs as people say them. */
+const MODULE: Record<string, string> = { ai: "AI", woocommerce: "WooCommerce", seo: "SEO", acf: "ACF" };
 
 /** Basic mode: get the WP Sites HQ plugin onto the site, then connect through it. */
 function GetPlugin({ site: s }: { site: Site }) {
@@ -494,14 +495,21 @@ function GetPlugin({ site: s }: { site: Site }) {
   return (
     <>
       {saved ? (
-        <p className="callout ok" role="status">
+        <div className="callout ok" role="status">
           <Glyph name="check" />
-          <span>
-            The WP Sites HQ plugin {saved.version} is saved as <span className="m">{saved.path}</span>, checked against the SHA-256
-            published with it. On the site's Upload Plugin page, choose that file, press Install Now, then Activate Plugin.
-            WordPress lets apps install only from WordPress.org, so this one step is yours.
-          </span>
-        </p>
+          <div>
+            <p>
+              Saved as <span className="m path" title={saved.path}>{saved.path.split(/[\\/]/).pop()}</span> (version {saved.version},
+              checked). WordPress lets apps install plugins only from WordPress.org, so these steps are yours:
+            </p>
+            <ol>
+              <li>Open the upload page.</li>
+              <li>Choose the file and press Install Now.</li>
+              <li>Press Activate Plugin.</li>
+              <li>Come back here and press Connect through the plugin.</li>
+            </ol>
+          </div>
+        </div>
       ) : null}
       <div className="btn-grid one">
         {saved ? (
@@ -511,7 +519,7 @@ function GetPlugin({ site: s }: { site: Site }) {
           </Button>
         ) : (
           <Button small disabled={busy !== null} onClick={download}>
-            {busy === "download" ? "Getting the WP Sites HQ plugin…" : "Install the WP Sites HQ plugin for me"}
+            {busy === "download" ? "Downloading…" : "Download the WP Sites HQ plugin"}
             <Glyph name="download" />
           </Button>
         )}
@@ -562,20 +570,13 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         <SiteTile site={s} size="lg" />
         <div>
           <h2>{s.name}</h2>
-          <small>
-            {s.url.replace(/^https?:\/\//, "")}
-            {s.client && (
-              <>
-                {" · "}
-                <span className="client">{s.client}</span>
-              </>
-            )}
-          </small>
+          <small title={s.url.replace(/^https?:\/\//, "")}>{s.url.replace(/^https?:\/\//, "")}</small>
+          {s.client && <small className="client">{s.client}</small>}
+          <span className={`st pill ${st.tone}`}>
+            <Icon tone={st.tone} />
+            {st.label}
+          </span>
         </div>
-        <span className={`st pill ${st.tone}`}>
-          <Icon tone={st.tone} />
-          {st.label}
-        </span>
       </header>
       <section>
         {again ? (
@@ -590,7 +591,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
             <Button kind="primary" className="disc block" onClick={() => run(() => api.login(s.id))}>
               Log in to the dashboard
               <span className="btn-disc">
-                <Glyph name="arrow" />
+                <Glyph name="dashboard" />
               </span>
             </Button>
           )
@@ -601,27 +602,27 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
             <Glyph name="external" />
           </Button>
           <Button small onClick={onCheck} keys="R">
-            Check now
+            Check again
             <Glyph name="refresh" />
           </Button>
         </div>
         <dl className="dl">
           <div>
             <dt>WordPress</dt>
-            <dd className={s.wp_version ? "m" : undefined}>{s.wp_version ?? "not known"}</dd>
+            <dd className={s.wp_version ? "m" : undefined}>{s.wp_version ?? "Not known"}</dd>
           </div>
           <div>
             <dt>PHP</dt>
-            <dd className={s.php_version ? "m" : undefined}>{s.php_version ?? "not known"}</dd>
+            <dd className={s.php_version ? "m" : undefined}>{s.php_version ?? "Not known"}</dd>
           </div>
           <div>
             <dt>Plugin</dt>
-            <dd>{plugin?.running ?? "not used"}</dd>
+            <dd>{plugin?.running ?? "None"}</dd>
           </div>
           {!!plugin?.spare.length && (
             <div>
-              <dt>Also on the site</dt>
-              <dd>{plugin.spare.join(", ")}, not running</dd>
+              <dt>{plugin.spare.length === 1 ? "Other plugin" : "Other plugins"}</dt>
+              <dd>{plugin.spare.join(", ")} (turned off)</dd>
             </div>
           )}
           <div>
@@ -635,14 +636,14 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
             </div>
           )}
           <div>
-            <dt>Last checked</dt>
+            <dt>Checked</dt>
             <dd>{ago(s.checked_at)}</dd>
           </div>
           <div>
-            <dt>Detail</dt>
+            <dt>Last check</dt>
             <dd>
               {s.sign_in_again ? (
-                "The saved sign-in can't be used. Sign in again."
+                "Sign-in expired. Sign in again to work on this site."
               ) : slow(s) ? (
                 <Status tone="info">{s.health_detail} It still works.</Status>
               ) : (
@@ -670,7 +671,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
           <>
             <p className="dim-2">
               Content, users, comments and the plugin list through WordPress itself. Updates, one-click login and the rest
-              need one plugin on the site: the WP Sites HQ plugin, Classic Monks or Classic Monks Pro. Any of them works.
+              need a plugin on the site. {ANY_PLUGIN}
             </p>
             <GetPlugin site={s} />
           </>
@@ -682,16 +683,16 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         ) : (
           <dl className="dl">
             <div>
-              <dt>Tools</dt>
+              <dt>What it can do</dt>
               <dd>
-                {abilities} {abilities === 1 ? "tool" : "tools"} this app may use
+                {abilities} {abilities === 1 ? "action" : "actions"}
               </dd>
             </div>
             <div>
               <dt>Access</dt>
               <dd>
                 {caps.operator === true
-                  ? "Full, ticked on the site"
+                  ? "Full"
                   : caps.operator === false
                     ? "Limited: changes may wait for approval on the site"
                     : "Not known"}
@@ -699,16 +700,16 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
             </div>
             <div>
               <dt>Approvals</dt>
-              <dd>{caps.approvals === true ? "The site can ask before a change" : "Not on this site"}</dd>
+              <dd>{caps.approvals === true ? "Changes can wait for your OK on the site" : "Not on this site"}</dd>
             </div>
             {modules && (
               <div>
-                <dt>Modules on</dt>
+                <dt>Modules</dt>
                 <dd>
                   {Object.entries(modules)
                     .filter(([, on]) => on)
-                    .map(([m]) => m)
-                    .join(", ") || "none"}
+                    .map(([m]) => MODULE[m] ?? m.charAt(0).toUpperCase() + m.slice(1))
+                    .join(", ") || "None on"}
                 </dd>
               </div>
             )}
@@ -717,7 +718,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         {caps.degraded === true && !noTools(s) && (
           <p className="callout warning">
             <Glyph name="alert" />
-            <span>This Classic Monks is older. Update it on the site for every feature.</span>
+            <span>The Classic Monks plugin on this site is an older version. Update it to use every feature.</span>
           </p>
         )}
       </section>
@@ -799,13 +800,16 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
       </section>
       <section>
         {confirm ? (
-          <div role="alertdialog" aria-label={`Remove ${s.name}`}>
-            <p style={{ margin: "0 0 10px" }}>
+          <div className="confirm" role="alertdialog" aria-label={`Remove ${s.name}`}>
+            <p>
               {s.mode === "classic_monks"
                 ? "WP Sites HQ signs out on the site, then deletes its saved sign-in here. Group, tags and notes go too."
                 : "WP Sites HQ deletes the saved application password here. Group, tags and notes go too."}
             </p>
             <div className="row">
+              <Button small onClick={() => setConfirm(false)}>
+                Keep it
+              </Button>
               <Button
                 small
                 kind="danger"
@@ -822,9 +826,6 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
                 }}
               >
                 Remove {s.name}
-              </Button>
-              <Button small onClick={() => setConfirm(false)}>
-                Keep it
               </Button>
             </div>
           </div>

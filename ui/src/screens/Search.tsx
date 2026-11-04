@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Search everything: sites, plugins, themes and clients at once from what Monks
-// Central already knows, then posts and pages on every site (plan Phase 7).
+// Search everything: sites, plugins, themes and clients at once from what WP Sites HQ
+// already knows, then posts and pages on every site (plan Phase 7).
 import "../styles/screens/search.css";
 import { useEffect, useState } from "react";
 import { api, contentBlocked, type Client, type ContentFound, type PostType, type Site, type SiteInventory } from "../api";
@@ -51,7 +51,7 @@ export function localHits(query: string, sites: Site[], inventory: Map<number, S
   return out;
 }
 
-const GO: Record<Local["kind"], string> = { Sites: "Open on Sites", Plugins: "Show on Plugins", Themes: "Show on Themes", Clients: "Open Clients" };
+const GO: Record<Local["kind"], string> = { Sites: "Open in Sites", Plugins: "Open in Plugins", Themes: "Open in Themes", Clients: "Open in Clients" };
 const ONE: Record<Local["kind"], string> = { Sites: "Site", Plugins: "Plugin", Themes: "Theme", Clients: "Client" };
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
@@ -146,7 +146,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
           setQuery(typed.trim());
         }}
       >
-        <SearchInput aria-label="Search everything" placeholder="A site, plugin, theme, client, post or page" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <SearchInput aria-label="Search everything" placeholder="Sites, plugins, themes, clients, posts and pages" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <Button kind="primary" className="disc" type="submit" disabled={typed.trim().length < 2}>
           Search
           <span className="btn-disc">
@@ -171,9 +171,11 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                 </button>
               ))}
             </div>
-            <span className="end dim" id="search-legend">
-              {plural(count("All"), "result")} on {plural(on, "site")}
-            </span>
+            {count("All") > 0 && (
+              <span className="end dim" id="search-legend">
+                {plural(count("All"), "result")} on {plural(on, "site")}
+              </span>
+            )}
           </Toolbar>
           <section className="card" aria-label={`Results for ${query}`}>
             <ul className="fixes" aria-label="Results" aria-describedby="search-legend">
@@ -190,17 +192,22 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                         {h.kind === "Pages" ? "Page" : "Post"} · {name(h.site_id)} · {STATUS_LABEL[h.status] ?? h.status}
                       </span>
                     </div>
-                    {site(h.site_id) && !contentBlocked(site(h.site_id)!) && (
-                      <Button small className="ghost" aria-label={`Edit ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => edit(site(h.site_id)!, h.post_type, h.id)}>
-                        Edit
-                        <Glyph name="edit" />
-                      </Button>
-                    )}
-                    {h.link.startsWith("https://") && (
-                      <Button small aria-label={`View on ${name(h.site_id)}: ${h.title || "(no title)"}`} onClick={() => api.openLink(h.link, h.site_id).catch(() => {})}>
+                    {/* Edit, the in-app action, is the outlined one and always last, so it lines up row to row. */}
+                    {h.link.startsWith("https://") ? (
+                      <Button small className="ghost" aria-label={`View on ${name(h.site_id)}: ${h.title || "(no title)"}`} onClick={() => api.openLink(h.link, h.site_id).catch((e) => toast(String(e), { tone: "danger" }))}>
                         View on {name(h.site_id)}
                         <Glyph name="external" />
                       </Button>
+                    ) : (
+                      <span />
+                    )}
+                    {site(h.site_id) && !contentBlocked(site(h.site_id)!) ? (
+                      <Button small aria-label={`Edit ${h.title || "it"} on ${name(h.site_id)}`} onClick={() => edit(site(h.site_id)!, h.post_type, h.id)}>
+                        Edit
+                        <Glyph name="edit" />
+                      </Button>
+                    ) : (
+                      <span />
                     )}
                   </li>
                 ))}
@@ -241,7 +248,7 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
                 <span>{error}</span>
               </p>
             )}
-            {found && found.hits.length === 0 && <Empty small title={local.length ? "No posts or pages match on any site" : "Nothing matches on any site: no sites, plugins, themes, clients, posts or pages"} />}
+            {found && found.hits.length === 0 && <Empty small title={local.length ? "No posts or pages match on any site" : `No results for “${query}”.`} />}
           </section>
           {found && found.failed.length > 0 && (
             <p className="callout warning">
@@ -252,9 +259,9 @@ export function Search({ sites, inventory, query: first, onGo }: Props) {
         </>
       )}
       <p className="callout">
-        <Glyph name="command" />
+        <Glyph name="search" />
         <span>
-          <b>Faster from anywhere:</b> press <Kbd>Ctrl K</Kbd> to search sites, pages and actions without leaving the page you're on.
+          <b>Faster from anywhere:</b> press <Kbd>Ctrl K</Kbd> to search or run a command without leaving the page you're on.
         </span>
       </p>
     </Page>

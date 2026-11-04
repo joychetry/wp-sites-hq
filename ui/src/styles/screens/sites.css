@@ -1,18 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Sites (board 02): tabs, search and a filter above a card with the sites; the site's panel beside it. */
-.sites .t td { height: calc(var(--row) + 14px); }
-.sites .t th.tick { width: 44px; }
-/* Fixed columns as wide as their longest content ("Healthy, slow", "7.1.3 to 7.1.4", "Classic Monks Pro"), so
-   nothing wraps and filtering never moves them; the site column takes the rest and cuts with an ellipsis. */
-.sites .t th.c-status { width: 8rem; }
-.sites .t th.c-wp { width: 7rem; }
-.sites .t th.c-conn { width: 8.75rem; }
-.sites .t .acts-col { width: 1%; white-space: nowrap; }
+/* Widths come from the shared column spec (colgroup), so filtering never moves them; the site column cuts with an ellipsis.
+   The tick column is 44px with the row's left padding, so the box takes the rest of it. */
+.sites .t .tick { padding-right: 0; }
 .sites .t td.acts-col { padding-left: 0; }
-/* Ticked rows keep the ground; only the open row is tinted with the green edge (as in the design). */
+/* Selected rows keep the ground; only the open row is tinted with the green edge (as in the design). */
 .sites .t tr.sel:not(.focus):not(:hover) td { background: var(--bg); }
 .sites .t tr.warn:not(.focus):not(:hover) td { background: var(--warn-paper); }
 .sites .t tr.focus td { background: var(--sel); }
+/* On the tinted open row the pill keeps an edge, so it still reads as a pill. */
+.sites .t tr.focus .st.pill { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 35%, transparent); }
 .sites .site > span { min-width: 0; }
 /* The site column has the room the others leave; no fixed cap on the name and address. */
 .sites .t .cut { max-width: none; }
@@ -20,19 +17,25 @@
 .sites .t .tag .glyph { width: 11px; height: 11px; }
 .sites .card-foot { justify-content: space-between; flex-wrap: wrap; margin: 0; font-size: var(--fs-sm); }
 .sites .card-foot .keys .kbd { margin-right: 2px; }
-.sites .selbar { gap: 10px 14px; }
+.sites .selbar { gap: var(--sp-2) var(--sp-3); }
+.sites .selbar .input { width: 9rem; }
 .sites .selbar label { gap: var(--sp-2); font-size: var(--fs-sm); }
 .sites .selbar .btn.ghost { border-color: transparent; }
-/* The row's own buttons go first when the table gets narrow; the panel has the same actions. */
-@media (max-width: 1300px) {
-  .sites .acts-col { display: none; }
+/* Beside the panel on a 1280 window the connection column gives way (the panel names it); the row's buttons stay. */
+@media (min-width: 1101px) and (max-width: 1300px) {
+  .sites .t col:nth-child(5), .sites .t .conn-col { display: none; }
 }
 
 .site-pane section { display: grid; gap: var(--sp-3); align-content: start; }
 .site-pane section > h3 { margin: 0; }
-.site-pane .ihead .st.pill { flex: none; }
-/* The client is a name, not an address: body face, kept whole. */
-.site-pane .ihead small .client { font-family: var(--sans); white-space: nowrap; }
+/* Name, address and client each on one line; the pill sits under them, never squeezing the name. */
+.site-pane .ihead .st.pill { justify-self: start; margin-top: var(--sp-1); }
+/* The client is a name, not an address: body face. */
+.site-pane .ihead small.client { font-family: var(--sans); }
+.site-pane .callout ol { margin: var(--sp-2) 0 0; padding-left: 1.25em; display: grid; gap: var(--sp-1); }
+.site-pane .callout p { margin: 0; }
+.site-pane .callout .path { white-space: nowrap; }
+.site-pane .confirm p { margin: 0 0 var(--sp-2); }
 .site-pane .dl { margin-top: var(--sp-1); }
 .site-pane .dim-2 { margin: 0; color: var(--text-2); }
 .site-pane .field-label { margin: var(--sp-1) 0 -6px; }

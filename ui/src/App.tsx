@@ -9,7 +9,7 @@ import { AddSiteButton, Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } fro
 import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { Page } from "./components/page";
-import { AddSite } from "./screens/AddSite";
+import { AddSite, ANY_PLUGIN } from "./screens/AddSite";
 import { Install, type InstallStart } from "./screens/Install";
 import { attention, leaveGuard, planTitle, summary, toFix, updatesOf } from "./fleet";
 import { preload, prefetchIdle, SCREENS as S } from "./preload";
@@ -19,7 +19,7 @@ export type { CoreStatus };
 
 const GROUPS = [
   ["", ["Overview"]],
-  ["Fleet", ["Sites", "Updates", "Plugins", "Themes"]],
+  ["Your sites", ["Sites", "Updates", "Plugins", "Themes"]],
   ["Content", ["Content", "Media", "Users", "Comments"]],
   ["Care", ["Classic Monks", "Monitoring", "Security"]],
   ["Business", ["Clients", "Store", "Reports"]],
@@ -54,16 +54,16 @@ const LABEL: Partial<Record<Section, string>> = { Search: "Search everything" };
 
 // The line under each page title.
 const ABOUT: Record<Section, string> = {
-  Overview: "What needs you across the fleet, right now.",
+  Overview: "What needs you across your sites, right now.",
   Sites: "See every site, open it, and keep its notes.",
-  Updates: "Every pending update across the fleet. Pick what to run, review exactly what changes, then run it.",
+  Updates: "Every pending update across your sites. Pick what to run, review exactly what changes, then run it.",
   Plugins: "Every plugin on every site in one grid. Open a cell to manage that plugin on that site.",
   Themes: "Every theme on every site in one grid. Open a cell to manage that theme on that site.",
-  Content: "Posts, pages and every custom post type, site by site.",
+  Content: "Posts, pages and anything else your sites publish, one site at a time.",
   Media: "Upload, describe and replace the files in a site's media library.",
-  Users: "Every user on every site. Add people, change roles, and remove them.",
+  Users: "Every user on every site. Add people, change roles and remove them.",
   Comments: "Moderate every site's comments in one queue.",
-  "Classic Monks": "Switch module features on each site, change their settings, and undo what changed.",
+  "Classic Monks": "Turn Classic Monks features on or off, site by site, change their settings and undo what changed.",
   Monitoring: "Uptime and speed of every home page.",
   Security: "Known vulnerabilities across your sites, fixed in one place.",
   Clients: "Who owns which sites, and what each one costs you and earns you.",
@@ -71,7 +71,7 @@ const ABOUT: Record<Section, string> = {
   Reports: "A monthly client report, as a PDF and a web page, with your branding.",
   AI: "Confirm what AI agents plan to change, and decide which sites they can reach. Nothing runs without your OK.",
   Settings: "How the app looks, how your reports are branded, where numbers come from, and your data.",
-  Search: "Find any post, page or product across every site.",
+  Search: "Find sites, plugins, themes, clients, posts and pages across every site.",
 };
 const CHECK_EVERY = 15 * 60;
 
@@ -104,6 +104,11 @@ export default function App() {
   // Errors float as toasts, so the screen under them doesn't move.
   const setJobError = (text: string) => toast(text, { tone: "danger" });
   const [scopeChoice, setScope] = useState("");
+  // The top bar's attention chip opens Sites on its Needs attention tab; any other way in opens All.
+  const [sitesShow, setSitesShow] = useState<"any" | "attention">("any");
+  useEffect(() => {
+    if (section !== "Sites") setSitesShow("any");
+  }, [section]);
   const [focusId, setFocusId] = useState<number | null>(null);
   const [searchFor, setSearchFor] = useState("");
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
@@ -191,19 +196,24 @@ export default function App() {
   const nextAt = `${nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."} Automatic checks run only while the app or its tray agent is open.`;
   const needs = scoped.filter((s) => attention(s)).length;
   const { lead, rest } = summary(scoped);
-  const sentence = rest ? `${lead} ${rest}` : lead;
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
   const inScope = new Set(scoped.map((s) => s.id));
   const vulnerable = (reports ?? []).filter((r) => inScope.has(r.site_id)).reduce((n, r) => n + r.vulnerabilities.length, 0);
   const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
+  // The summary looks at uptime; open problems join it, so it never calls a site healthy next to a known vulnerability.
+  const open = [
+    vulnerable && `${vulnerable === 1 ? "One plugin needs" : `${vulnerable} plugins need`} a fix.`,
+    approvals + livePlans && `${approvals + livePlans === 1 ? "One decision waits" : `${approvals + livePlans} decisions wait`} on you.`,
+  ].filter(Boolean);
+  const sentence = [open.length ? lead.replace(/ healthy\.$/, " up.") : lead, rest, ...open].filter(Boolean).join(" ");
   const ofKind = (k: string) => new Set(waiting.filter((w) => w.kind === k).map((w) => w.name)).size;
   // The design's sidebar counts: what waits on each page, amber where something is wrong.
   const counts: Partial<Record<Section, { n: number; say: string; alert?: boolean }>> = Object.fromEntries(
     (
       [
-        ["Overview", toFix(needs, vulnerable, livePlans, waiting.length), "to fix", true],
+        ["Overview", toFix(needs, vulnerable, livePlans, waiting.length), "to do", true],
         ["Sites", scoped.length, scoped.length === 1 ? "site" : "sites"],
         ["Updates", waiting.length, "waiting"],
         ["Plugins", ofKind("Plugin"), "with an update waiting"],
@@ -235,7 +245,10 @@ export default function App() {
   };
   const checkAll = async () => {
     setChecking(true);
-    await api.check().catch(() => {});
+    await api.check().then(
+      () => toast(`Checked ${all.length === 1 ? "your site" : `all ${all.length} sites`}.`),
+      (e) => setJobError(`Check all sites: ${e}`),
+    );
     setChecking(false);
   };
   const login = (s: Site) => api.login(s.id).catch((e) => setJobError(`Log in to ${s.name}: ${e}`));
@@ -267,8 +280,24 @@ export default function App() {
       run: () => (waiting.length ? plan(planTitle(waiting), waiting) : setSection("Updates")),
     },
     { id: "install", group: "Actions", label: "Install a plugin", icon: "plug", run: () => setInstalling(true) },
-    { id: "scan", group: "Actions", label: "Scan all sites for security problems", icon: "shield", run: () => api.scanSecurity().catch(() => {}) },
-    { id: "read", group: "Actions", label: "Read every site's plugins and themes again", icon: "refresh", run: () => api.refreshInventory().catch(() => {}) },
+    {
+      id: "scan",
+      group: "Actions",
+      label: "Scan all sites for security problems",
+      icon: "shield",
+      run: () =>
+        api.scanSecurity().then(
+          () => toast("Scanned your sites. Security shows what it found.", { action: { label: "Open Security", run: () => setSection("Security") } }),
+          (e) => setJobError(`Security scan: ${e}`),
+        ),
+    },
+    {
+      id: "read",
+      group: "Actions",
+      label: "Refresh plugin and theme lists",
+      icon: "package",
+      run: () => api.refreshInventory().then(() => toast("Refreshed the plugin and theme lists."), (e) => setJobError(`Refresh plugin and theme lists: ${e}`)),
+    },
     {
       id: "theme",
       group: "Actions",
@@ -303,7 +332,7 @@ export default function App() {
     })),
     ...all
       .filter((s) => hasTool(s, "create-login-link") && !s.sign_in_again)
-      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, icon: "login" as const, run: () => login(s) })),
+      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, icon: "dashboard" as const, run: () => login(s) })),
     ...all
       .filter((s) => s.sign_in_again)
       .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, icon: "login" as const, run: () => signInAgain(s.id) })),
@@ -327,7 +356,7 @@ export default function App() {
           Try again
           <Glyph name="refresh" />
         </Button>
-        <p className="mono dim detail">{coreError}</p>
+        <p className="dim detail">Details: {coreError}</p>
       </div>
     );
   } else if (error) {
@@ -344,7 +373,7 @@ export default function App() {
           Try again
           <Glyph name="refresh" />
         </Button>
-        <p className="mono dim detail">{error}</p>
+        <p className="dim detail">Details: {error}</p>
       </div>
     );
   } else if (!sites) {
@@ -360,7 +389,7 @@ export default function App() {
             title="This page fills in once you add a site"
             action={<AddSiteButton onClick={() => setAdding({})} />}
           >
-            <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+            <p>{ANY_PLUGIN} Or use Basic mode on any WordPress 7.1 site.</p>
           </Empty>
         </section>
       </Page>
@@ -383,6 +412,8 @@ export default function App() {
   } else if (section === "Sites") {
     body = (
       <S.Sites
+        key={sitesShow}
+        show={sitesShow}
         sites={scoped}
         groups={groups}
         focusId={focusId}
@@ -513,7 +544,7 @@ export default function App() {
                 <option value="">All sites ({all.length})</option>
                 {groups.map((g) => (
                   <option key={g} value={g}>
-                    Group: {g}
+                    {g} ({all.filter((s) => s.group === g).length})
                   </option>
                 ))}
               </Select>
@@ -542,18 +573,25 @@ export default function App() {
                 </span>
               )}
               {needs > 0 && (
-                <button type="button" className="pill warning" onClick={() => setSection("Sites")}>
+                <button
+                  type="button"
+                  className="pill warning"
+                  onClick={() => {
+                    setSitesShow("attention");
+                    setSection("Sites");
+                  }}
+                >
                   {needs} {needs === 1 ? "site needs" : "sites need"} attention
-                  <span className="sr-only">, open Sites</span>
+                  <span className="sr-only">, show on Sites</span>
                   <Glyph name="alert" />
                 </button>
               )}
             </p>
           )}
           <div className="top-end">
-            <button type="button" className="kbar" onClick={() => setPalette(true)}>
+            <button type="button" className="kbar" aria-label="Search or run a command" onClick={() => setPalette(true)}>
               <Glyph name="search" />
-              <span>Search or run…</span>
+              <span>Search or run a command</span>
               <Kbd>Ctrl K</Kbd>
             </button>
             {live && sites.length > 0 && (

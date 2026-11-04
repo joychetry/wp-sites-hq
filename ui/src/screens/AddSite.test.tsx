@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { AddSite, addressProblem } from "./AddSite";
 import { site } from "../test-fixtures";
@@ -30,10 +30,12 @@ test("Classic Monks waits for the browser and can be cancelled", async () => {
   );
   const onClose = vi.fn();
   render(<AddSite onClose={onClose} onDone={vi.fn()} />);
-  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("This is my WP Sites HQ app (operator)");
+  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("This is my WP Sites HQ app");
   fireEvent.change(screen.getByRole("textbox", { name: "Site address" }), { target: { value: "https://mc-a.local" } });
   fireEvent.click(screen.getByRole("button", { name: /Open the sign-in page/ }));
   expect(await screen.findByText("Waiting for you in the browser")).toHaveAttribute("role", "status");
+  // Nothing to press twice while the browser is open.
+  expect(screen.queryByRole("button", { name: /Open the sign-in page/ })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Cancel the sign-in" }));
   expect(mockInvoke).toHaveBeenCalledWith("sign_in_cancel");
   expect(onClose).toHaveBeenCalled();
@@ -48,12 +50,17 @@ test("a refusal is shown in plain words", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Update WordPress to 7.1 or newer first.");
 });
 
-test("the Classic Monks steps say to tick the tool groups", () => {
+test("the plugin path is three numbered steps", () => {
   render(<AddSite onClose={vi.fn()} onDone={vi.fn()} />);
-  expect(screen.getByRole("dialog", { name: "Add a site" })).toHaveTextContent("Tick the tool groups WP Sites HQ may use");
+  const steps = within(screen.getByRole("dialog", { name: "Add a site" })).getAllByRole("listitem").filter((li) => li.closest(".callout"));
+  expect(steps.map((li) => li.textContent)).toEqual([
+    "Your browser opens the site. Sign in as an administrator.",
+    "Choose what WP Sites HQ may do, and check This is my WP Sites HQ app.",
+    "Press Connect. The site appears here on its own.",
+  ]);
 });
 
-test("the address is checked when you leave the box, in words, and blocks adding", () => {
+test("the address is checked when you leave the box or press the button, in words, and blocks adding", () => {
   render(<AddSite onClose={vi.fn()} onDone={vi.fn()} />);
   const box = screen.getByRole("textbox", { name: "Site address" });
   fireEvent.change(box, { target: { value: "my site" } });
@@ -61,7 +68,11 @@ test("the address is checked when you leave the box, in words, and blocks adding
   fireEvent.blur(box);
   expect(box).toHaveAttribute("aria-invalid", "true");
   expect(box).toHaveAccessibleDescription("An address has no spaces. Write it like https://example.com.");
-  expect(screen.getByRole("button", { name: /Open the sign-in page/ })).toBeDisabled();
+  // The button stays pressable, so pressing it says what is wrong instead of doing nothing.
+  fireEvent.change(box, { target: { value: "not a site" } });
+  fireEvent.click(screen.getByRole("button", { name: /Open the sign-in page/ }));
+  expect(screen.getByText(/has no spaces/)).toBeInTheDocument();
+  expect(mockInvoke).not.toHaveBeenCalledWith("site_add_oauth", expect.anything());
   fireEvent.change(box, { target: { value: "example.com" } });
   expect(box).not.toHaveAttribute("aria-invalid");
   expect(screen.getByRole("button", { name: /Open the sign-in page/ })).toBeEnabled();
@@ -70,12 +81,15 @@ test("the address is checked when you leave the box, in words, and blocks adding
   expect(addressProblem("http://localhost:8881")).toBeNull();
 });
 
-test("signing in again names the site and keeps Later as the way out", () => {
+test("signing in again names the state, opens the browser at once and can be cancelled", async () => {
+  mockInvoke.mockImplementation((cmd: string) => (cmd === "site_sign_in_again" ? new Promise(() => {}) : Promise.resolve(null)));
   const onClose = vi.fn();
-  render(<AddSite again={site({ name: "MC C", url: "https://mc-c.test", sign_in_again: true })} onClose={onClose} onDone={vi.fn()} />);
-  const dialog = screen.getByRole("dialog", { name: "MC C: the connection expired" });
+  render(<AddSite again={site({ id: 3, name: "MC C", url: "https://mc-c.test", sign_in_again: true })} onClose={onClose} onDone={vi.fn()} />);
+  const dialog = screen.getByRole("dialog", { name: "MC C: sign-in expired" });
   expect(dialog).toHaveTextContent("mc-c.test · Classic Monks");
   expect(dialog).toHaveTextContent("Until you sign in, MC C is left out of updates");
-  fireEvent.click(screen.getByRole("button", { name: "Later" }));
+  expect(mockInvoke).toHaveBeenCalledWith("site_sign_in_again", expect.objectContaining({ id: 3 }));
+  expect(await screen.findByText("Waiting for you in the browser")).toHaveAttribute("role", "status");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel the sign-in" }));
   expect(onClose).toHaveBeenCalled();
 });

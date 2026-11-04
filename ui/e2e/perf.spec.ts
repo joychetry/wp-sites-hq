@@ -57,7 +57,7 @@ test("Updates, Plugins, Monitoring, Overview and the palette with 300 sites stay
   await watch(page);
   await page.keyboard.press("Control+k");
   await page.keyboard.type("Corner Bakery 2");
-  await expect(page.getByRole("dialog", { name: "Command palette" }).getByRole("option").first()).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Search or run a command" }).getByRole("option").first()).toBeVisible();
   await page.keyboard.press("Escape");
   expect(await longest(page)).toBeLessThan(ACT);
 });

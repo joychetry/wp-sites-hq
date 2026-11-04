@@ -38,7 +38,7 @@ export function Palette({ commands, onClose, onSearch }: { commands: Command[]; 
     const found = commands.filter((c) => !term || c.label.toLowerCase().includes(term) || c.hint?.toLowerCase().includes(term));
     const q = query.trim();
     if (!onSearch || q.length < 2) return found;
-    return [...found, { id: "search-all", group: "Search", label: `Search everything for “${q}”`, hint: "posts, pages, plugins, clients", icon: "search" as const, run: () => onSearch(q) }];
+    return [...found, { id: "search-all", group: "Search", label: `Search everything for “${q}”`, hint: "sites, plugins, themes, clients, posts and pages", icon: "search" as const, run: () => onSearch(q) }];
   }, [commands, term, query, onSearch]);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -55,14 +55,14 @@ export function Palette({ commands, onClose, onSearch }: { commands: Command[]; 
 
   return (
     <div className="palette" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="pal" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div className="pal" role="dialog" aria-modal="true" aria-label="Search or run a command">
         <div className="pal-search">
           <Glyph name="search" />
           <input
             ref={input}
             value={query}
-            placeholder="Type a command, a page or a site"
-            aria-label="Command"
+            placeholder="Search or run a command"
+            aria-label="Search or run a command"
             role="combobox"
             aria-expanded="true"
             aria-controls="pal-list"
@@ -109,7 +109,7 @@ export function Palette({ commands, onClose, onSearch }: { commands: Command[]; 
                 {c.site ? (
                   <SiteTile site={c.site} size="sm" />
                 ) : (
-                  <span className={`tile sm ${i === active ? "" : "neutral"}`} aria-hidden="true">
+                  <span className="tile sm neutral" aria-hidden="true">
                     <Glyph name={c.icon ?? "arrow"} />
                   </span>
                 )}

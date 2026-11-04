@@ -18,9 +18,12 @@
 .choice > span:last-child { grid-column: 2; font-size: var(--fs-sm); line-height: 1.4; color: var(--text-2); }
 .addsite .chips { gap: var(--sp-2); }
 .pchip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--panel); font-size: var(--fs-sm); white-space: nowrap; }
-.pchip.outline { background: var(--bg); border: 1px solid var(--line); }
 .pchip .glyph { width: 14px; height: 14px; }
 .lockline { display: flex; align-items: center; gap: 6px; color: var(--text-3); }
 .lockline .glyph { width: 14px; height: 14px; }
 .addsite .golink { justify-self: start; border: 0; background: none; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }
 .addsite .golink .glyph { width: 14px; height: 14px; }
+.addsite .callout ol { margin: 0; padding-left: 1.25em; display: grid; gap: var(--sp-1); }
+.addsite .callout p { margin: var(--sp-2) 0 0; color: var(--text-3); }
+/* One width for every step: a sheet rule elsewhere widens dialogs that hold a .lockline (step 2 has one). */
+.sheet.dialog:has(> .content > .addsite) { width: 480px; }

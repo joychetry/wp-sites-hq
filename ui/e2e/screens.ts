@@ -53,7 +53,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Sites")(page);
       await page.getByRole("gridcell", { name: /^mc-c / }).click();
-      await page.getByRole("complementary").getByRole("button", { name: "Install the WP Sites HQ plugin for me" }).click();
+      await page.getByRole("complementary").getByRole("button", { name: "Download the WP Sites HQ plugin" }).click();
       await page.getByRole("complementary").getByText(/is saved as/).waitFor();
     },
   },
@@ -569,7 +569,7 @@ export const SCREENS: Screen[] = [
     name: "search",
     open: async (page) => {
       await page.keyboard.press("Control+k");
-      await page.getByRole("combobox", { name: "Command" }).fill("menu");
+      await page.getByRole("combobox", { name: "Search or run a command" }).fill("menu");
       await page.getByRole("option", { name: /^Search everything for/ }).click();
       await page.getByRole("list", { name: "Results" }).getByRole("button", { name: /^View / }).first().waitFor();
     },

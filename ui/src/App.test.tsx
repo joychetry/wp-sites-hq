@@ -102,10 +102,12 @@ test("the top bar says when sites were checked and how many need attention, as p
   render(<App />);
   expect(await screen.findByText("Checked 2 min ago")).toHaveAttribute("aria-hidden", "true");
   expect(screen.getByText(/^Last checked: /)).toHaveClass("sr-only");
-  const go = screen.getByRole("button", { name: "1 site needs attention, open Sites" });
+  const go = screen.getByRole("button", { name: "1 site needs attention, show on Sites" });
   expect(go).toHaveTextContent(/^1 site needs attention/);
   fireEvent.click(go);
   expect(screen.getByRole("heading", { level: 1, name: /^Sites/ })).toBeInTheDocument();
+  // It opens on the Needs attention tab, so only the sites it counted show.
+  expect(await screen.findByRole("button", { name: /^Needs attention/ })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("shows the core error in plain words", async () => {
@@ -120,11 +122,11 @@ test("Ctrl K opens the palette and runs a command", async () => {
   render(<App />);
   await screen.findByText("Both sites are healthy.");
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });
-  const input = screen.getByRole("combobox", { name: "Command" });
+  const input = screen.getByRole("combobox", { name: "Search or run a command" });
   fireEvent.change(input, { target: { value: "hq test" } });
   expect(screen.getByRole("option", { name: /WP Sites HQ Test/ })).toHaveAttribute("aria-selected", "true");
   fireEvent.keyDown(input, { key: "Enter" });
-  expect(screen.queryByRole("dialog", { name: "Command palette" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Search or run a command" })).not.toBeInTheDocument();
   expect(screen.getByRole("complementary", { name: "WP Sites HQ Test details" })).toBeInTheDocument();
 });
 
@@ -164,7 +166,7 @@ test("the palette logs in to a site's dashboard where the connection can", async
   render(<App />);
   await screen.findByText("Both sites are healthy.");
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });
-  const input = screen.getByRole("combobox", { name: "Command" });
+  const input = screen.getByRole("combobox", { name: "Search or run a command" });
   fireEvent.change(input, { target: { value: "dashboard" } });
   expect(screen.queryByRole("option", { name: /Plain's dashboard/ })).toBeNull();
   fireEvent.click(screen.getByRole("option", { name: /Log in to MC A's dashboard/ }));

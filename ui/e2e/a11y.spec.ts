@@ -63,7 +63,7 @@ test("the Sites table works from the keyboard", async ({ page }) => {
   await page.keyboard.press("j");
   await expect(page.getByRole("complementary", { name: "Corner Bakery details" })).toBeVisible();
   await page.keyboard.press("x");
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
   await page.keyboard.press("Escape");
   await page.keyboard.press("/");
   await expect(page.getByRole("searchbox", { name: "Filter sites" })).toBeFocused();
@@ -119,7 +119,7 @@ test("the palette gives focus back when it closes", async ({ page }) => {
   const search = page.getByRole("button", { name: /^Search or run/ });
   await search.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("combobox", { name: "Command" })).toBeFocused();
+  await expect(page.getByRole("combobox", { name: "Search or run a command" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(search).toBeFocused();
 });
@@ -160,7 +160,7 @@ test("leaving with unsaved changes asks, from Back and from the rail", async ({ 
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Our winter menu");
   // The rail's Sites to show filter could hide the entry's site: it asks too, and Keep editing keeps both.
   const scope = page.getByRole("combobox", { name: "Sites to show" });
-  await choose(scope, { name: "Group: Personal" });
+  await choose(scope, { name: "Personal (1)" });
   await expect(ask).toBeVisible();
   await ask.getByRole("button", { name: "Keep editing" }).click();
   await expect(scope).toContainText("All sites");
@@ -322,7 +322,7 @@ test("the palette searches everything, and a result opens its site from the keyb
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("table", { name: "Posts and pages found" }).or(page.getByText("No posts or pages match on any site"))).toBeVisible();
-  const open = page.getByRole("button", { name: "Open on Sites: Corner Bakery" });
+  const open = page.getByRole("button", { name: "Open in Sites: Corner Bakery" });
   for (let i = 0; i < 40 && !(await open.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
   await expect(open).toBeFocused();
   await page.keyboard.press("Enter");
@@ -469,11 +469,11 @@ test("results never move the rows: ticking sites, a check, a feature and its Und
   const portfolio = page.getByRole("checkbox", { name: "Select Portfolio" });
   const before = await y(portfolio);
   await page.getByRole("checkbox", { name: "Select MC A" }).click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
   expect(await y(portfolio)).toBe(before);
   await portfolio.click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 sites ticked");
-  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /Check them now/ }).click();
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 selected");
+  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /^Check \d+ sites?/ }).click();
   expect(await y(portfolio)).toBe(before);
 
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");

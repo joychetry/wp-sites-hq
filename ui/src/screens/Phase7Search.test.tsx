@@ -47,7 +47,7 @@ test("search shows local results and posts from each site, and names sites it co
   fireEvent.click(within(row).getByRole("button", { name: "View on Alpha: Beta launch" }));
   expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://alpha.test/beta", site: 1 });
   expect(screen.getByText("Not searched: Beta (No answer.)")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Open on Sites: Beta" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open in Sites: Beta" }));
   expect(go).toHaveBeenCalledWith("Sites", 2);
   expect(mockInvoke).toHaveBeenCalledWith("content_search", { query: "beta" });
 });
@@ -61,13 +61,13 @@ test("a new search runs on submit, and a short one asks for more", async () => {
   expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
   fireEvent.change(box, { target: { value: "zz" } });
   fireEvent.submit(box.closest("form")!);
-  expect(await screen.findByText("Nothing matches on any site: no sites, plugins, themes, clients, posts or pages")).toBeInTheDocument();
+  expect(await screen.findByText(/^No results for/)).toBeInTheDocument();
 });
 
 test("the palette offers to search everything once two letters are typed", () => {
   const onSearch = vi.fn();
   render(<Palette commands={[]} onClose={() => {}} onSearch={onSearch} />);
-  const box = screen.getByRole("combobox", { name: "Command" });
+  const box = screen.getByRole("combobox", { name: "Search or run a command" });
   fireEvent.change(box, { target: { value: "m" } });
   expect(screen.queryByRole("option")).toBeNull();
   fireEvent.change(box, { target: { value: "menu " } });

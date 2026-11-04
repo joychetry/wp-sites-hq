@@ -770,12 +770,12 @@ export const slow = (s: Site) => s.health === "ok" && s.health_detail.startsWith
 
 /** What the status column says about a site. */
 export function siteStatus(s: Site): { tone: Tone; label: string } {
-  if (s.sign_in_again) return { tone: "warning", label: "Sign in again" };
+  if (s.sign_in_again) return { tone: "warning", label: "Sign-in expired" };
   if (s.health === "down") return { tone: "danger", label: "Down" };
   if (noTools(s)) return { tone: "warning", label: "No tools yet" };
   switch (s.health) {
     case "ok":
-      return { tone: "ok", label: "Healthy" };
+      return { tone: "ok", label: slow(s) ? "Healthy, slow" : "Healthy" };
     case "warning":
       return { tone: "warning", label: "Needs a look" };
     default:
