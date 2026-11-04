@@ -648,7 +648,7 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
   switch (cmd) {
     case "core_status":
       if (fixture === "error") throw "The core didn't start: another copy is still closing.";
-      return r({ version: "0.0.1", pid: 1, role: "operator", headless: false, home: "" });
+      return r({ version: "0.4.0", pid: 1, role: "operator", headless: false, home: "" });
     case "sites_list":
       if (fixture === "loading") return new Promise<T>(() => {});
       return r(sites);
