@@ -150,10 +150,11 @@
   --warn-paper: #17140f;
   --warn-line: #3b3020;
   --saffron: #e8a13a;
-  --k-core: #e6e6e6;
-  --k-plugin: #9c9c9c;
-  --k-theme: #4f4f4f;
-  --k-off: #333333;
+  /* The light theme's green ramp, turned for the dark ground; every step 3:1 or more on --panel. */
+  --k-core: #c4ead3;
+  --k-plugin: #3dbf82;
+  --k-theme: #23955e;
+  --k-off: #6b6b6b;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 20px rgba(0, 0, 0, 0.35);
   --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.6), 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-2);
