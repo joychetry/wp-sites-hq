@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Settings (board 17, D09): two columns of cards, each with an icon in its head. */
-.setpage > .g2 { max-width: 1040px; align-items: start; }
+.setpage > .g2 { align-items: start; }
 .setpage .card-head h2 .glyph { width: 16px; height: 16px; color: var(--text-2); }
 .setpage .card-body .field { margin: 0; }
 .setpage .segmented .glyph { width: 14px; height: 14px; }
@@ -18,10 +18,9 @@
 .dsrc .acts-row { margin-top: var(--sp-2); }
 .setpage .card-body:has(> .dsrc) { gap: 6px; }
 
-/* Your data: the import is a quiet button, not a drop zone */
+/* Your data: the import is a button like the exports, not a drop zone (a file can still be dropped on it) */
 .setpage .drop { padding: 0; border: 0; background: none; gap: var(--sp-2); }
-.setpage .drop .btn { height: var(--control-sm); padding: 0 var(--sp-3); font-size: var(--fs-sm); border-color: transparent; background: transparent; color: var(--text-2); }
-.setpage .drop .btn:hover:not(:disabled) { background: var(--panel); color: var(--text); }
+.setpage .drop .btn { height: var(--control-sm); padding: 0 var(--sp-3); font-size: var(--fs-sm); }
 .setpage .drop > .dim { font-size: var(--fs-sm); }
 
 /* Reports: the preview is a page top on the well, in the accent colour */

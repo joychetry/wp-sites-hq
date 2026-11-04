@@ -176,11 +176,11 @@ test("WP Sites HQ checks for a new version on request and installs only on a cli
   render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
   expect(await screen.findByText("0.1.0")).toBeInTheDocument();
   expect(screen.getByText("None, you have the newest")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
   expect(await screen.findByText("You have the newest version of WP Sites HQ.")).toBeInTheDocument();
   // Notes are shown as text: markup in latest.json stays words on the screen.
   now = { ...status({ version: "0.2.0", notes: "### Media\n- Grid view <img src=x onerror=alert(1)>", date: 1761696000 }), progress: [3145728, 10485760] };
-  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
   const notes = await screen.findByRole("region", { name: "What's new in 0.2.0" });
   expect(notes).toHaveTextContent("Media - Grid view <img src=x onerror=alert(1)>");
   expect(notes.querySelector("img")).toBeNull();
@@ -188,7 +188,7 @@ test("WP Sites HQ checks for a new version on request and installs only on a cli
   expect(screen.getByText(/Downloading 0\.2\.0: 3\.0 MB of 10\.0 MB/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Install 0.2.0 now" })).toBeDisabled();
   now = { ...now, progress: null };
-  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Install 0.2.0 now" })).toBeEnabled());
   expect(calls.some(([c]) => c === "app_update_install")).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Install 0.2.0 now" }));

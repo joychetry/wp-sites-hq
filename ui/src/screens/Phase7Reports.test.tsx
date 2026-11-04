@@ -90,11 +90,12 @@ test("report branding saves, and Search Console asks for a client, then connects
   expect(calls.find(([c]) => c === "app_settings_save")![1].settings).toMatchObject({ report_name: "Studio North", white_label: true, search_console: false });
 
   fireEvent.click(screen.getByRole("switch", { name: /Google Search Console/ }));
-  const id = await screen.findByRole("textbox", { name: "Client ID" });
+  const id = await screen.findByRole("textbox", { name: "Google client ID" });
   fireEvent.change(id, { target: { value: "1.apps.googleusercontent.com" } });
-  fireEvent.change(screen.getByLabelText("Client secret"), { target: { value: "s" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save the client" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Connect your Google account" }));
+  fireEvent.change(screen.getByLabelText("Google client secret"), { target: { value: "s" } });
+  // The switch waits for the client: closing the dialog now would leave it off.
+  expect(screen.getByRole("switch", { name: /Google Search Console/ })).not.toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Save and connect" }));
   expect(await screen.findByText("Your Google account is connected, read only.")).toBeInTheDocument();
   expect(calls).toContainEqual(["gsc_set_client", { id: "1.apps.googleusercontent.com", secret: "s" }]);
   const status = screen.getAllByRole("status").find((s) => within(s).queryByText("Connected to Search Console."));

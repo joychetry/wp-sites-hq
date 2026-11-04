@@ -92,8 +92,8 @@ export const SCREENS: Screen[] = [
     name: "settings-search-console",
     open: async (page) => {
       await nav("Settings")(page);
-      await page.getByRole("switch", { name: /Google Search Console/ }).check();
-      await page.getByRole("textbox", { name: "Client ID" }).waitFor();
+      await page.getByRole("switch", { name: /Google Search Console/ }).click();
+      await page.getByRole("textbox", { name: "Google client ID" }).waitFor();
     },
   },  { name: "store", open: (page) => nav("Store")(page).then(() => page.getByRole("table", { name: "Products" }).waitFor()) },
   {
