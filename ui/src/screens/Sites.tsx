@@ -601,7 +601,8 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
             Open the site
             <Glyph name="external" />
           </Button>
-          <Button small onClick={onCheck} keys="R">
+          {/* R is in the table's key legend; a key chip here would not fit the half-width button at 1280. */}
+          <Button small onClick={onCheck} aria-keyshortcuts="R">
             Check again
             <Glyph name="refresh" />
           </Button>

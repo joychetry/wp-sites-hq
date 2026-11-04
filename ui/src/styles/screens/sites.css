@@ -52,3 +52,6 @@
 .sites .selbar .btn.ghost:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); }
 /* The filter box gives way first, so tabs, box and the connection chip stay on one row. */
 .sites .toolbar .srch { flex: 1 1 140px; min-width: 140px; }
+/* Label and value as two columns; a long value wraps under itself, left aligned, never as a ragged right edge. */
+.site-pane .dl > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); }
+.site-pane .dl dd { text-align: left; }

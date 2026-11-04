@@ -93,7 +93,9 @@ small { font-size: var(--fs-sm); }
 .rail-nav { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 2px; padding: var(--sp-2) var(--sp-3);
   /* A scroll cue: a shadow shows at the bottom (or top) edge only while there is more nav that way. */
   background: linear-gradient(var(--bg) 30%, transparent) top / 100% 24px no-repeat local, linear-gradient(transparent, var(--bg) 70%) bottom / 100% 24px no-repeat local,
-    linear-gradient(color-mix(in srgb, var(--text) 10%, transparent), transparent) top / 100% 10px no-repeat scroll, linear-gradient(transparent, color-mix(in srgb, var(--text) 10%, transparent)) bottom / 100% 10px no-repeat scroll; }
+    linear-gradient(color-mix(in srgb, var(--text) 10%, transparent), transparent) top / 100% 10px no-repeat scroll, linear-gradient(transparent, color-mix(in srgb, var(--text) 10%, transparent)) bottom / 100% 10px no-repeat scroll;
+  /* Inside the padding box only: in the scrollbar gutter the cover layers don't reach, so the shadows showed as two grey squares. */
+  background-clip: padding-box; }
 .brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; }
 .brand .mark { width: 30px; height: 30px; }
 .brand p { margin: 0; font: 600 var(--fs-md)/var(--lh-tight) var(--display); letter-spacing: -0.02em; color: var(--text); }
@@ -668,6 +670,10 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
   .rail ul { gap: 0; }
   .navgroup { padding: var(--sp-1) var(--sp-3) 0; line-height: 1.1; }
   .rail .foot { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
+}
+/* At 800px tall a few pixels of slack, so the nav never scrolls by a fraction. */
+@media (min-width: 901px) and (max-height: 820px) {
+  .navgroup { padding-top: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

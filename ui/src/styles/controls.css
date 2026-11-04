@@ -296,7 +296,7 @@ body:has(.sheet:not(.dialog)) .toasts ol { justify-items: start; }
 .welcome > .dim { margin: 0; font-size: var(--fs-sm); }
 .next-steps { margin: 0; padding: var(--sp-4) 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg); display: grid; gap: var(--sp-2); justify-items: start; }
 .next-steps h2 { margin: 0; font-size: var(--fs-md); font-weight: 600; }
-.next-steps ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); width: 100%; }
+.next-steps ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); width: 100%; }
 .next-steps li { display: flex; align-items: center; gap: var(--sp-3); min-height: 32px; }
 .next-steps li .st { flex: 1; white-space: normal; }
 .next-steps li.done .st { color: var(--text-3); text-decoration: line-through; }
@@ -322,7 +322,8 @@ body:has(.sheet:not(.dialog)) .toasts ol { justify-items: start; }
 @media (max-width: 600px) { .radios.cards { grid-template-columns: 1fr; } }
 .next-steps { grid-template-columns: 1fr auto; align-items: start; }
 .next-steps > h2 { grid-column: 1; grid-row: 1; }
-.next-steps > ul { grid-column: 1; }
+/* The steps run the full width, so their buttons end on the same edge as Hide these steps. */
+.next-steps > ul { grid-column: 1 / -1; }
 .next-steps > .btn { grid-column: 2; grid-row: 1; justify-self: end; }
 .next-steps li .btn { margin-left: auto; }
 /* A filter menu marks the current choice with a tick after its words. */
