@@ -24,11 +24,10 @@ export function expiry(
   return { tone: days < 7 ? "danger" : days < 30 ? "warning" : "ok", text, date };
 }
 
-const runWord = (running: boolean, again: boolean) =>
-  running ? "Running PageSpeed, up to a minute" : again ? "Run PageSpeed again" : "Run PageSpeed";
+const runWord = (running: boolean, again: boolean) => (running ? "Testing speed, up to a minute" : again ? "Test speed again" : "Test speed");
 
 /** 99.98%, and 100% when nothing failed. */
-const pct = (n: number | null) => (n == null ? "not yet" : `${n >= 99.995 || n === 0 ? n.toFixed(0) : n.toFixed(2)}%`);
+const pct = (n: number) => `${n >= 99.995 || n === 0 ? n.toFixed(0) : n.toFixed(2)}%`;
 
 /** Google's bands for a phone score: 90 and up is good, under 50 is poor. */
 const band = (score: number): [string, string] => (score >= 90 ? ["ok", "Good"] : score >= 50 ? ["warning", "Needs work"] : ["danger", "Poor"]);
@@ -39,7 +38,6 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 type Props = { sites: Site[]; monitors: Monitor[] };
 
 export function Monitoring({ sites, monitors }: Props) {
-  const [checking, setChecking] = useState(false);
   const [running, setRunning] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const byId = new Map(monitors.map((m) => [m.site_id, m]));
@@ -53,9 +51,11 @@ export function Monitoring({ sites, monitors }: Props) {
   const lowest = scores.reduce<(typeof scores)[number] | null>((low, x) => (!low || x.score < low.score ? x : low), null);
   const avg = (ns: number[]) => ns.reduce((a, b) => a + b, 0) / ns.length;
 
-  const checkAll = async () => {
-    setChecking(true);
-    await api.checkMonitors().catch(() => {});
+  // true while every site is checked, or the id of the one site a row's "Check again" checks.
+  const [checking, setChecking] = useState<boolean | number>(false);
+  const check = async (id?: number) => {
+    setChecking(id ?? true);
+    await api.checkMonitors(id).catch(() => {});
     setChecking(false);
   };
   // Not disabled while one runs: a disabled button would drop keyboard focus.
@@ -75,7 +75,7 @@ export function Monitoring({ sites, monitors }: Props) {
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet">
+        <Empty picture="pulse" title="No sites yet">
           <p>Add a site to watch whether it's up, how fast it answers, and when its certificate and domain expire.</p>
         </Empty>
       </Page>
@@ -85,8 +85,8 @@ export function Monitoring({ sites, monitors }: Props) {
   return (
     <Page className="mon">
       <HeadActions>
-        <Button kind="primary" className="disc" disabled={checking} onClick={checkAll}>
-          {checking ? "Loading…" : "Load every home page now"}
+        <Button kind="primary" className="disc" disabled={checking !== false} onClick={() => check()}>
+          {checking === true ? "Checking…" : "Check all sites"}
           <span className="btn-disc">
             <Glyph name="refresh" />
           </span>
@@ -98,7 +98,7 @@ export function Monitoring({ sites, monitors }: Props) {
           <b>Monitoring runs only while the app or its tray agent is running.</b> Close both and monitoring pauses until you open one again.
         </span>
       </p>
-      <section className="stats" aria-label="Fleet health">
+      <section className="stats" aria-label="Your sites at a glance">
         <div className="stat">
           <h2 className="label">Home pages up</h2>
           <p className="stat-n">
@@ -113,7 +113,7 @@ export function Monitoring({ sites, monitors }: Props) {
         <div className="stat">
           <h2 className="label">Uptime, 30 days</h2>
           <p className="stat-n">
-            <strong>{months.length ? pct(avg(months)) : "none"}</strong> across the fleet
+            <strong>{months.length ? pct(avg(months)) : "Not known"}</strong> {months.length > 0 && "across your sites"}
           </p>
           <p className="stat-note">
             {down.length > 0
@@ -126,33 +126,34 @@ export function Monitoring({ sites, monitors }: Props) {
         <div className="stat">
           <h2 className="label">Average response</h2>
           <p className="stat-n">
-            <strong>{up.length ? Math.round(avg(up.map((m) => m.ms))) : "none"}</strong> {up.length > 0 && "ms"}
+            <strong>{up.length ? Math.round(avg(up.map((m) => m.ms))) : "No answer"}</strong> {up.length > 0 && "ms"}
           </p>
           <p className="stat-note">{up.length ? `From the ${plural(up.length, "page")} that answered.` : "No page answered yet."}</p>
         </div>
         <div className="stat">
-          <h2 className="label">PageSpeed, mobile</h2>
+          <h2 className="label">Google speed score, phone</h2>
           <p className="stat-n">
-            <strong>{scores.length ? Math.round(avg(scores.map((x) => x.score))) : "none"}</strong> {scores.length > 0 && "average"}
+            <strong>{scores.length ? Math.round(avg(scores.map((x) => x.score))) : "Not known"}</strong> {scores.length > 0 && "average"}
           </p>
           <p className="stat-note">{lowest ? `Lowest: ${lowest.s.name} at ${lowest.score}.` : "Not run on any public site yet."}</p>
         </div>
       </section>
       <section className="card" aria-label="Every home page">
         <table className="t" aria-label="Monitoring" aria-describedby="monitoring-legend">
+          <colgroup>
+            <col className="c-fill" />
+            <col className="c-text" />
+            <col className="c-text" />
+            <col className="c-wide" />
+            <col className="c-wide" />
+          </colgroup>
           <thead>
             <tr>
               <th scope="col">Site</th>
               <th scope="col">Home page</th>
-              <th scope="col">Last 24 hours</th>
-              <th scope="col" className="r">
-                Uptime, 30 days
-              </th>
+              <th scope="col">Uptime</th>
               <th scope="col">Renewals</th>
-              <th scope="col">PageSpeed</th>
-              <th scope="col">
-                <span className="sr-only">Actions</span>
-              </th>
+              <th scope="col">Speed score</th>
             </tr>
           </thead>
           <tbody>
@@ -163,14 +164,15 @@ export function Monitoring({ sites, monitors }: Props) {
               const ps = m?.pagespeed;
               const isDown = m?.up === false;
               const [tone, word] = ps ? band(ps.score) : ["", ""];
+              const mine = checking === s.id;
               return (
-                <tr key={s.id} className={isDown ? "warn" : undefined}>
+                <tr key={s.id}>
                   <td>
                     <span className="site" data-tip={`${s.name}, ${host(s)}`}>
                       <SiteTile site={s} />
                       <span>
-                        <b className="cut">{s.name}</b>
-                        <small className="cut">{host(s)}</small>
+                        <b>{s.name}</b>
+                        <small>{host(s)}</small>
                       </span>
                     </span>
                   </td>
@@ -198,22 +200,28 @@ export function Monitoring({ sites, monitors }: Props) {
                           {m.down_since && <span className="dim">since {ago(m.down_since)}</span>}
                         </span>
                         <span className="why danger">{m.error}</span>
+                        <Button small aria-label={mine ? `Checking ${s.name}…` : `Check ${s.name} again`} onClick={() => checking === false && check(s.id)}>
+                          {mine ? "Checking…" : "Check again"}
+                          <Glyph name="refresh" />
+                        </Button>
                       </>
                     )}
                   </td>
                   <td>
                     {m?.uptime_day == null ? (
-                      <span className="dim">not yet</span>
+                      <span className="dim">Not known</span>
                     ) : (
-                      <Day day={m.day ?? []} label={`Up ${pct(m.uptime_day)} of the last 24 hours`} />
+                      <>
+                        <Day day={m.day ?? []} label={`Up ${pct(m.uptime_day)} of the last 24 hours`} />
+                        {m.uptime_month != null && <span className="sub">{pct(m.uptime_month)} over 30 days</span>}
+                      </>
                     )}
                   </td>
-                  <td className="r ms">{pct(m?.uptime_month ?? null)}</td>
                   <td className="wrap-s">
                     {cert ? (
                       <span className="renew">
                         <Status tone={cert.tone}>{cert.text}</Status>
-                        <span className="why">Certificate, {cert.date}</span>
+                        <span className="sub">Certificate, {cert.date}</span>
                       </span>
                     ) : (
                       <span className="why">{s.url.startsWith("https:") ? "Certificate not read yet" : "No certificate (http)"}</span>
@@ -221,7 +229,7 @@ export function Monitoring({ sites, monitors }: Props) {
                     {domain ? (
                       <span className="renew">
                         <Status tone={domain.tone}>{domain.text}</Status>
-                        <span className="why">
+                        <span className="sub cut" data-tip={`${m?.domain}, ${domain.date}`}>
                           {m?.domain}, {domain.date}
                         </span>
                       </span>
@@ -238,27 +246,18 @@ export function Monitoring({ sites, monitors }: Props) {
                           {ps.score} · {word}
                         </Status>
                         <span className="why">
-                          LCP {ps.lcp}, CLS {ps.cls}, TBT {ps.tbt}. Tested {ago(ps.at)}.
+                          Main content shows in {ps.lcp}. Tested {ago(ps.at)}.
                         </span>
                       </>
                     ) : (
-                      <span className="dim">{m?.public === false ? "Public sites only" : "Not run yet"}</span>
+                      <span className="dim">{m?.public === false ? "Public sites only" : "Not tested yet"}</span>
                     )}
                     {notes[s.id] && <span className="why danger">{notes[s.id]}</span>}
-                  </td>
-                  <td className="r">
-                    {isDown ? (
-                      <Button small disabled={checking} aria-label={`${checking ? "Checking…" : "Check again"}: ${s.name}`} onClick={checkAll}>
-                        {checking ? "Checking…" : "Check again"}
-                        <Glyph name="refresh" />
+                    {!isDown && m?.public !== false && (
+                      <Button small className="ghost" aria-label={`${runWord(running === s.id, !!ps)} on ${s.name}`} onClick={() => pageSpeed(s)}>
+                        {runWord(running === s.id, !!ps)}
+                        <Glyph name="zap" />
                       </Button>
-                    ) : (
-                      m?.public !== false && (
-                        <Button small className="ghost" aria-label={`${runWord(running === s.id, !!ps)} on ${s.name}`} onClick={() => pageSpeed(s)}>
-                          {runWord(running === s.id, !!ps)}
-                          <Glyph name="zap" />
-                        </Button>
-                      )
                     )}
                   </td>
                 </tr>
@@ -267,11 +266,11 @@ export function Monitoring({ sites, monitors }: Props) {
           </tbody>
         </table>
         <p className="card-foot" id="monitoring-legend">
-          <span role="status">{checking ? "Loading every home page…" : last ? `Checked ${ago(last)}.` : "Not checked yet."}</span>
+          <span role="status">{checking === true ? "Checking every site…" : last ? `Checked ${ago(last)}.` : "Not checked yet."}</span>
           <span>
             {down.length > 0 ? `${down.length === 1 ? "1 site is" : `${down.length} sites are`} down: ${down.map((s) => s.name).join(", ")}. ` : ""}
             Each home page loads every 5 minutes, and you get a notice when a site goes down or comes back. Uptime is the share of those checks that got an answer.
-            PageSpeed is Google's score for a phone; local addresses have no domain to renew, and PageSpeed can't reach them.
+            The speed score is Google's PageSpeed score for a phone; local addresses have no domain to renew, and Google can't reach them to test.
           </span>
         </p>
       </section>

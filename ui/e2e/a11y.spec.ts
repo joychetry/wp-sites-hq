@@ -423,7 +423,7 @@ test("PageSpeed runs from the keyboard and the result shows in its row", async (
   await show(page, SCREENS.find((s) => s.name === "monitoring")!, "light");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Monitoring 1 down" })).toBeVisible();
   await expect(page.getByText(/^1 site is down: Corner Bakery\./)).toBeVisible();
-  const run = page.getByRole("button", { name: "Run PageSpeed again on Portfolio" });
+  const run = page.getByRole("button", { name: "Test speed again on Portfolio" });
   await run.focus();
   await page.keyboard.press("Enter");
   const row = page.getByRole("row").filter({ hasText: "Portfolio" });

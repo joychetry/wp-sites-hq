@@ -65,7 +65,7 @@ const ABOUT: Record<Section, string> = {
   Comments: "Moderate every site's comments in one queue.",
   "Classic Monks": "Switch module features on each site, change their settings, and undo what changed.",
   Monitoring: "Uptime and speed of every home page.",
-  Security: "Known vulnerabilities across the fleet, fixed in one place.",
+  Security: "Known vulnerabilities across your sites, fixed in one place.",
   Clients: "Who owns which sites, and what each one costs you and earns you.",
   Store: "WooCommerce sales and stock, site by site.",
   Reports: "A monthly client report, as a PDF and a web page, with your branding.",

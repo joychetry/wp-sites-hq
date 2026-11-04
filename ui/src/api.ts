@@ -472,7 +472,7 @@ export const api = {
   security: () => invoke<SecurityReport[]>("security_list"),
   scanSecurity: (id?: number) => invoke<void>("security_scan", { id }),
   monitors: () => invoke<Monitor[]>("monitors_list"),
-  checkMonitors: () => invoke<void>("monitors_check"),
+  checkMonitors: (id?: number) => invoke<void>("monitors_check", { id }),
   pageSpeed: (id: number) => invoke<PageSpeed>("pagespeed_run", { id }),
   /** Opens an https link from a feed in the browser. */
   /** `site`: the link came from that site, so it must point at it. */

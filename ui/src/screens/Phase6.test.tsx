@@ -140,7 +140,7 @@ describe("Monitoring", () => {
     ];
     render(<Monitoring sites={[A, B, C]} monitors={monitors} />);
     expect(screen.getByText(/^1 site is down: Gamma\./)).toBeInTheDocument();
-    const stats = screen.getByRole("region", { name: "Fleet health" });
+    const stats = screen.getByRole("region", { name: "Your sites at a glance" });
     expect(stats).toHaveTextContent("Home pages up2 of 3");
     expect(stats).toHaveTextContent("Average response475 ms");
     expect(stats).toHaveTextContent("Lowest: Beta at 78.");
@@ -148,7 +148,7 @@ describe("Monitoring", () => {
     const [, alpha, beta, gamma] = within(table).getAllByRole("row");
     expect(within(alpha).getByText("200 OK")).toBeInTheDocument();
     expect(within(alpha).getByText("412 ms")).toBeInTheDocument();
-    expect(within(alpha).getByText("99.86%")).toBeInTheDocument();
+    expect(within(alpha).getByText("99.86% over 30 days")).toBeInTheDocument();
     expect(within(alpha).getByText(/^40 days left/)).toBeInTheDocument();
     expect(within(alpha).getByText("Public sites only")).toBeInTheDocument();
     expect(within(alpha).queryByRole("button")).toBeNull();
@@ -156,15 +156,16 @@ describe("Monitoring", () => {
     expect(within(gamma).getByText("since 10 min ago")).toBeInTheDocument();
     expect(within(gamma).getByText("The site didn't answer.")).toBeInTheDocument();
     expect(within(gamma).getByText("Couldn't load")).toBeInTheDocument();
-    fireEvent.click(within(gamma).getByRole("button", { name: "Check again: Gamma" }));
-    expect(mockInvoke).toHaveBeenCalledWith("monitors_check");
+    fireEvent.click(within(gamma).getByRole("button", { name: "Check Gamma again" }));
+    // Only the row's site is checked.
+    expect(mockInvoke).toHaveBeenCalledWith("monitors_check", { id: 3 });
     expect(within(beta).getByRole("img", { name: /^Up 97.22% of the last 24 hours/ })).toBeInTheDocument();
     expect(within(beta).getByText("78 · Needs work")).toBeInTheDocument();
     expect(within(beta).getByText(/^beta\.com, /)).toBeInTheDocument();
     expect(within(beta).getByText(/^5 days left/).closest(".st")).toHaveClass("danger");
-    expect(within(beta).getByText("LCP 1.8 s, CLS 0, TBT 40 ms. Tested 1 hr ago.")).toBeInTheDocument();
+    expect(within(beta).getByText("Main content shows in 1.8 s. Tested 1 hr ago.")).toBeInTheDocument();
     mockInvoke.mockRejectedValue("Google's shared daily limit for PageSpeed tests without a key is used up. Try again tomorrow.");
-    fireEvent.click(within(beta).getByRole("button", { name: "Run PageSpeed again on Beta" }));
+    fireEvent.click(within(beta).getByRole("button", { name: "Test speed again on Beta" }));
     expect(mockInvoke).toHaveBeenCalledWith("pagespeed_run", { id: 2 });
     expect(await within(beta).findByText(/^Google.s shared daily limit/)).toBeInTheDocument();
   });

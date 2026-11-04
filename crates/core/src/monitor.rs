@@ -403,6 +403,15 @@ impl Core {
         })
     }
 
+    /// Load one site's home page and look up its domain now (a row's "Check again").
+    pub async fn check_monitor(&self, id: i64) -> Result<(), SiteError> {
+        let site = self.site(id)?;
+        let _ = self.check_uptime(&site).await;
+        let _ = self.check_domain(&site).await;
+        let _ = self.changed.send(Changed::Monitors);
+        Ok(())
+    }
+
     /// Load every home page, and look up domains not looked up for a day
     /// (or every domain, when `all`). Then tell the window. A site Monks
     /// Central is changing right now is skipped: a safe update puts it in

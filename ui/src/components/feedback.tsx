@@ -196,6 +196,8 @@ const PICTURES: Record<string, ReactNode> = {
   plug: <path d="M12 4v6M20 4v6M8 10h16v4a8 8 0 0 1-16 0zM16 22v6" />,
   lock: <path d="M8 14h16v13H8zM11 14v-4a5 5 0 0 1 10 0v4M16 19v3" />,
   alert: <path d="M16 5 3.5 26h25zM16 13v6M16 22.5v.5" />,
+  pulse: <path d="M3 17h6l3-8 5 15 4-11 2 4h6" />,
+  shield: <path d="M16 4l10 4v7c0 7-4.5 11-10 13-5.5-2-10-6-10-13V8zM11.5 16l3 3 6-6" />,
 };
 
 /** An empty or error state: a picture, a heading, plain words and the next step. */
