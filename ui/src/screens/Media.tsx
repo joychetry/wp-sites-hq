@@ -150,6 +150,8 @@ function Uploads({ site, lib, onUploaded, onClose, children }: { site: Site; lib
   );
 }
 
+// This year's dates drop the year on the tiles, so the meta line fits a 5-column grid (the tip has the full date).
+const shortDay = (d: string) => (day(d) || d).replace(` ${new Date().getFullYear()}`, "");
 const files = (n: number) => (n === 1 ? "1 file" : `${n} files`);
 const FIELDS = ["alt", "title", "caption", "description"] as const;
 const detailsOf = (m: Item): Required<MediaDetails> => ({ alt: m.alt, title: m.title, caption: m.caption, description: m.description });
@@ -342,8 +344,9 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
         </dl>
         <div className="field">
           <label htmlFor="media-url">Address</label>
-          <div className="row nowrap">
-            <input id="media-url" className="input sm mono" readOnly value={item.url} onFocus={(e) => e.target.select()} />
+          <input id="media-url" className="input sm mono" readOnly value={item.url} onFocus={(e) => e.target.select()} />
+          {/* Under the address, so the panel's width goes to the address itself. */}
+          <div className="row">
             <Button small onClick={copy}>
               Copy
               <Glyph name="copy" />
@@ -527,7 +530,7 @@ export function Media({ sites }: { sites: Site[] }) {
           <b data-tip={m.title || m.file_name}>{m.title || m.file_name || "No title"}</b>
           <small data-tip={m.date ? `${kind(m.mime)}, uploaded ${day(m.date) || m.date}` : undefined}>
             {kind(m.mime)}
-            {m.date && ` · ${day(m.date) || m.date}`}
+            {m.date && ` · ${shortDay(m.date)}`}
           </small>
         </button>
       </div>
@@ -615,7 +618,7 @@ export function Media({ sites }: { sites: Site[] }) {
               </thead>
               <tbody>
                 {items.map((m) => (
-                  <tr key={m.id} className={[m.id === chosen?.id && "on", ticked.has(m.id) && "sel"].filter(Boolean).join(" ") || undefined}>
+                  <tr key={m.id} className={[m.id === chosen?.id && "focus", ticked.has(m.id) && "sel"].filter(Boolean).join(" ") || undefined}>
                     {canTrash && <td className="tick">{tickBox(m)}</td>}
                     <td className="name">
                       <button type="button" className="mrow" aria-pressed={m.id === chosen?.id} onClick={() => setPicked(m.id)}>

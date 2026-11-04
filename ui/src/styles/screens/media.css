@@ -42,8 +42,6 @@
 
 /* List view: a small picture, the title over the file name, then the facts. */
 .mlist { overflow-x: auto; }
-/* The picked row has a green edge; selected rows the selection tint (base .t tr.sel), so the two never look alike. */
-.mlist .t tr.on td:first-child { box-shadow: inset 3px 0 0 var(--green); }
 .mrow { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-width: 0; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
 .mrow .mthumb-img { width: 48px; flex: none; border-radius: var(--radius-sm); }
 .mrow > span { display: grid; min-width: 0; }
@@ -65,6 +63,9 @@
 /* The same heading as Import an image, over the side panel's mono label style. */
 .insp .mreplace h3 { margin: 0; font: 600 var(--fs) var(--sans); text-transform: none; letter-spacing: normal; color: var(--text); }
 .mreplace p { margin: 0; font-size: var(--fs-sm); }
+/* The box lines up with the first line of its two-line label. */
+.mreplace .row.check { align-items: flex-start; }
+.mreplace .row.check input { margin-top: 2px; }
 .mreplace .drop, .mreplace .row.nowrap { width: 100%; }
 .row.nowrap .progress { flex: 1; margin: 0; }
 
