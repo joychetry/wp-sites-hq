@@ -228,7 +228,7 @@ impl Core {
         let mut b = vec![Block::Site(site.name.clone(), site.url.clone())];
         let mut notes = vec![];
         let mut note = |what: &str, e: &dyn std::fmt::Display| {
-            notes.push(format!("{}: {what}: {e}", site.name))
+            notes.push(format!("{}'s {what} numbers. {e}", site.name))
         };
 
         let work: Vec<(i64, String)> = self

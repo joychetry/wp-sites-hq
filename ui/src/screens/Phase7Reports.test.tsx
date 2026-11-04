@@ -15,7 +15,7 @@ afterEach(() => mockInvoke.mockReset());
 const A = site({ id: 1, name: "Alpha", client_id: 1, client: "Rosa" });
 const B = site({ id: 2, name: "Beta", client_id: 1, client: "Rosa" });
 const C = site({ id: 3, name: "Gamma" });
-const SAVED = { html: "/d/rosa-report-2026-09.html", pdf: "/d/rosa-report-2026-09.pdf", preview: "<h1>Rosa</h1>", sites: 2, notes: ["Beta: store: Timed out."] };
+const SAVED = { html: "/d/rosa-report-2026-09.html", pdf: "/d/rosa-report-2026-09.pdf", preview: "<h1>Rosa</h1>", sites: 2, notes: ["Beta's store numbers. Timed out."] };
 
 function core(clients = [{ id: 1, name: "Rosa", email: "", notes: "" }]) {
   const calls: [string, Record<string, unknown>][] = [];
@@ -65,7 +65,7 @@ test("a client's report is made, opened and its gaps named", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Open the PDF" }));
   expect(calls).toContainEqual(["report_make", { ask: { client_id: 1, site_ids: [], month: lastMonth() } }]);
   expect(calls).toContainEqual(["file_open", { path: SAVED.pdf }]);
-  expect(screen.getByText("Beta: store: Timed out.")).toBeInTheDocument();
+  expect(screen.getByText("Beta's store numbers. Timed out.")).toBeInTheDocument();
   expect(screen.getByTitle("Report preview")).toHaveAttribute("sandbox", "allow-same-origin");
 });
 
@@ -76,7 +76,7 @@ test("without clients, sites are picked one by one", async () => {
   fireEvent.click(await screen.findByRole("checkbox", { name: "Gamma" }));
   expect(make).toBeEnabled();
   fireEvent.click(make);
-  await screen.findByRole("button", { name: "Open the HTML" });
+  await screen.findByRole("button", { name: "Open the web page" });
   expect(calls.find(([c]) => c === "report_make")![1]).toEqual({ ask: { client_id: null, site_ids: [3], month: lastMonth() } });
 });
 
