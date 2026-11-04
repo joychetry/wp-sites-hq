@@ -125,7 +125,7 @@
   --bg: #141414;
   --panel: #1b1b1b;
   --raise: #222222;
-  --sel: #222222;
+  --sel: #1a2b22; /* green-tinted like light, so a selected row stands apart from a hovered one (--panel) */
   --tint: #16261e; /* green-tinted, so ticked rows, ready cells and ok callouts keep their hue */
   --tint-2: #1d3328;
   --highlight: #3a3a3a;

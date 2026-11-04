@@ -133,10 +133,13 @@ export function Clients({ sites }: { sites: Site[] }) {
   const main = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? currency;
   const totals = sums(costs);
   const t = totals.get(main) ?? { cost: 0, charge: 0 };
-  // Other currencies, a quiet line under the number: "Plus $23.25 in USD".
+  // Other currencies, a quiet line under the number: "Plus $23.25 in USD", or "Less $23.25 in USD" when that currency costs more than it brings.
   const also = (what: "cost" | "charge" | "left") => {
-    const rest = [...totals].filter(([cur, x]) => cur !== main && (what === "left" ? x.charge - x.cost : x[what]) !== 0).map(([cur, x]) => `${money(what === "left" ? x.charge - x.cost : x[what], cur, true)} in ${cur}`);
-    return rest.length > 0 && <p className="stat-note">Plus {rest.join(" and ")}</p>;
+    const rest = [...totals]
+      .map(([cur, x]) => [cur, what === "left" ? x.charge - x.cost : x[what]] as const)
+      .filter(([cur, v]) => cur !== main && v !== 0)
+      .map(([cur, v], i) => `${i === 0 ? (v < 0 ? "Less" : "Plus") : v < 0 ? "less" : "plus"} ${money(Math.abs(v), cur, true)} in ${cur}`);
+    return rest.length > 0 && <p className="stat-note">{rest.join(" and ")}</p>;
   };
   const paying = new Set(costs.filter((k) => k.kind === "charge" && perMonth(k) > 0).map(groupOf).filter((g) => g != null)).size;
   const costWords = [...new Set(costs.filter((k) => k.kind === "cost").map((k) => k.label))].slice(0, 3).join(", ");
