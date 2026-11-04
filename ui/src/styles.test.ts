@@ -102,3 +102,23 @@ describe("page system", () => {
     expect(misused).toEqual([]);
   });
 });
+
+describe("table system", () => {
+  // Every app table (.t) is named, and opens with a <colgroup> from the one column spec in base.css, with one c-fill column.
+  const SPEC = /^c-(tick|fill|status|version|date|num|text|wide|act|act-lg)$/;
+  const tables = tsx.flatMap(([f, s]) => [...s.matchAll(/<table\b[^>]*className="t\b[\s\S]*?<\/table>/g)].map((m) => [f, m[0]] as const));
+
+  it("finds the tables", () => expect(tables.length).toBeGreaterThan(10));
+
+  it.each(tables.map(([f, t], i) => [`${f} #${i}`, t]))("%s has a name and the column spec", (_, t) => {
+    const open = t.slice(0, t.indexOf(">", t.indexOf("className=")) + 1);
+    expect(open).toMatch(/aria-label(ledby)?=/);
+    const group = t.match(/<colgroup>([\s\S]*?)<\/colgroup>/)?.[1];
+    expect(group, "a <colgroup> right after <table>").toBeTruthy();
+    const cols = [...group!.matchAll(/<col\b[^>]*className="([^"]+)"/g)].map((m) => m[1]);
+    expect(cols.length).toBeGreaterThan(0);
+    expect(cols.filter((c) => !SPEC.test(c))).toEqual([]);
+    expect(cols.filter((c) => c === "c-fill").length).toBe(1);
+    expect(t.indexOf("<colgroup>")).toBeLessThan(t.search(/<thead|<tbody/));
+  });
+});
