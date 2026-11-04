@@ -70,8 +70,8 @@ type Tone = "up" | "on" | "idle" | "none" | "vuln";
 export function cellOf(kind: Kind, it: Item | undefined, vuln?: Vulnerability): { tone: Tone; word: string } {
   const plugin = kind === "plugins";
   if (!it) return { tone: "none", word: "Not installed" };
-  if (vuln) return { tone: "vuln", word: vuln.fixed_in && it.update ? "Vulnerable · fix ready" : "Vulnerable" };
-  if (it.update) return { tone: "up", word: `Update to ${it.update}${plugin && !it.active ? " · inactive" : !plugin && it.active ? " · active" : ""}` };
+  if (vuln) return { tone: "vuln", word: vuln.fixed_in && it.update ? "Vulnerable\u00a0· fix ready" : "Vulnerable" };
+  if (it.update) return { tone: "up", word: `Update to ${it.update}${plugin && !it.active ? "\u00a0· inactive" : !plugin && it.active ? "\u00a0· active" : ""}` };
   if (it.active) return { tone: "on", word: plugin ? "Active" : "Active theme" };
   return { tone: "idle", word: plugin ? "Inactive" : "Installed" };
 }

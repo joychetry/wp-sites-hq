@@ -142,10 +142,10 @@ test("the matrix finds a plugin by name and filters by status", () => {
 
 test("a cell says what state it is in, in words", () => {
   const vuln = { kind: "plugin" as const, id: WOO, name: "WooCommerce", installed: "10.2.0", title: "XSS", severity: "high", fixed_in: "10.3.0", link: null };
-  expect(cellOf("plugins", item(), vuln)).toEqual({ tone: "vuln", word: "Vulnerable · fix ready" });
+  expect(cellOf("plugins", item(), vuln)).toEqual({ tone: "vuln", word: "Vulnerable\u00a0· fix ready" });
   expect(cellOf("plugins", item({ update: null }), vuln)).toEqual({ tone: "vuln", word: "Vulnerable" });
-  expect(cellOf("plugins", item({ active: false }))).toEqual({ tone: "up", word: "Update to 10.3.0 · inactive" });
-  expect(cellOf("themes", item())).toEqual({ tone: "up", word: "Update to 10.3.0 · active" });
+  expect(cellOf("plugins", item({ active: false }))).toEqual({ tone: "up", word: "Update to 10.3.0\u00a0· inactive" });
+  expect(cellOf("themes", item())).toEqual({ tone: "up", word: "Update to 10.3.0\u00a0· active" });
   expect(cellOf("plugins", item({ update: null }))).toEqual({ tone: "on", word: "Active" });
   expect(cellOf("themes", item({ update: null, active: false }))).toEqual({ tone: "idle", word: "Installed" });
   expect(cellOf("plugins", undefined)).toEqual({ tone: "none", word: "Not installed" });
