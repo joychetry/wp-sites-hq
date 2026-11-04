@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Phase 7: a WooCommerce store's overview and products, and Classic Monks' reports.
-import { render as draw, screen, fireEvent, within } from "@testing-library/react";
+import { render as draw, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Store, price, productChange, label } from "./Store";
@@ -66,8 +66,8 @@ test("the store shows how it did, what runs low, and plans a product change to c
   expect(within(table).getByRole("row", { name: /Gift card/ })).toHaveTextContent("In WordPress");
   fireEvent.click(screen.getByRole("button", { name: "Change price or stock of Rye" }));
   fireEvent.change(screen.getByRole("textbox", { name: /^Stock/ }), { target: { value: "20" } });
-  fireEvent.click(screen.getByRole("button", { name: "Review the change" }));
-  expect(plan).toHaveBeenCalledWith("Change Rye", [{ change: { site_id: 1, action: { do: "update_product", product_id: 62, name: "Rye", stock_quantity: 20 } }, site: "Shop", label: "Change “Rye”: stock 20" }], "confirm");
+  fireEvent.click(screen.getByRole("button", { name: "Change Rye" }));
+  expect(plan).toHaveBeenCalledWith("Change Rye", [{ change: { site_id: 1, action: { do: "update_product", product_id: 62, name: "Rye", stock_quantity: 20 } }, site: "Shop", label: "Change “Rye”: stock 20" }], "run");
   fireEvent.click(screen.getByRole("group", { name: "Period" }).querySelectorAll("button")[0]);
   expect(mockInvoke).toHaveBeenCalledWith("store_overview", { id: 1, days: 7 });
 });
@@ -82,7 +82,7 @@ test("the form starts from the product's prices, and removing the sale reaches t
   expect(screen.getByRole("textbox", { name: /^Stock/ })).toHaveValue("1");
   fireEvent.change(screen.getByRole("textbox", { name: /^Sale price/ }), { target: { value: "" } });
   fireEvent.change(screen.getByRole("textbox", { name: /^Stock/ }), { target: { value: "30" } });
-  fireEvent.click(screen.getByRole("button", { name: "Review the change" }));
+  fireEvent.click(screen.getByRole("button", { name: "Change Rye" }));
   const rows = plan.mock.calls[0][1];
   expect(rows[0].change.action).toEqual({ do: "update_product", product_id: 62, name: "Rye", sale_price: "", stock_quantity: 30 });
   render(<JobSheet state={{ title: "Change Rye", rows, start: "confirm" }} onClose={() => {}} />);
@@ -132,4 +132,12 @@ test("a bad number shows under its own field", async () => {
   expect(screen.getByRole("textbox", { name: /^Sale price/ })).toHaveAttribute("aria-invalid", "true");
   expect(screen.getByRole("textbox", { name: /^Price/ })).not.toHaveAttribute("aria-invalid");
   expect(screen.getByText("The sale price has to be lower than the price.")).toHaveClass("err");
+});
+
+test("a change whose dialog was the review starts once, as soon as its sheet opens", async () => {
+  core();
+  const rows = [{ change: { site_id: 1, action: { do: "update_product" as const, product_id: 62, name: "Rye", stock_quantity: 20 } }, site: "Shop", label: "Change “Rye”: stock 20" }];
+  render(<JobSheet state={{ title: "Change Rye", rows, start: "run" }} onClose={() => {}} />);
+  await waitFor(() => expect(mockInvoke.mock.calls.filter(([cmd]) => cmd === "job_start")).toHaveLength(1));
+  expect(mockInvoke).toHaveBeenCalledWith("job_start", { title: "Change Rye", changes: [rows[0].change] });
 });

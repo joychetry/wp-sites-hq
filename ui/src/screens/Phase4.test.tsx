@@ -300,7 +300,7 @@ describe("Classic Monks", () => {
     expect(within(list).getByText("Locked")).toBeInTheDocument();
     expect(within(list).queryByRole("button")).toBeNull();
     // The count is the whole site's, not the rows shown.
-    expect(screen.getByText(/of 2 on$/)).toHaveTextContent("1 of 2 on");
+    expect(screen.getByText(/of 2 turned on$/)).toHaveTextContent("1 of 2 turned on");
     fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "zzz" } });
     expect(screen.getByText("No feature matches")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear search" }));

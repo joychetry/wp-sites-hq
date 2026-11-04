@@ -110,10 +110,10 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Store")(page);
       await page.getByRole("button", { name: "Change price or stock of Rye loaf" }).click();
-      // The same edit as store-change, so the review shows the sale price going too.
+      // The same edit as store-change; the dialog was the review, so the change runs and shows its result.
       await page.getByRole("textbox", { name: "Sale price" }).fill("");
       await page.getByRole("textbox", { name: "Stock" }).fill("30");
-      await page.getByRole("button", { name: "Review the change" }).click();
+      await page.getByRole("button", { name: "Change Rye loaf" }).click();
     },
   },
   {

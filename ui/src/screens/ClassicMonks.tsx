@@ -317,7 +317,7 @@ function Features({ site, onDone, round }: Part) {
         </label>
         <SearchInput aria-label="Find a feature" placeholder="Find a feature" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <span className="end dim" role="status">
-          <b>{on}</b> of {every.length} on
+          <b>{on}</b> of {every.length} turned on
         </span>
       </Toolbar>
       {groups.every((g) => g.toggles.length === 0) ? (

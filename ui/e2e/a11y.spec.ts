@@ -329,7 +329,7 @@ test("the palette searches everything, and a result opens its site from the keyb
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Sites/ })).toHaveAttribute("aria-current", "page");
 });
 
-test("a product's stock is changed from the keyboard, ending at the confirm step", async ({ page }) => {
+test("a product's stock is changed from the keyboard, ending at its result", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "store")!, "light");
   await page.getByRole("button", { name: "Change price or stock of Sourdough loaf" }).focus();
   await page.keyboard.press("Enter");
@@ -340,9 +340,11 @@ test("a product's stock is changed from the keyboard, ending at the confirm step
   // Tab selects the field's text, so typing replaces it.
   await page.keyboard.type("30");
   await expect(page.getByText("Change \u201cSourdough loaf\u201d: stock 30")).toBeVisible();
-  for (let i = 0; i < 4 && !(await page.getByRole("button", { name: "Review the change" }).evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
+  const run = page.getByRole("button", { name: "Change Sourdough loaf", exact: true });
+  for (let i = 0; i < 4 && !(await run.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
+  // The dialog is the review: Enter makes the change and the sheet shows how it went.
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Change \u201cSourdough loaf\u201d: stock 30" })).toBeVisible();
+  await expect(page.getByText("Product changed.").first()).toBeVisible();
 });
 
 test("a monthly report is made and opened from the keyboard", async ({ page }) => {

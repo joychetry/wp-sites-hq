@@ -59,7 +59,7 @@ export function productChange(p: Product, regular: string, sale: string, stock: 
 
 const shop = (s: Site) => hasTool(s, "list-products");
 
-type Props = { sites: Site[]; onPlan: (title: string, rows: PlanRow[], start?: "plan" | "confirm") => void };
+type Props = { sites: Site[]; onPlan: (title: string, rows: PlanRow[], start?: "plan" | "confirm" | "run") => void };
 
 export function Store({ sites, onPlan }: Props) {
   const [siteId, setSiteId] = useState<number | null>(() => (sites.find(shop) ?? sites[0])?.id ?? null);
@@ -392,7 +392,7 @@ export function Store({ sites, onPlan }: Props) {
           onClose={() => setEditing(null)}
           onPlan={(a) => {
             setEditing(null);
-            onPlan(`Change ${editing.name}`, [{ change: { site_id: site.id, action: a }, site: site.name, label: label(a) }], "confirm");
+            onPlan(`Change ${editing.name}`, [{ change: { site_id: site.id, action: a }, site: site.name, label: label(a) }], "run");
           }}
         />
       )}
@@ -427,9 +427,9 @@ function ProductSheet({ product, site, thumb, currency, onClose, onPlan }: Sheet
     <>
       <Button onClick={onClose}>Close without saving</Button>
       <Button kind="primary" className="disc" disabled={typeof change === "string"} onClick={() => typeof change !== "string" && onPlan(change)}>
-        Review the change
+        {`Change ${product.name}`}
         <span className="btn-disc">
-          <Glyph name="arrow" />
+          <Glyph name="check" />
         </span>
       </Button>
     </>

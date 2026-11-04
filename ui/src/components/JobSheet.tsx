@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Every change goes the same way (plan 5.7): choose what changes on which site,
 // review it, then watch it run, site by site.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, useJob, type Change, type JobItem } from "../api";
 import { Button, Details, Glyph, type GlyphName } from "./ui";
 import { Sheet } from "./Sheet";
@@ -21,9 +21,10 @@ export type PlanRow = {
   note?: string;
 };
 
-/** `onBack` reopens the form the rows came from (Install, a rollback's version list), from the Review step. */
+/** `onBack` reopens the form the rows came from (Install, a rollback's version list), from the Review step.
+ *  `start: "run"`: the form before it was the review (a product change), so it runs at once and shows the result. */
 export type SheetState =
-  | { title: string; rows: PlanRow[]; start: "plan" | "confirm"; danger?: boolean; onBack?: () => void; backLabel?: string }
+  | { title: string; rows: PlanRow[]; start: "plan" | "confirm" | "run"; danger?: boolean; onBack?: () => void; backLabel?: string }
   | { title: string; jobId: number };
 
 type Step = "plan" | "confirm" | "progress";
@@ -110,7 +111,7 @@ export function JobSheet({ state, onClose, onBack: backProp, backLabel: labelPro
   const onBack = backProp ?? (fromPlan ? state.onBack : undefined);
   const backLabel = labelProp ?? (fromPlan ? state.backLabel : undefined) ?? "Back";
   const rows = fromPlan ? state.rows : [];
-  const [step, setStep] = useState<Step>(fromPlan ? state.start : "progress");
+  const [step, setStep] = useState<Step>(fromPlan ? (state.start === "run" ? "confirm" : state.start) : "progress");
   const [picked, setPicked] = useState<Set<number>>(() => new Set(rows.map((_, i) => i)));
   const [jobId, setJobId] = useState<number | null>(fromPlan ? null : state.jobId);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +148,17 @@ export function JobSheet({ state, onClose, onBack: backProp, backLabel: labelPro
   // Pick is a step here only when this sheet has a Pick list, or a form before it to go back to.
   // A job that arrives ready-made (an AI plan, a one-site change run at once) had nothing picked: no Pick step.
   const pick = fromPlan && (state.start === "plan" || !!onBack);
+  const runNow = fromPlan && state.start === "run";
+  // Once, when the sheet opens (the ref keeps a second effect run in development from starting a second job).
+  const ran = useRef(false);
+  useEffect(() => {
+    if (!runNow || ran.current) return;
+    ran.current = true;
+    start(rows.map((r) => r.change), state.title).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Until the job exists there is nothing to show; a failure to start falls back to the review with its error.
+  if (runNow && jobId == null && !error) return null;
 
   if (step === "progress" && jobId != null) {
     // A new job (a retry) mounts a new sheet, so focus moves into it and Esc still works.

@@ -228,7 +228,7 @@ export default function App() {
       .map(([s, n, say, alert]) => [s, { n, say, alert }]),
   );
 
-  const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean, onBack?: () => void, backLabel?: string) =>
+  const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" | "run" = "plan", danger?: boolean, onBack?: () => void, backLabel?: string) =>
     setSheet({ title, rows, start, danger, onBack, backLabel });
   const runNow = async (title: string, changes: Change[]) => {
     try {

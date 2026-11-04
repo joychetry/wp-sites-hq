@@ -61,8 +61,10 @@
 
 /* Connect an AI app: the app, its numbered steps (the first with the dark code block and Copy), then where it stands */
 .connect { display: grid; gap: var(--sp-4); }
-.connect .steps { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-3); list-style: decimal; }
-.connect .steps li::marker { color: var(--text-3); font-weight: 600; }
+/* A grid item has no list marker, so the step numbers are drawn: a small disc before each step. */
+.connect .steps { margin: 0; padding: 0; display: grid; gap: var(--sp-3); list-style: none; counter-reset: step; }
+.connect .steps li { position: relative; padding-left: var(--sp-6); counter-increment: step; }
+.connect .steps li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); color: var(--text-2); display: grid; place-items: center; font: 600 var(--fs-xs)/1 var(--sans); }
 .connect .field { margin: 0; }
 .connect .field .select { width: min(100%, 32ch); }
 .connect .steps li { margin: 0; display: grid; gap: var(--sp-2); justify-items: start; }
