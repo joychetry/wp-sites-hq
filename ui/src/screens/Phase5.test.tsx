@@ -18,6 +18,7 @@ const PLAN: Job = {
   created_at: Math.floor(Date.now() / 1000) - 120,
   finished_at: null,
   proposed_by: "agent",
+  agent_app: "Claude",
   confirmed_at: null,
   declined_at: null,
   expired: false,
@@ -59,6 +60,7 @@ test("a plan shows every change and runs only when you confirm it", async () => 
   expect(screen.getByRole("tab", { name: /^Plans to confirm\s?1$/ })).toHaveAttribute("aria-selected", "true");
   const card = screen.getByRole("region", { name: PLAN.title });
   expect(within(card).getByText(/asked 2 min ago/)).toBeInTheDocument();
+  expect(within(card).getByText("Claude")).toBeInTheDocument();
   expect(within(card).getByText(/2 changes on 2 sites\./)).toBeInTheDocument();
   expect(within(card).getAllByRole("listitem")).toHaveLength(2);
   expect(within(card).getAllByRole("listitem")[1]).toHaveTextContent("SiteBBetaWUpdate WooCommerce10.1.0to10.3.0");
@@ -83,11 +85,12 @@ test("declining says nothing changed, and an error is shown in words", async () 
 
 test("an expired plan says it never runs and can only be removed", async () => {
   const calls = core();
-  const old = { ...PLAN, id: 8, title: "Old plan", created_at: PLAN.created_at - 8 * 86400, expired: true };
+  const old = { ...PLAN, id: 8, title: "Old plan", created_at: PLAN.created_at - 8 * 86400, expired: true, agent_app: null };
   render(<Ai sites={[]} plans={[old, PLAN]} onWatch={() => {}} />);
   expect(screen.getByRole("tab", { name: /^Plans to confirm\s?1$/ })).toBeInTheDocument();
   const card = screen.getByRole("region", { name: "Old plan" });
   expect(within(card).getByText("Expired")).toBeInTheDocument();
+  expect(within(card).getByText("AI agent")).toBeInTheDocument();
   expect(within(card).getByText(/so it will never run/)).toBeInTheDocument();
   expect(within(card).queryByRole("button", { name: /Confirm/ })).toBeNull();
   fireEvent.click(within(card).getByRole("button", { name: "Remove Old plan" }));

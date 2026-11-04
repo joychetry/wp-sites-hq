@@ -279,6 +279,7 @@ function job(over: Partial<Job> = {}): Job {
     created_at: 0,
     finished_at: 1,
     proposed_by: "human",
+    agent_app: null,
     confirmed_at: 0,
     declined_at: null,
     expired: false,

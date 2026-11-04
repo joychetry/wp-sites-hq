@@ -175,7 +175,7 @@ function Plans({ plans: all, sites, onWatch, focusPlan, onConnect }: PlansProps)
                 <Glyph name="sparkle" />
               </span>
               <div className="who">
-                <b>AI agent</b>
+                <b>{p.agent_app ?? "AI agent"}</b>
                 <small>Connected AI app · asked {ago(p.created_at)}</small>
               </div>
               {p.expired ? <Status pill tone="unknown">Expired</Status> : <Status pill tone="warning">Waiting for you to confirm</Status>}

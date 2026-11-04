@@ -197,6 +197,8 @@ export type Job = {
   finished_at: number | null;
   /** "agent" for a plan an AI agent proposed; it runs only after you confirm it. */
   proposed_by: "human" | "agent";
+  /** The AI app that proposed an agent's plan, as it names itself (Claude, Cursor). Plain text. */
+  agent_app: string | null;
   confirmed_at: number | null;
   declined_at: number | null;
   /** An agent's plan nobody answered within 7 days. It never runs; you can only remove it. */
