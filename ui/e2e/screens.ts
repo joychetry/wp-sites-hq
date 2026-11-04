@@ -385,17 +385,17 @@ export const SCREENS: Screen[] = [
     name: "content-bulk",
     open: async (page) => {
       await nav("Content")(page);
-      await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).check();
-      await page.getByRole("checkbox", { name: "Tick Hiring a morning baker" }).check();
+      await page.getByRole("checkbox", { name: "Select Autumn opening hours" }).check();
+      await page.getByRole("checkbox", { name: "Select Hiring a morning baker" }).check();
     },
   },
   {
     name: "content-bulk-plan",
     open: async (page) => {
       await nav("Content")(page);
-      await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).check();
-      await page.getByRole("checkbox", { name: "Tick Hiring a morning baker" }).check();
-      await page.getByRole("button", { name: "Make drafts (2)" }).click();
+      await page.getByRole("checkbox", { name: "Select Autumn opening hours" }).check();
+      await page.getByRole("checkbox", { name: "Select Hiring a morning baker" }).check();
+      await page.getByRole("button", { name: "Change to draft (2)" }).click();
     },
   },
   {

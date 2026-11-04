@@ -108,7 +108,7 @@ test("lists a site's entries, pages through them, and says why an older site can
   const table = await screen.findByRole("table", { name: "Pages" });
   expect(within(table).getByRole("button", { name: "Menu" })).toBeInTheDocument();
   expect(within(table).getByText("Draft")).toBeInTheDocument();
-  expect(screen.getByText("1–1 of 21 pages")).toBeInTheDocument();
+  expect(screen.getByText("1 to 1 of 21 pages")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Next page" }));
   await waitFor(() => expect(calls.at(-1)).toEqual(["content_list", { id: 1, query: { post_type: "page", page: 2 } }]));
   fireEvent.click(await screen.findByRole("button", { name: "Books" }));

@@ -20,6 +20,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { day as dayText, month as monthText } from "../format";
 
 type Change = { target: { value: string } };
 const changed = (value: string): Change => ({ target: { value } });
@@ -470,16 +471,10 @@ const parseDay = (s: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
 };
-/** "28 Oct 2026" for a value like "2026-10-28". */
-export const dayLabel = (s: string) => {
-  const d = parseDay(s);
-  return d ? `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}` : "";
-};
+/** "28 Oct 2026" for a value like "2026-10-28": format.ts day(), the one date format the lists use too. */
+export const dayLabel = (s: string) => (parseDay(s) ? dayText(s) : "");
 /** "October 2026" for "2026-10". */
-export const monthLabel = (s: string) => {
-  const m = /^(\d{4})-(\d{2})$/.exec(s);
-  return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : "";
-};
+export const monthLabel = (s: string) => (/^\d{4}-\d{2}$/.test(s) ? monthText(s) : "");
 
 /** A month grid (WAI-ARIA date picker dialog): arrows move a day or a week, Page keys a month. */
 function Calendar({ value, max, onPick, onClose }: { value: string; max?: string; onPick: (d: string) => void; onClose: () => void }) {
@@ -742,7 +737,7 @@ function DayField({ value, onChange, label, disabled }: { value: string; onChang
         aria-label={label}
         aria-invalid={bad || undefined}
         aria-describedby={bad ? err : undefined}
-        placeholder="e.g. 1 Dec 2026"
+        placeholder={`e.g. ${dayText("2026-12-01")}`}
         disabled={disabled}
         value={draft}
         onChange={(e) => {
@@ -754,7 +749,7 @@ function DayField({ value, onChange, label, disabled }: { value: string; onChang
       />
       {bad && (
         <span id={err} className="err dt-err">
-          Write a date like 1 Dec 2026
+          Write a date like {dayText("2026-12-01")}
         </span>
       )}
     </>

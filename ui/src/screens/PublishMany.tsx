@@ -3,6 +3,8 @@
 import "../styles/screens/editor.css";
 import { Select, DateInput } from "../components/controls";
 import { useState } from "react";
+import { askOpenSite, askSignIn } from "../components/feedback";
+import { day, time } from "../format";
 import { contentBlocked, type Change, type Site } from "../api";
 import type { PlanRow } from "../components/JobSheet";
 import { SiteTile } from "../components/SiteTile";
@@ -22,6 +24,16 @@ const STATUSES = [
 
 type Props = { sites: Site[]; first: number | null; onClose: () => void; onPlan: (title: string, rows: PlanRow[]) => void };
 
+/** What one plan row says: the verb, the kind, the title, then the date, status and categories, so the review shows it all. */
+export function planLabel(kind: "post" | "page", title: string, status: string, date: string, categories: string[]) {
+  const when = date ? `${day(date)}, ${time(date)}` : "";
+  const verb = when && status === "publish" ? "Schedule" : status === "publish" ? "Publish" : "Add";
+  const how = status === "draft" ? " as a draft" : status === "pending" ? " for review" : "";
+  const at = when ? (verb === "Schedule" ? ` for ${when}` : ` dated ${when}`) : "";
+  const cats = kind === "post" && categories.length ? ` in ${categories.join(", ")}` : "";
+  return { verb, label: `${verb} the ${kind} \u201c${title}\u201d${how}${at}${cats}` };
+}
+
 export function PublishMany({ sites, first, onClose, onPlan }: Props) {
   const usable = sites.filter((s) => !contentBlocked(s));
   const [kind, setKind] = useState<"post" | "page">("post");
@@ -32,8 +44,12 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
   const [cats, setCats] = useState("");
   const [picked, setPicked] = useState<Set<number>>(() => new Set(first != null && usable.some((s) => s.id === first) ? [first] : []));
 
+  const [tried, setTried] = useState(false);
   const categories = cats.split(",").map((c) => c.trim()).filter(Boolean);
   const review = () => {
+    // The button stays on and says what is missing, instead of greying out without a reason.
+    setTried(true);
+    if (!title.trim() || picked.size === 0) return;
     const action: Change["action"] = {
       do: "publish_post",
       post_type: kind,
@@ -43,17 +59,16 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
       ...(date ? { date: siteDate(date) } : {}),
       ...(kind === "post" && categories.length ? { terms: { category: categories } } : {}),
     };
-    const verb = date && status === "publish" ? "Schedule" : status === "publish" ? "Publish" : "Add";
-    const label = `${verb} “${action.title}”${status === "publish" ? "" : ` as a ${status === "draft" ? "draft" : "pending review entry"}`}`;
+    const { verb, label } = planLabel(kind, action.title, status, date, categories);
     const rows: PlanRow[] = usable.filter((s) => picked.has(s.id)).map((s) => ({ change: { site_id: s.id, action }, site: s.name, label }));
     onPlan(`${verb} “${action.title}” on ${rows.length === 1 ? "1 site" : `${rows.length} sites`}`, rows);
   };
 
   const footer = (
     <>
-      <span className="sum">{picked.size === 1 ? "1 site" : `${picked.size} sites`} picked</span>
-      <Button onClick={onClose}>Close without publishing</Button>
-      <Button kind="primary" className="disc" disabled={!title.trim() || picked.size === 0} onClick={review}>
+      <span className="sum">{picked.size === 1 ? "1 site" : `${picked.size} sites`} selected</span>
+      <Button onClick={onClose}>Close without saving</Button>
+      <Button kind="primary" className="disc" onClick={review}>
         Review the plan
         <span className="btn-disc">
           <Glyph name="arrow" />
@@ -76,12 +91,17 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
       </fieldset>
       <label className="field">
         <span>Title</span>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input className="input" aria-required="true" aria-invalid={(tried && !title.trim()) || undefined} aria-describedby={tried && !title.trim() ? "pm-title-err" : undefined} value={title} onChange={(e) => setTitle(e.target.value)} />
+        {tried && !title.trim() && (
+          <small className="err" id="pm-title-err">
+            Add a title first.
+          </small>
+        )}
       </label>
       <label className="field">
         <span>Text</span>
         <textarea className="input" rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
-        <small>Each paragraph becomes a paragraph block. Leave a blank line between paragraphs.</small>
+        <small>Leave a blank line between paragraphs.</small>
       </label>
       <label className="field">
         <span>Status</span>
@@ -107,8 +127,10 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
       )}
       <fieldset className="field pm-sites">
         <legend>Sites</legend>
+        {tried && picked.size === 0 && <small className="err">Select at least one site.</small>}
         {sites.map((s) => {
           const why = contentBlocked(s);
+          const signIn = s.sign_in_again || /sign in again/i.test(why ?? "");
           return (
             <label key={s.id} className={why ? "row check na" : "row check"}>
               <input
@@ -126,7 +148,14 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
               />
               <SiteTile site={s} size="sm" />
               <span className="pm-name">{s.name}</span>
-              {why && <small>{why}</small>}
+              {why && (
+                <small>
+                  {why}{" "}
+                  <button type="button" className="link" onClick={() => (signIn ? askSignIn(s.id) : askOpenSite(s.id))}>
+                    {signIn ? "Sign in again" : "Open in Sites"}
+                  </button>
+                </small>
+              )}
             </label>
           );
         })}

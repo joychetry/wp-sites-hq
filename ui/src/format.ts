@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Dates and times, drawn one way on every screen. The locale is the computer's own, so the day order
-// and the 12 or 24-hour clock follow its settings.
+// Dates and times, drawn one way on every screen: "28 Oct 2026" and "09:30" (en-GB, like the rest of the
+// app). Date fields show and read the same format (components/controls.tsx DateInput).
 
 type When = number | string | Date;
 
-const DAY = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
-const TIME = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-const MONTH = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
+const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
 
 /** Unix seconds, a Date, or a site's "2026-10-28", "2026-10-28 09:30:12", "2026-10-28T09:30" or
  * "2026-10". Site strings are read as they are written (the site's clock), never shifted. */
@@ -24,7 +24,7 @@ export const day = (v: When | null | undefined) => {
   return d ? DAY.format(d) : "";
 };
 
-/** "09:30" or "9:30 AM", by the computer's clock. */
+/** "09:30", on a 24-hour clock. */
 export const time = (v: When | null | undefined) => {
   const d = toDate(v);
   return d ? TIME.format(d) : "";
@@ -68,7 +68,7 @@ const HARM: [RegExp, string][] = [
   [/privilege escalation/i, "A user could give themselves more rights than their role allows."],
   [/authentication bypass/i, "Someone could get in without signing in properly."],
   [/file (upload|deletion|read|download|inclusion)|path traversal|directory traversal/i, "Someone could read, add or remove files on the server."],
-  [/missing authori[sz]ation|access control|insecure direct object/i, "Users could do things their role should not allow."],
+  [/missing authori[sz]ation|access control|insecure direct object/i, "Users could do what their role should not allow."],
   [/information (disclosure|exposure)|sensitive (data|information)/i, "Private information could be shown to people who should not see it."],
   [/open redirect/i, "Visitors could be sent on to another site."],
   [/denial of service|\bdos\b/i, "Someone could make the site stop answering."],

@@ -212,16 +212,16 @@ test("site HTML with position: fixed stays inside the editor, never over the win
   expect(await page.locator(".blk-text").first().evaluate(fill)).toEqual([0, 0, 0, 0]);
 });
 
-test("entries are ticked and changed in bulk from the keyboard", async ({ page }) => {
+test("posts are selected and changed in bulk from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "content")!, "light");
-  await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).focus();
+  await page.getByRole("checkbox", { name: "Select Autumn opening hours" }).focus();
   await page.keyboard.press("Space");
-  await page.getByRole("button", { name: "Make drafts (1)" }).focus();
+  await page.getByRole("button", { name: "Change to draft (1)" }).focus();
   await page.keyboard.press("Enter");
-  const sheet = page.getByRole("dialog", { name: "Make drafts of 1 entry on MC A" });
-  await expect(sheet.getByText("Make \u201cAutumn opening hours\u201d a draft").first()).toBeVisible();
+  const sheet = page.getByRole("dialog", { name: "Change 1 post to draft on MC A" });
+  await expect(sheet.getByText("Change \u201cAutumn opening hours\u201d to draft").first()).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Make drafts (1)" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Change to draft (1)" })).toBeFocused();
 });
 
 test("export is two buttons from the keyboard; the import picker is the next Tab stop with a focus ring", async ({ page }) => {

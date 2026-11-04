@@ -50,10 +50,10 @@
 [data-theme="dark"] .btn.danger.solid:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 86%, #ffffff); }
 
 /* Publish on several sites: each site with its tile; one that can't take it says why, quietly. */
-.pm-sites .row.check { gap: 10px; min-height: 36px; padding: 2px 0; flex-wrap: wrap; }
+.pm-sites .row.check { gap: var(--sp-1) var(--sp-3); min-height: 36px; padding: 2px 0; flex-wrap: wrap; }
 .pm-sites .pm-name { flex: none; }
 /* Why a site can't be selected, on its own line under the name (indented past the box and tile), with its fix. */
-.pm-sites .row.check small { flex: 1 1 12em; color: var(--text-3); font-size: var(--fs-sm); }
+.pm-sites .row.check small { flex-basis: 100%; padding-left: calc(24px + 24px + 2 * var(--sp-3)); color: var(--text-3); font-size: var(--fs-sm); }
 .pm-sites .row.check.na { color: var(--text-3); cursor: not-allowed; }
 
 /* The full-page editor (screens/Editor.tsx): a top bar, then the main column and the side boxes,
