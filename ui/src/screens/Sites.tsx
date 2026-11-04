@@ -398,8 +398,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
           {picked.length > 0 && (
             <div className="selbar" role="region" aria-label="Selection">
               <b>{picked.length} selected</b>
-              <Button small className="ghost" aria-label="Clear selection" onClick={() => setSelected(new Set())} keys="Esc">
-                Clear
+              <Button small className="ghost" onClick={() => setSelected(new Set())} keys="Esc">
+                Clear selection
               </Button>
               <label className="row">
                 <span>Move to group</span>

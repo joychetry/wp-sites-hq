@@ -126,7 +126,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
     <>
       <label className="field">
         <span>WordPress user name</span>
-        <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" spellCheck={false} />
+        <input className="input" autoFocus={step === 2} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" spellCheck={false} />
       </label>
       <label className="field">
         <span>Application password</span>

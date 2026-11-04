@@ -589,7 +589,7 @@ export default function App() {
             </p>
           )}
           <div className="top-end">
-            <button type="button" className="kbar" aria-label="Search or run a command" onClick={() => setPalette(true)}>
+            <button type="button" className="kbar" aria-keyshortcuts="Control+K" onClick={() => setPalette(true)}>
               <Glyph name="search" />
               <span>Search or run a command</span>
               <Kbd>Ctrl K</Kbd>
