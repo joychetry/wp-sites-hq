@@ -1269,7 +1269,7 @@ function More({ label, items }: { label: string; items: MenuItem[] }) {
  * "More" menu after it; arrows still move through every tab, and the chosen one is always on the row.
  * `text` names a tab whose label isn't plain words, for the menu.
  */
-export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }: { label: string; tabs: { id: T; label: ReactNode; text?: string }[]; value: T; onChange: (t: T) => void; idBase: string }) {
+export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }: { label: string; tabs: { id: T; label: ReactNode; text?: string; count?: number }[]; value: T; onChange: (t: T) => void; idBase: string }) {
   const list = useRef<HTMLDivElement>(null);
   const at = tabs.findIndex((t) => t.id === value);
   const { row, measure, shown } = useOverflow(tabs.length, at);
@@ -1303,6 +1303,7 @@ export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }:
                 onClick={() => onChange(t.id)}
               >
                 {t.label}
+                {!!t.count && <span className="n">{` ${t.count}`}</span>}
               </button>
             ),
         )}
@@ -1315,6 +1316,7 @@ export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }:
         {tabs.map((t) => (
           <span key={t.id} className="tab-like">
             {t.label}
+            {!!t.count && <span className="n">{` ${t.count}`}</span>}
           </span>
         ))}
       </div>
@@ -1329,7 +1331,7 @@ export function Segmented<T extends string>({ label, options, value, onChange }:
   const body = (o: { label: string; count?: number }) => (
     <>
       {o.label}
-      {o.count !== undefined && <small>{o.count}</small>}
+      {o.count !== undefined && <small>{` ${o.count}`}</small>}
     </>
   );
   return (

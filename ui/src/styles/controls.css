@@ -26,7 +26,10 @@ input[type="checkbox"], input[type="radio"], .t td, .linkish, .link, .kbar, .sco
 .input:focus, .input[aria-expanded="true"] { border-color: var(--focus); box-shadow: var(--ring); outline: none; }
 .input:disabled { background: var(--panel); border-color: var(--line-2); box-shadow: none; color: var(--text-3); cursor: not-allowed; }
 .input[aria-invalid="true"] { border-color: var(--danger); }
-.err { display: block; color: var(--danger); font-size: var(--fs-sm); margin-top: var(--sp-1); }
+/* An error is red and starts with the alert mark, so colour is never the only signal. `.field .err` wins over `.field small`. */
+.err, .field .err { display: block; color: var(--danger); font-size: var(--fs-sm); margin-top: var(--sp-1); }
+.err:not(:empty)::before { content: ""; display: inline-block; width: 1em; height: 1em; margin-right: var(--sp-1); vertical-align: -0.15em; background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.01'/%3E%3C/svg%3E") center / contain no-repeat; }
 .err.reserve { min-height: 1.5em; }
 textarea.input { line-height: var(--lh); }
 
@@ -166,7 +169,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 /* One row: tabs and segmented options that don't fit go into "More" (controls.tsx useOverflow). A hidden copy measures them. */
 .row-measure { position: absolute; visibility: hidden; pointer-events: none; height: 0; overflow: hidden; display: flex; white-space: nowrap; }
 .tab-like, .tab-more { padding: 0 var(--sp-3); font-weight: 600; white-space: nowrap; }
-.tab-more { display: inline-flex; align-items: center; gap: 6px; height: 42px; border: 0; background: none; color: var(--text-2); font-weight: 500; }
+.tab-more { display: inline-flex; align-items: center; gap: 6px; height: var(--control-lg); border: 0; background: none; color: var(--text-2); font-weight: 500; }
 .tab-more:hover, .tab-more[aria-expanded="true"] { color: var(--text); }
 .tab-more:focus-visible { outline-offset: -2px; }
 .n-more { font: 600 var(--fs-xs)/1 var(--mono); color: var(--text-3); }
@@ -174,12 +177,12 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .seg-row .segmented.inline { flex-wrap: nowrap; }
 .seg-like { display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; font-weight: 600; }
 .seg-row .tab-more { height: var(--control); border: 1px solid var(--control-line); border-radius: var(--radius-pill); background: var(--bg); }
-.tabs [role="tab"] { height: 42px; padding: 0 var(--sp-3); border: 0; background: none; color: var(--text-2); font-weight: 500; white-space: nowrap; box-shadow: inset 0 -2px 0 transparent; }
+.tabs [role="tab"] { height: var(--control-lg); padding: 0 var(--sp-3); border: 0; background: none; color: var(--text-2); font-weight: 500; white-space: nowrap; box-shadow: inset 0 -2px 0 transparent; }
 .tabs [role="tab"]:hover { color: var(--text); }
 /* Bold without a wider label: a hairline stroke, so the tabs to the right never shift when one is chosen. */
 .tabs [role="tab"][aria-selected="true"] { color: var(--brand-text); -webkit-text-stroke: 0.4px currentColor; box-shadow: inset 0 -2px 0 var(--green); }
 .tabs [role="tab"]:focus-visible { outline-offset: -2px; }
-.tabs .n { margin-left: 6px; font: 600 var(--fs-xs) var(--mono); color: var(--danger); }
+.tabs .n { margin-left: 2px; font: 600 var(--fs-xs) var(--mono); color: var(--danger); }
 
 /* Toasts */
 /* Clear of the page's 32px edge, so a toast never sits on the last field of a form. */
