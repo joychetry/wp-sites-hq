@@ -138,8 +138,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Clients")(page);
       await page.getByRole("button", { name: "Add a cost or charge" }).click();
-      await choose(page.getByRole("combobox", { name: "On" }), { name: "MC A" });
-      await page.getByRole("textbox", { name: "What it is" }).fill("Backups");
+      await choose(page.getByRole("combobox", { name: "For" }), { name: "MC A" });
+      await page.getByRole("textbox", { name: "Name" }).fill("Backups");
       await page.getByRole("textbox", { name: "Amount" }).fill("5.50");
     },
   },

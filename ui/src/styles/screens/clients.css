@@ -3,9 +3,9 @@
 .clients .stat-n strong.danger { color: var(--danger); }
 .clients .t th, .clients .t td { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 .clients .t td { height: 56px; padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
-.clients .t .linkish { font-weight: 600; text-decoration-color: transparent; max-width: 260px; }
+.clients .t .linkish { font-weight: 600; text-decoration-color: transparent; max-width: 100%; }
 .clients .t .linkish:hover { text-decoration-color: currentColor; }
-.clients .site small { overflow-wrap: anywhere; }
+.clients .site small.plain { font-family: var(--sans); }
 /* No client yet: a dashed ring with a question mark. */
 .clients .av.none { border: 1px dashed var(--line-ui); color: var(--text-2); }
 .clients .pchips { display: flex; flex-wrap: wrap; gap: 6px; white-space: normal; }
@@ -29,8 +29,8 @@
 .field.amount > label { font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
 .clients .stat-n { flex-wrap: nowrap; min-width: 0; }
 .clients .stat-n .cut { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.clients .t th:first-child { width: 40%; }
 .clients .stat h2 { margin: 0; }
 /* The clients table, and what renews soon beside it */
 .cl-split { display: grid; grid-template-columns: minmax(0, 1fr) var(--inspector); gap: var(--page-gap); align-items: start; }
-@media (max-width: 1100px) { .cl-split { grid-template-columns: minmax(0, 1fr); } }
+/* Under 1360px the clients table takes the whole width and Renewing soon goes under it, so neither is squeezed. */
+@media (max-width: 1360px) { .cl-split { grid-template-columns: minmax(0, 1fr); } }
