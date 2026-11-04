@@ -24,7 +24,7 @@
 
 /* Products: a picture tile, the name and SKU, mono numbers; a low row on the warm paper */
 .store .t td { height: 60px; }
-.store .t th:last-child { width: 1%; }
+.store .stock { justify-content: flex-end; }
 .store .card-foot .grow { flex: 1; font-size: var(--fs-sm); }
 .store .t .site small { font-family: var(--sans); }
 .store .row.nowrap { gap: var(--sp-2); }

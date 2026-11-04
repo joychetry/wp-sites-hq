@@ -63,7 +63,7 @@ test("the store shows how it did, what runs low, and plans a product change to c
   expect(await screen.findByText("€120.00")).toBeInTheDocument();
   expect(screen.getByText("Running low: Rye (1 left)")).toBeInTheDocument();
   const table = await screen.findByRole("table", { name: "Products" });
-  expect(within(table).getByRole("row", { name: /Gift card/ })).toHaveTextContent("Change it in wp-admin");
+  expect(within(table).getByRole("row", { name: /Gift card/ })).toHaveTextContent("In WordPress");
   fireEvent.click(screen.getByRole("button", { name: "Change price or stock of Rye" }));
   fireEvent.change(screen.getByRole("textbox", { name: /^Stock/ }), { target: { value: "20" } });
   fireEvent.click(screen.getByRole("button", { name: "Review the change" }));
@@ -122,4 +122,14 @@ test("Classic Monks' reports show what the site has and name what failed", async
   expect(screen.getByText("Not scanned yet")).toBeInTheDocument();
   expect(screen.getByText("Not read: Searches (Timed out.)")).toBeInTheDocument();
   expect(mockInvoke).toHaveBeenCalledWith("cm_reports", { id: 1, days: 30 });
+});
+
+test("a bad number shows under its own field", async () => {
+  core();
+  render(<Store sites={[A, B]} onPlan={vi.fn()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Change price or stock of Rye" }));
+  fireEvent.change(screen.getByRole("textbox", { name: /^Sale price/ }), { target: { value: "9" } });
+  expect(screen.getByRole("textbox", { name: /^Sale price/ })).toHaveAttribute("aria-invalid", "true");
+  expect(screen.getByRole("textbox", { name: /^Price/ })).not.toHaveAttribute("aria-invalid");
+  expect(screen.getByText("The sale price has to be lower than the price.")).toHaveClass("err");
 });
