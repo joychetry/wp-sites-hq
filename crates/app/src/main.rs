@@ -1039,7 +1039,10 @@ fn monitors_list(state: State<'_, AppCore>) -> Res<Vec<Monitor>> {
 #[tauri::command]
 async fn monitors_check(state: State<'_, AppCore>, id: Option<i64>) -> Res<()> {
     match id {
-        Some(id) => core(&state)?.check_monitor(id).await.map_err(|e| e.to_string()),
+        Some(id) => core(&state)?
+            .check_monitor(id)
+            .await
+            .map_err(|e| e.to_string()),
         None => {
             core(&state)?.check_monitors(true).await;
             Ok(())

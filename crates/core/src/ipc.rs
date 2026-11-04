@@ -86,7 +86,8 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
     // The app's Connect dialog says an AI app reached WP Sites HQ; `status` is only a liveness check.
     if req.method != "status" {
         let now = crate::oauth::now().max(0) as u64;
-        core.agent_seen.store(now, std::sync::atomic::Ordering::Relaxed);
+        core.agent_seen
+            .store(now, std::sync::atomic::Ordering::Relaxed);
     }
     match req.method.as_str() {
         "status" => Ok(status(core, Role::Agent)),
