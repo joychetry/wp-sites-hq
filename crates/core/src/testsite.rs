@@ -217,7 +217,7 @@ impl Default for State {
                 { "key": "field_flex", "name": "rows", "label": "Rows", "type": "flexible_content", "required": false, "editable": false, "settings": {}, "value": null },
             ] }]),
             approvals: vec![
-                json!({ "op_id": 31, "tool": "delete-post", "client_label": "Claude [agent]", "user": "admin", "created_at": "2026-10-28 09:10:00", "expires_in": 600, "approve_url": "/wp-admin/admin.php?page=cm-ai-approve&op=31" }),
+                json!({ "op_id": 31, "tool": "delete-post", "client_label": "Claude [agent]", "user": "admin", "created_at": "2026-10-28 09:10:00", "expires_in": 600, "approve_url": "/wp-admin/admin.php?page=cm-ai-approve&op=31", "input": { "post_id": 12 }, "preview": { "id": 12, "title": "Hello world" } }),
             ],
             resets: Vec::new(),
             released: false,

@@ -117,6 +117,8 @@ pub struct Core {
     pub headless: bool,
     /// Token refreshes sent to sites since start.
     pub refreshes: AtomicU64,
+    /// When an AI app (or the CLI) last asked the core for something, unix seconds; 0 for never.
+    pub agent_seen: AtomicU64,
     keychain: Result<Arc<CredentialStore>, String>,
     vault: Mutex<Option<Arc<vault::Vault>>>,
     http: reqwest::Client,
@@ -154,6 +156,7 @@ impl Core {
             store: Mutex::new(store),
             headless: opts.headless,
             refreshes: AtomicU64::new(0),
+            agent_seen: AtomicU64::new(0),
             keychain: opts.keychain.clone(),
             vault: Mutex::new(None),
             http,

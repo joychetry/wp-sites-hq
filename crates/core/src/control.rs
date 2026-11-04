@@ -80,6 +80,9 @@ pub struct Approval {
     pub who: String,
     pub time: String,
     pub expires_in: u64,
+    /// The tool's arguments and the site's view of what it changes (a post's title, a user's name).
+    pub input: Value,
+    pub preview: Value,
 }
 
 /// "WP Sites HQ [operator]" reads as "WP Sites HQ".
@@ -537,6 +540,8 @@ impl Core {
                 who: who(a),
                 time: text(&a["created_at"]),
                 expires_in: a["expires_in"].as_u64().unwrap_or_default(),
+                input: a["input"].clone(),
+                preview: a["preview"].clone(),
             })
             .collect())
     }
@@ -751,6 +756,7 @@ mod tests {
             ),
             (31, "Claude", "delete-post")
         );
+        assert_eq!(waiting[0].preview["title"], "Hello world");
         let link = core.approval_link(s.id, 31).await.unwrap();
         assert!(link.starts_with(&site.url) && link.ends_with("op=31"));
         let e = core.approval_link(s.id, 99).await.unwrap_err();
