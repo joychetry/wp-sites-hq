@@ -404,7 +404,7 @@ export const SCREENS: Screen[] = [
       await nav("Content")(page);
       await choose(page.getByRole("combobox", { name: "Show", exact: true }), { value: "trash" });
       await page.getByRole("button", { name: "Summer menu" }).click();
-      await page.getByRole("button", { name: "Bring it back from the trash" }).waitFor();
+      await page.getByRole("button", { name: "Bring back from the trash" }).waitFor();
     },
   },
   {

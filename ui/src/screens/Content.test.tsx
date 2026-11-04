@@ -146,7 +146,7 @@ test("the editor changes only edited text blocks and keeps the others", async ()
   expect(await screen.findByRole("heading", { name: "Edit page on Alpha" })).toHaveFocus();
   expect(screen.queryByRole("dialog")).toBeNull();
   const blocks = await screen.findByRole("list", { name: "Blocks" });
-  expect(within(blocks).getByText("Kept as is")).toBeInTheDocument();
+  expect(within(blocks).getByText("Can't edit here")).toBeInTheDocument();
   expect(within(blocks).getAllByRole("textbox")).toHaveLength(2);
   const save = screen.getByRole("button", { name: "Save draft" });
   expect(save).toBeDisabled();
@@ -225,6 +225,17 @@ test("leaving with unsaved changes asks first", async () => {
   expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("Our menu");
   fireEvent.click(screen.getByRole("button", { name: "Back to pages" }));
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Leave without saving" }));
+  expect(await screen.findByRole("table", { name: "Pages" })).toBeInTheDocument();
+});
+
+test("Save and leave saves first, then goes", async () => {
+  const calls = core();
+  render(<Content sites={[CM]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
+  fireEvent.change(await screen.findByRole("textbox", { name: "Title" }), { target: { value: "Our menu" } });
+  fireEvent.click(screen.getByRole("button", { name: "Back to pages" }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save and leave" }));
+  await waitFor(() => expect(calls.find((c) => c[0] === "content_edit")?.[1].draft).toMatchObject({ title: "Our menu" }));
   expect(await screen.findByRole("table", { name: "Pages" })).toBeInTheDocument();
 });
 
@@ -315,7 +326,7 @@ test("existing terms only, when new ones can't be added; trash asks first", asyn
   fireEvent.click(screen.getByRole("button", { name: "Move to the trash" }));
   const ask = screen.getByRole("dialog");
   expect(within(ask).getByText(/WordPress keeps it there for 30 days/)).toBeInTheDocument();
-  fireEvent.click(within(ask).getByRole("button", { name: "Move it to the trash" }));
+  fireEvent.click(within(ask).getByRole("button", { name: "Move to the trash" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_trash")).toBe(true));
   expect(await screen.findByText('Moved “Menu” to the trash on Alpha.')).toBeInTheDocument();
 });

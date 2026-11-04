@@ -135,7 +135,7 @@ export function RichText({ label, html, onChange, site, idBase }: { label: strin
           setup: (e) => {
             e.ui.registry.addButton("wpmore", {
               icon: "page-break",
-              tooltip: "Insert Read more tag",
+              tooltip: "Insert a read more break",
               onAction: () => e.insertContent("<!--more-->"),
             });
             e.on("init", () => {
@@ -202,7 +202,7 @@ export function RichText({ label, html, onChange, site, idBase }: { label: strin
       </div>
       {picking && site && (
         <div className="rte-media">
-          <MediaPicker site={site} kind="" use="Insert" cancel="Close the library" onPick={insert} onCancel={() => setPicking(false)} />
+          <MediaPicker site={site} kind="" use="Insert" onPick={insert} onCancel={() => setPicking(false)} />
         </div>
       )}
       <div id={`${idBase}-panel`} role="tabpanel" aria-labelledby={`${idBase}-tab-${mode}`}>

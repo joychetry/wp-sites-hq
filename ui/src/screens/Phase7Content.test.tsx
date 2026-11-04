@@ -89,7 +89,7 @@ test("an entry moved to the trash comes back with Undo on the message", async ()
   render(<Content sites={[CM]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
   fireEvent.click(await screen.findByRole("button", { name: "Move to the trash" }));
-  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Move it to the trash" }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Move to the trash" }));
   fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_untrash" && c[1].postId === 7)).toBe(true));
   expect(await screen.findByText("Brought it back from the trash on Alpha.")).toBeInTheDocument();
@@ -106,7 +106,7 @@ test("schedules an entry and changes its custom fields", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Menu" }));
   const sheet = document.body;
   const fields = await within(sheet).findByRole("group", { name: "Custom fields" });
-  expect(within(fields).getByText("kept as is (not plain text)")).toBeInTheDocument();
+  expect(within(fields).getByText("Can't edit here")).toBeInTheDocument();
   fireEvent.change(within(fields).getByRole("textbox", { name: "price" }), { target: { value: "14" } });
   fireEvent.click(within(fields).getByRole("button", { name: "Remove the field gallery" }));
   fireEvent.change(within(fields).getByRole("textbox", { name: "New field name" }), { target: { value: "_secret" } });
@@ -143,7 +143,10 @@ test("puts an earlier version back after asking, and brings an entry back from t
   fireEvent.click(within(sheet).getByRole("button", { name: "Put it back" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_restore_revision" && c[1].revisionId === 70)).toBe(true));
   expect(await screen.findByText(`is back to the version from ${dayTime("2026-10-20 08:00:00")}`, { exact: false })).toBeInTheDocument();
-  fireEvent.click(within(sheet).getByRole("button", { name: "Bring it back from the trash" }));
+  // A trashed entry is read-only until it comes back.
+  expect(within(sheet).getByText(/is in the trash\. Bring it back to change it/)).toBeInTheDocument();
+  expect(within(sheet).getByRole("textbox", { name: "Title" }).closest(".ed-grid")).toHaveAttribute("inert");
+  fireEvent.click(within(sheet).getByRole("button", { name: "Bring back from the trash" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "content_untrash")).toBe(true));
   expect(await screen.findByText(/back from the trash on Alpha, as draft/)).toBeInTheDocument();
 });
@@ -156,7 +159,7 @@ test("Basic mode and older Classic Monks don't offer fields, versions or the tra
   await within(sheet).findByRole("textbox", { name: "Title" });
   expect(within(sheet).queryByRole("group", { name: "Custom fields" })).toBeNull();
   expect(within(sheet).queryByRole("button", { name: "Show earlier versions" })).toBeNull();
-  expect(within(sheet).queryByRole("button", { name: "Bring it back from the trash" })).toBeNull();
+  expect(within(sheet).queryByRole("button", { name: "Bring back from the trash" })).toBeNull();
   unmount();
   void OLD;
 });

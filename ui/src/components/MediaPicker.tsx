@@ -58,14 +58,13 @@ type Props = {
   site: Site;
   /** image, video, audio or application; empty for every type. */
   kind?: string;
-  /** What Use says before the item's name, and Cancel's words. */
+  /** What Use says before the item's name: "Use" for a field, "Insert" for the body. */
   use?: string;
-  cancel?: string;
   onPick: (m: Media) => void;
   onCancel: () => void;
 };
 
-export function MediaPicker({ site, kind = "image", use = "Use", cancel = "Cancel", onPick, onCancel }: Props) {
+export function MediaPicker({ site, kind = "image", use = "Use", onPick, onCancel }: Props) {
   const [lib, setLib] = useState<Library | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -127,7 +126,7 @@ export function MediaPicker({ site, kind = "image", use = "Use", cancel = "Cance
           setSearch(typed.trim());
         }}
       >
-        <SearchInput className="sm" aria-label="Search the media library" placeholder="Search the media library" value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <SearchInput className="sm" aria-label="Search the media library" placeholder="Search media" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <Button small type="submit">
           Search
         </Button>
@@ -159,7 +158,7 @@ export function MediaPicker({ site, kind = "image", use = "Use", cancel = "Cance
           </Button>
         )}
         <Button small className="quiet" onClick={onCancel}>
-          {cancel}
+          Close the library
         </Button>
       </div>
       <div className="imgpick-up" role="group" aria-label="A new image from this computer">

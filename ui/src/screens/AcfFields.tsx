@@ -81,7 +81,14 @@ function Field({ f, value, error, ctx, onChange }: { f: AcfField; value: unknown
           <Glyph name="lock" />
           <span>
             {({ flexible_content: "Flexible content", clone: "A clone field", oembed: "An oEmbed field" } as Record<string, string>)[f.type] ?? "This field"} can only be changed in WordPress.
-            {!empty(value) && typeof value !== "object" && <span className="mono cut"> Now: {str(value)}</span>}
+            {!empty(value) && typeof value !== "object" && (
+              <>
+                {" "}
+                <span className="cut" data-tip={str(value)}>
+                  Now: {str(value)}
+                </span>
+              </>
+            )}
           </span>
           <Button small onClick={() => api.openLink(ctx.editUrl, ctx.site.id).catch(() => {})}>
             Edit in WordPress
@@ -96,11 +103,11 @@ function Field({ f, value, error, ctx, onChange }: { f: AcfField; value: unknown
   let control;
   if (["text", "email", "url", "password"].includes(t)) {
     control = (
-      <span className="acf-wrap">
+      <div className="acf-wrap">
         {str(s.prepend) && <span className="dim">{str(s.prepend)}</span>}
         <input className="input" type={t === "password" ? "password" : t === "text" ? "text" : t} autoComplete="off" placeholder={str(s.placeholder)} value={str(value)} onChange={(e) => onChange(e.target.value)} {...aria} />
         {str(s.append) && <span className="dim">{str(s.append)}</span>}
-      </span>
+      </div>
     );
   } else if (t === "textarea") {
     control = <textarea className="input" rows={Number(s.rows) || 4} placeholder={str(s.placeholder)} value={str(value)} onChange={(e) => onChange(e.target.value)} {...aria} />;
@@ -269,7 +276,7 @@ function Repeater({ f, label, value, error, ctx, onChange }: { f: AcfField; labe
       ))}
       {error && <small className="err">{error}</small>}
       <Button ref={add} small disabled={max > 0 && rows.length >= max} onClick={() => onChange([...rows, Object.fromEntries((f.sub_fields ?? []).map((sf) => [sf.key, sf.settings.default_value ?? ""]))])}>
-        {str(f.settings.button_label) || "Add a row"}
+        Add a row
         <Glyph name="plus" />
       </Button>
     </fieldset>
@@ -282,7 +289,7 @@ function MediaField({ f, value, ctx, onChange }: { f: AcfField; value: unknown; 
   const [known, setKnown] = useState<Record<string, Media>>({});
   const ids = list(value);
   const gallery = f.type === "gallery";
-  const name = (id: string) => known[id]?.title || ctx.refs.media[id]?.title || `Item ${id}`;
+  const name = (id: string) => known[id]?.title || ctx.refs.media[id]?.title || `Untitled (#${id})`;
   const thumb = (id: string) => known[id]?.thumb || known[id]?.url || ctx.refs.media[id]?.thumbnail || ctx.refs.media[id]?.url || "";
   return (
     <div className="acf-media">
@@ -307,7 +314,6 @@ function MediaField({ f, value, ctx, onChange }: { f: AcfField; value: unknown; 
           site={ctx.site}
           kind={f.type === "file" ? "" : "image"}
           use={gallery ? "Add" : "Use"}
-          cancel="Close the library"
           onCancel={() => setPicking(false)}
           onPick={(m) => {
             setKnown({ ...known, [m.id]: m });
@@ -346,7 +352,7 @@ function PostField({ f, value, ctx, onChange }: { f: AcfField; value: unknown; c
     };
     // Search again when the words change.
   }, [typed]);
-  const name = (id: string) => names[id] ?? ctx.refs.posts[id]?.title ?? (/^\d+$/.test(id) ? `Entry ${id}` : id);
+  const name = (id: string) => names[id] ?? ctx.refs.posts[id]?.title ?? (/^\d+$/.test(id) ? `Untitled (#${id})` : id);
   const add = (title: string) => {
     const p = found.find((x) => x.title === title);
     if (!p) return;
@@ -371,7 +377,7 @@ function PostField({ f, value, ctx, onChange }: { f: AcfField; value: unknown; c
       <Combobox
         className="input sm"
         aria-label={`${several ? "Add to" : "Choose"} ${f.label}`}
-        placeholder={`Type to find ${types.join(" or ")} entries`}
+        placeholder={`Find a ${types.join(" or ")}`}
         disabled={several && max > 0 && ids.length >= max}
         suggestions={found.filter((p) => !ids.includes(String(p.id))).map((p) => p.title)}
         value={typed}
@@ -395,7 +401,7 @@ function TermField({ f, value, ctx, onChange }: { f: AcfField; value: unknown; c
     api.terms(ctx.site.id, tax).then(setTerms, () => setTerms([]));
   }, [tax]);
   const options = (terms ?? []).map((t) => ({ value: String(t.id), label: t.name }));
-  for (const id of list(value)) if (!options.some((o) => o.value === id)) options.push({ value: id, label: ctx.refs.terms[id]?.name ?? `Term ${id}` });
+  for (const id of list(value)) if (!options.some((o) => o.value === id)) options.push({ value: id, label: ctx.refs.terms[id]?.name ?? `Untitled (#${id})` });
   if (many(f)) return <MultiSelect label={f.label} options={options} value={list(value)} onChange={(v) => onChange(v.map(Number))} />;
   return (
     <Select className="input" aria-label={f.label} value={list(value)[0] ?? ""} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : "")}>
@@ -416,7 +422,7 @@ function UserField({ f, value, ctx, onChange }: { f: AcfField; value: unknown; c
   }, []);
   const roles = list(f.settings.role);
   const options = (users ?? []).filter((u) => !roles.length || roles.includes(u.role)).map((u) => ({ value: String(u.id), label: u.name }));
-  for (const id of list(value)) if (!options.some((o) => o.value === id)) options.push({ value: id, label: ctx.refs.users[id]?.name ?? `User ${id}` });
+  for (const id of list(value)) if (!options.some((o) => o.value === id)) options.push({ value: id, label: ctx.refs.users[id]?.name ?? `Untitled (#${id})` });
   if (many(f)) return <MultiSelect label={f.label} options={options} value={list(value)} onChange={onChange} />;
   return (
     <Select className="input" aria-label={f.label} value={list(value)[0] ?? ""} onChange={(e) => onChange(e.target.value)}>

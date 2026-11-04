@@ -80,10 +80,10 @@ test("the editor checks ACF's rules first, saves the fields, and Undo puts them 
   const fields = screen.getByRole("group", { name: "Custom fields" });
   expect(within(fields).getByRole("textbox", { name: "chef" })).toHaveValue("Ana");
   expect(within(fields).queryByText(field("email").name)).toBeNull();
-  expect(within(fields).getByText("kept as is (not plain text)")).toBeInTheDocument();
+  expect(within(fields).getByText("Can't edit here")).toBeInTheDocument();
   fireEvent.change(mail, { target: { value: "x@" } });
   fireEvent.click(screen.getByRole("button", { name: "Update" }));
-  expect(await screen.findByText(/Nothing was saved. Fix the ACF field marked in red/)).toBeInTheDocument();
+  expect(await screen.findByText(/Nothing was saved. Fix the field marked below/)).toBeInTheDocument();
   expect(calls.some((c) => c[0] === "content_acf_save")).toBe(false);
   fireEvent.change(mail, { target: { value: "x@y.bad" } });
   fireEvent.click(screen.getByRole("button", { name: "Update" }));
@@ -97,7 +97,7 @@ test("the editor checks ACF's rules first, saves the fields, and Undo puts them 
   fireEvent.change(words, { target: { value: "typed after the save" } });
   fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
   await waitFor(() => expect(calls.find((c) => c[0] === "cm_undo")?.[1]).toEqual({ id: 1, row: 77 }));
-  expect(await screen.findByText("The ACF fields are back as they were.")).toBeInTheDocument();
+  expect(await screen.findByText("The fields are back as they were.")).toBeInTheDocument();
   await waitFor(() => expect(screen.getByRole("textbox", { name: "Wysiwyg" })).toHaveValue(String(field("wysiwyg").value)));
 });
 
@@ -138,7 +138,7 @@ test("an ACF field changed on the site since it opened is not overwritten", asyn
   fireEvent.click(await screen.findByRole("button", { name: "Fields" }));
   fireEvent.change(await screen.findByRole("textbox", { name: "Email" }), { target: { value: "me@here.co" } });
   fireEvent.click(screen.getByRole("button", { name: "Update" }));
-  expect(await screen.findByText("An ACF field was changed on the site after you opened it, so the ACF fields were not saved.")).toBeInTheDocument();
+  expect(await screen.findByText("A field was changed on the site after you opened it, so the fields below were not saved.")).toBeInTheDocument();
   expect(calls).not.toContain("content_acf_save");
   fireEvent.click(screen.getByRole("button", { name: "Open the site's version" }));
   await waitFor(() => expect(screen.getByRole("textbox", { name: "Email" })).toHaveValue("someone@else.co"));

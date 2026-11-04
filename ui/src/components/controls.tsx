@@ -26,7 +26,7 @@ const changed = (value: string): Change => ({ target: { value } });
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
 /** Where a popover goes: under its anchor, or above when there is no room below. */
-function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: number) {
+function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: number, pop?: RefObject<HTMLElement | null>) {
   const [style, setStyle] = useState<CSSProperties>({});
   useLayoutEffect(() => {
     if (!open) return;
@@ -34,7 +34,8 @@ function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: 
       const r = anchor.current?.getBoundingClientRect();
       if (!r) return;
       const below = innerHeight - r.bottom;
-      const up = below < 260 && r.top > below;
+      // The popover's own height (a calendar is about 400px), not a guess, decides if it fits below.
+      const up = below < (pop?.current?.scrollHeight || 260) + 8 && r.top > below;
       const w = Math.max(r.width, width ?? 0);
       // Inside a sheet the list stays 8px inside the sheet's edges, not just the window's.
       const box = anchor.current?.closest('[aria-modal="true"]')?.getBoundingClientRect();
@@ -74,7 +75,7 @@ type PopoverProps = {
 /** A floating panel tied to an anchor. It closes on a click outside; Escape is the owner's job. */
 export function Popover({ anchor, open, onClose, width, className, children }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const style = usePlace(anchor, open, width);
+  const style = usePlace(anchor, open, width, ref);
   useEffect(() => {
     if (!open) return;
     const down = (e: PointerEvent) => {

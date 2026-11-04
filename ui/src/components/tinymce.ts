@@ -13,3 +13,11 @@ import "tinymce/skins/ui/oxide/skin.min.css";
 import "tinymce/skins/ui/oxide/content.inline.min.css";
 
 export default tinymce;
+
+// TinyMCE's own English, in the app's words: sentence case, no slashes or three dots.
+tinymce.addI18n("en", {
+  "Insert/edit link": "Add a link",
+  "Insert/Edit Link": "Add a link",
+  "Text to display": "Link text",
+  "Open link in...": "Open in",
+});

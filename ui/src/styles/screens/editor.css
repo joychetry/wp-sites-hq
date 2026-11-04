@@ -5,12 +5,10 @@
 /* The title is the one larger field (--fs-lg); every block field below it is body size. */
 .input.title-lg { height: var(--control-lg); font: 600 var(--fs-lg)/1 var(--sans); }
 .blk textarea.input { min-height: 72px; }
-.sheet .btn.quiet { border-color: transparent; background: none; }
-.sheet .btn.quiet:hover:not(:disabled) { background: var(--panel); }
 .vlist .btn[aria-pressed="true"] { border-color: var(--line-ui); background: var(--bg); }
 
 /* Terms: bordered pills, each with a round remove button. */
-.terms .term { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 0 1px 0 10px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--bg); color: var(--text); font-size: var(--fs-sm); }
+.terms .term { display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 1px 0 10px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--bg); color: var(--text); font-size: var(--fs-sm); }
 .terms .term button { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text-3); cursor: pointer; }
 .terms .term button:hover { background: var(--panel); color: var(--text); }
 .terms .term .glyph { width: 12px; height: 12px; }
@@ -54,15 +52,21 @@
 /* Publish on several sites: each site with its tile; one that can't take it says why, quietly. */
 .pm-sites .row.check { gap: 10px; min-height: 36px; padding: 2px 0; flex-wrap: wrap; }
 .pm-sites .pm-name { flex: none; }
+/* Why a site can't be selected, on its own line under the name (indented past the box and tile), with its fix. */
 .pm-sites .row.check small { flex: 1 1 12em; color: var(--text-3); font-size: var(--fs-sm); }
 .pm-sites .row.check.na { color: var(--text-3); cursor: not-allowed; }
 
 /* The full-page editor (screens/Editor.tsx): a top bar, then the main column and the side boxes,
    like WordPress's classic editor. One column under 900px. */
-.ed-top { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; min-height: var(--control); }
-.ed-top h2 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--display); }
+/* The top bar stays on screen, so the save button is always in reach on a long page. */
+.ed-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; min-height: var(--control); padding: var(--sp-2) 0; background: var(--ground); }
+.ed-top h2 { margin: 0 auto 0 0; font: 600 var(--fs-lg)/1.3 var(--display); }
 .ed-top h2 .dim { font: 400 var(--fs-md)/1.3 var(--sans); }
-.ed-top .tag.warning { margin-left: auto; }
+.ed-idle { font-size: var(--fs-sm); }
+/* A trashed entry: read-only (inert), and it looks it. */
+.ed-grid.off { opacity: 0.6; }
+/* An input inside a field is body text, not the bold label above it. */
+.ed-page .field > span:not(:first-child) { font-weight: 400; font-size: var(--fs); }
 /* 320px: the publish date, its calendar and the time fit on one line, and "Move to the trash" in its half. */
 .ed-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--sp-4); align-items: start; }
 @media (max-width: 1200px) { .ed-grid { grid-template-columns: minmax(0, 1fr) 288px; } }
@@ -107,8 +111,12 @@
 .rte-body:focus, .rte-body:focus-visible { outline: none; }
 .rte:has(.rte-body:focus, .rte-source:focus) { border-color: var(--focus); box-shadow: var(--ring); }
 .rte .rte-source:focus { outline: none; box-shadow: none; }
-.rte textarea.rte-source { display: block; width: 100%; min-height: 404px; border: 0; border-radius: 0 0 var(--radius) var(--radius); font: var(--fs-sm)/1.6 var(--mono); resize: vertical; }
+/* The toolbar row (42px) plus the Visual body (320px): switching tabs keeps the height. */
+.rte textarea.rte-source { display: block; width: 100%; min-height: 362px; border: 0; border-radius: 0 0 var(--radius) var(--radius); font: var(--fs-sm)/1.6 var(--mono); resize: vertical; }
 .rte-wait { position: absolute; top: var(--sp-3); left: var(--sp-4); margin: 0; color: var(--text-3); font-size: var(--fs-sm); }
+/* A Wysiwyg field in a form is smaller; it grows with its text. */
+fieldset.field .rte-body { min-height: 160px; }
+fieldset.field .rte textarea.rte-source { min-height: 202px; }
 .rte-media { padding: var(--sp-3); border-bottom: 1px solid var(--line); }
 
 /* Text in the editor reads like a page. */
@@ -119,7 +127,7 @@
 .prose h1 { font-size: var(--fs-xl); }
 .prose h2 { font-size: var(--fs-lg); }
 .prose h3, .prose h4, .prose h5, .prose h6 { font-size: var(--fs-md); }
-.prose blockquote { margin: 0 0 var(--sp-3); padding-left: var(--sp-4); border-left: 3px solid var(--line-ui); color: var(--text-2); }
+.prose blockquote { margin: 0 0 var(--sp-3); padding: var(--sp-3) var(--sp-4); border-radius: var(--radius); background: var(--panel); color: var(--text-2); }
 .prose ul, .prose ol { margin: 0 0 var(--sp-3); padding-left: var(--sp-5); }
 .prose img { max-width: 100%; height: auto; }
 .prose a, .blk-text a { color: var(--brand-text); }
@@ -136,17 +144,18 @@
 html .blk > .tox.tox-tinymce-inline { top: auto !important; left: auto !important; right: 0; bottom: calc(100% - 20px - var(--sp-1)); }
 /* Small buttons, so the bar fits the label row and the gap above it. */
 html .blk .tox .tox-toolbar__group { padding: 0 2px; }
-html .blk .tox .tox-tbtn { width: 28px; height: 28px; margin: 2px 0; }
-html .blk .tox .tox-split-button { height: 28px; margin: 2px 0; }
-html .blk .tox .tox-split-button .tox-tbtn { height: 26px; margin: 0; }
-.blk-text { position: relative; contain: paint; min-height: var(--control); margin: 0; padding: 8px 12px; border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); color: var(--text); font: var(--fs)/1.5 var(--sans); cursor: text; overflow-wrap: anywhere; }
+html .blk .tox .tox-tbtn { width: 32px; height: 32px; margin: 2px 0; }
+html .blk .tox .tox-split-button { height: 32px; margin: 2px 0; }
+html .blk .tox .tox-split-button .tox-tbtn { height: 30px; margin: 0; }
+html .blk .tox .tox-tbtn svg { width: 18px; height: 18px; }
+.blk-text { position: relative; contain: paint; min-height: var(--control); margin: 0; padding: 6px 12px; border: 1px solid var(--line-ui); border-radius: var(--radius); background: var(--bg); color: var(--text); font: var(--fs)/1.5 var(--sans); cursor: text; overflow-wrap: anywhere; }
 .blk-text.heading { font-weight: 600; }
 .blk-name { display: inline-flex; align-items: center; gap: 6px; }
 .blk-level { padding: 0 5px; border: 1px solid var(--line); border-radius: var(--radius-sm); font: 500 var(--fs-xs)/1.5 var(--mono); color: var(--text-3); }
 pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; }
 .blk-text:focus, .blk-text:focus-visible { outline: none; border-color: var(--focus); box-shadow: var(--ring); }
-.blk.locked .tag { margin-left: auto; }
-.blk.locked .tag .glyph { width: 12px; height: 12px; }
+.blk-ro { display: inline-flex; align-items: center; gap: var(--sp-1); justify-self: end; color: var(--text-3); font-size: var(--fs-sm); }
+.blk-ro .glyph { width: 12px; height: 12px; }
 
 /* ACF fields (screens/AcfFields.tsx). */
 .ed-card-body fieldset.field { display: grid; gap: var(--sp-2); min-width: 0; padding: 0; border: 0; }
@@ -157,7 +166,7 @@ pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: p
 .acf-link { display: grid; gap: var(--sp-2); }
 .acf-group, .acf-row { padding: var(--sp-3) var(--sp-4) !important; border: 1px solid var(--line) !important; border-radius: var(--radius); }
 .acf-row { display: grid; gap: var(--sp-3); margin: 0; }
-.acf-row > legend { padding: 0 var(--sp-1); font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+.acf-row > legend { padding: 0 var(--sp-1); font-size: var(--fs-sm); color: var(--text-3); }
 .acf-row > .field { margin: 0; }
 .acf-row .row { flex-wrap: wrap; }
 .acf-row .push { margin-left: auto; }
@@ -167,10 +176,10 @@ pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: p
 .acf-picks li { display: flex; align-items: center; gap: var(--sp-2); max-width: 260px; padding: 4px 4px 4px 4px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); font-size: var(--fs-sm); }
 .acf-picks img { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius-sm); }
 .acf-picks .cut { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.acf-picks .icon-btn { width: 28px; height: 28px; }
+.acf-picks .icon-btn { width: 32px; height: 32px; }
 .acf-posts .tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.acf-ro .callout { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: 0; }
-.acf-ro .callout > span { flex: 1 1 16em; }
+.acf-ro .callout, .callout.ed-locked { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: 0; }
+.acf-ro .callout > span, .callout.ed-locked > span { flex: 1 1 16em; }
 
 /* TinyMCE's own toolbar, menus and dialogs in the redesign's colours, both themes (its oxide skin
    is underneath; "html" outranks the skin, which loads after this file). */
@@ -193,6 +202,8 @@ html .rte .tox.tox-tinymce-inline .tox-editor-header { border: 0; border-radius:
 html .tox .tox-menu, html .tox .tox-collection--list, html .tox .tox-collection--toolbar, html .tox .tox-collection--grid { background: var(--bg); border-color: var(--line-ui); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
 html .tox .tox-collection__item { color: var(--text); }
 html .tox .tox-collection__item--active, html .tox .tox-collection__item--enabled { background: var(--panel); color: var(--text); }
+/* Oxide's highlighted item is blue with four classes; ours outranks it. */
+html .tox .tox-collection .tox-collection__item.tox-collection__item--active:not(.tox-collection__item--state-disabled) { background: var(--sel); color: var(--brand-text); }
 html .tox .tox-collection__item-icon svg, html .tox .tox-collection__item-checkmark svg, html .tox .tox-collection__item-caret svg { fill: var(--text); }
 html .tox .tox-collection__item-label * { color: inherit; }
 html .tox .tox-dialog-wrap__backdrop { background: var(--scrim); }
@@ -201,7 +212,9 @@ html .tox .tox-dialog__header, html .tox .tox-dialog__body, html .tox .tox-dialo
 html .tox .tox-dialog__title { font: 600 var(--fs-lg)/1.3 var(--display); color: var(--text); }
 html .tox .tox-label, html .tox .tox-form__group label, html .tox .tox-checkbox__label { color: var(--text); font-size: var(--fs-sm); font-weight: 600; }
 html .tox .tox-textfield, html .tox .tox-textarea, html .tox .tox-listboxfield .tox-listbox--select, html .tox .tox-selectfield select { background: var(--bg); color: var(--text); border-color: var(--line-ui); border-radius: var(--radius); font-family: var(--sans); }
-html .tox .tox-textfield:focus, html .tox .tox-listboxfield .tox-listbox--select:focus { border-color: var(--focus); box-shadow: var(--ring); outline: none; }
+html .tox .tox-textfield:focus, html .tox .tox-textarea:focus, html .tox .tox-listboxfield .tox-listbox--select:focus { background: var(--bg); color: var(--text); border-color: var(--focus); box-shadow: var(--ring); outline: none; }
+html .tox .tox-dialog .tox-form__group { margin-bottom: var(--sp-3); }
+html .tox .tox-dialog .tox-form__group:last-child { margin-bottom: 0; }
 html .tox .tox-listbox__select-label { color: var(--text); }
 html .tox .tox-button { border-radius: var(--radius-pill); background: var(--green); border-color: var(--green); color: var(--on-green); font: 600 var(--fs)/1 var(--sans); }
 html .tox .tox-button:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); }
@@ -209,6 +222,8 @@ html .tox .tox-button--secondary, html .tox .tox-button--secondary:hover:not(:di
 html .tox .tox-button--naked, html .tox .tox-button--naked:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--text); }
 html .tox .tox-button--naked svg { fill: var(--text); }
 html .tox .tox-swatches-menu, html .tox .tox-collection--grid { background: var(--bg); }
+/* A ring on every swatch, so black shows on the dark panel and white on the light one. */
+html .tox .tox-swatch { box-shadow: inset 0 0 0 1px var(--line-ui); }
 html .tox .tox-tooltip__body { background: var(--text); color: var(--bg); font-family: var(--sans); }
 html .tox .tox-tooltip__arrow { border-top-color: var(--text); border-bottom-color: var(--text); }
 html .tox .tox-icon svg, html .tox .tox-collection__item-icon svg { fill: currentColor; }
