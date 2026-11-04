@@ -258,7 +258,7 @@ describe("Comments", () => {
     render(<Comments sites={[CM, BASIC]} />);
     expect(await screen.findByRole("button", { name: /^Waiting for approval\s*4$/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Site:/ }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Alpha" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Alpha" }));
     expect(screen.getByRole("button", { name: /^Waiting for approval\s*1$/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Move to the trash: Ana's comment on Alpha" }));
     fireEvent.click(await screen.findByRole("button", { name: "Undo" }));

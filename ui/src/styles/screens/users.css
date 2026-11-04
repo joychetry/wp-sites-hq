@@ -13,7 +13,6 @@
 .users .card-foot .count { color: var(--text-3); font-size: var(--fs-sm); }
 
 /* Sites the list can't fully show: a callout each, under the card. */
-.pnotes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 
 /* Add a user and Change role (board D06): the administrator note in amber. */
 .callout.admin-note { margin: 0 0 var(--sp-4); }

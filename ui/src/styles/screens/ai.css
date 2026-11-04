@@ -62,7 +62,6 @@
 .connect .steps { margin: 0; display: grid; gap: var(--sp-3); }
 .connect .steps li { margin: 0; display: grid; gap: var(--sp-2); justify-items: start; }
 .connect .steps li > span { color: var(--text); }
-.connect .code { display: block; width: 100%; padding: 14px var(--sp-4); border-radius: var(--radius); background: #0a0f0d; color: #edf2ef; font: 400 var(--fs-sm)/var(--lh) var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.connect .code em { color: #5bd394; font-style: normal; }
-[data-theme="dark"] .connect .code { background: #0b0b0b; border: 1px solid var(--line); }
-[data-theme="dark"] .connect .code em { color: var(--accent); }
+.connect .code { display: block; width: 100%; padding: 14px var(--sp-4); border-radius: var(--radius); background: var(--code-bg); color: var(--code-fg); font: 400 var(--fs-sm)/var(--lh) var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.connect .code em { color: var(--code-accent); font-style: normal; }
+[data-theme="dark"] .connect .code { border: 1px solid var(--line); }

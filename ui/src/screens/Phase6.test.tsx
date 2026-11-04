@@ -77,7 +77,7 @@ describe("Security", () => {
     expect(screen.getByText("WordPress.org closed it (security issue): it gets no more updates. Replace it.")).toBeInTheDocument();
     expect(screen.getByText("wp-includes/version.php (changed), wp-x.php (extra)")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Not fully scanned" })).getByText("Not scanned yet.")).toBeInTheDocument();
-    expect(screen.getByText("Scanned 2 hr ago")).toBeInTheDocument();
+    expect(screen.getByText("Scanned 2 hours ago")).toBeInTheDocument();
   });
 
   test("a fix is offered only when the site has an update that new", () => {
@@ -163,7 +163,7 @@ describe("Monitoring", () => {
     expect(within(beta).getByText("78 · Needs work")).toBeInTheDocument();
     expect(within(beta).getByText(/^beta\.com, /)).toBeInTheDocument();
     expect(within(beta).getByText(/^5 days left/).closest(".st")).toHaveClass("danger");
-    expect(within(beta).getByText("Main content shows in 1.8 s. Tested 1 hr ago.")).toBeInTheDocument();
+    expect(within(beta).getByText("Main content shows in 1.8 s. Tested 1 hour ago.")).toBeInTheDocument();
     mockInvoke.mockRejectedValue("Google's shared daily limit for PageSpeed tests without a key is used up. Try again tomorrow.");
     fireEvent.click(within(beta).getByRole("button", { name: "Test speed again on Beta" }));
     expect(mockInvoke).toHaveBeenCalledWith("pagespeed_run", { id: 2 });

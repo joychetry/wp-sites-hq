@@ -19,4 +19,3 @@
 .comments .reply .rowacts { justify-content: flex-end; }
 
 /* Sites the list can't fully show: a callout each, under the cards. */
-.pnotes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }

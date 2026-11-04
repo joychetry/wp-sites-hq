@@ -449,7 +449,7 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
           <MultiSelect
             label="Their sites"
             placeholder="Find a site to add"
-            options={sites.map((s) => ({ value: s.id, label: s.client && s.client_id !== client.id ? `${s.name} (now with ${s.client})` : s.name }))}
+            options={sites.map((s) => ({ value: s.id, icon: <SiteTile site={s} size="sm" />, label: s.client && s.client_id !== client.id ? `${s.name} (now with ${s.client})` : s.name }))}
             value={[...picked]}
             onChange={(ids) => setPicked(new Set(ids))}
           />

@@ -27,6 +27,9 @@
   --green-hover: #016b3f;
   --on-green: #ffffff;
   --accent: #01824c; /* dots and icons */
+  --code-bg: #0a0f0d; /* text to copy into another app: a dark block in both themes */
+  --code-fg: #edf2ef;
+  --code-accent: #5bd394;
   --brand-text: #016b3f; /* green words: links, the current page */
   /* Ink: the light primary button, bulk bar, toasts, AI avatar */
   --btn-ink: #0d1411;
@@ -137,6 +140,8 @@
   --green-hover: #016b3f;
   --on-green: #ffffff;
   --accent: #3dbf82;
+  --code-bg: #0b0b0b;
+  --code-accent: var(--accent);
   --brand-text: #ededed;
   --btn-ink: #262626;
   --btn-ink-hover: #2c2c2c;

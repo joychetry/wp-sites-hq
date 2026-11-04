@@ -285,7 +285,7 @@ export function Comments({ sites }: { sites: Site[] }) {
       <Toolbar>
         <Segmented label="Show" options={SHOW.map(([id, l]) => ({ id, label: l, count: count(id) || undefined }))} value={show} onChange={setShow} />
         <span className="end" />
-        <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
+        <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", checked: siteF == null, run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, checked: siteF === s.id, run: () => setSiteF(s.id) }))]}>
           Site: <b>{siteName ?? "Any"}</b>
         </Menu>
       </Toolbar>

@@ -204,6 +204,11 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
               <Button small kind="primary" disabled={busy} onClick={() => restore(asking)}>
                 {busy ? "Putting it back…" : "Put it back"}
               </Button>
+              {/* The site's own compare screen shows what changed, before anything is put back. */}
+              <Button small onClick={() => api.openLink(`${site.url.replace(/\/$/, "")}/wp-admin/revision.php?revision=${asking.id}`, site.id).catch((e) => toast(String(e), { tone: "danger" }))}>
+                Compare on {site.name}
+                <Glyph name="external" />
+              </Button>
               <Button small className="quiet" onClick={() => setAsking(null)}>
                 Keep the current version
               </Button>

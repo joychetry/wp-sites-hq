@@ -33,9 +33,9 @@
 /* Search Console dialog: a lock before the secret's note */
 .lockline { display: inline-flex; align-items: center; gap: 6px; }
 .lockline .glyph { width: 13px; height: 13px; }
-.sheet.dialog:has(.lockline) { width: 600px; }
-.sheet.dialog:has(.lockline) .content { display: grid; gap: var(--sp-4); }
-.sheet.dialog:has(.lockline) .field { margin: 0; }
+.sheet.dialog:has(#gsc-kept) { width: 600px; }
+.sheet.dialog:has(#gsc-kept) .content { display: grid; gap: var(--sp-4); }
+.sheet.dialog:has(#gsc-kept) .field { margin: 0; }
 
 /* Updates: facts as label and value, then the release notes as plain text */
 .upd-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px var(--sp-4); margin: 0; font-size: var(--fs-sm); }

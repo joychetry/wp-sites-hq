@@ -21,6 +21,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { day as dayText, month as monthText } from "../format";
+import { Glyph } from "./ui";
 
 type Change = { target: { value: string } };
 const changed = (value: string): Change => ({ target: { value } });
@@ -351,7 +352,7 @@ export function Combobox({ suggestions, onPick, onChange, onKeyDown, className, 
 
 type MultiProps<T extends string | number> = {
   label: string;
-  options: { value: T; label: string; disabled?: boolean }[];
+  options: { value: T; label: string; disabled?: boolean; icon?: ReactNode }[];
   value: T[];
   onChange: (v: T[]) => void;
   placeholder?: string;
@@ -382,7 +383,8 @@ export function MultiSelect<T extends string | number>({ label, options, value, 
           {value.map((v) => {
             const o = byValue.get(v);
             return (
-              <li key={String(v)} className="tag">
+              <li key={String(v)} className="pchip">
+                {o?.icon}
                 {o?.label ?? String(v)}
                 <button
                   type="button"
@@ -408,7 +410,7 @@ export function MultiSelect<T extends string | number>({ label, options, value, 
         aria-autocomplete="list"
         aria-activedescendant={open && hits[active] ? `${list}-${active}` : undefined}
         autoComplete="off"
-        placeholder={placeholder ?? "Type to find, Enter to tick"}
+        placeholder={placeholder ?? "Type to find, Enter to choose"}
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
@@ -500,13 +502,13 @@ function Calendar({ value, max, onPick, onClose }: { value: string; max?: string
     <div className="cal" role="dialog" aria-modal="true" aria-labelledby={label}>
       <div className="cal-head">
         <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => move(0, -1)}>
-          ‹
+          <Glyph name="chevron-left" />
         </button>
         <h2 id={label} aria-live="polite">
           {MONTHS[focus.getMonth()]} {focus.getFullYear()}
         </h2>
         <button type="button" className="icon-btn" aria-label="Next month" onClick={() => move(0, 1)}>
-          ›
+          <Glyph name="chevron-right" />
         </button>
       </div>
       <table
@@ -593,13 +595,13 @@ function MonthGrid({ value, max, onPick, onClose }: { value: string; max?: strin
     <div className="cal" role="dialog" aria-modal="true" aria-labelledby={label} ref={box}>
       <div className="cal-head">
         <button type="button" className="icon-btn" aria-label="Previous year" onClick={() => setYear(year - 1)}>
-          ‹
+          <Glyph name="chevron-left" />
         </button>
         <h2 id={label} aria-live="polite">
           {year}
         </h2>
         <button type="button" className="icon-btn" aria-label="Next year" onClick={() => setYear(year + 1)}>
-          ›
+          <Glyph name="chevron-right" />
         </button>
       </div>
       <div className="months">
@@ -664,12 +666,13 @@ export function DateInput({ type, value, onChange, max, className, disabled, id,
           {calendar}
         </button>
       ) : (
-        <>
+        // One box, like the month field: the typed date with its calendar button inside the right edge.
+        <span className="dt-box">
           <DayField value={day} disabled={disabled} label={`${name}: date`} onChange={(d) => set(d)} />
           <button ref={btn} type="button" className="icon-btn dt-cal" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={`Choose the ${name.toLowerCase()} from a calendar`} onClick={() => setOpen(!open)}>
             {calendar}
           </button>
-        </>
+        </span>
       )}
       {type === "datetime-local" && (
         <TimeField value={time.slice(0, 5)} disabled={disabled || !day} label={`${name}: time`} onChange={(t) => set(day, t)} />
@@ -1102,7 +1105,8 @@ export function Slider({ label, value, min, max, step: by = 1, format = String, 
 
 // ---- Menu and tabs --------------------------------------------------------------------------
 
-export type MenuItem = { label: string; run: () => void; danger?: boolean; disabled?: boolean };
+/** `checked`: the menu picks one of several (a filter); the current one is marked. */
+export type MenuItem = { label: string; run: () => void; danger?: boolean; disabled?: boolean; checked?: boolean };
 
 /** A menu button (WAI-ARIA): arrows move, Enter runs, Escape closes and gives focus back. */
 /** `className` replaces the button's look (a filter chip: "chip"). */
@@ -1111,7 +1115,7 @@ export function Menu({ label, items, children, small, className }: { label: stri
   const btn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const id = useId();
-  const focusAt = (i: number) => list.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled])')[i]?.focus();
+  const focusAt = (i: number) => list.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled])')[i]?.focus();
   useEffect(() => {
     if (open) focusAt(0);
   }, [open]);
@@ -1154,7 +1158,7 @@ export function Menu({ label, items, children, small, className }: { label: stri
           aria-label={label}
           className="lb menu"
           onKeyDown={(e) => {
-            const all = [...list.current!.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled])')];
+            const all = [...list.current!.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled])')];
             const i = all.indexOf(document.activeElement as HTMLElement);
             const go: Record<string, number> = { ArrowDown: (i + 1) % all.length, ArrowUp: (i - 1 + all.length) % all.length, Home: 0, End: all.length - 1 };
             if (e.key in go) {
@@ -1172,7 +1176,8 @@ export function Menu({ label, items, children, small, className }: { label: stri
           {items.map((m) => (
             <li
               key={m.label}
-              role="menuitem"
+              role={m.checked === undefined ? "menuitem" : "menuitemradio"}
+              aria-checked={m.checked}
               tabIndex={-1}
               aria-disabled={m.disabled || undefined}
               className={cx(m.danger && "danger")}
@@ -1190,6 +1195,7 @@ export function Menu({ label, items, children, small, className }: { label: stri
               }}
             >
               {m.label}
+              {m.checked && <Glyph name="check" />}
             </li>
           ))}
         </ul>

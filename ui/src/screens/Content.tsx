@@ -48,8 +48,8 @@ export function SitePick({ sites, value, onChange }: { sites: Site[]; value: num
   // Usable sites first; the rest keep their order after them.
   const sorted = [...sites].sort((a, b) => Number(!!contentBlocked(a)) - Number(!!contentBlocked(b)));
   return (
+    // No outside label: the box shows the site's tile and name (the same as the Site chips on Users and Comments).
     <label className="row pick pick-site" data-tip={sites.find((s) => s.id === value)?.name}>
-      <span className="label">Site</span>
       <Select className="input sm" aria-label="Site" value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))}>
         {sorted.map((s) => (
           <option key={s.id} value={s.id}>

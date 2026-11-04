@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Sites (board 02): tabs, search and a filter above a card with the sites; the site's panel beside it. */
 /* Widths come from the shared column spec (colgroup), so filtering never moves them; the site column cuts with an ellipsis.
-   The tick column is 44px with the row's left padding, so the box takes the rest of it. */
-.sites .t .tick { padding-right: 0; }
+*/
 .sites .t td.acts-col { padding-left: 0; }
 /* Selected rows keep the ground; only the open row is tinted with the green edge (as in the design). */
 .sites .t tr.sel:not(.focus):not(:hover) td { background: var(--bg); }

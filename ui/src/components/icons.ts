@@ -7,6 +7,7 @@ export const ICONS = {
   "arrow-up": [2, "<path d=\"M12 19V5M6 11l6-6 6 6\"/>"],
   check: [2, "<path d=\"M5 12.5l4.5 4.5L19 7.5\"/>"],
   "chevron-down": [2, "<path d=\"M6 9l6 6 6-6\"/>"],
+  "chevron-left": [2, "<path d=\"M15 6l-6 6 6 6\"/>"],
   "chevron-right": [2, "<path d=\"M9 6l6 6-6 6\"/>"],
   edit: [1.8, "<path d=\"M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6\"/><path d=\"M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z\"/>"],
   file: [1.8, "<path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><path d=\"M14 2v6h6\"/>"],

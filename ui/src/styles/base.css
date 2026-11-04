@@ -44,7 +44,10 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 /* Disabled never looks ready: the disc goes grey, the key hint goes, and a dark green primary loses its green. */
 .btn:disabled .btn-disc { background: var(--line-2); color: var(--text-3); }
 .btn:disabled .kbd { display: none; }
-[data-theme="dark"] .btn.primary:disabled, .btn.danger.solid:disabled { background: var(--raise); border-color: var(--line-2); color: var(--text-3); opacity: 1; }
+/* Disabled primary reads as off in dark: a dashed edge and dim words, never an outline that looks ready.
+   A disabled danger button keeps a faint danger tint, so it still says what it would do. */
+.btn.danger.solid:disabled { background: var(--danger-bg); border: 1px dashed var(--danger); color: var(--danger); opacity: 0.6; }
+[data-theme="dark"] .btn.primary:disabled { background: var(--raise); border: 1px dashed var(--line-2); color: var(--text-3); opacity: 1; }
 .field { display: grid; gap: 6px; margin: 0 0 var(--sp-4); }
 .field > span { font-size: var(--fs-sm); color: var(--text); font-weight: 600; }
 .field small { color: var(--text-3); font-size: var(--fs-sm); }
@@ -183,9 +186,10 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 /* The one column spec (styles.test.ts checks every table uses it): each table opens with a <colgroup> of these.
    One c-fill column takes the rest; numbers, money and actions are right aligned (.r on th and td); dates and versions left.
    Widths never change between tabs, filters or pages. */
-.t col.c-tick { width: 44px; }
+.t col.c-tick { width: calc(var(--pad) + 32px); }
+.t th.tick, .t td.tick { padding-right: 0; }
 .t col.c-fill { width: auto; }
-.t col.c-status { width: 8.5rem; }
+.t col.c-status { width: 9.5rem; }
 .t col.c-version { width: 7.5rem; }
 .t col.c-date { width: 8.5rem; }
 .t col.c-num { width: 6.5rem; }
@@ -241,6 +245,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .kv dt { color: var(--text-3); }
 .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
 .ulist { list-style: none; margin: 0; padding: 0; }
+.pnotes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
 .ulist li { display: flex; justify-content: space-between; gap: var(--sp-2); padding: 6px 0; }
 .notes li { display: grid; gap: 2px; padding: 10px var(--sp-3); margin-bottom: var(--sp-2); border-radius: var(--radius); background: var(--panel); }
 .notes p { margin: 0; white-space: pre-wrap; color: var(--text); }
@@ -267,7 +272,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .ov > .note { padding: 0 var(--sp-1); }
 .ov .note-row { display: flex; align-items: baseline; gap: var(--sp-2); }
 .ov .note-row .st { flex: none; align-self: center; }
-.card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; overflow: hidden; }
+/* clip, not hidden: a card is no scroll box, so a table's sticky head sticks to the page as it scrolls. */
+.card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; overflow: clip; }
 .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); min-height: 56px; padding: var(--sp-3) 20px; border-bottom: 1px solid var(--line); }
 .card-head h2 { margin: 0 auto 0 0; display: flex; align-items: center; gap: var(--sp-2); font: 600 var(--fs-md)/1.4 var(--sans); }
 .card-head .dim { font-size: var(--fs-sm); }
@@ -336,7 +342,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .pchip { display: inline-flex; align-items: center; vertical-align: middle; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--panel); color: var(--text); font-size: var(--fs-sm); line-height: 1; white-space: nowrap; }
 .pchip.brand { background: var(--tint); color: var(--brand-text); font-weight: 600; }
 .pchip .fav { width: 20px; height: 20px; font-size: var(--fs-xs); }
-.card .t th { position: static; }
+.pchip button { border: 0; background: none; padding: 0; color: var(--text-3); width: 24px; height: 24px; margin-right: -6px; border-radius: 50%; display: inline-grid; place-items: center; }
+.pchip button:hover { background: var(--line); color: var(--text); }
 .card .t td { height: 56px; }
 .t tr.warn td { background: var(--warn-paper); }
 .site { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -706,7 +713,6 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
 .link::after { content: ""; position: absolute; inset: min(0px, calc((100% - 24px) / 2)) 0; }
 
 /* Phase 7: ticks for bulk changes, site lists in sheets, custom fields. */
-.t .tick { width: 2.5rem; }
 .row.check { padding: var(--sp-1) 0; flex-wrap: wrap; }
 /* A label that is the only words beside its box stays beside it and wraps there; a reason after a name still drops below. */
 .row.check > input + span:last-child { flex: 1 1 12em; }

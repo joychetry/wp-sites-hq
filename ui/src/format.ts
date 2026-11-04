@@ -47,13 +47,13 @@ export function dayTime(v: When | null | undefined, now = new Date()): string {
 /** "28 Sept 2026 to 28 Oct 2026". */
 export const range = (from: When, to: When) => `${day(from)} to ${day(to)}`;
 
-/** "just now", "3 min ago", "2 hr ago", "yesterday", "4 days ago"; "never" for no time. */
+/** "just now", "3 min ago", "2 hours ago", "yesterday", "4 days ago"; "never" for no time. */
 export function ago(unix: number | null, now = Date.now() / 1000): string {
   if (unix == null) return "never";
   const s = Math.max(0, now - unix);
   if (s < 60) return "just now";
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
+  if (s < 86400) return Math.floor(s / 3600) === 1 ? "1 hour ago" : `${Math.floor(s / 3600)} hours ago`;
   const d = Math.floor(s / 86400);
   return d === 1 ? "yesterday" : `${d} days ago`;
 }

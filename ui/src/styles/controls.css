@@ -181,16 +181,16 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .tabs [role="tab"]:hover { color: var(--text); }
 /* Bold without a wider label: a hairline stroke, so the tabs to the right never shift when one is chosen. */
 .tabs [role="tab"][aria-selected="true"] { color: var(--brand-text); -webkit-text-stroke: 0.4px currentColor; box-shadow: inset 0 -2px 0 var(--green); }
-.tabs [role="tab"]:focus-visible { outline-offset: -2px; }
+.tabs [role="tab"]:focus-visible { outline-offset: -4px; border-radius: var(--radius); }
 .tabs .n { margin-left: 2px; font: 600 var(--fs-xs) var(--mono); color: var(--danger); }
 
 /* Toasts */
 /* Clear of the page's 32px edge, so a toast never sits on the last field of a form. */
 .toasts { position: fixed; right: var(--sp-6); bottom: var(--sp-6); z-index: 60; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
 /* A sheet's buttons are at its bottom right; messages go to the other corner while it is open. */
-body:has(.sheet) .toasts { right: auto; left: var(--sp-6); }
+body:has(.sheet:not(.dialog)) .toasts { right: auto; left: var(--sp-6); }
 .toasts ol { list-style: none; margin: 0; padding: 0; display: grid; justify-items: end; gap: var(--sp-2); }
-body:has(.sheet) .toasts ol { justify-items: start; }
+body:has(.sheet:not(.dialog)) .toasts ol { justify-items: start; }
 /* The design's toast: an ink pill as wide as its words, quiet buttons, green icons */
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; padding: 10px 10px 10px 14px; min-height: 48px; background: var(--btn-ink); color: var(--btn-on-ink); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); font-size: var(--fs); animation: toast-in 220ms var(--ease); }
 [data-theme="dark"] .toast { border: 1px solid var(--line-2); }
@@ -249,9 +249,13 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 }
 .lb .lb-group { min-height: 28px; padding-top: var(--sp-2); font-size: var(--fs-sm); font-weight: 500; color: var(--text-3); cursor: default; }
 .dt { flex-wrap: wrap; }
-.dt-day { width: 136px; }
-.dt .dt-cal { border: 1px solid var(--control-line); background: var(--bg); border-radius: var(--radius); height: var(--control); width: var(--control); }
-.dt.sm .dt-cal, .dt.sm .dt-day, .dt.sm .dt-time { height: var(--control-sm); }
+.dt-box { position: relative; display: inline-flex; min-width: 168px; flex: 1; }
+.dt-day { width: 100%; padding-right: calc(var(--control) + var(--sp-1)); }
+.dt .dt-cal { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); border: 0; background: none; border-radius: var(--radius-sm); height: calc(100% - 4px); width: var(--control-sm); color: var(--text-2); }
+.dt .dt-cal:hover:not(:disabled) { background: var(--panel); color: var(--text); }
+.dt.sm .dt-day, .dt.sm .dt-time { height: var(--control-sm); }
+.field .dt-box { flex: 1; }
+.dt:not(.sm) .dt-box { max-width: 100%; }
 .dt-err { width: 100%; margin: 0; }
 
 /* Sidebar icons: a 17px line drawing per item, so the sidebar can be scanned by shape as well as by word */
@@ -321,3 +325,6 @@ body:has(.sheet) .toasts ol { justify-items: start; }
 .next-steps > ul { grid-column: 1; }
 .next-steps > .btn { grid-column: 2; grid-row: 1; justify-self: end; }
 .next-steps li .btn { margin-left: auto; }
+/* A filter menu marks the current choice with a tick after its words. */
+.menu li[role="menuitemradio"] { display: flex; align-items: center; gap: var(--sp-2); }
+.menu li[role="menuitemradio"] .glyph { margin-left: auto; width: 14px; height: 14px; color: var(--accent); }

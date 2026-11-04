@@ -34,7 +34,7 @@ test("relative time: just now, minutes, hours, yesterday, then days", () => {
   expect(ago(null, now)).toBe("never");
   expect(ago(now - 30, now)).toBe("just now");
   expect(ago(now - 300, now)).toBe("5 min ago");
-  expect(ago(now - 3 * 3600, now)).toBe("3 hr ago");
+  expect(ago(now - 3 * 3600, now)).toBe("3 hours ago");
   expect(ago(now - 30 * 3600, now)).toBe("yesterday");
   expect(ago(now - 5 * 86400, now)).toBe("5 days ago");
 });

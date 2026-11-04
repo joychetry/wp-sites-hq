@@ -230,10 +230,10 @@ export function Users({ sites }: { sites: Site[] }) {
       </HeadActions>
       <Toolbar label="Which users to show">
           <SearchInput aria-label="Search users" placeholder="Search users by name or email" value={typed} onChange={(e) => setTyped(e.target.value)} />
-          <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
+          <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", checked: siteF == null, run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, checked: siteF === s.id, run: () => setSiteF(s.id) }))]}>
             Site: <b>{siteName ?? "Any"}</b>
           </Menu>
-          <Menu label="Role" className={roleF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setRoleF(null) }, ...roleList.map((r) => ({ label: r.name, run: () => setRoleF(r.id) }))]}>
+          <Menu label="Role" className={roleF == null ? "chip" : "chip on"} items={[{ label: "Any", checked: roleF == null, run: () => setRoleF(null) }, ...roleList.map((r) => ({ label: r.name, checked: roleF === r.id, run: () => setRoleF(r.id) }))]}>
             Role: <b>{roleF == null ? "Any" : roleName(roleList, roleF)}</b>
           </Menu>
       </Toolbar>
@@ -477,6 +477,7 @@ function DeleteUser({ site, user, onClose, onDone }: { site: Site; user: User } 
   };
   return (
     <Sheet
+      dialog
       title={`Delete ${who}`}
       intro={`From ${site.name}. This can't be undone.`}
       onClose={onClose}

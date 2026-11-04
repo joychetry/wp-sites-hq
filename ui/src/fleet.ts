@@ -34,7 +34,7 @@ export function summary(sites: Site[]): { lead: string; rest: string } {
 }
 
 export function attention(s: Site): string | null {
-  if (s.sign_in_again) return "The saved sign-in can't be used. Sign in again.";
+  if (s.sign_in_again) return "Sign-in expired. Sign in again.";
   if (s.health === "down" || s.health === "warning") return s.health_detail || "Needs a look.";
   if (noTools(s)) return NO_TOOLS;
   if (s.capabilities.degraded === true) return "This Classic Monks is older. Update it on the site for every feature.";
