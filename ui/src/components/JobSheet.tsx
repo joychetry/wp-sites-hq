@@ -3,7 +3,7 @@
 // review it, then watch it run, site by site.
 import { useMemo, useState } from "react";
 import { api, useJob, type Change, type JobItem } from "../api";
-import { Button, Glyph, type GlyphName } from "./ui";
+import { Button, Details, Glyph, type GlyphName } from "./ui";
 import { Sheet } from "./Sheet";
 import { SiteTile } from "./SiteTile";
 import { ChangeTile } from "./PkgTile";
@@ -21,8 +21,9 @@ export type PlanRow = {
   note?: string;
 };
 
+/** `onBack` reopens the form the rows came from (Install, a rollback's version list), from the Review step. */
 export type SheetState =
-  | { title: string; rows: PlanRow[]; start: "plan" | "confirm"; danger?: boolean }
+  | { title: string; rows: PlanRow[]; start: "plan" | "confirm"; danger?: boolean; onBack?: () => void; backLabel?: string }
   | { title: string; jobId: number };
 
 type Step = "plan" | "confirm" | "progress";
@@ -46,7 +47,14 @@ function plainReason(i: JobItem): string {
   return v ? `Rolled back to ${v} because the update broke the site.` : "Rolled back because the update broke the site.";
 }
 
-const plural =(n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** "1 change done, 1 failed", and never a leading zero: "1 change was rolled back". */
+export function outcome(done: number, failed: number, back: number): string {
+  const parts = [done > 0 && `${plural(done, "change")} done`, failed > 0 && `${failed} failed`, back > 0 && `${back} rolled back`].filter(Boolean) as string[];
+  if (done === 0) parts[0] = failed > 0 ? `${plural(failed, "change")} failed` : `${plural(back, "change")} ${back === 1 ? "was" : "were"} rolled back`;
+  return parts.join(", ");
+}
 
 /** Indexes of rows, by site, in the order the sites first appear. */
 function bySiteOf(rows: PlanRow[], keep: (i: number) => boolean = () => true): [string, number[]][] {
@@ -71,8 +79,36 @@ export function Versions({ from, to }: { from?: string | null; to?: string | nul
   );
 }
 
-export function JobSheet({ state, onClose }: { state: SheetState; onClose: () => void }) {
+type Props = {
+  state: SheetState;
+  onClose: () => void;
+  /** Back from Review to the form the rows came from; the sheet closes first. Wins over `state.onBack`. */
+  onBack?: () => void;
+  /** The back button's words after the arrow, e.g. "Back to the form". */
+  backLabel?: string;
+};
+
+/** The stepper: numbered rings joined by hairlines; done ones carry a tick. A change with nothing to pick has no Pick step. */
+function Steps({ step, pick, over }: { step: Step; pick: boolean; over?: boolean }) {
+  const list = pick ? STEPS : STEPS.slice(1);
+  const at = over ? list.length : list.findIndex(([s]) => s === step);
+  return (
+    <ol className="jobsteps" aria-label="Steps">
+      {list.map(([s, label], n) => (
+        <li key={s} className={n < at ? "done" : undefined} aria-current={s === step && !over ? "step" : undefined}>
+          <i aria-hidden="true">{n < at ? <Glyph name="check" /> : n + 1}</i>
+          <span>{label}</span>
+          {n < at && <span className="sr-only">, done</span>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function JobSheet({ state, onClose, onBack: backProp, backLabel: labelProp }: Props) {
   const fromPlan = "rows" in state;
+  const onBack = backProp ?? (fromPlan ? state.onBack : undefined);
+  const backLabel = labelProp ?? (fromPlan ? state.backLabel : undefined) ?? "Back";
   const rows = fromPlan ? state.rows : [];
   const [step, setStep] = useState<Step>(fromPlan ? state.start : "progress");
   const [picked, setPicked] = useState<Set<number>>(() => new Set(rows.map((_, i) => i)));
@@ -108,53 +144,53 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
     }
   };
 
-  // The design's stepper: numbered rings joined by hairlines; done ones carry a tick.
-  const at = STEPS.findIndex(([s]) => s === step);
-  const steps = (
-    <ol className="jobsteps" aria-label="Steps">
-      {STEPS.map(([s, label], n) => (
-        <li key={s} className={n < at ? "done" : undefined} aria-current={s === step ? "step" : undefined}>
-          <i aria-hidden="true">{n < at ? <Glyph name="check" /> : n + 1}</i>
-          <span>{label}</span>
-          {n < at && <span className="sr-only">, done</span>}
-        </li>
-      ))}
-    </ol>
-  );
+  // Pick is a step here only when this sheet has a Pick list, or a form before it to go back to.
+  // A job that arrives ready-made (an AI plan, a one-site change run at once) had nothing picked: no Pick step.
+  const pick = fromPlan && (state.start === "plan" || !!onBack);
 
   if (step === "progress" && jobId != null) {
     // A new job (a retry) mounts a new sheet, so focus moves into it and Esc still works.
-    return <Progress key={jobId} jobId={jobId} title={state.title} steps={steps} onClose={onClose} onRetry={start} />;
+    return <Progress key={jobId} jobId={jobId} title={state.title} pick={pick} onClose={onClose} onRetry={start} />;
   }
 
+  const back = fromPlan && state.start === "plan" ? "Back" : backLabel;
   const confirmLabel = chosen.length === 1 ? chosen[0].label : `Make these ${chosen.length} changes`;
   return (
     <Sheet
+      fit
       title={title}
-      steps={steps}
+      steps={<Steps step={step} pick={pick} />}
       intro={
         step === "plan"
-          ? "Untick anything that should stay as it is. Nothing changes until you confirm."
+          ? "Clear anything that should stay as it is. Nothing changes until you confirm."
           : chosen.length === 1
             ? "This runs on the site as soon as you confirm."
-            : `${plural(chosen.length, "change")} on ${plural(siteCount, "site")}. Each site's changes run one after another; sites run side by side.`
+            : siteCount === 1
+              ? `${plural(chosen.length, "change")} on ${chosen[0].site}. They run one after another.`
+              : `${plural(chosen.length, "change")} on ${plural(siteCount, "site")}. Each site's changes run one after another. Sites run side by side.`
       }
       onClose={onClose}
       footer={
         <>
+          {step === "confirm" && fromPlan && (state.start === "plan" || onBack) && (
+            <Button
+              onClick={() => {
+                if (state.start === "plan") return setStep("plan");
+                onClose();
+                onBack!();
+              }}
+            >
+              <Glyph name="arrow-left" />
+              {back}
+            </Button>
+          )}
           <span className="grow" role="status">
             {step === "plan" && `${chosen.length} selected`}
           </span>
-          {step === "confirm" && fromPlan && state.start === "plan" && (
-            <Button onClick={() => setStep("plan")}>
-              <Glyph name="arrow-left" />
-              Back
-            </Button>
-          )}
           <Button onClick={onClose}>Close without changes</Button>
           {step === "plan" ? (
             <Button kind="primary" className="disc" disabled={chosen.length === 0} onClick={() => setStep("confirm")}>
-              Review {plural(chosen.length, "change")}
+              {chosen.length === 1 ? "Review the change" : `Review ${chosen.length} changes`}
               <span className="btn-disc">
                 <Glyph name="arrow" />
               </span>
@@ -211,7 +247,11 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
                         <button type="button" className="box" role="checkbox" aria-checked={picked.has(i)} aria-label={`${r.label} on ${site}`} />
                         <ChangeTile action={r.change.action} name={r.name} size="xs" />
                         <span>{r.name ?? r.label}</span>
-                        <small>{[r.from && r.to && `${r.from} → ${r.to}`, r.note].filter(Boolean).join(" · ")}</small>
+                        <small>
+                          <Versions from={r.from && r.to ? r.from : null} to={r.from ? r.to : null} />
+                          {r.from && r.to && r.note && " · "}
+                          {r.note}
+                        </small>
                       </li>
                     );
                   })}
@@ -224,13 +264,20 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
         <div className="jobreview">
           {bySiteOf(rows, (i) => picked.has(i)).map(([site, ids]) => (
             <section key={site} aria-label={`On ${site}`}>
-              <h3 className="label">On {site}</h3>
+              {/* A site's name keeps its own case, so no uppercase label here. */}
+              <h3 className="named">
+                <SiteTile site={{ id: rows[ids[0]].change.site_id, name: site, icon: rows[ids[0]].icon }} size="sm" />
+                On {site}
+              </h3>
               <ul>
                 {ids.map((i) => (
                   <li key={i}>
                     <span className="named">
                       <ChangeTile action={rows[i].change.action} name={rows[i].name} size="xs" />
-                      {rows[i].label}
+                      <span>
+                        {rows[i].label}
+                        {rows[i].note && <small className="jobnote">{rows[i].note}</small>}
+                      </span>
                     </span>
                     <Versions from={rows[i].from} to={rows[i].to} />
                   </li>
@@ -247,12 +294,12 @@ export function JobSheet({ state, onClose }: { state: SheetState; onClose: () =>
 type ProgressProps = {
   jobId: number;
   title: string;
-  steps: React.ReactNode;
+  pick: boolean;
   onClose: () => void;
   onRetry: (changes: Change[], title: string) => void;
 };
 
-function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
+function Progress({ jobId, title, pick, onClose, onRetry }: ProgressProps) {
   const job = useJob(jobId);
   const items = job?.items ?? [];
   const finished = items.filter((i) => i.state !== "waiting" && i.state !== "running").length;
@@ -266,7 +313,7 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
     ? "Starting…"
     : over
       ? notDone
-        ? `Finished. ${plural(items.length - failed.length - back, "change")} done, ${notDone}.`
+        ? `Finished. ${outcome(items.length - failed.length - back, failed.length, back)}.`
         : items.length === 1
           ? "Finished. The change is done."
           : `Finished. All ${items.length} changes done.`
@@ -286,7 +333,7 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
     <Sheet
       title={over ? title : `${title}: running`}
       intro={<span role="status">{summary}</span>}
-      steps={steps}
+      steps={<Steps step="progress" pick={pick} over={over} />}
       onClose={onClose}
       footer={
         <>
@@ -304,7 +351,7 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
                 )
               }
             >
-              Try the {plural(failed.length, "failed change")} again
+              {failed.length === 1 ? "Try the failed change again" : `Try the ${failed.length} failed changes again`}
               <Glyph name="refresh" />
             </Button>
           )}
@@ -360,13 +407,9 @@ function Progress({ jobId, title, steps, onClose, onRetry }: ProgressProps) {
                     ))}
                   </small>
                   {raw && (
-                    <details className="jobraw">
-                      <summary>
-                        Show the details
-                        <Glyph name="chevron-down" />
-                      </summary>
-                      <p>{i.message}</p>
-                    </details>
+                    <Details>
+                      <p className="jobraw">{i.message}</p>
+                    </Details>
                   )}
                 </span>
               </span>

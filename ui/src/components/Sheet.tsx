@@ -16,13 +16,15 @@ type Props = {
   icon?: ReactNode;
   /** A centred dialog instead of the side sheet. */
   dialog?: boolean;
+  /** As tall as its content (up to the window), for short plans. */
+  fit?: boolean;
   /** The foot's buttons; a dialog that only shows something may have none. */
   footer?: ReactNode;
   onClose: () => void;
   children: ReactNode;
 };
 
-export function Sheet({ title, intro, steps, icon, dialog, footer, onClose, children }: Props) {
+export function Sheet({ title, intro, steps, icon, dialog, fit, footer, onClose, children }: Props) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -53,7 +55,7 @@ export function Sheet({ title, intro, steps, icon, dialog, footer, onClose, chil
       <div className="scrim" onClick={onClose} />
       <aside
         ref={ref}
-        className={dialog ? "sheet dialog" : "sheet"}
+        className={dialog ? "sheet dialog" : fit ? "sheet fit" : "sheet"}
         role="dialog"
         aria-modal="true"
         aria-label={title}

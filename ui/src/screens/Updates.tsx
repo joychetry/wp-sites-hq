@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import "../styles/screens/updates.css";
 import { ago, api, blocked, siteStatus, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
 import { Button, Details, Glyph, HeadActions, Icon } from "../components/ui";
+import { askOpenSite, askSignIn } from "../components/feedback";
 import { vulnSummary } from "../format";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
@@ -41,10 +42,43 @@ export function fixes(r: Row, report: SecurityReport | undefined): Vulnerability
   );
 }
 
+/**
+ * Sites a page leaves out, each with why and the one step that brings it back: Updates, Plugins and Themes.
+ * Sign in again opens the sign-in sheet; anything else opens the site in Sites.
+ */
+export function NotInList({ notes }: { notes: [Site, string][] }) {
+  if (notes.length === 0) return null;
+  return (
+    <section className="card" aria-labelledby="not-in-list">
+      <div className="card-head">
+        <h2 id="not-in-list">Not in this list</h2>
+        <span className="dim">{plural(notes.length, "site")}</span>
+      </div>
+      <ul className="unseen-list">
+        {notes.map(([s, why]) => {
+          const signIn = s.sign_in_again || /sign in again/i.test(why);
+          return (
+            <li key={s.id}>
+              <SiteTile site={s} size="sm" />
+              <span>
+                <b>{s.name}</b>
+                <span className="dim">{why}</span>
+              </span>
+              <Button small onClick={() => (signIn ? askSignIn(s.id) : askOpenSite(s.id))}>
+                {signIn ? "Sign in again" : "Open in Sites"}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /** "Good to know" about one update: a badge when it needs a look, quiet words otherwise. */
 function goodToKnow(r: Row, vuln: Vulnerability | undefined): [string, "danger" | "warning" | null] {
   if (vuln) return ["Security fix", "danger"];
-  if (r.kind === "Translations") return ["Language files", null];
+  if (r.kind === "Translations") return ["No code changes", null];
   if (r.from && r.to && r.from.split(".")[0] !== r.to.split(".")[0]) return ["Major release", "warning"];
   if (r.kind === "Theme" && r.active) return ["Active theme", null];
   if (r.kind === "Plugin" && r.active === false) return ["Not active", null];
@@ -53,16 +87,16 @@ function goodToKnow(r: Row, vuln: Vulnerability | undefined): [string, "danger" 
 
 const KINDS: [Kind | "all", string, string][] = [
   ["all", "All", ""],
-  ["WordPress", "Core", "k-core"],
+  ["WordPress", "WordPress", "k-core"],
   ["Plugin", "Plugins", "k-plugin"],
   ["Theme", "Themes", "k-theme"],
   ["Translations", "Translations", "k-tr"],
 ];
 const KEY_WORD: Record<Kind, [string, string]> = {
-  WordPress: ["core", "core"],
+  WordPress: ["WordPress", "WordPress"],
   Plugin: ["plugin", "plugins"],
   Theme: ["theme", "themes"],
-  Translations: ["translation set", "translation sets"],
+  Translations: ["Translations", "Translations"],
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -143,7 +177,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
               <b className="cut" data-tip={r.name}>
                 {r.name}
               </b>
-              <small>{grouped ? (r.kind === "WordPress" ? "Core" : r.kind) : `${r.kind === "WordPress" ? "Core" : r.kind} · ${r.site}`}</small>
+              <small>{grouped ? r.kind : `${r.kind} · ${r.site}`}</small>
             </span>
           </div>
         </td>
@@ -162,7 +196,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
         <td>
           {tone ? (
             <span className={`st pill ${tone}`} data-tip={r.vuln && vulnSummary(r.vuln.title)}>
-              <Icon tone={tone} />
+              {r.vuln ? <Glyph name="shield" /> : <Icon tone={tone} />}
               {words}
             </span>
           ) : (
@@ -213,8 +247,8 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
         <section className="card upd-alert" aria-labelledby="upd-alert-t">
           <div className="card-body">
             <div className="row">
-              <span className="tile sm warning">
-                <Glyph name="alert" />
+              <span className="tile sm danger">
+                <Glyph name="shield" />
               </span>
               <b id="upd-alert-t">Action needed</b>
               <span className="st pill danger">{plural(security.length, "security fix", "security fixes")}</span>
@@ -253,11 +287,12 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
     <Page className="updates" side={side}>
       <HeadActions>
         <Button disabled={reading} onClick={readAgain}>
-          Read every site again
+          {reading ? "Checking…" : "Check for updates"}
           <Glyph name="refresh" />
         </Button>
-        <Button kind="primary" className="disc" disabled={rows.length === 0} onClick={() => onPlan(planTitle(rows), rows)}>
-          Update all {rows.length}
+        {/* Follows the kind filter: what you see is what it updates. */}
+        <Button kind="primary" className="disc" disabled={shown.length === 0} onClick={() => onPlan(planTitle(shown), shown)}>
+          {kind === "all" ? `Update all ${rows.length}` : `Update ${shown.length} shown`}
           <span className="btn-disc">
             <Glyph name="arrow" />
           </span>
@@ -289,11 +324,17 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
           <Empty small title="Nothing of this kind is waiting" />
         ) : (
           <table className="t" aria-label="Updates waiting">
+            <colgroup>
+              <col className="c-tick" />
+              <col className="c-fill" />
+              <col className="c-text" />
+              <col className="c-text" />
+            </colgroup>
             <thead>
               <tr>
                 <th className="tick">{box(shown.map((r) => r.key), "Select every update")}</th>
                 <th>Update</th>
-                <th>From → to</th>
+                <th>Version</th>
                 <th>Good to know</th>
               </tr>
             </thead>
@@ -316,7 +357,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
                                     <Icon tone={st.tone} />
                                     {st.label}
                                   </span>
-                                  <span className="dim">From the last read, {ago(inventory.get(site.id)?.fetched_at ?? null)}</span>
+                                  <span className="dim">Checked {ago(inventory.get(site.id)?.fetched_at ?? null)}</span>
                                 </>
                               )}
                             </div>
@@ -335,11 +376,11 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
           <div className="card-foot">
             <span className="dim grow" role="status">
               {reading
-                ? "Reading every site…"
+                ? "Checking every site…"
                 : chosen.length
                   ? `${plural(chosen.length, "update")} selected`
                   : Number.isFinite(oldest)
-                    ? `Read ${ago(oldest)}`
+                    ? `Checked ${ago(oldest)}`
                     : ""}
             </span>
             <Button small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
@@ -348,23 +389,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
           </div>
         )}
       </section>
-      {notes.length > 0 && (
-        <section className="card" aria-label="Sites not in this list">
-          <div className="card-head">
-            <h2>Not in this list</h2>
-            <span className="dim">{plural(notes.length, "site")}</span>
-          </div>
-          <ul className="unseen-list">
-            {notes.map(([s, why]) => (
-              <li key={s.id}>
-                <SiteTile site={s} size="sm" />
-                <b>{s.name}</b>
-                <span className="dim">{why}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <NotInList notes={notes} />
     </Page>
   );
 }

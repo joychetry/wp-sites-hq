@@ -58,7 +58,7 @@ export function updatesOf(s: Site, inv: SiteInventory | undefined): Row[] {
     name,
     site: s.name,
     icon: s.icon,
-    label: kind === "Translations" ? name : `Update ${name}${kind === "Theme" ? " theme" : ""}`,
+    label: kind === "Translations" ? "Update translations" : `Update ${name}${kind === "Theme" ? " theme" : ""}`,
     from,
     to,
     active,
@@ -73,14 +73,14 @@ export function updatesOf(s: Site, inv: SiteInventory | undefined): Row[] {
       .filter((t) => t.update)
       .map((t) => row(`t:${t.id}`, "Theme", t.name, { do: "update_theme", theme: t.id }, t.version, t.update, t.active)),
     ...(i.translations > 0
-      ? [row("tr", "Translations", "Update translations", { do: "update_translations" }, null, null)]
+      ? [row("tr", "Translations", "Translations", { do: "update_translations" }, null, null)]
       : []),
   ];
 }
 
-/** The plan's title for these updates, e.g. "Update WooCommerce on MC A". */
+/** The plan's title for these updates, e.g. "Update WooCommerce on MC A" or "5 updates on 2 sites". */
 export function planTitle(list: (PlanRow & { name: string })[]): string {
   const sites = new Set(list.map((r) => r.change.site_id)).size;
-  return `Update ${list.length === 1 ? list[0].name : `${list.length} things`} on ${sites === 1 ? list[0].site : `${sites} sites`}`;
+  return `${list.length === 1 ? list[0].label : `${list.length} updates`} on ${sites === 1 ? list[0].site : `${sites} sites`}`;
 }
 

@@ -10,7 +10,7 @@ import { Palette, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { Page } from "./components/page";
 import { AddSite } from "./screens/AddSite";
-import { Install } from "./screens/Install";
+import { Install, type InstallStart } from "./screens/Install";
 import { attention, leaveGuard, planTitle, summary, toFix, updatesOf } from "./fleet";
 import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
@@ -100,7 +100,7 @@ export default function App() {
   const { reports } = useSecurity();
   const monitors = useMonitors();
   const [sheet, setSheet] = useState<SheetState | null>(null);
-  const [installing, setInstalling] = useState(false);
+  const [installing, setInstalling] = useState<boolean | InstallStart>(false);
   // Errors float as toasts, so the screen under them doesn't move.
   const setJobError = (text: string) => toast(text, { tone: "danger" });
   const [scopeChoice, setScope] = useState("");
@@ -218,8 +218,8 @@ export default function App() {
       .map(([s, n, say, alert]) => [s, { n, say, alert }]),
   );
 
-  const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
-    setSheet({ title, rows, start, danger });
+  const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean, onBack?: () => void, backLabel?: string) =>
+    setSheet({ title, rows, start, danger, onBack, backLabel });
   const runNow = async (title: string, changes: Change[]) => {
     try {
       const job = await api.startJob(title, changes);
@@ -357,7 +357,7 @@ export default function App() {
         <section className="card">
           <Empty
             picture="sites"
-            title={`${section} fills in once you add a site`}
+            title="This page fills in once you add a site"
             action={<AddSiteButton onClick={() => setAdding({})} />}
           >
             <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
@@ -403,7 +403,7 @@ export default function App() {
         inventory={inv}
         onPlan={plan}
         onRun={runNow}
-        onInstall={section === "Plugins" ? () => setInstalling(true) : undefined}
+        onInstall={() => setInstalling(section === "Themes" ? { theme: true } : true)}
       />
     );
   } else if (section === "Content") {
@@ -607,7 +607,7 @@ export default function App() {
           onClose={() => setInstalling(false)}
           onPlan={(t, r) => {
             setInstalling(false);
-            plan(t, r, "confirm");
+            plan(t, r, "confirm", false, () => setInstalling(back), "Back to the sites");
           }}
         />
       )}
@@ -626,3 +626,4 @@ export default function App() {
     </div>
   );
 }
+          start={typeof installing === "object" ? installing : undefined}

@@ -65,18 +65,25 @@ test("a theme zip is sent once, then planned without switching to it", async () 
   fireEvent.click(screen.getByRole("checkbox", { name: /Replace it where it's already installed/ }));
   const file = new File(["PK\x03\x04"], "bricks-child.zip", { type: "application/zip" });
   fireEvent.change(screen.getByLabelText("Choose a zip file"), { target: { files: [file] } });
-  expect(await screen.findByText(/theme, 2.0 MB, replaces an installed copy/)).toBeInTheDocument();
+  expect(await screen.findByText(/2.0 MB/)).toBeInTheDocument();
+  // Kind and replace stay changeable once the file is chosen.
+  expect(screen.getByRole("button", { name: "A theme" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("checkbox", { name: /Replace it where it's already installed/ })).toBeChecked();
   expect(calls.find((c) => c[0] === "zip_stage")?.[1]).toEqual({ name: "bricks-child.zip", data: "UEsDBA==" });
   expect(screen.getByRole("checkbox", { name: "Install on Older" })).toBeDisabled();
   expect(screen.getByRole("checkbox", { name: "Use it as the site's theme after installing" })).toHaveAttribute("aria-checked", "false");
-  fireEvent.click(screen.getByRole("button", { name: "Review 1 site" }));
-  expect(onPlan).toHaveBeenCalledWith("Install bricks-child.zip on Alpha", [
-    {
-      site: "Alpha",
-      label: "Install bricks-child.zip, replacing it",
-      change: { site_id: 1, action: { do: "install_zip", file: `${"a".repeat(64)}.zip`, name: "bricks-child.zip", kind: "theme", activate: false, overwrite: true } },
-    },
-  ]);
+  fireEvent.click(screen.getByRole("button", { name: "Review the change" }));
+  expect(onPlan).toHaveBeenCalledWith(
+    "Install bricks-child.zip on Alpha",
+    [
+      {
+        site: "Alpha",
+        label: "Install bricks-child.zip, replacing it",
+        change: { site_id: 1, action: { do: "install_zip", file: `${"a".repeat(64)}.zip`, name: "bricks-child.zip", kind: "theme", activate: false, overwrite: true } },
+      },
+    ],
+    expect.anything(),
+  );
 });
 
 test("a zip the core refuses says why", async () => {
@@ -91,7 +98,7 @@ test("a bundle installs only what each site is missing", async () => {
   const onPlan = vi.fn();
   render(<Install sites={[A, BASIC]} inventory={INV} onClose={vi.fn()} onPlan={onPlan} />);
   fireEvent.click(await screen.findByRole("button", { name: "Install New shop" }));
-  fireEvent.click(screen.getByRole("button", { name: "Review 2 sites" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review 3 changes" }));
   const [title, rows] = onPlan.mock.calls[0];
   expect(title).toBe("Install the New shop bundle on 2 sites");
   expect(rows.map((r: { site: string; label: string }) => `${r.site}: ${r.label}`)).toEqual([
@@ -106,8 +113,8 @@ test("bundles are made and edited in the sheet", async () => {
   render(<Install sites={[A]} inventory={INV} onClose={vi.fn()} onPlan={vi.fn()} />);
   fireEvent.click(await screen.findByRole("button", { name: "Edit the New shop bundle" }));
   const box = screen.getByRole("group", { name: "Bundles" });
-  expect(within(box).getByRole("textbox", { name: /^Plugins, one a line/ })).toHaveValue("woocommerce\nwp-mail-smtp");
-  fireEvent.change(within(box).getByRole("textbox", { name: /^Plugins, one a line/ }), { target: { value: "woocommerce\nakismet" } });
+  expect(within(box).getByRole("textbox", { name: /^Plugins, one per line/ })).toHaveValue("woocommerce\nwp-mail-smtp");
+  fireEvent.change(within(box).getByRole("textbox", { name: /^Plugins, one per line/ }), { target: { value: "woocommerce\nakismet" } });
   fireEvent.click(within(box).getByRole("button", { name: "Save the bundle" }));
   await waitFor(() =>
     expect(calls.find((c) => c[0] === "bundle_save")?.[1]).toEqual({
@@ -115,7 +122,7 @@ test("bundles are made and edited in the sheet", async () => {
     }),
   );
   fireEvent.click(await screen.findByRole("button", { name: "New bundle" }));
-  fireEvent.click(within(box).getByRole("button", { name: "Close without saving" }));
+  fireEvent.click(within(box).getByRole("button", { name: "Back to the bundles" }));
   expect(within(box).getByRole("button", { name: "New bundle" })).toBeInTheDocument();
 });
 
