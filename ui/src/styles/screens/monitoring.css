@@ -8,12 +8,11 @@
 .mon .dim { font-size: var(--fs-sm); }
 .mon .renew { display: block; }
 .mon .wrap-s .dim { white-space: nowrap; }
-/* A row's action sits under the fact it acts on (Check again under Down, Test speed under the score). */
-.mon td .btn { margin-top: var(--sp-2); }
 .mon .sub.cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mon .sub.danger { color: var(--danger); }
+.mon .renew .st { white-space: nowrap; }
 .mon .tag { white-space: nowrap; }
-.mon .renew + .renew, .mon .renew + .why, .mon .why + .renew { margin-top: var(--sp-1); }
-.mon .renew .st { font-size: var(--fs-sm); }
+.mon .renew + .renew { margin-top: 2px; }
 .mon .tag + .why { margin-top: var(--sp-1); }
 .mon .card-foot { display: grid; gap: var(--sp-1); margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
 .mon .card-foot [role="status"] { color: var(--text); font-weight: 600; }

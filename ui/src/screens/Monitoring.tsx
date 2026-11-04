@@ -145,7 +145,8 @@ export function Monitoring({ sites, monitors }: Props) {
             <col className="c-text" />
             <col className="c-text" />
             <col className="c-wide" />
-            <col className="c-wide" />
+            <col className="c-text" />
+            <col className="c-act" />
           </colgroup>
           <thead>
             <tr>
@@ -154,6 +155,9 @@ export function Monitoring({ sites, monitors }: Props) {
               <th scope="col">Uptime</th>
               <th scope="col">Renewals</th>
               <th scope="col">Speed score</th>
+              <th scope="col" className="act">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -165,6 +169,10 @@ export function Monitoring({ sites, monitors }: Props) {
               const isDown = m?.up === false;
               const [tone, word] = ps ? band(ps.score) : ["", ""];
               const mine = checking === s.id;
+              const run = runWord(running === s.id, !!ps);
+              // Every cell is one line and, at most, a quieter second one; the full text is in its tip.
+              const certLine = cert ? `Certificate, ${cert.date}` : s.url.startsWith("https:") ? "Certificate not read yet" : "No certificate (http)";
+              const domainLine = domain ? `${m?.domain}, ${domain.date}` : m?.public === false ? "Local address, no domain" : m?.domain_note || "Domain not looked up yet";
               return (
                 <tr key={s.id}>
                   <td>
@@ -176,7 +184,7 @@ export function Monitoring({ sites, monitors }: Props) {
                       </span>
                     </span>
                   </td>
-                  <td className="wrap-s">
+                  <td>
                     {m?.up == null ? (
                       <span className="st pill unknown">
                         <Icon tone="unknown" />
@@ -199,11 +207,9 @@ export function Monitoring({ sites, monitors }: Props) {
                           </span>
                           {m.down_since && <span className="dim">since {ago(m.down_since)}</span>}
                         </span>
-                        <span className="why danger">{m.error}</span>
-                        <Button small aria-label={mine ? `Checking ${s.name}…` : `Check ${s.name} again`} onClick={() => checking === false && check(s.id)}>
-                          {mine ? "Checking…" : "Check again"}
-                          <Glyph name="refresh" />
-                        </Button>
+                        <span className="sub cut danger" data-tip={m.error}>
+                          {m.error}
+                        </span>
                       </>
                     )}
                   </td>
@@ -217,27 +223,16 @@ export function Monitoring({ sites, monitors }: Props) {
                       </>
                     )}
                   </td>
-                  <td className="wrap-s">
-                    {cert ? (
-                      <span className="renew">
-                        <Status tone={cert.tone}>{cert.text}</Status>
-                        <span className="sub">Certificate, {cert.date}</span>
-                      </span>
-                    ) : (
-                      <span className="why">{s.url.startsWith("https:") ? "Certificate not read yet" : "No certificate (http)"}</span>
-                    )}
-                    {domain ? (
-                      <span className="renew">
-                        <Status tone={domain.tone}>{domain.text}</Status>
-                        <span className="sub cut" data-tip={`${m?.domain}, ${domain.date}`}>
-                          {m?.domain}, {domain.date}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="why">{m?.public === false ? "Local address" : m?.domain_note || "Domain not looked up yet"}</span>
-                    )}
+                  <td>
+                    {/* The certificate on the first line, the domain under it; the date of each in its tip. */}
+                    <span className="renew" data-tip={certLine}>
+                      {cert ? <Status tone={cert.tone}>Certificate: {cert.text.toLowerCase()}</Status> : <span className="dim">{certLine}</span>}
+                    </span>
+                    <span className="renew sub cut" data-tip={domainLine}>
+                      {domain ? <Status tone={domain.tone}>Domain: {domain.text.toLowerCase()}</Status> : domainLine}
+                    </span>
                   </td>
-                  <td className="wrap-s">
+                  <td>
                     {isDown && m?.public !== false ? (
                       <span className="tag">Couldn't load</span>
                     ) : ps ? (
@@ -245,19 +240,30 @@ export function Monitoring({ sites, monitors }: Props) {
                         <Status pill tone={(tone || "unknown") as Tone}>
                           {ps.score} · {word}
                         </Status>
-                        <span className="why">
-                          Main content shows in {ps.lcp}. Tested {ago(ps.at)}.
+                        <span className="sub cut" data-tip={`Main content shows in ${ps.lcp}. Tested ${ago(ps.at)}.`}>
+                          Tested {ago(ps.at)}
                         </span>
                       </>
                     ) : (
                       <span className="dim">{m?.public === false ? "Public sites only" : "Not tested yet"}</span>
                     )}
-                    {notes[s.id] && <span className="why danger">{notes[s.id]}</span>}
-                    {!isDown && m?.public !== false && (
-                      <Button small className="ghost" aria-label={`${runWord(running === s.id, !!ps)} on ${s.name}`} onClick={() => pageSpeed(s)}>
-                        {runWord(running === s.id, !!ps)}
-                        <Glyph name="zap" />
-                      </Button>
+                    {notes[s.id] && (
+                      <span className="sub cut danger" data-tip={notes[s.id]}>
+                        {notes[s.id]}
+                      </span>
+                    )}
+                  </td>
+                  <td className="act">
+                    {isDown ? (
+                      <button type="button" className="icon-btn" aria-label={mine ? `Checking ${s.name}…` : `Check ${s.name} again`} data-tip={mine ? "Checking…" : "Check again"} onClick={() => checking === false && check(s.id)}>
+                        <Glyph name={mine ? "loader" : "refresh"} />
+                      </button>
+                    ) : (
+                      m?.public !== false && (
+                        <button type="button" className="icon-btn" aria-label={`${run} on ${s.name}`} data-tip={run} onClick={() => pageSpeed(s)}>
+                          <Glyph name={running === s.id ? "loader" : "zap"} />
+                        </button>
+                      )
                     )}
                   </td>
                 </tr>
