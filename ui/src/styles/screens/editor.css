@@ -137,8 +137,10 @@ fieldset.field .rte textarea.rte-source { min-height: 202px; }
 
 /* A block page: each text block is its own box that becomes an editor when it gets focus; the
    other blocks are locked rows. */
-.blk { position: relative; display: grid; gap: var(--sp-1); margin-bottom: var(--sp-3); }
+/* Margins, not a grid gap: TinyMCE adds an empty element to a focused block, and a gap would push the page down. */
+.blk { position: relative; display: grid; margin-bottom: var(--sp-3); }
 .blk > .blk-name { min-height: 20px; }
+.blk:not(.locked) > .blk-name { margin-bottom: var(--sp-1); }
 /* A block's floating toolbar sits on its label row at the right, its foot on the field's top edge,
    so it never covers the field's own name or the text being edited. */
 /* Out of the flow, so focusing a block doesn't add a grid gap and push the page down. */
