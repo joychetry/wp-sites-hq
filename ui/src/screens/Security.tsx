@@ -80,7 +80,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
   if (sites.length === 0) {
     return (
       <Page>
-        <Empty picture="sites" title="No sites yet">
+        <Empty picture="shield" title="No sites yet">
           <p>Add a site to scan it for known vulnerabilities, abandoned plugins and changed files.</p>
         </Empty>
       </Page>
@@ -102,11 +102,11 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
     <Page className="sec">
       <HeadActions>
         <Button disabled={scanning} onClick={scan}>
-          {scanning ? "Scanning…" : "Scan all sites now"}
+          {scanning ? "Scanning…" : "Scan all sites"}
           <Glyph name="shield" />
         </Button>
         {uniqueFixes.length > 0 && (
-          <Button kind="primary" className="disc" onClick={() => onPlan(`Fix ${plural(uniqueFixes.length, "vulnerable plugin")}`, uniqueFixes)}>
+          <Button kind="primary" className="disc" onClick={() => onPlan(`Update ${plural(uniqueFixes.length, "vulnerable plugin")}`, uniqueFixes)}>
             Update {plural(uniqueFixes.length, "vulnerable plugin")}
             <span className="btn-disc">
               <Glyph name="arrow" />
@@ -197,7 +197,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                         </div>
                         <div>
                           <dt>Fixed in</dt>
-                          <dd className="m">{x.fixed_in ?? "Not yet"}</dd>
+                          <dd className="m">{x.fixed_in ?? "No fix yet"}</dd>
                         </div>
                         <div>
                           <dt>Sites affected</dt>
@@ -227,7 +227,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                       )}
                       <div className="row acts">
                         {fixes}
-                        {fixes.length === 0 && <span className="dim">{x.fixed_in ? `Fixed in ${x.fixed_in}, once the site offers that update` : "No fix yet"}</span>}
+                        {fixes.length === 0 && x.fixed_in && <span className="dim">Update to {x.fixed_in} once the site offers it</span>}
                         {x.link && (
                           <Button className="ghost" aria-label={`Read more about ${x.title}`} onClick={() => api.openLink(x.link!).catch((e) => setError(String(e)))}>
                             Read more
@@ -249,6 +249,12 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                 <span className="dim">No release in two years, or closed</span>
               </div>
               <table className="t" aria-labelledby="sec-abandoned">
+                <colgroup>
+                  <col className="c-text" />
+                  <col className="c-text" />
+                  <col className="c-version" />
+                  <col className="c-fill" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Site</th>
@@ -260,16 +266,16 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                 <tbody>
                   {abandoned.map(({ site, x }) => (
                     <tr key={`${site.id}:${x.id}`}>
-                      <td>
+                      <td data-tip={site.name}>
                         <span className="site">
                           <SiteTile site={site} size="sm" />
                           <b>{site.name}</b>
                         </span>
                       </td>
-                      <td className="cut" data-tip={x.name}>
+                      <td data-tip={x.name}>
                         <span className="site">
                           <PkgTile kind="plugin" slug={slugOf(x.id)} name={x.name} size="sm" />
-                          {x.name}
+                          <b>{x.name}</b>
                         </span>
                       </td>
                       <td className="m">{x.version}</td>
@@ -291,10 +297,15 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                 <h2 id="sec-files">Files that differ from WordPress.org</h2>
               </div>
               <table className="t" aria-labelledby="sec-files">
+                <colgroup>
+                  <col className="c-text" />
+                  <col className="c-text" />
+                  <col className="c-fill" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Site</th>
-                    <th scope="col">In</th>
+                    <th scope="col">Where</th>
                     <th scope="col">Files</th>
                   </tr>
                 </thead>
@@ -303,13 +314,17 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                     const files = [...x.modified.map((f) => `${f} (changed)`), ...x.missing.map((f) => `${f} (missing)`), ...x.added.map((f) => `${f} (extra)`)];
                     return (
                       <tr key={`${site.id}:${x.name}`}>
-                        <td>
+                        <td data-tip={site.name}>
                           <span className="site">
                             <SiteTile site={site} size="sm" />
                             <b>{site.name}</b>
                           </span>
                         </td>
-                        <td>{x.name}</td>
+                        <td data-tip={x.name}>
+                          <span className="site">
+                            <b>{x.name}</b>
+                          </span>
+                        </td>
                         <td className="wrap m">
                           {files.slice(0, 5).join(", ")}
                           {files.length > 5 && `, and ${files.length - 5} more`}
@@ -326,7 +341,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
         <div className="stack">
           <section className="card" aria-labelledby="sec-clear">
             <div className="card-head">
-              <h2 id="sec-clear">Sites with nothing known</h2>
+              <h2 id="sec-clear">Sites with no known problems</h2>
             </div>
             {clear.length === 0 ? (
               <Empty small title={scanned.length ? "Every scanned site has something to look at" : "No site scanned yet"} />
@@ -352,9 +367,9 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
             )}
           </section>
           {notes.length > 0 && (
-            <section className="card" aria-label="Not checked">
+            <section className="card" aria-labelledby="sec-notes">
               <div className="card-head">
-                <h2>Not checked</h2>
+                <h2 id="sec-notes">Not fully scanned</h2>
               </div>
               <ul className="fixes">
                 {notes.map(([name, why], i) => {

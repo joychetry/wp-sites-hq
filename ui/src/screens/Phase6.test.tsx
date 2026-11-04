@@ -70,13 +70,13 @@ describe("Security", () => {
       expect.objectContaining({ from: "10.2.0", to: "10.3.0", change: { site_id: 1, action: { do: "update_plugin", plugin: WOO } } }),
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Update 1 vulnerable plugin" }));
-    expect(onPlan).toHaveBeenLastCalledWith("Fix 1 vulnerable plugin", [expect.objectContaining({ label: "Update WooCommerce" })]);
+    expect(onPlan).toHaveBeenLastCalledWith("Update 1 vulnerable plugin", [expect.objectContaining({ label: "Update WooCommerce" })]);
     fireEvent.click(within(vulns).getByRole("button", { name: "Read more about WooCommerce < 10.3 - Stored XSS" }));
     expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://wpscan.com/v" });
     expect(screen.getByText(`No release since ${month("2023-03")}. Look for a maintained one.`)).toBeInTheDocument();
     expect(screen.getByText("WordPress.org closed it (security issue): it gets no more updates. Replace it.")).toBeInTheDocument();
     expect(screen.getByText("wp-includes/version.php (changed), wp-x.php (extra)")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Not checked" })).getByText("Not scanned yet.")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Not fully scanned" })).getByText("Not scanned yet.")).toBeInTheDocument();
     expect(screen.getByText("Scanned 2 hr ago")).toBeInTheDocument();
   });
 
@@ -93,11 +93,11 @@ describe("Security", () => {
     const clean = { ...report, vulnerabilities: [], abandoned: [], checksums: null, notes: ["Checksums need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site."] };
     render(<Security sites={[A]} reports={[clean]} inventory={new Map()} onPlan={vi.fn()} />);
     expect(screen.getByText("No known problems on 1 site.", { exact: false })).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Sites with nothing known" })).getByText("Clear")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Sites with no known problems" })).getByText("Clear")).toBeInTheDocument();
     expect(screen.getByText("Checksums need the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Scan all sites now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scan all sites" }));
     expect(mockInvoke).toHaveBeenCalledWith("security_scan", { id: undefined });
-    expect(await screen.findByRole("button", { name: "Scan all sites now" })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: "Scan all sites" })).toBeEnabled();
   });
 });
 
