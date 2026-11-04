@@ -12,7 +12,7 @@
 .ctable .linkish { font-weight: 600; text-decoration-color: transparent; width: 100%; max-width: none; min-height: 44px; }
 .ctable .linkish:hover { text-decoration-color: currentColor; }
 .ctable .who { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ctable .when { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.ctable .when { color: var(--text-2); font-variant-numeric: tabular-nums; }
 /* --sel is the ok pill's own tint: on a selected row the pill keeps a ground. */
 .ctable .card-foot .count { margin-right: auto; color: var(--text-3); font-size: var(--fs-sm); }
 .ctable > .legend { border-bottom: 1px solid var(--line); }

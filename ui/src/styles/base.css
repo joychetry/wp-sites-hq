@@ -135,7 +135,7 @@ small { font-size: var(--fs-sm); }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--sel); flex: none; }
 .pulse.on { animation: pulse 1.2s ease-in-out infinite; }
 .top-end { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
-.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(200px, 17vw, 232px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--radius-pill); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
+.kbar { display: inline-flex; align-items: center; gap: 10px; width: clamp(220px, 22vw, 296px); max-width: 100%; height: var(--control); padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--radius-pill); background: var(--panel); color: var(--text-3); font-size: var(--fs-sm); text-align: left; }
 .kbar span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kbar:hover { border-color: var(--line-ui); color: var(--text-2); }
 /* Under 1100px the top bar keeps one row: the search button is its icon and key (its name stays for screen readers). */

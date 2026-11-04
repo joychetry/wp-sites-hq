@@ -36,7 +36,7 @@ test("needs attention offers the right next step", () => {
   render(<Overview sites={sites} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={vi.fn()} />);
   const panel = screen.getByRole("region", { name: "To do" });
   expect(panel).toHaveTextContent("Couldn't reach this site.");
-  expect(panel).toHaveTextContent("Update it on the site for every feature");
+  expect(panel).toHaveTextContent("Update it to use every feature");
   expect(panel).not.toHaveTextContent("Fine");
   expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();

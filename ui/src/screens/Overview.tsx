@@ -11,7 +11,7 @@ import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
 import { attention, toFix } from "../fleet";
 import { Page } from "../components/page";
-import { dayTime } from "../format";
+import { dayTime, speed } from "../format";
 
 export { attention, summary } from "../fleet";
 
@@ -286,8 +286,6 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
 }
 
 const pct = (n: number | null | undefined) => (n == null ? "Not known" : `${n >= 99.95 || n === 0 ? n.toFixed(0) : n.toFixed(2)}%`);
-/** "840 ms", and seconds from one second up ("4.2 s"), as the slow note says it. */
-const speed = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
 const SHOW_SITES = 8;
 
 export function Overview({ sites, waiting = [], plans = [], reports = [], monitors = [], onOpen, onCheck, onSignInAgain, onAdd, onGo }: Props) {

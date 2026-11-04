@@ -48,6 +48,9 @@ export function dayTime(v: When | null | undefined, now = new Date()): string {
 export const range = (from: When, to: When) => `${day(from)} to ${day(to)}`;
 
 /** "just now", "3 min ago", "2 hours ago", "yesterday", "4 days ago"; "never" for no time. */
+/** A response time: "840 ms", and seconds from one second up ("4.2 s"). */
+export const speed = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`);
+
 export function ago(unix: number | null, now = Date.now() / 1000): string {
   if (unix == null) return "never";
   const s = Math.max(0, now - unix);

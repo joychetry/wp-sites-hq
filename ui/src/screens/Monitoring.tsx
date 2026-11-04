@@ -7,7 +7,7 @@ import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty } from "../components/feedback";
 import { Page } from "../components/page";
-import { day } from "../format";
+import { day, speed } from "../format";
 
 const DAY = 86400;
 
@@ -126,7 +126,7 @@ export function Monitoring({ sites, monitors }: Props) {
         <div className="stat">
           <h2 className="label">Average response</h2>
           <p className="stat-n">
-            <strong>{up.length ? Math.round(avg(up.map((m) => m.ms))) : "No answer"}</strong> {up.length > 0 && "ms"}
+            <strong>{up.length ? speed(avg(up.map((m) => m.ms))) : "No answer"}</strong>
           </p>
           <p className="stat-note">{up.length ? `From the ${plural(up.length, "page")} that answered.` : "No page answered yet."}</p>
         </div>
@@ -188,7 +188,7 @@ export function Monitoring({ sites, monitors }: Props) {
                           <Icon tone="ok" />
                           {m.status === 200 ? "200 OK" : "Up"}
                         </span>
-                        <span className="ms">{m.ms} ms</span>
+                        <span className="ms">{speed(m.ms)}</span>
                       </span>
                     ) : (
                       <>
