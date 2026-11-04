@@ -287,10 +287,10 @@ test("a feature is turned on and undone from the keyboard", async ({ page }) => 
 
 test("an AI agent's plan is confirmed from the keyboard and its progress shows", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai")!, "light");
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "AI 1 to confirm" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "AI 1 plans to confirm" })).toBeVisible();
   await page.getByRole("button", { name: "Decline Update WooCommerce on 3 sites" }).focus();
   await page.keyboard.press("Tab");
-  const confirm = page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" });
+  const confirm = page.getByRole("button", { name: "Confirm and make 3 changes: Update WooCommerce on 3 sites" });
   await expect(confirm).toBeFocused();
   await page.keyboard.press("Enter");
   const sheet = page.getByRole("dialog", { name: /^Update WooCommerce on 3 sites/ });
@@ -298,7 +298,7 @@ test("an AI agent's plan is confirmed from the keyboard and its progress shows",
   await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "Update WooCommerce on 3 sites" })).toHaveCount(0);
   // An expired plan has no Confirm: it only goes away.
-  await expect(page.getByRole("button", { name: /^Confirm and run .*Turn off Akismet/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Confirm and make .*Turn off Akismet/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Remove Turn off Akismet on Portfolio" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "No plans waiting" })).toBeVisible();
@@ -312,7 +312,7 @@ test("the palette opens an agent's plan with focus on it, two Tabs from Confirm"
   await expect(page.getByRole("heading", { name: "Update WooCommerce on 3 sites" })).toBeFocused();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Confirm and make 3 changes: Update WooCommerce on 3 sites" })).toBeFocused();
 });
 
 test("the palette searches everything, and a result opens its site from the keyboard", async ({ page }) => {
@@ -361,8 +361,9 @@ test("AI agent access is turned on from the keyboard", async ({ page }) => {
   const access = page.getByRole("tabpanel").getByRole("switch", { name: "Access for Portfolio" });
   await access.focus();
   await page.keyboard.press("Space");
-  await expect(page.getByText(/leave "This is my WP Sites HQ app \(operator\)" \(older plugins say Monks Central app\) unticked/)).toBeVisible();
   await expect(page.getByText("AI agents can change Portfolio now. The site asks you to approve each change.")).toBeVisible();
+  // The browser steps go once access is on.
+  await expect(page.getByText(/Finish in your browser/)).toHaveCount(0);
   await expect(access).toBeChecked();
 });
 

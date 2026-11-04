@@ -216,7 +216,7 @@ export const SCREENS: Screen[] = [
     },
   },
   {
-    name: "classic-monks-undo-ask",
+    name: "classic-monks-undone",
     open: async (page) => {
       await nav("Classic Monks")(page);
       await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
@@ -228,7 +228,7 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-approvals",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Waiting for approval", exact: true }).click();
+      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: /^Waiting for approval/ }).click();
       await page.getByRole("list", { name: "Waiting for approval" }).waitFor();
     },
   },
@@ -236,7 +236,7 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-basic",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "mc-c (no Classic Monks)" });
+      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "mc-c (can't change here)" });
     },
   },
   { name: "ai", open: nav("AI") },
@@ -269,7 +269,7 @@ export const SCREENS: Screen[] = [
     name: "ai-confirmed",
     open: async (page) => {
       await nav("AI")(page);
-      await page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" }).click();
+      await page.getByRole("button", { name: "Confirm and make 3 changes: Update WooCommerce on 3 sites" }).click();
       await page.getByText(/^Finished\./).waitFor();
     },
   },
@@ -431,7 +431,7 @@ export const SCREENS: Screen[] = [
     name: "content-unavailable",
     open: async (page) => {
       await nav("Content")(page);
-      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "WP Sites HQ Test (not available)" });
+      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "WP Sites HQ Test (can't change here)" });
     },
   },
   { name: "media", open: nav("Media") },

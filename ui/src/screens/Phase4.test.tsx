@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
-import { ClassicMonks, toolLabel, whoOf } from "./ClassicMonks";
+import { ClassicMonks, targetOf, toolLabel, whoOf } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
@@ -60,7 +60,7 @@ function core(over: Record<string, (args: Record<string, unknown>) => unknown> =
       case "cm_activity":
         return { rows: [{ id: 9, time: "2026-10-28 10:00:00", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true }], total: 1, page: 1, pages: 1 };
       case "cm_approvals":
-        return [{ id: 31, tool: "delete-post", who: "Claude", time: "2026-10-28 09:00:00", expires_in: 300 }];
+        return [{ id: 31, tool: "delete-post", who: "Claude", time: "2026-10-28 09:00:00", expires_in: 300, input: { post_id: 12 }, preview: { id: 12, title: "Hello world" } }];
       case "user_reset":
         return "sam@x.test";
       case "user_create":
@@ -299,8 +299,12 @@ describe("Classic Monks", () => {
     expect(within(list).getByText("Login Lockdown")).toBeInTheDocument();
     expect(within(list).getByText("Locked")).toBeInTheDocument();
     expect(within(list).queryByRole("button")).toBeNull();
+    // The count is the whole site's, not the rows shown.
+    expect(screen.getByText(/of 2 on$/)).toHaveTextContent("1 of 2 on");
     fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "zzz" } });
     expect(screen.getByText("No feature matches")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByRole("switch", { name: "SVG Support" })).toBeInTheDocument();
   });
 
   it("saves a setting, undoes from the log and opens an approval on the site", async () => {
@@ -319,16 +323,16 @@ describe("Classic Monks", () => {
     fireEvent.click(within(tabs).getByRole("tab", { name: "Activity" }));
     const table = await screen.findByRole("list", { name: "Activity" });
     expect(within(table).getByText("Update features")).toBeInTheDocument();
-    fireEvent.click(within(table).getByRole("button", { name: /^Undo/ }));
-    // Nothing changes until the dialog's Undo; Keep it would leave it.
-    const ask = screen.getByRole("dialog", { name: "Undo this change on Alpha?" });
-    expect(calls.some(([c]) => c === "cm_undo")).toBe(false);
-    fireEvent.click(within(ask).getByRole("button", { name: "Undo" }));
+    // Undo runs at once, as the toast's does; the undo is logged too.
+    fireEvent.click(within(table).getByRole("button", { name: /^Undo Update features from / }));
     expect(await screen.findByText("Undone: Update features on Alpha.")).toBeInTheDocument();
+    expect(calls).toContainEqual(["cm_undo", { id: 1, row: 9 }]);
 
-    fireEvent.click(within(tabs).getByRole("tab", { name: "Waiting for approval" }));
-    fireEvent.click(await screen.findByRole("button", { name: /^Approve or decline on the site/ }));
-    expect(await screen.findByText("Opened the approval page for Delete post on Alpha in your browser.")).toBeInTheDocument();
+    fireEvent.click(within(tabs).getByRole("tab", { name: /^Waiting for approval\s?1$/ }));
+    const waiting = await screen.findByRole("list", { name: "Waiting for approval" });
+    expect(within(waiting).getByText("Delete post “Hello world”")).toBeInTheDocument();
+    fireEvent.click(within(waiting).getByRole("button", { name: "Approve or decline on the site: Delete post “Hello world”" }));
+    expect(await screen.findByText("Opened the approval page for Delete post “Hello world” on Alpha in your browser.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_approval_open", { id: 1, op: 31 }]);
   });
 
@@ -340,10 +344,15 @@ describe("Classic Monks", () => {
     expect(within(screen.getByRole("tablist", { name: "Show" })).getAllByRole("tab").map((b) => b.textContent)).toEqual(["Features"]);
     choose(screen.getByRole("combobox", { name: "Site" }), "2");
     expect(screen.getByText("This site doesn't have Classic Monks. It's connected in Basic mode.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Get the WP Sites HQ plugin" })).toBeInTheDocument();
   });
 
   it("names tools and blocks plainly", () => {
     expect(toolLabel("classic-monks/update-features")).toBe("Update features");
+    const ask = { id: 1, tool: "update-user", who: "", time: "", expires_in: 60 };
+    expect(targetOf({ ...ask, preview: { display_name: "Sam" } })).toBe("“Sam”");
+    expect(targetOf({ ...ask, input: { user_id: 4 } })).toBe("user 4");
+    expect(targetOf(ask)).toBe("");
     expect(cmBlocked(OLD)).toMatch(/allowed to change Classic Monks/);
     expect(cmBlocked(site({ sign_in_again: true }))).toBe("The sign-in for this site expired. Sign in again to work on it here.");
     expect(peopleBlocked(BASIC, "get-users")).toBeNull();

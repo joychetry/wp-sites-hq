@@ -211,7 +211,7 @@ export default function App() {
         ["Classic Monks", approvals, "waiting for approval"],
         ["Monitoring", offline, "down", true],
         ["Security", vulnerable, "known vulnerabilities", true],
-        ["AI", livePlans, "to confirm"],
+        ["AI", livePlans, "plans to confirm"],
       ] as const
     )
       .filter(([, n]) => n > 0)
@@ -415,7 +415,7 @@ export default function App() {
   } else if (section === "Comments") {
     body = <S.Comments sites={scoped} />;
   } else if (section === "Classic Monks") {
-    body = <S.ClassicMonks sites={scoped} />;
+    body = <S.ClassicMonks sites={scoped} onAi={() => setSection("AI")} />;
   } else if (section === "Monitoring") {
     body = <S.Monitoring sites={scoped} monitors={monitors ?? []} />;
   } else if (section === "Security") {
@@ -437,7 +437,7 @@ export default function App() {
       />
     );
   } else if (section === "AI") {
-    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
+    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} onApprovals={() => setSection("Classic Monks")} />;
   } else {
     body = <S.Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   }

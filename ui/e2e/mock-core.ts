@@ -935,8 +935,8 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(null);
     case "cm_approvals":
       return r([
-        { id: 40, tool: "delete-post", who: "Claude", time: "2026-10-28 09:12:40", expires_in: 540 },
-        { id: 37, tool: "update-user", who: "Cursor", time: "2026-10-28 09:05:11", expires_in: 120 },
+        { id: 40, tool: "delete-post", who: "Claude", time: "2026-10-28 09:12:40", expires_in: 540, input: { post_id: 12 }, preview: { id: 12, title: "Spring menu" } },
+        { id: 37, tool: "update-user", who: "Cursor", time: "2026-10-28 09:05:11", expires_in: 120, input: { user_id: 4 }, preview: { id: 4, display_name: "Sam Baker" } },
       ]);
     case "job_start":
       return r(startJob(args.title as string, args.changes as Change[]));

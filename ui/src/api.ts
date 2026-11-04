@@ -10,6 +10,8 @@ export type CoreStatus = {
   role: "operator" | "agent";
   headless: boolean;
   home: string;
+  /** When an AI app last asked WP Sites HQ for something, unix seconds; 0 for never. */
+  agent_seen?: number;
 };
 
 export type Health = "unknown" | "ok" | "warning" | "down";
@@ -407,7 +409,8 @@ export type Setting = {
 };
 export type ActivityRow = { id: number; time: string; who: string; tool: string; status: string; summary: string; can_undo: boolean };
 export type Activity = { rows: ActivityRow[]; total: number; page: number; pages: number };
-export type Approval = { id: number; tool: string; who: string; time: string; expires_in: number };
+/** `input` is the tool's arguments; `preview` the site's view of its target (a post's title, a user's name), when the tool has one. */
+export type Approval = { id: number; tool: string; who: string; time: string; expires_in: number; input?: Record<string, unknown> | null; preview?: Record<string, unknown> | null };
 
 // Reads a page asks for first, started early (a nav item's hover or focus, or when the app is idle) by `warm`.
 // Each warmed answer is used once, within 30 s; any change made from here, or any change the core reports,
