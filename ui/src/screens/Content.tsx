@@ -535,7 +535,8 @@ export function Content({ sites, onPlan }: Props) {
             setMany(false);
           }}
           onBack={() => setMany(true)}
-          backLabel="Back to the form"
+          // Plain "Back": the plan's footer is narrow, and the longer label pushed the arrow off its edge.
+          backLabel="Back"
         />
       )}
     </Page>

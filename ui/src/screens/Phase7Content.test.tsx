@@ -208,7 +208,7 @@ test("publishes one entry on several sites as one plan", async () => {
   const plan = await screen.findByRole("dialog", { name: "Publish “Open on Sunday” on 2 sites" });
   expect(plan).toHaveTextContent("Publish the post “Open on Sunday” in News, Events");
   // Back to the form keeps everything typed.
-  fireEvent.click(within(plan).getByRole("button", { name: "Back to the form" }));
+  fireEvent.click(within(plan).getByRole("button", { name: "Back" }));
   await waitFor(() => expect(screen.queryByRole("dialog", { name: /Open on Sunday/ })).toBeNull());
   const again = screen.getByRole("dialog", { name: "Publish on several sites" });
   expect(within(again).getByRole("textbox", { name: "Title" })).toHaveValue("Open on Sunday");

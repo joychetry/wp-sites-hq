@@ -6,6 +6,8 @@
 /* One width for the site box, so the toolbar doesn't move when the site changes; a long name ends in an ellipsis. */
 .pick-site .select { width: 15rem; }
 .select-v small.dim, .lb li small.dim { color: var(--text-3); font-size: var(--fs-sm); }
+/* The box shows the name only; the card under it says why the site is not available. */
+.select-v small.dim { display: none; }
 
 /* The table (columns from base.css .t): bold titles that fill their cell, muted authors, mono dates. */
 .ctable .t td { height: 56px; }
