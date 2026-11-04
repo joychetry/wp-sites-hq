@@ -56,7 +56,7 @@ export function daysTo(day: string, now = new Date()): number {
 function Amounts({ costs, what }: { costs: Cost[]; what: "cost" | "charge" | "left" }) {
   // Charged and Costs leave out a currency with nothing in that column; Left shows each.
   const list = [...sums(costs)].filter(([, t]) => (what === "left" ? t.cost || t.charge : t[what]));
-  if (list.length === 0) return <span className="dim">none</span>;
+  if (list.length === 0) return <span className="dim">None</span>;
   return (
     <>
       {list.map(([cur, t]) => {
@@ -269,7 +269,7 @@ export function Clients({ sites }: { sites: Site[] }) {
                                 {own.length > 1 && <span className="dim">+{own.length - 1}</span>}
                               </span>
                             ) : (
-                              <span className="dim">none</span>
+                              <span className="dim">No sites</span>
                             )}
                           </td>
                           <td className="r">
