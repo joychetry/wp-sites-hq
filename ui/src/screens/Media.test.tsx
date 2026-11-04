@@ -137,7 +137,7 @@ test("details save only what changed, with an Undo that puts the earlier text ba
   render(<Media sites={[CM]} />);
   const form = await screen.findByRole("form", { name: "Details of door" });
   expect(await screen.findByText("3 posts and pages")).toBeInTheDocument();
-  expect(screen.getByText("800 × 600 pixels")).toBeInTheDocument();
+  expect(screen.getByText("800 × 600")).toBeInTheDocument();
   const save = within(form).getByRole("button", { name: "Save" });
   expect(save).toBeDisabled();
   fireEvent.change(within(form).getByRole("textbox", { name: "Alt text" }), { target: { value: "A blue door" } });
@@ -156,7 +156,12 @@ test("replace keeps the address unless asked, then Undo the replace puts the ear
   await screen.findByRole("form", { name: "Details of door" });
   fireEvent.click(screen.getByRole("checkbox", { name: /Use the new file's name/ }));
   fireEvent.change(screen.getByLabelText("Choose the new file"), { target: { files: [jpg("door-2.jpg")] } });
-  expect(await screen.findByText("Replaced the file of door. Its address stays the same.")).toBeInTheDocument();
+  // Choosing only stages the file: nothing is sent until Replace the file.
+  expect(calls.some((c) => c[0] === "media_replace")).toBe(false);
+  fireEvent.click(await screen.findByRole("button", { name: "Replace the file" }));
+  const done = await screen.findByText("Replaced the file of door. Its address stays the same.");
+  // The replace toast offers Undo too, not only the button at the foot of the panel.
+  expect(within(done.closest("li")!).getByRole("button", { name: "Undo" })).toBeInTheDocument();
   expect(calls.find((c) => c[0] === "media_replace")?.[1]).toMatchObject({ id: 1, mediaId: 5, name: "door-2.jpg", keepName: true });
   // The preview asks for the new pixels at the same address.
   await waitFor(() => expect(screen.getByRole("img", { name: "A red door" }).getAttribute("src")).toMatch(/door\.jpg\?v=\d+$/));
@@ -175,13 +180,13 @@ test("filters, the list view, and bulk trash with Undo", async () => {
   fireEvent.click(screen.getByRole("button", { name: "List" }));
   const table = await screen.findByRole("table", { name: "Alpha media" });
   expect(within(table).getByText("menu.pdf")).toBeInTheDocument();
-  expect(screen.queryByRole("group", { name: "Change the ticked items" })).not.toBeInTheDocument();
-  fireEvent.click(within(table).getByRole("checkbox", { name: "Tick every item shown" }));
+  expect(screen.queryByRole("group", { name: "Change the selected files" })).not.toBeInTheDocument();
+  fireEvent.click(within(table).getByRole("checkbox", { name: "Select all shown" }));
   fireEvent.click(screen.getByRole("button", { name: "Move to the trash (2)" }));
-  expect(await screen.findByText(/^Moved 2 items to the trash on Alpha/)).toBeInTheDocument();
+  expect(await screen.findByText("Moved 2 files to the trash on Alpha. You can undo this for a while.")).toBeInTheDocument();
   expect(calls.find((c) => c[0] === "media_trash")?.[1]).toEqual({ id: 1, ids: [5, 4], back: false });
   fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-  expect(await screen.findByText("Brought 2 items back from the trash.")).toBeInTheDocument();
+  expect(await screen.findByText("Brought 2 files back from the trash on Alpha.")).toBeInTheDocument();
   expect(calls.filter((c) => c[0] === "media_trash")[1][1]).toEqual({ id: 1, ids: [5, 4], back: true });
   localStorage.removeItem("mc-media-view");
 });
@@ -191,8 +196,9 @@ test("Basic mode edits details but says why it can't replace or trash", async ()
   render(<Media sites={[BASIC]} />);
   await screen.findByRole("form", { name: "Details of door" });
   expect(screen.getByText("Replacing files needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode.")).toBeInTheDocument();
-  expect(screen.queryByRole("group", { name: "Change the ticked items" })).toBeNull();
+  expect(screen.queryByRole("group", { name: "Change the selected files" })).toBeNull();
   expect(screen.queryByText("Used in")).toBeNull();
+  expect(screen.getByText("This site can't move files to the trash from here.")).toBeInTheDocument();
 });
 
 test("a slow site's library never shows under the site picked after it", async () => {
@@ -213,10 +219,10 @@ test("Load more adds the next page and the count says so out loud", async () => 
   const page = (p: number) => ({ items: p === 1 ? [item(1, "first")] : [item(2, "second")], total: 2, allowed: {}, limit: 1_000_000 });
   core({ media_list: (a) => page((a.query as { page: number }).page ?? 1) });
   render(<Media sites={[CM]} />);
-  const count = await screen.findByText("1 of 2 items");
+  const count = await screen.findByText("1 of 2 files");
   expect(count).toHaveAttribute("aria-live", "polite");
   fireEvent.click(screen.getByRole("button", { name: "Load more" }));
-  expect(await screen.findByText("2 of 2 items")).toHaveAttribute("aria-live", "polite");
+  expect(await screen.findByText("2 of 2 files")).toHaveAttribute("aria-live", "polite");
 });
 
 test("the picker keeps only the newest search's answer", async () => {

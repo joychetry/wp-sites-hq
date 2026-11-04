@@ -440,8 +440,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Media")(page);
       await page.getByRole("button", { name: "List", exact: true }).click();
-      await page.getByRole("checkbox", { name: "Tick sourdough" }).check();
-      await page.getByRole("checkbox", { name: "Tick menu-board" }).check();
+      await page.getByRole("checkbox", { name: "Select sourdough" }).check();
+      await page.getByRole("checkbox", { name: "Select menu-board" }).check();
       await page.getByRole("button", { name: /^shop-front/ }).waitFor();
     },
   },
@@ -460,6 +460,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Media")(page);
       await page.getByLabel("Choose the new file").setInputFiles({ name: "shop-front-2026.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(500_000) });
+      await page.getByRole("button", { name: "Replace the file" }).click();
       await page.getByRole("button", { name: "Undo the replace" }).waitFor();
     },
   },
