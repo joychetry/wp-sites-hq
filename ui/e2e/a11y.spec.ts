@@ -265,13 +265,13 @@ test("a comment is answered from the keyboard", async ({ page }) => {
   const box = page.getByRole("textbox", { name: "Your reply to Mira Patel" });
   await expect(box).toBeFocused();
   await page.keyboard.type("Plain milk.");
-  // Cancel, then Send the reply: the design's order, the primary last.
+  // Close without sending, then Approve and reply (the comment waits): the design's order, the primary last.
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Close without sending" })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Send the reply" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Approve and reply" })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status").getByText("Replied to Mira Patel on MC A.")).toBeVisible();
+  await expect(page.getByRole("status").getByText("Approved and replied to Mira Patel on MC A.")).toBeVisible();
 });
 
 test("a feature is turned on and undone from the keyboard", async ({ page }) => {

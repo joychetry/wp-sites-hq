@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // One comment inbox for every site shown: approve, unapprove, spam, trash and reply (plan Phase 4).
 import "../styles/screens/comments.css";
-import { Empty, Skeleton, toast } from "../components/feedback";
+import { askSignIn, Blocked, Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
-import { Menu } from "../components/controls";
+import { Menu, Segmented } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, peopleBlocked, type Comment, type CommentState, type Moderation, type Site } from "../api";
 import { initials, SiteTile } from "../components/SiteTile";
@@ -17,6 +17,13 @@ const SHOW: [CommentState, string][] = [
   ["trash", "Trash"],
 ];
 
+const EMPTY: Record<CommentState, string> = {
+  pending: "No comments are waiting",
+  approved: "No approved comments",
+  spam: "No spam",
+  trash: "Nothing in the trash",
+};
+
 const DONE: Record<Moderation, string> = {
   approve: "Approved",
   unapprove: "Moved back to waiting",
@@ -25,7 +32,7 @@ const DONE: Record<Moderation, string> = {
 };
 
 type Row = { site: Site; c: Comment };
-type Loaded = { rows: Row[]; total: number; partial: { site: Site; shown: number; total: number }[]; failed: { site: Site; error: string }[] };
+type Loaded = { rows: Row[]; totals: Record<number, number>; partial: { site: Site; shown: number; total: number }[]; failed: { site: Site; error: string }[] };
 
 /** Comments arrive as HTML from the site: show the words only. */
 export const plainText = (html: string) =>
@@ -49,6 +56,8 @@ export function Comments({ sites }: { sites: Site[] }) {
   const [busy, setBusy] = useState<string | null>(null);
   // The Site filter works on the comments already read.
   const [siteF, setSiteF] = useState<number | null>(null);
+  // How many wait for approval per site, from the last time that list was read: its count shows on every tab.
+  const [waiting, setWaiting] = useState<Record<number, number> | null>(null);
   const ids = usable.map((s) => s.id).join(",");
 
   // Only the newest request's answer is shown, so a slow older search or tab can't replace it.
@@ -65,17 +74,19 @@ export function Comments({ sites }: { sites: Site[] }) {
         ),
       ),
     ).then((all) => {
-      const out: Loaded = { rows: [], total: 0, partial: [], failed: [] };
+      const out: Loaded = { rows: [], totals: {}, partial: [], failed: [] };
       for (const r of all) {
         if ("error" in r) out.failed.push({ site: r.site, error: r.error });
         else {
           out.rows.push(...r.c.comments.map((c) => ({ site: r.site, c })));
-          out.total += r.c.total;
+          out.totals[r.site.id] = r.c.total;
           if (r.c.total > r.c.comments.length) out.partial.push({ site: r.site, shown: r.c.comments.length, total: r.c.total });
         }
       }
       out.rows.sort((a, b) => b.c.date.localeCompare(a.c.date));
-      if (n === asked.current) setLoaded(out);
+      if (n !== asked.current) return;
+      setLoaded(out);
+      if (show === "pending") setWaiting(out.totals);
     });
     // `ids` stands for the usable sites.
   }, [ids, show]);
@@ -87,7 +98,7 @@ export function Comments({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <Page narrow>
+      <Page>
         <Empty picture="sites" title="No sites yet">
           <p>Add a site on Sites, then its comments show here.</p>
         </Empty>
@@ -108,8 +119,8 @@ export function Comments({ sites }: { sites: Site[] }) {
     requestAnimationFrame(() => next?.querySelector<HTMLElement>("button")?.focus());
     try {
       await api.moderate(r.site.id, r.c.id, action);
-      // Undo puts it back where it was; WordPress has no "not spam" or "out of the trash" for comments here.
-      const back: Moderation | null = action === "trash" || action === "spam" ? null : r.c.status === "approved" ? "approve" : r.c.status === "pending" ? "unapprove" : null;
+      // Undo puts it back in the list it came from (approved or waiting); a comment from spam or the trash has no way back here.
+      const back: Moderation | null = r.c.status === "approved" ? "approve" : r.c.status === "pending" ? "unapprove" : null;
       toast(`${DONE[action]}: ${r.c.author || "a visitor"}'s comment on ${r.site.name}.`, {
         undo: back ? () => api.moderate(r.site.id, r.c.id, back).then(refresh, (e) => toast(String(e), { tone: "danger" })) : undefined,
       });
@@ -123,14 +134,19 @@ export function Comments({ sites }: { sites: Site[] }) {
   };
   const send = async (r: Row) => {
     setBusy(key(r));
+    // A reply goes up at once, so a waiting comment is approved first, or the reply would show under a hidden comment (as wp-admin does).
+    const approve = r.c.status === "pending";
     try {
+      if (approve) await api.moderate(r.site.id, r.c.id, "approve");
       await api.reply(r.site.id, r.c.id, r.c.post_id, reply);
-      toast(`Replied to ${r.c.author || "the comment"} on ${r.site.name}.`);
+      toast(`${approve ? "Approved and replied" : "Replied"} to ${r.c.author || "the comment"} on ${r.site.name}.`);
       setReplying(null);
       setReply("");
       refresh();
     } catch (e) {
       toast(String(e), { tone: "danger" });
+      // The approve may have gone through before the reply failed.
+      if (approve) refresh();
     } finally {
       setBusy(null);
     }
@@ -138,15 +154,26 @@ export function Comments({ sites }: { sites: Site[] }) {
 
   const label = SHOW.find(([v]) => v === show)![1].toLowerCase();
   const rows = (loaded?.rows ?? []).filter((r) => siteF == null || r.site.id === siteF);
+  // Counts follow the Site filter; the waiting count shows on every tab, the others only on their own.
+  const sum = (t: Record<number, number>) => Object.entries(t).reduce((n, [id, c]) => (siteF == null || Number(id) === siteF ? n + c : n), 0);
+  const count = (v: CommentState) => (v === show && loaded ? sum(loaded.totals) : v === "pending" && waiting ? sum(waiting) : undefined);
+  // The only site, and it can't list comments: the blocked state with its fix.
+  const lone = usable.length === 0 && blocked.length === 1 ? blocked[0] : null;
   let body;
-  if (!loaded) {
+  if (lone) {
+    body = (
+      <section className="card">
+        <Blocked site={lone} reason={peopleBlocked(lone, "get-comments")!} title={`${lone.name}'s comments aren't available here`} />
+      </section>
+    );
+  } else if (!loaded) {
     body = (
       <Skeleton label={`Reading comments on ${usable.length} ${usable.length === 1 ? "site" : "sites"}…`} />
     );
   } else if (rows.length === 0) {
     body = (
       <section className="card">
-        <Empty picture="inbox" title={show === "pending" ? "No comments are waiting" : `No ${label} comments.`}>
+        <Empty picture="inbox" title={EMPTY[show]}>
           <p>{siteF != null ? "None on this site. Pick another site, or any site." : show === "pending" ? "New comments that need approval show here, from every site." : "Pick another list above."}</p>
         </Empty>
       </section>
@@ -172,12 +199,11 @@ export function Comments({ sites }: { sites: Site[] }) {
                     <div>
                       <b data-tip={r.c.email || undefined}>{who}</b>
                       <span className="on">
-                        on <SiteTile site={r.site} size="sm" />
-                        <b>{r.site.name}</b>, on <span data-tip={r.c.post_title}>{r.c.post_title || "a page with no title"}</span>
+                        <SiteTile site={r.site} size="sm" />
+                        <b>{r.site.name}</b> · <span data-tip={r.c.post_title}>{r.c.post_title || "A page with no title"}</span>
                       </span>
                     </div>
-                    <span className="when">{dayTime(r.c.date) || r.c.date}
-                    </span>
+                    <span className="when">{dayTime(r.c.date) || r.c.date}</span>
                   </div>
                   <p className="said">{plainText(r.c.content) || "(empty)"}</p>
                   <div className="rowacts">
@@ -190,17 +216,6 @@ export function Comments({ sites }: { sites: Site[] }) {
                     {show === "approved" && (
                       <Button small disabled={busy === k} aria-label={`Unapprove ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "unapprove")}>
                         Unapprove
-                      </Button>
-                    )}
-                    {show !== "spam" && (
-                      <Button small className="ghost" disabled={busy === k} aria-label={`Mark as spam: ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "spam")}>
-                        Mark as spam
-                      </Button>
-                    )}
-                    {show !== "trash" && (
-                      <Button small className="ghost" disabled={busy === k} aria-label={`Move to the trash: ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "trash")}>
-                        Move to the trash
-                        <Glyph name="trash" />
                       </Button>
                     )}
                     {(show === "pending" || show === "approved") && (
@@ -217,6 +232,17 @@ export function Comments({ sites }: { sites: Site[] }) {
                         <Glyph name="reply" />
                       </Button>
                     )}
+                    {show !== "spam" && (
+                      <Button small disabled={busy === k} aria-label={`Mark as spam: ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "spam")}>
+                        Mark as spam
+                      </Button>
+                    )}
+                    {show !== "trash" && (
+                      <Button small disabled={busy === k} aria-label={`Move to the trash: ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "trash")}>
+                        Move to the trash
+                        <Glyph name="trash" />
+                      </Button>
+                    )}
                   </div>
                   {open && (
                     <form
@@ -229,14 +255,14 @@ export function Comments({ sites }: { sites: Site[] }) {
                       <label className="field">
                         <span>Your reply to {who}</span>
                         <textarea className="input" rows={3} autoFocus value={reply} onChange={(e) => setReply(e.target.value)} />
-                        <small>It goes up at once, as you, on {r.site.name}.</small>
+                        <small>{r.c.status === "pending" ? `It goes up at once, as you, on ${r.site.name}, and their comment is approved with it.` : `It goes up at once, as you, on ${r.site.name}.`}</small>
                       </label>
                       <div className="rowacts">
                         <Button small className="ghost" onClick={() => setReplying(null)}>
-                          Cancel
+                          Close without sending
                         </Button>
                         <Button small kind="primary" className="disc" type="submit" disabled={busy === k || !reply.trim()}>
-                          {busy === k ? "Sending…" : "Send the reply"}
+                          {busy === k ? "Sending…" : r.c.status === "pending" ? "Approve and reply" : "Send the reply"}
                           <span className="btn-disc">
                             <Glyph name="arrow" />
                           </span>
@@ -255,23 +281,16 @@ export function Comments({ sites }: { sites: Site[] }) {
   const siteName = usable.find((s) => s.id === siteF)?.name;
 
   return (
-    <Page narrow className="comments">
+    <Page className="comments">
       <Toolbar>
-        <div className="segmented inline" role="group" aria-label="Show">
-          {SHOW.map(([v, l]) => (
-            <button key={v} type="button" aria-pressed={v === show} onClick={() => setShow(v)}>
-              {l}
-              {v === show && loaded && loaded.total > 0 && <small>{loaded.total}</small>}
-            </button>
-          ))}
-        </div>
+        <Segmented label="Show" options={SHOW.map(([id, l]) => ({ id, label: l, count: count(id) || undefined }))} value={show} onChange={setShow} />
         <span className="end" />
         <Menu label="Site" className={siteF == null ? "chip" : "chip on"} items={[{ label: "Any", run: () => setSiteF(null) }, ...usable.map((s) => ({ label: s.name, run: () => setSiteF(s.id) }))]}>
           Site: <b>{siteName ?? "Any"}</b>
         </Menu>
       </Toolbar>
       {body}
-      {loaded && (loaded.partial.length > 0 || loaded.failed.length > 0 || blocked.length > 0) && (
+      {loaded && (loaded.partial.length > 0 || loaded.failed.length > 0 || (blocked.length > 0 && !lone)) && (
         <ul className="pnotes" aria-label="Sites not fully shown">
           {loaded.partial.map((p) => (
             <li key={p.site.id} className="callout">
@@ -289,12 +308,15 @@ export function Comments({ sites }: { sites: Site[] }) {
               </span>
             </li>
           ))}
-          {blocked.map((s) => (
-            <li key={s.id} className="callout">
-              <Glyph name="info" />
+          {!lone && blocked.map((s) => (
+            <li key={s.id} className="callout go">
+              <Glyph name="lock" />
               <span>
                 {s.name}: {peopleBlocked(s, "get-comments")}
               </span>
+              <Button small onClick={() => askSignIn(s.id)}>
+                Sign in again
+              </Button>
             </li>
           ))}
         </ul>

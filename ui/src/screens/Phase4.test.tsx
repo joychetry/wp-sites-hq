@@ -201,10 +201,13 @@ describe("Comments", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Reply to Ana on Alpha" }));
     const box = screen.getByRole("textbox", { name: /^Your reply to Ana/ });
-    expect(screen.getByRole("button", { name: "Send the reply" })).toBeDisabled();
+    // A waiting comment is approved with the reply, so the reply never shows under a hidden comment.
+    expect(screen.getByRole("button", { name: "Approve and reply" })).toBeDisabled();
     fireEvent.change(box, { target: { value: "Thanks!" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send the reply" }));
-    expect(await screen.findByText("Replied to Ana on Alpha.")).toBeInTheDocument();
+    const approvals = calls.filter((c) => c[0] === "comment_moderate" && c[1].action === "approve").length;
+    fireEvent.click(screen.getByRole("button", { name: "Approve and reply" }));
+    expect(await screen.findByText("Approved and replied to Ana on Alpha.")).toBeInTheDocument();
+    expect(calls.filter((c) => c[0] === "comment_moderate" && c[1].action === "approve")).toHaveLength(approvals + 1);
     expect(calls).toContainEqual(["comment_reply", { id: 1, commentId: 5, postId: 4, text: "Thanks!" }]);
 
     fireEvent.click(screen.getByRole("button", { name: "Spam" }));
@@ -248,6 +251,21 @@ describe("Comments", () => {
     render(<Comments sites={[CM]} />);
     fireEvent.click(await screen.findByRole("button", { name: "Move to the trash: Ana's comment on Alpha" }));
     expect(await screen.findByText("Comment not found.")).toBeInTheDocument();
+  });
+
+  it("counts follow the Site filter, the waiting count shows on every list, and trash has Undo", async () => {
+    const calls = core();
+    render(<Comments sites={[CM, BASIC]} />);
+    expect(await screen.findByRole("button", { name: /^Waiting for approval\s*4$/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Site:/ }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Alpha" }));
+    expect(screen.getByRole("button", { name: /^Waiting for approval\s*1$/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Move to the trash: Ana's comment on Alpha" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(calls).toContainEqual(["comment_moderate", { id: 1, commentId: 5, action: "unapprove" }]));
+    fireEvent.click(screen.getByRole("button", { name: "Spam" }));
+    await waitFor(() => expect(calls).toContainEqual(["comments_list", { id: 1, status: "spam" }]));
+    expect(screen.getByRole("button", { name: /^Waiting for approval\s*\d/ })).toBeInTheDocument();
   });
 
   it("strips a site's HTML to words", () => {
