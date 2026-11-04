@@ -8,7 +8,8 @@
 .clients .site small.plain { font-family: var(--sans); }
 /* No client yet: a dashed ring with a question mark. */
 .clients .av.none { border: 1px dashed var(--line-ui); color: var(--text-2); }
-.clients .pchips { display: flex; flex-wrap: wrap; gap: 6px; white-space: normal; }
+.clients .pchips { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.clients .pchips .pchip { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Amounts: mono, right; one line per currency. Left over is bold. */
 .clients .t td.r .m { display: block; font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); color: var(--text); white-space: nowrap; }
 .clients .t td.r .m.left { font-weight: 600; }

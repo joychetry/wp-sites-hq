@@ -257,13 +257,13 @@ export function Clients({ sites }: { sites: Site[] }) {
                           </td>
                           <td>
                             {own.length ? (
-                              <span className="pchips">
-                                {own.map((s) => (
-                                  <span key={s.id} className="pchip">
-                                    <SiteTile site={s} size="sm" />
-                                    {s.name}
-                                  </span>
-                                ))}
+                              // One chip and "+2" keep the row one line tall; every name is in the tip and the client's sheet.
+                              <span className="pchips" data-tip={own.length > 1 ? own.map((s) => s.name).join(", ") : undefined}>
+                                <span className="pchip">
+                                  <SiteTile site={own[0]} size="sm" />
+                                  {own[0].name}
+                                </span>
+                                {own.length > 1 && <span className="dim">+{own.length - 1}</span>}
                               </span>
                             ) : (
                               <span className="dim">none</span>

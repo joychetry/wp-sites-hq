@@ -73,8 +73,8 @@ describe("Security", () => {
     expect(onPlan).toHaveBeenLastCalledWith("Update 1 vulnerable plugin", [expect.objectContaining({ label: "Update WooCommerce" })]);
     fireEvent.click(within(vulns).getByRole("button", { name: "Read more about WooCommerce < 10.3 - Stored XSS" }));
     expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://wpscan.com/v" });
-    expect(screen.getByText(`No release since ${month("2023-03")}. Look for a maintained one.`)).toBeInTheDocument();
-    expect(screen.getByText("WordPress.org closed it (security issue): it gets no more updates. Replace it.")).toBeInTheDocument();
+    expect(screen.getByText(`No release since ${month("2023-03")}. Find a maintained one.`)).toBeInTheDocument();
+    expect(screen.getByText("Closed on WordPress.org (security issue), so no more updates. Replace it.")).toBeInTheDocument();
     expect(screen.getByText("wp-includes/version.php (changed), wp-x.php (extra)")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Not fully scanned" })).getByText("Not scanned yet.")).toBeInTheDocument();
     expect(screen.getByText("Scanned 2 hours ago")).toBeInTheDocument();
@@ -149,7 +149,7 @@ describe("Monitoring", () => {
     expect(within(alpha).getByText("200 OK")).toBeInTheDocument();
     expect(within(alpha).getByText("412 ms")).toBeInTheDocument();
     expect(within(alpha).getByText("99.86% over 30 days")).toBeInTheDocument();
-    expect(within(alpha).getByText(/^40 days left/)).toBeInTheDocument();
+    expect(within(alpha).getByText(/^Certificate: 40 days left/)).toBeInTheDocument();
     expect(within(alpha).getByText("Public sites only")).toBeInTheDocument();
     expect(within(alpha).queryByRole("button")).toBeNull();
     expect(within(gamma).getByText("Down")).toBeInTheDocument();
@@ -161,9 +161,9 @@ describe("Monitoring", () => {
     expect(mockInvoke).toHaveBeenCalledWith("monitors_check", { id: 3 });
     expect(within(beta).getByRole("img", { name: /^Up 97.22% of the last 24 hours/ })).toBeInTheDocument();
     expect(within(beta).getByText("78 · Needs work")).toBeInTheDocument();
-    expect(within(beta).getByText(/^beta\.com, /)).toBeInTheDocument();
-    expect(within(beta).getByText(/^5 days left/).closest(".st")).toHaveClass("danger");
-    expect(within(beta).getByText("Main content shows in 1.8 s. Tested 1 hour ago.")).toBeInTheDocument();
+    expect(within(beta).getByText(/^Domain: /).closest("[data-tip]")).toHaveAttribute("data-tip", expect.stringMatching(/^beta\.com, /));
+    expect(within(beta).getByText(/^Domain: 5 days left/).closest(".st")).toHaveClass("danger");
+    expect(within(beta).getByText("Tested 1 hour ago")).toHaveAttribute("data-tip", "Main content shows in 1.8 s. Tested 1 hour ago.");
     mockInvoke.mockRejectedValue("Google's shared daily limit for PageSpeed tests without a key is used up. Try again tomorrow.");
     fireEvent.click(within(beta).getByRole("button", { name: "Test speed again on Beta" }));
     expect(mockInvoke).toHaveBeenCalledWith("pagespeed_run", { id: 2 });

@@ -251,16 +251,14 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
               <table className="t" aria-labelledby="sec-abandoned">
                 <colgroup>
                   <col className="c-text" />
-                  <col className="c-text" />
-                  <col className="c-version" />
                   <col className="c-fill" />
+                  <col className="c-version" />
                 </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Site</th>
                     <th scope="col">Plugin</th>
                     <th scope="col">Installed</th>
-                    <th scope="col">Why</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -272,18 +270,21 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
                           <b>{site.name}</b>
                         </span>
                       </td>
-                      <td data-tip={x.name}>
+                      <td>
+                        {/* The plugin, and why it counts as abandoned on a quieter second line. */}
                         <span className="site">
                           <PkgTile kind="plugin" slug={slugOf(x.id)} name={x.name} size="sm" />
-                          <b>{x.name}</b>
+                          <span>
+                            <b>{x.name}</b>
+                            <span className="sub">
+                              {x.closed
+                                ? `Closed on WordPress.org${x.reason ? ` (${x.reason.replace(/-/g, " ")})` : ""}, so no more updates. Replace it.`
+                                : `No release since ${x.last_updated ? month(x.last_updated) : "a long time"}. Find a maintained one.`}
+                            </span>
+                          </span>
                         </span>
                       </td>
                       <td className="m">{x.version}</td>
-                      <td className="wrap">
-                        {x.closed
-                          ? `WordPress.org closed it${x.reason ? ` (${x.reason.replace(/-/g, " ")})` : ""}: it gets no more updates. Replace it.`
-                          : `No release since ${x.last_updated ? month(x.last_updated) : "a long time"}. Look for a maintained one.`}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
