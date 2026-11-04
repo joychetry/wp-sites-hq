@@ -16,3 +16,5 @@
 /* --sel is the ok pill's own tint: on a selected row the pill keeps a ground. */
 .ctable .card-foot .count { margin-right: auto; color: var(--text-3); font-size: var(--fs-sm); }
 .ctable > .legend { border-bottom: 1px solid var(--line); }
+/* The post type switch takes the toolbar's free room, so every type shows before any goes into "More". */
+.toolbar .pick:has(> .seg-row) { flex: 1 1 auto; min-width: 0; }

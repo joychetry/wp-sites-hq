@@ -54,7 +54,7 @@ export const SCREENS: Screen[] = [
       await nav("Sites")(page);
       await page.getByRole("gridcell", { name: /^mc-c / }).click();
       await page.getByRole("complementary").getByRole("button", { name: "Download the WP Sites HQ plugin" }).click();
-      await page.getByRole("complementary").getByText(/is saved as/).waitFor();
+      await page.getByRole("complementary").getByText(/Saved as/).waitFor();
     },
   },
   { name: "add-site", open: (page) => nav("Sites")(page).then(() => page.keyboard.press("a")) },
@@ -138,7 +138,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Clients")(page);
       await page.getByRole("button", { name: "Add a cost or charge" }).click();
-      await choose(page.getByRole("combobox", { name: "For" }), { name: "MC A" });
+      await choose(page.getByRole("combobox", { name: "For" }), { name: "MC A (site)" });
       await page.getByRole("textbox", { name: "Name" }).fill("Backups");
       await page.getByRole("textbox", { name: "Amount" }).fill("5.50");
     },
@@ -431,7 +431,7 @@ export const SCREENS: Screen[] = [
     name: "content-unavailable",
     open: async (page) => {
       await nav("Content")(page);
-      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "WP Sites HQ Test (can't change here)" });
+      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "WP Sites HQ Test (not available)" });
     },
   },
   { name: "media", open: nav("Media") },
