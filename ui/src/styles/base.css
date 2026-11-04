@@ -388,7 +388,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .sheet-x { width: 32px; height: 32px; margin-top: -3px; color: var(--text-3); }
 .sheet-x .glyph { width: 16px; height: 16px; }
 .sheet .content { flex: 1; overflow: auto; padding: 20px var(--sp-5); }
-.sheet footer { padding: 14px var(--sp-5); border-top: 1px solid var(--line); background: var(--panel); display: flex; gap: var(--sp-2); align-items: center; justify-content: flex-end; }
+.sheet footer { padding: 14px var(--sp-5); border-top: 1px solid var(--line); background: var(--panel); display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; justify-content: flex-end; }
 /* The foot's other buttons are quiet (the design's ghost buttons); only the main one is filled. */
 .sheet footer .btn:not(.primary):not(.danger) { background: transparent; border-color: transparent; color: var(--text-2); }
 .sheet footer .btn:not(.primary):not(.danger):hover:not(:disabled) { background: var(--bg); color: var(--text); }

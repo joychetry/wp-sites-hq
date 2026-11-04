@@ -287,7 +287,7 @@ function describe(c: Change): { label: string; from: string | null; to: string |
   }
 }
 /** Runs the job a step at a time; the second change fails, so the screens show both. */
-function startJob(title: string, changes: Change[]): Job {
+function startJob(title: string, changes: Change[], labels: string[] = []): Job {
   const job: Job = {
     id: jobs.length + 1,
     title,
@@ -304,7 +304,7 @@ function startJob(title: string, changes: Change[]): Job {
         site_id: c.site_id,
         site_name: sites.find((s) => s.id === c.site_id)?.name ?? "a site",
         action: c.action,
-        label: d.label,
+        label: labels[i] ?? d.label,
         from_version: d.from,
         to_version: d.to,
         state: "waiting",
@@ -1003,7 +1003,8 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "plan_confirm": {
       const plan = PLANS.find((p) => p.id === id)!;
       PLANS = PLANS.filter((p) => p.id !== id);
-      return r(startJob(plan.title, plan.items.map((i) => ({ site_id: i.site_id!, action: i.action }))));
+      // The rows keep the words the plan showed.
+      return r(startJob(plan.title, plan.items.map((i) => ({ site_id: i.site_id!, action: i.action })), plan.items.map((i) => i.label)));
     }
     case "plan_decline":
       PLANS = PLANS.filter((p) => p.id !== id);

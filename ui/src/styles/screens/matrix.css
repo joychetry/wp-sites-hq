@@ -21,7 +21,7 @@
 
 /* A cell: the version in mono over its state. Update tinted, active in the well, inactive outlined,
    not installed dashed, a known vulnerability on the danger ground. The open cell has a green ring. */
-.mx .cell { display: grid; gap: 1px; width: 100%; padding: var(--sp-2); border: 1px solid transparent; border-radius: var(--radius); background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
+.mx .cell { display: grid; gap: 1px; width: 100%; padding: var(--sp-2); white-space: normal; border: 1px solid transparent; border-radius: var(--radius); background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
 .mx .cell:hover { border-color: var(--line-2); }
 .mx .cell .v { font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); color: var(--text); }
 .mx .cell .w { font-size: var(--fs-xs); line-height: var(--lh-tight); color: var(--text-3); }
@@ -35,7 +35,8 @@
 .mx .cell[aria-pressed="true"] { box-shadow: 0 0 0 1px var(--bg), 0 0 0 3px var(--green); }
 
 /* The key under the table: a small swatch of each cell */
-.mx-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); margin: 0; padding: 0; list-style: none; font-size: var(--fs-sm); color: var(--text-3); }
+/* Inside the table's card, so each key sits on the same ground as the cells it stands for. */
+.mx-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); margin: 0; padding: var(--sp-3) var(--pad); border-top: 1px solid var(--line); list-style: none; font-size: var(--fs-sm); color: var(--text-3); }
 .mx-legend li { display: flex; align-items: center; gap: var(--sp-2); }
 /* A key is a small cell (wider than tall, so it never reads as a checkbox), with exactly the cell's own fill and edge. */
 .mx-legend .cell { width: 24px; height: 12px; padding: 0; border-radius: var(--radius-xs); cursor: default; }
@@ -67,7 +68,7 @@
 .mx-list li:first-child { border-top: 0; }
 .mx-list li > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
 .mx-list b { font-weight: 600; }
-.mx-list li > span:nth-child(2) span { font-size: var(--fs-sm); color: var(--text-2); }
+.mx-list li > span:nth-child(2) span { font-size: var(--fs-sm); color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Update ready: the update cell's tint and ink, with the download mark. */
 .mx .st.pill.up { background: var(--tint); color: var(--brand-text); }
 .mx .st.pill .glyph { width: 12px; height: 12px; }

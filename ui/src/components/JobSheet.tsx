@@ -331,6 +331,7 @@ function Progress({ jobId, title, pick, onClose, onRetry }: ProgressProps) {
   ).filter(([, n]) => n > 0);
   return (
     <Sheet
+      fit
       title={over ? title : `${title}: running`}
       intro={<span role="status">{summary}</span>}
       steps={<Steps step="progress" pick={pick} over={over} />}

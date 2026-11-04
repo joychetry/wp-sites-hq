@@ -221,7 +221,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                     <SiteTile site={s} />
                     <span>
                       <b>{s.name}</b>
-                      <span>{it ? `${it.name} ${it.version}` : "Not known"}</span>
+                      <span data-tip={it ? `${it.name} ${it.version}` : undefined}>{it ? `${it.name} ${it.version}` : "Not known"}</span>
                     </span>
                     {it?.update ? (
                       <span className="st pill up">
@@ -384,32 +384,32 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                 </table>
               </div>
             )}
+            {ready.length > 0 && rows.length > 0 && (
+              <ul className="mx-legend" id={`${kind}-legend`} aria-label="What the cells mean">
+                <li>
+                  <span className="cell up" aria-hidden="true" />
+                  Update ready
+                </li>
+                <li>
+                  <span className="cell on" aria-hidden="true" />
+                  Active
+                </li>
+                <li>
+                  <span className="cell idle" aria-hidden="true" />
+                  {plugin ? "Inactive" : "Installed"}
+                </li>
+                <li>
+                  <span className="cell none" aria-hidden="true" />
+                  Not installed
+                </li>
+                <li>
+                  <span className="cell vuln" aria-hidden="true" />
+                  Known vulnerability
+                </li>
+                <li className="end">Arrow keys move, Enter opens the {noun} on that site.</li>
+              </ul>
+            )}
           </section>
-          {cols.length > 0 && (
-            <ul className="mx-legend" id={`${kind}-legend`} aria-label="What the cells mean">
-              <li>
-                <span className="cell up" aria-hidden="true" />
-                Update ready
-              </li>
-              <li>
-                <span className="cell on" aria-hidden="true" />
-                Active
-              </li>
-              <li>
-                <span className="cell idle" aria-hidden="true" />
-                {plugin ? "Inactive" : "Installed"}
-              </li>
-              <li>
-                <span className="cell none" aria-hidden="true" />
-                Not installed
-              </li>
-              <li>
-                <span className="cell vuln" aria-hidden="true" />
-                Known vulnerability
-              </li>
-              <li className="end">Arrow keys move, Enter opens the {noun} on that site.</li>
-            </ul>
-          )}
           <NotInList notes={notReady.map((s) => [s, blocked(s, inventory.get(s.id))!])} />
       </Page>
     </>
@@ -537,7 +537,7 @@ function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, ev
           <div className="callout danger">
             <Glyph name="alert" />
             <span>
-              <b>{vulnSummary(vuln.title)}</b> {vuln.fixed_in ? `Fixed in ${vuln.fixed_in}.` : "No fix yet."}
+              <b>Known vulnerability.</b> {vulnSummary(vuln.title)} {vuln.fixed_in ? `Fixed in ${vuln.fixed_in}.` : "No fix yet."}
               <Details>{vuln.title}</Details>
             </span>
           </div>
@@ -712,6 +712,7 @@ function RollBack({ site: s, id, name, item, canAuto, advisories, initial, onClo
 
   return (
     <Sheet
+      fit
       title={`Roll back ${name} on ${s.name}`}
       intro={
         <>

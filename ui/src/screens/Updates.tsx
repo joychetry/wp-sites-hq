@@ -190,7 +190,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
               <b>{r.to}</b>
             </span>
           ) : (
-            <span className="dim">new files</span>
+            <span className="dim">Not known</span>
           )}
         </td>
         <td>
@@ -231,11 +231,11 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
             </div>
             <ul className="mix-key">
               {KINDS.slice(1).map(
-                ([k, , cls]) =>
+                ([k, label, cls]) =>
                   count(k as Kind) > 0 && (
                     <li key={k} className={cls}>
                       <i aria-hidden="true" />
-                      <b>{count(k as Kind)}</b> {KEY_WORD[k as Kind][count(k as Kind) === 1 ? 0 : 1]}
+                      {label} <b>{count(k as Kind)}</b>
                     </li>
                   ),
               )}
