@@ -141,7 +141,8 @@ fieldset.field .rte textarea.rte-source { min-height: 202px; }
 .blk > .blk-name { min-height: 20px; }
 /* A block's floating toolbar sits on its label row at the right, its foot on the field's top edge,
    so it never covers the field's own name or the text being edited. */
-html .blk > .tox.tox-tinymce-inline { top: auto !important; left: auto !important; right: 0; bottom: calc(100% - 20px - var(--sp-1)); }
+/* Out of the flow, so focusing a block doesn't add a grid gap and push the page down. */
+html .blk > .tox.tox-tinymce-inline { position: absolute; top: auto !important; left: auto !important; right: 0; bottom: calc(100% - 20px - var(--sp-1)); }
 /* Small buttons, so the bar fits the label row and the gap above it. */
 html .blk .tox .tox-toolbar__group { padding: 0 2px; }
 html .blk .tox .tox-tbtn { width: 32px; height: 32px; margin: 2px 0; }
@@ -154,7 +155,7 @@ html .blk .tox .tox-tbtn svg { width: 18px; height: 18px; }
 .blk-level { padding: 0 5px; border: 1px solid var(--line); border-radius: var(--radius-sm); font: 500 var(--fs-xs)/1.5 var(--mono); color: var(--text-3); }
 pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; }
 .blk-text:focus, .blk-text:focus-visible { outline: none; border-color: var(--focus); box-shadow: var(--ring); }
-.blk-ro { display: inline-flex; align-items: center; gap: var(--sp-1); justify-self: end; color: var(--text-3); font-size: var(--fs-sm); }
+.blk-ro { display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: auto; color: var(--text-3); font-size: var(--fs-sm); }
 .blk-ro .glyph { width: 12px; height: 12px; }
 
 /* ACF fields (screens/AcfFields.tsx). */
@@ -170,6 +171,7 @@ pre.blk-text { font-family: var(--mono); font-size: var(--fs-sm); white-space: p
 .acf-row > .field { margin: 0; }
 .acf-row .row { flex-wrap: wrap; }
 .acf-row .push { margin-left: auto; }
+.acf-rows > .btn { justify-self: start; }
 .acf-media { display: grid; gap: var(--sp-2); justify-items: start; }
 .acf-media .imgpick { justify-self: stretch; }
 .acf-picks { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }

@@ -772,7 +772,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               <small>{isNew ? "Leave empty to publish now. " : ""}A later date schedules it.</small>
             </div>
             <div className="ed-acts">
-              {!live && visibility !== "private" && (
+              {!live && !trashed && visibility !== "private" && (
                 <Button small disabled={saving || (!dirty && !isNew)} onClick={() => save(status === "pending" ? "pending" : "draft")}>
                   {status === "pending" ? "Save as pending" : "Save draft"}
                 </Button>
@@ -791,7 +791,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
                 </Button>
               </div>
             )}
-            <small className="dim">{mac ? "⌘S saves" : "Ctrl+S saves"}</small>
+            {!trashed && <small className="dim">{mac ? "⌘S saves" : "Ctrl+S saves"}</small>}
           </Box>
           {type.taxonomies.map((t) => (
             <Box key={t.name} title={t.label}>
