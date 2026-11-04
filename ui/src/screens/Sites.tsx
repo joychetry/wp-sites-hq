@@ -499,7 +499,7 @@ function GetPlugin({ site: s }: { site: Site }) {
           <Glyph name="check" />
           <div>
             <p>
-              Saved as <span className="m path" title={saved.path}>{saved.path.split(/[\\/]/).pop()}</span> (version {saved.version},
+              Saved as <span className="m path" data-tip={saved.path}>{saved.path.split(/[\\/]/).pop()}</span> (version {saved.version},
               checked). WordPress lets apps install plugins only from WordPress.org, so these steps are yours:
             </p>
             <ol>
@@ -570,7 +570,7 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
         <SiteTile site={s} size="lg" />
         <div>
           <h2>{s.name}</h2>
-          <small title={s.url.replace(/^https?:\/\//, "")}>{s.url.replace(/^https?:\/\//, "")}</small>
+          <small data-tip={s.url.replace(/^https?:\/\//, "")}>{s.url.replace(/^https?:\/\//, "")}</small>
           {s.client && <small className="client">{s.client}</small>}
           <span className={`st pill ${st.tone}`}>
             <Icon tone={st.tone} />

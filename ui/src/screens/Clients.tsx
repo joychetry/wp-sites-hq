@@ -339,7 +339,7 @@ export function Clients({ sites }: { sites: Site[] }) {
                       {/* The pill shares the title's line, so the facts under it get the card's full width. */}
                       <div>
                         <div className="renew-t">
-                          <b title={k.label}>{k.label}</b>
+                          <b data-tip={k.label}>{k.label}</b>
                           <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>
                             {days < 0 ? `Overdue ${-days} ${days === -1 ? "day" : "days"}` : days === 0 ? "Today" : `In ${days} ${days === 1 ? "day" : "days"}`}
                           </Status>

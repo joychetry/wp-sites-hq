@@ -482,8 +482,8 @@ function Change({ row, busy, onUndo, small }: { row: ActivityRow; busy: boolean;
         {who === "You" ? "You" : initials(who)}
       </span>
       <div>
-        <b title={small ? what : undefined}>{what}</b>
-        <span title={small ? `${who} · ${when}` : undefined}>
+        <b data-tip={small ? what : undefined}>{what}</b>
+        <span data-tip={small ? `${who} · ${when}` : undefined}>
           {who} · {when}
         </span>
       </div>

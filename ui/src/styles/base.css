@@ -752,6 +752,6 @@ details.more > summary .glyph { width: 14px; height: 14px; transition: transform
 details.more[open] > summary .glyph { transform: rotate(180deg); }
 details.more > div { margin-top: var(--sp-1); color: var(--text-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
 /* A site address that must wrap breaks evenly at the edge, not at its own hyphens (which reads as two words). */
-/* A site's name and address stay on one line and end in an ellipsis; the cell carries the full text in data-tip or title. */
+/* A site's name and address stay on one line and end in an ellipsis; the cell carries the full text in data-tip. */
 .site > span, .site > div { min-width: 0; }
 .site b, .site small, .ihead small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
