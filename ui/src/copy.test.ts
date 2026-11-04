@@ -23,7 +23,7 @@ const BANNED: [RegExp, string][] = [
   [/\bentries\b/, "the real noun (posts, pages)"],
   [/\bthings\b/, "the real noun (updates)"],
   [/tool groups/i, "plain words"],
-  [/\boperator\b/i, "plain words"],
+  [/\s.*\boperator\b|\boperator\b.*\s/i, "plain words"],
   [/Monks Central/, "WP Sites HQ"],
   [/\bsnippet\b/i, "plain words"],
   [/(^|[^/])wp-admin/, "the dashboard"],

@@ -80,7 +80,7 @@ describe("Users", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(4);
     expect(within(table).getAllByText("Editor")).toHaveLength(1);
     expect(screen.getByText("Alpha: showing 2 of 60 users. Search to find the others.")).toBeInTheDocument();
-    expect(screen.getByText(/^Older: This connection can't do this/)).toBeInTheDocument();
+    expect(screen.getByText(/^Older: WP Sites HQ isn't allowed/)).toBeInTheDocument();
     // Only Classic Monks with M7 can email a reset.
     expect(screen.getAllByRole("button", { name: /^Send password reset/ })).toHaveLength(2);
   });
@@ -314,11 +314,11 @@ describe("Classic Monks", () => {
 
   it("names tools and blocks plainly", () => {
     expect(toolLabel("classic-monks/update-features")).toBe("Update features");
-    expect(cmBlocked(OLD)).toMatch(/can't change Classic Monks/);
-    expect(cmBlocked(site({ sign_in_again: true }))).toBe("Sign in again first.");
+    expect(cmBlocked(OLD)).toMatch(/allowed to change Classic Monks/);
+    expect(cmBlocked(site({ sign_in_again: true }))).toBe("The sign-in for this site expired. Sign in again to work on it here.");
     expect(peopleBlocked(BASIC, "get-users")).toBeNull();
     expect(peopleBlocked(CM, "get-users")).toBeNull();
-    expect(peopleBlocked(OLD, "get-users")).toMatch(/tick the user and comment tool groups/);
+    expect(peopleBlocked(OLD, "get-users")).toMatch(/allowed to change users and comments/);
   });
 });
 

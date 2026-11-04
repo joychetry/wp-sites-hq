@@ -244,6 +244,18 @@ export default function App() {
     if (site) setAdding({ again: site });
   };
 
+  // Any screen can ask for these (components/feedback.tsx Blocked).
+  useEffect(() => {
+    const again = (e: Event) => signInAgain((e as CustomEvent<number>).detail);
+    const open = (e: Event) => openSite((e as CustomEvent<number>).detail);
+    window.addEventListener("wpshq:sign-in-again", again);
+    window.addEventListener("wpshq:open-site", open);
+    return () => {
+      window.removeEventListener("wpshq:sign-in-again", again);
+      window.removeEventListener("wpshq:open-site", open);
+    };
+  });
+
   const commands: Command[] = [
     { id: "add", group: "Actions", label: "Add a site", keys: "A", icon: "plus", run: () => setAdding({}) },
     { id: "check", group: "Actions", label: "Check all sites", icon: "refresh", run: checkAll },

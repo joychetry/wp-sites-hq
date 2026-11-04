@@ -50,7 +50,7 @@ test("a connection with no tools says so and offers to sign in again; slow is on
   ];
   render(<Overview sites={sites} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={onSignInAgain} onAdd={vi.fn()} />);
   const panel = screen.getByRole("region", { name: "Needs attention" });
-  expect(panel).toHaveTextContent("Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.");
+  expect(panel).toHaveTextContent("Connected, but WP Sites HQ was given no permissions. Sign in again and allow what it may do.");
   screen.getByRole("button", { name: "Sign in again" }).click();
   expect(onSignInAgain).toHaveBeenCalledWith(1);
   expect(panel).toHaveTextContent("Slow site. Slow: the home page took 4.2 s. It still works.");

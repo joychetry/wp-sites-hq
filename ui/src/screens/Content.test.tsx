@@ -99,7 +99,7 @@ test("block labels, plain text to blocks, and which sites have content tools", (
   expect(contentBlocked(CM)).toBeNull();
   expect(contentBlocked(OLD)).toContain("Update it");
   expect(contentBlocked(site({ mode: "basic", capabilities: {} }))).toBeNull();
-  expect(contentBlocked(site({ sign_in_again: true }))).toBe("Sign in again first.");
+  expect(contentBlocked(site({ sign_in_again: true }))).toBe("The sign-in for this site expired. Sign in again to work on it here.");
 });
 
 test("lists a site's entries, pages through them, and says why an older site can't", async () => {
