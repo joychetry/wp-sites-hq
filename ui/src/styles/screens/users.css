@@ -1,14 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Users (board 08): search and filters on the ground, then one flush card with every site's users. */
-.users .t th, .users .t td { padding-left: var(--sp-4); padding-right: var(--sp-4); }
-.users .t td { height: 60px; }
-.users .site small { overflow-wrap: anywhere; }
+.users .conn { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.users .conn .cut { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* A border keeps the grey role pill visible on the grey row hover. */
+.users .pchip { box-shadow: inset 0 0 0 1px var(--line); }
 .users .conn .fav { width: 22px; height: 22px; font-size: var(--fs-xs); }
-.users .when { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.users .when { color: var(--text-2); font-variant-numeric: tabular-nums; }
 .users .rowacts { gap: var(--sp-1); }
-.users .rowacts .btn.ghost .glyph { width: 14px; height: 14px; }
 .users .rowacts .icon-btn { width: 32px; height: 32px; color: var(--text-3); }
 .users .rowacts .icon-btn .glyph { width: 16px; height: 16px; }
+.users .rowacts .icon-btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
 .users .card-foot .count { color: var(--text-3); font-size: var(--fs-sm); }
 
 /* Sites the list can't fully show: a callout each, under the card. */

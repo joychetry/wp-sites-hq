@@ -81,27 +81,30 @@ describe("Users", () => {
     expect(within(table).getAllByText("Editor")).toHaveLength(1);
     expect(screen.getByText("Alpha: showing 2 of 60 users. Search to find the others.")).toBeInTheDocument();
     expect(screen.getByText(/^Older: WP Sites HQ isn't allowed/)).toBeInTheDocument();
-    // Only Classic Monks with M7 can email a reset.
-    expect(screen.getAllByRole("button", { name: /^Send password reset/ })).toHaveLength(2);
+    // Only Classic Monks with M7 can email a reset; elsewhere the slot stays, marked unavailable, so rows line up.
+    const resets = screen.getAllByRole("button", { name: /^Send password reset/ });
+    expect(resets).toHaveLength(3);
+    expect(resets.filter((b) => b.getAttribute("aria-disabled") === "true")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
   });
 
   it("searches, sends a reset and changes a role", async () => {
     const calls = core();
     render(<Users sites={[CM]} />);
     await screen.findByRole("table", { name: "Users" });
+    // Searches as you type, once the typing pauses.
     fireEvent.change(screen.getByRole("searchbox", { name: "Search users" }), { target: { value: "sam" } });
-    fireEvent.click(screen.getByRole("button", { name: "Search" }));
     await waitFor(() => expect(calls).toContainEqual(["users_list", { id: 1, search: "sam", page: 1 }]));
     fireEvent.click(await screen.findByRole("button", { name: "Send password reset to SAM on Alpha" }));
-    expect(await screen.findByText("Sent sam a link to set a new password (sam@x.test).")).toBeInTheDocument();
+    expect(await screen.findByText("Sent SAM a link to set a new password (sam@x.test).")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Change role for SAM on Alpha" }));
     const sheet = screen.getByRole("dialog", { name: "Change SAM's role" });
-    expect(within(sheet).getByRole("button", { name: "Make them Editor" })).toBeDisabled();
+    expect(within(sheet).getByRole("button", { name: "Make them an editor" })).toBeDisabled();
     choose(within(sheet).getByRole("combobox", { name: "New role" }), "administrator");
     expect(within(sheet).getByText(/An administrator can change everything/)).toBeInTheDocument();
-    fireEvent.click(within(sheet).getByRole("button", { name: "Make them Administrator" }));
-    expect(await screen.findByText("SAM is now Administrator on Alpha.")).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Make them an administrator" }));
+    expect(await screen.findByText("SAM is now an administrator on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["user_set_role", { id: 1, userId: 2, role: "administrator" }]);
   });
 
@@ -131,12 +134,21 @@ describe("Users", () => {
     choose(within(sheet).getByRole("combobox", { name: "Site" }), "2");
     expect(await within(sheet).findByText(/Lost your password/)).toBeInTheDocument();
     choose(within(sheet).getByRole("combobox", { name: "Site" }), "1");
-    await within(sheet).findByRole("checkbox", { name: "Email them a link to set their password" });
+    const box = await within(sheet).findByRole("checkbox", { name: "Email them a link to set their password" });
+    // The words toggle the box too.
+    fireEvent.click(within(sheet).getByText("Email them a link to set their password"));
+    expect(box).not.toBeChecked();
+    fireEvent.click(box);
+    expect(box).toBeChecked();
+    // Add says which field is missing instead of sitting disabled.
+    fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
+    expect(within(sheet).getByText("Fill in the username.")).toBeInTheDocument();
+    expect(within(sheet).getByText("Fill in the email address.")).toBeInTheDocument();
     fireEvent.change(within(sheet).getByRole("textbox", { name: /^Username/ }), { target: { value: "lee" } });
-    fireEvent.change(within(sheet).getByRole("textbox", { name: "Email address" }), { target: { value: "lee@x.test" } });
+    fireEvent.change(within(sheet).getByRole("textbox", { name: /^Email address/ }), { target: { value: "lee@x.test" } });
     choose(within(sheet).getByRole("combobox", { name: "Role" }), "editor");
     fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
-    expect(await screen.findByText("Added lee to Alpha as Editor. They were emailed a link to set their password.")).toBeInTheDocument();
+    expect(await screen.findByText("Added lee to Alpha as an editor. They were emailed a link to set their password.")).toBeInTheDocument();
     expect(calls).toContainEqual(["user_create", { id: 1, user: { username: "lee", email: "lee@x.test", role: "editor" } }]);
     expect(calls).toContainEqual(["user_reset", { id: 1, userId: 7 }]);
   });
@@ -150,7 +162,7 @@ describe("Users", () => {
     fireEvent.change(within(sheet).getByRole("textbox", { name: /^Username/ }), { target: { value: "lee" } });
     fireEvent.change(within(sheet).getByRole("textbox", { name: "Email address" }), { target: { value: "lee@x.test" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
-    expect(await screen.findByText("Added lee to Alpha as Editor. The password email didn't go out: Error: The email could not be sent.")).toBeInTheDocument();
+    expect(await screen.findByText("Added lee to Alpha as an editor. The password email didn't go out: Error: The email could not be sent.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Add a user" })).not.toBeInTheDocument();
   });
 
