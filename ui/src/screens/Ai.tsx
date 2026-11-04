@@ -5,7 +5,7 @@
 import "../styles/screens/ai.css";
 import { askOpenSite, askSignIn, dismiss, Empty, Skeleton, toast } from "../components/feedback";
 import { Page } from "../components/page";
-import { Segmented, Tabs } from "../components/controls";
+import { Select, Tabs } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { ago, api, useInventory, type Entry, type Job, type JobItem, type Site } from "../api";
@@ -486,7 +486,14 @@ function Log() {
                   r.detail && plainDetail(r.detail) !== r.detail && <Details>{r.detail}</Details>
                 )}
               </div>
-              {r.outcome === "done" ? <Status tone="ok">Done</Status> : <Status tone={RESULT[r.outcome][1]}>{RESULT[r.outcome][0]}</Status>}
+              {r.outcome === "done" ? (
+                <Status tone="ok">Done</Status>
+              ) : r.outcome === "waiting" && r.site_id == null ? (
+                // A plan for several sites waits here, not on a site.
+                <Status tone="warning">Waiting for you to confirm</Status>
+              ) : (
+                <Status tone={RESULT[r.outcome][1]}>{RESULT[r.outcome][0]}</Status>
+              )}
             </li>
             );
           })}
@@ -559,7 +566,16 @@ function Connect({ onClose, onAccess }: { onClose: () => void; onAccess: () => v
       }
     >
       <div className="connect">
-        <Segmented label="Your AI app" options={APPS} value={app} onChange={setApp} />
+        <label className="field">
+          <span>Your AI app</span>
+          <Select aria-label="Your AI app" value={app} onChange={(e) => setApp(e.target.value as App)}>
+            {APPS.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </Select>
+        </label>
         <ol className="steps">
           <li>
             <span>{command ? "Copy this command." : "Copy these settings."}</span>
@@ -588,11 +604,10 @@ function Connect({ onClose, onAccess }: { onClose: () => void; onAccess: () => v
         <p className="callout">
           <Glyph name="lock" />
           <span>
-            The app changes only sites you switch on in{" "}
+            Every change on several sites waits for you under Plans to confirm, and the app changes only the sites you switch on in{" "}
             <button type="button" className="link" onClick={onAccess}>
               Agent access
             </button>
-            , and every change on several sites waits for you under Plans to confirm.
           </span>
         </p>
       </div>

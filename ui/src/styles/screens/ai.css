@@ -16,6 +16,8 @@
 .ai-diffs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .ai-diff { display: grid; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); }
 .ai-diff > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: var(--fs-sm); color: var(--text-3); }
+/* The site heads its box: the label then the name, both at the start. */
+.ai-diff > div:first-child { grid-template-columns: auto minmax(0, 1fr); }
 .ai-diff b { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text); font-weight: 600; min-width: 0; }
 .ai-diff code { justify-self: start; padding: 2px 7px; border-radius: var(--radius-sm); background: var(--panel); color: var(--text); font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); overflow-wrap: anywhere; }
 .ai-diff code.old { color: var(--text-3); text-decoration: line-through; }
@@ -59,7 +61,10 @@
 
 /* Connect an AI app: the app, its numbered steps (the first with the dark code block and Copy), then where it stands */
 .connect { display: grid; gap: var(--sp-4); }
-.connect .steps { margin: 0; display: grid; gap: var(--sp-3); }
+.connect .steps { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-3); list-style: decimal; }
+.connect .steps li::marker { color: var(--text-3); font-weight: 600; }
+.connect .field { margin: 0; }
+.connect .field .select { width: min(100%, 32ch); }
 .connect .steps li { margin: 0; display: grid; gap: var(--sp-2); justify-items: start; }
 .connect .steps li > span { color: var(--text); }
 .connect .code { display: block; width: 100%; padding: 14px var(--sp-4); border-radius: var(--radius); background: var(--code-bg); color: var(--code-fg); font: 400 var(--fs-sm)/var(--lh) var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -30,6 +30,7 @@
 .cm-wait { background: var(--warn-paper); border-color: var(--warn-line); }
 .cm-wait .card-body { gap: var(--sp-3); }
 .cm-wait b { font-weight: 600; }
+.cm .card-head > .dim:first-child { margin-right: auto; }
 .cm .card-head .link { display: inline-flex; align-items: center; text-decoration: none; }
 .cm .card-head .link:hover { text-decoration: underline; }
 /* Latest changes: one line each for the change and its time, the state as an icon with a tip. */
@@ -46,6 +47,8 @@
 .cm .fix > .tile.warning { color: var(--warn); }
 .cm .fix .st > .glyph { width: 14px; height: 14px; }
 .cm .fix > div > span .st { display: inline-flex; }
+/* .fix greys every span: a state keeps its tone (waiting is amber). */
+.cm .fix .st.warning { color: var(--warn); }
 
 /* Settings: the name, then the box with its own Save beside it, then what it does */
 .sets { list-style: none; margin: 0; padding: var(--sp-1) 20px; }
@@ -55,10 +58,10 @@
 .sets > li.head .label { margin: 0; }
 .sets > li > b { font-size: var(--fs-sm); font-weight: 600; }
 .sets > li > small { font-size: var(--fs-sm); color: var(--text-3); }
-.sets .row > .select { width: min(100%, 32ch); }
-.sets .row > .num-in { display: flex; width: min(100%, 20ch); }
-.sets .num-in .input { flex: 1; width: auto; text-align: left; font-family: var(--mono); }
-.cm .card-foot.note { margin: 0; padding: var(--sp-3) 20px; font-size: var(--fs-sm); color: var(--text-3); }
+/* A select fits its words, a number box its digits (.row .input would stretch both). */
+.sets .row > .select { flex: 0 1 32ch; }
+.sets .num-in .input { flex: none; text-align: left; font-family: var(--mono); }
+.cm .card-foot.note { display: block; margin: 0; padding: var(--sp-3) 20px; font-size: var(--fs-sm); color: var(--text-3); }
 .cm .card-foot.pager { padding: var(--sp-3) 20px; }
 .cm .card-foot.pager + .card-foot { border-top: 0; padding-top: 0; }
 
@@ -72,3 +75,5 @@
 .cm .card .t th { position: static; }
 .cm .t .cut { max-width: none; white-space: nowrap; }
 .cm .card > p.card-body { margin: 0; display: block; }
+.cm .card > dl.kv { grid-template-columns: max-content minmax(0, 1fr); column-gap: var(--sp-5); margin: 0; }
+.cm .note .link { white-space: nowrap; }

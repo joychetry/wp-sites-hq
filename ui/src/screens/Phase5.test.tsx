@@ -3,7 +3,7 @@
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Ai } from "./Ai";
-import { site } from "../test-fixtures";
+import { choose, site } from "../test-fixtures";
 import type { Entry, Job } from "../api";
 import { HeadSlot } from "../components/ui";
 
@@ -158,7 +158,7 @@ test("connect shows the command to add WP Sites HQ to an AI app", async () => {
   expect(await screen.findByText("Copied the Claude Code command.")).toBeInTheDocument();
   expect(writeText).toHaveBeenCalledWith("claude mcp add wp-sites-hq -- wpshq mcp");
   // Each app has its own steps, and the dialog says when an app reached WP Sites HQ.
-  fireEvent.click(screen.getByRole("button", { name: "Cursor" }));
+  choose(screen.getByRole("combobox", { name: "Your AI app" }), "cursor");
   expect(screen.getByText(/open Settings, then MCP/)).toBeInTheDocument();
   expect(screen.getByText(/Waiting for the app/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
