@@ -610,11 +610,16 @@ async fn main() -> Res<()> {
         }
         "features" => {
             let word = args.get(2).map_or("", String::as_str);
-            for g in core.features(site_id(&core, arg(1)?)?).await? {
-                for t in g.toggles.iter().filter(|t| t.name.contains(word)) {
+            let c = core.controls(site_id(&core, arg(1)?)?).await?;
+            for (tab, card) in c.tabs.iter().flat_map(|t| {
+                t.subtabs
+                    .iter()
+                    .flat_map(move |s| s.cards.iter().map(move |c| (t, c)))
+            }) {
+                for t in card.toggles.iter().filter(|t| t.name.contains(word)) {
                     println!(
                         "{} / {}: {} ({}){}",
-                        g.label,
+                        tab.label,
                         t.label,
                         if t.on { "on" } else { "off" },
                         t.name,
@@ -648,7 +653,7 @@ async fn main() -> Res<()> {
             )
         }
         "approvals" => show(&core.approvals(site_id(&core, arg(1)?)?).await?),
-        "settings" => show(&core.settings(site_id(&core, arg(1)?)?).await?),
+        "settings" => show(&core.controls(site_id(&core, arg(1)?)?).await?),
         "publish" => {
             let body = std::fs::read_to_string(arg(2)?)?;
             let action = Action::PublishPost {

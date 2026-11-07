@@ -14,7 +14,7 @@ use monks_core::connect::{Removed, SiteError};
 use monks_core::content::{
     AcfSaved, Draft, Found as ContentFound, Listing, Post, PostType, Query, Revision, Term,
 };
-use monks_core::control::{Activity, Approval, CmReports, FeatureGroup, Setting};
+use monks_core::control::{Activity, Approval, CmReports, Controls};
 use monks_core::fleet::{Change, Found, Job, SiteInventory};
 use monks_core::ipc::{self, Role};
 use monks_core::media::{self, Details, Library, Media, MediaQuery, Moved};
@@ -698,9 +698,9 @@ async fn site_login(state: State<'_, AppCore>, id: i64) -> Res<()> {
 }
 
 #[tauri::command]
-async fn cm_features(state: State<'_, AppCore>, id: i64) -> Res<Vec<FeatureGroup>> {
+async fn cm_controls(state: State<'_, AppCore>, id: i64) -> Res<Controls> {
     let core = core(&state)?;
-    core.features(id).await.map_err(|e| e.to_string())
+    core.controls(id).await.map_err(|e| e.to_string())
 }
 
 /// Returns the activity row that undoes the change, if the site has one.
@@ -715,12 +715,6 @@ async fn cm_set_feature(
     let r = core.set_feature(id, &name, on).await;
     let what = format!("Turned {} {name}", if on { "on" } else { "off" });
     done(&core, Some(id), &what, r)
-}
-
-#[tauri::command]
-async fn cm_settings(state: State<'_, AppCore>, id: i64) -> Res<Vec<Setting>> {
-    let core = core(&state)?;
-    core.settings(id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1368,9 +1362,8 @@ fn main() {
             comment_moderate,
             comment_reply,
             site_login,
-            cm_features,
+            cm_controls,
             cm_set_feature,
-            cm_settings,
             cm_set_setting,
             cm_activity,
             cm_undo,
