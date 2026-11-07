@@ -63,7 +63,7 @@ test("the Sites table works from the keyboard", async ({ page }) => {
   await page.keyboard.press("j");
   await expect(page.getByRole("complementary", { name: "Corner Bakery details" })).toBeVisible();
   await page.keyboard.press("x");
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
   await page.keyboard.press("Escape");
   await page.keyboard.press("/");
   await expect(page.getByRole("searchbox", { name: "Filter sites" })).toBeFocused();
@@ -119,7 +119,7 @@ test("the palette gives focus back when it closes", async ({ page }) => {
   const search = page.getByRole("button", { name: /^Search or run/ });
   await search.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("combobox", { name: "Command" })).toBeFocused();
+  await expect(page.getByRole("combobox", { name: "Search or run a command" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(search).toBeFocused();
 });
@@ -160,7 +160,7 @@ test("leaving with unsaved changes asks, from Back and from the rail", async ({ 
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Our winter menu");
   // The rail's Sites to show filter could hide the entry's site: it asks too, and Keep editing keeps both.
   const scope = page.getByRole("combobox", { name: "Sites to show" });
-  await choose(scope, { name: "Group: Personal" });
+  await choose(scope, { name: "Personal (1)" });
   await expect(ask).toBeVisible();
   await ask.getByRole("button", { name: "Keep editing" }).click();
   await expect(scope).toContainText("All sites");
@@ -212,16 +212,16 @@ test("site HTML with position: fixed stays inside the editor, never over the win
   expect(await page.locator(".blk-text").first().evaluate(fill)).toEqual([0, 0, 0, 0]);
 });
 
-test("entries are ticked and changed in bulk from the keyboard", async ({ page }) => {
+test("posts are selected and changed in bulk from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "content")!, "light");
-  await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).focus();
+  await page.getByRole("checkbox", { name: "Select Autumn opening hours" }).focus();
   await page.keyboard.press("Space");
-  await page.getByRole("button", { name: "Make drafts (1)" }).focus();
+  await page.getByRole("button", { name: "Change to draft (1)" }).focus();
   await page.keyboard.press("Enter");
-  const sheet = page.getByRole("dialog", { name: "Make drafts of 1 entry on MC A" });
-  await expect(sheet.getByText("Make \u201cAutumn opening hours\u201d a draft").first()).toBeVisible();
+  const sheet = page.getByRole("dialog", { name: "Change 1 post to draft on MC A" });
+  await expect(sheet.getByText("Change \u201cAutumn opening hours\u201d to draft").first()).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Make drafts (1)" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Change to draft (1)" })).toBeFocused();
 });
 
 test("export is two buttons from the keyboard; the import picker is the next Tab stop with a focus ring", async ({ page }) => {
@@ -265,13 +265,13 @@ test("a comment is answered from the keyboard", async ({ page }) => {
   const box = page.getByRole("textbox", { name: "Your reply to Mira Patel" });
   await expect(box).toBeFocused();
   await page.keyboard.type("Plain milk.");
-  // Cancel, then Send the reply: the design's order, the primary last.
+  // Close without sending, then Approve and reply (the comment waits): the design's order, the primary last.
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Close without sending" })).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Send the reply" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Approve and reply" })).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status").getByText("Replied to Mira Patel on MC A.")).toBeVisible();
+  await expect(page.getByRole("status").getByText("Approved and replied to Mira Patel on MC A.")).toBeVisible();
 });
 
 test("a feature is turned on and undone from the keyboard", async ({ page }) => {
@@ -287,10 +287,10 @@ test("a feature is turned on and undone from the keyboard", async ({ page }) => 
 
 test("an AI agent's plan is confirmed from the keyboard and its progress shows", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "ai")!, "light");
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "AI 1 to confirm" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "AI 1 plans to confirm" })).toBeVisible();
   await page.getByRole("button", { name: "Decline Update WooCommerce on 3 sites" }).focus();
   await page.keyboard.press("Tab");
-  const confirm = page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" });
+  const confirm = page.getByRole("button", { name: "Confirm and make 3 changes: Update WooCommerce on 3 sites" });
   await expect(confirm).toBeFocused();
   await page.keyboard.press("Enter");
   const sheet = page.getByRole("dialog", { name: /^Update WooCommerce on 3 sites/ });
@@ -298,7 +298,7 @@ test("an AI agent's plan is confirmed from the keyboard and its progress shows",
   await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "Update WooCommerce on 3 sites" })).toHaveCount(0);
   // An expired plan has no Confirm: it only goes away.
-  await expect(page.getByRole("button", { name: /^Confirm and run .*Turn off Akismet/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Confirm and make .*Turn off Akismet/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Remove Turn off Akismet on Portfolio" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "No plans waiting" })).toBeVisible();
@@ -312,24 +312,23 @@ test("the palette opens an agent's plan with focus on it, two Tabs from Confirm"
   await expect(page.getByRole("heading", { name: "Update WooCommerce on 3 sites" })).toBeFocused();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Confirm and make 3 changes: Update WooCommerce on 3 sites" })).toBeFocused();
 });
 
 test("the palette searches everything, and a result opens its site from the keyboard", async ({ page }) => {
   await show(page, SCREENS[0], "light");
   await page.keyboard.press("Control+k");
   await page.keyboard.type("bakery");
-  await page.keyboard.press("ArrowUp");
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("table", { name: "Posts and pages found" }).or(page.getByText("No posts or pages match on any site"))).toBeVisible();
-  const open = page.getByRole("button", { name: "Open on Sites: Corner Bakery" });
-  for (let i = 0; i < 40 && !(await open.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
-  await expect(open).toBeFocused();
+  const row = page.getByRole("group", { name: "Sites" }).getByRole("option", { name: /^Corner Bakery/ });
+  await expect(row).toBeVisible();
+  for (let i = 0; i < 20 && (await row.getAttribute("aria-selected")) !== "true"; i++) await page.keyboard.press("ArrowDown");
+  await expect(row).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: /^Sites/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("complementary", { name: "Corner Bakery details" })).toBeVisible();
 });
 
-test("a product's stock is changed from the keyboard, ending at the confirm step", async ({ page }) => {
+test("a product's stock is changed from the keyboard, ending at its result", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "store")!, "light");
   await page.getByRole("button", { name: "Change price or stock of Sourdough loaf" }).focus();
   await page.keyboard.press("Enter");
@@ -340,9 +339,11 @@ test("a product's stock is changed from the keyboard, ending at the confirm step
   // Tab selects the field's text, so typing replaces it.
   await page.keyboard.type("30");
   await expect(page.getByText("Change \u201cSourdough loaf\u201d: stock 30")).toBeVisible();
-  for (let i = 0; i < 4 && !(await page.getByRole("button", { name: "Review the change" }).evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
+  const run = page.getByRole("button", { name: "Change Sourdough loaf", exact: true });
+  for (let i = 0; i < 4 && !(await run.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press("Tab");
+  // The dialog is the review: Enter makes the change and the sheet shows how it went.
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Change \u201cSourdough loaf\u201d: stock 30" })).toBeVisible();
+  await expect(page.getByText("Product changed.").first()).toBeVisible();
 });
 
 test("a monthly report is made and opened from the keyboard", async ({ page }) => {
@@ -361,8 +362,9 @@ test("AI agent access is turned on from the keyboard", async ({ page }) => {
   const access = page.getByRole("tabpanel").getByRole("switch", { name: "Access for Portfolio" });
   await access.focus();
   await page.keyboard.press("Space");
-  await expect(page.getByText(/leave "This is my WP Sites HQ app \(operator\)" \(older plugins say Monks Central app\) unticked/)).toBeVisible();
   await expect(page.getByText("AI agents can change Portfolio now. The site asks you to approve each change.")).toBeVisible();
+  // The browser steps go once access is on.
+  await expect(page.getByText(/Finish in your browser/)).toHaveCount(0);
   await expect(access).toBeChecked();
 });
 
@@ -382,7 +384,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "content-classic", "content-acf", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "search", "store", "store-change", "classic-monks-reports", "reports", "reports-made", "settings-search-console"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "content-classic", "content-acf", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "palette-search", "store", "store-change", "classic-monks-reports", "reports", "reports-made", "settings-search-console"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -423,7 +425,7 @@ test("PageSpeed runs from the keyboard and the result shows in its row", async (
   await show(page, SCREENS.find((s) => s.name === "monitoring")!, "light");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Monitoring 1 down" })).toBeVisible();
   await expect(page.getByText(/^1 site is down: Corner Bakery\./)).toBeVisible();
-  const run = page.getByRole("button", { name: "Run PageSpeed again on Portfolio" });
+  const run = page.getByRole("button", { name: "Test speed again on Portfolio" });
   await run.focus();
   await page.keyboard.press("Enter");
   const row = page.getByRole("row").filter({ hasText: "Portfolio" });
@@ -438,7 +440,7 @@ test("a rolled back update shows why, and only the failed change is offered agai
   await expect(sheet.getByText("Rolled back to 5.3 because the update broke the site.")).toBeVisible();
   await sheet.getByText("Show the details").click();
   await expect(sheet.getByText(/^Rolled back to 5\.3\. The home page answered 500/)).toBeVisible();
-  await expect(sheet.getByRole("button", { name: "Try the 1 failed change again" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Try the failed change again" })).toBeVisible();
 });
 
 test("a long reason in the activity log wraps, so Result stays in view", async ({ page }) => {
@@ -468,11 +470,11 @@ test("results never move the rows: ticking sites, a check, a feature and its Und
   const portfolio = page.getByRole("checkbox", { name: "Select Portfolio" });
   const before = await y(portfolio);
   await page.getByRole("checkbox", { name: "Select MC A" }).click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 site ticked");
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("1 selected");
   expect(await y(portfolio)).toBe(before);
   await portfolio.click();
-  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 sites ticked");
-  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /Check them now/ }).click();
+  await expect(page.getByRole("region", { name: "Selection" })).toContainText("2 selected");
+  await page.getByRole("region", { name: "Selection" }).getByRole("button", { name: /^Check \d+ sites?/ }).click();
   expect(await y(portfolio)).toBe(before);
 
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");

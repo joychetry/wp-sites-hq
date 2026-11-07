@@ -53,8 +53,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Sites")(page);
       await page.getByRole("gridcell", { name: /^mc-c / }).click();
-      await page.getByRole("complementary").getByRole("button", { name: "Install the WP Sites HQ plugin for me" }).click();
-      await page.getByRole("complementary").getByText(/is saved as/).waitFor();
+      await page.getByRole("complementary").getByRole("button", { name: "Download the WP Sites HQ plugin" }).click();
+      await page.getByRole("complementary").getByText(/Saved as/).waitFor();
     },
   },
   { name: "add-site", open: (page) => nav("Sites")(page).then(() => page.keyboard.press("a")) },
@@ -92,8 +92,8 @@ export const SCREENS: Screen[] = [
     name: "settings-search-console",
     open: async (page) => {
       await nav("Settings")(page);
-      await page.getByRole("switch", { name: /Google Search Console/ }).check();
-      await page.getByRole("textbox", { name: "Client ID" }).waitFor();
+      await page.getByRole("switch", { name: /Google Search Console/ }).click();
+      await page.getByRole("textbox", { name: "Google client ID" }).waitFor();
     },
   },  { name: "store", open: (page) => nav("Store")(page).then(() => page.getByRole("table", { name: "Products" }).waitFor()) },
   {
@@ -110,10 +110,10 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Store")(page);
       await page.getByRole("button", { name: "Change price or stock of Rye loaf" }).click();
-      // The same edit as store-change, so the review shows the sale price going too.
+      // The same edit as store-change; the dialog was the review, so the change runs and shows its result.
       await page.getByRole("textbox", { name: "Sale price" }).fill("");
       await page.getByRole("textbox", { name: "Stock" }).fill("30");
-      await page.getByRole("button", { name: "Review the change" }).click();
+      await page.getByRole("button", { name: "Change Rye loaf" }).click();
     },
   },
   {
@@ -138,8 +138,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Clients")(page);
       await page.getByRole("button", { name: "Add a cost or charge" }).click();
-      await choose(page.getByRole("combobox", { name: "On" }), { name: "MC A" });
-      await page.getByRole("textbox", { name: "What it is" }).fill("Backups");
+      await choose(page.getByRole("combobox", { name: "For" }), { name: "MC A (site)" });
+      await page.getByRole("textbox", { name: "Name" }).fill("Backups");
       await page.getByRole("textbox", { name: "Amount" }).fill("5.50");
     },
   },
@@ -216,19 +216,19 @@ export const SCREENS: Screen[] = [
     },
   },
   {
-    name: "classic-monks-undo-ask",
+    name: "classic-monks-undone",
     open: async (page) => {
       await nav("Classic Monks")(page);
       await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
       await page.getByRole("list", { name: "Activity" }).getByRole("button", { name: /^Undo/ }).first().click();
-      await page.getByRole("dialog", { name: /^Undo this change/ }).waitFor();
+      await page.getByText(/^Undone:/).waitFor();
     },
   },
   {
     name: "classic-monks-approvals",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Waiting for approval", exact: true }).click();
+      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: /^Waiting for approval/ }).click();
       await page.getByRole("list", { name: "Waiting for approval" }).waitFor();
     },
   },
@@ -236,7 +236,7 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-basic",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "mc-c (no Classic Monks)" });
+      await choose(page.getByRole("combobox", { name: "Site", exact: true }), { name: "mc-c (can't change here)" });
     },
   },
   { name: "ai", open: nav("AI") },
@@ -269,7 +269,7 @@ export const SCREENS: Screen[] = [
     name: "ai-confirmed",
     open: async (page) => {
       await nav("AI")(page);
-      await page.getByRole("button", { name: "Confirm and run 3 changes: Update WooCommerce on 3 sites" }).click();
+      await page.getByRole("button", { name: "Confirm and make 3 changes: Update WooCommerce on 3 sites" }).click();
       await page.getByText(/^Finished\./).waitFor();
     },
   },
@@ -385,17 +385,17 @@ export const SCREENS: Screen[] = [
     name: "content-bulk",
     open: async (page) => {
       await nav("Content")(page);
-      await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).check();
-      await page.getByRole("checkbox", { name: "Tick Hiring a morning baker" }).check();
+      await page.getByRole("checkbox", { name: "Select Autumn opening hours" }).check();
+      await page.getByRole("checkbox", { name: "Select Hiring a morning baker" }).check();
     },
   },
   {
     name: "content-bulk-plan",
     open: async (page) => {
       await nav("Content")(page);
-      await page.getByRole("checkbox", { name: "Tick Autumn opening hours" }).check();
-      await page.getByRole("checkbox", { name: "Tick Hiring a morning baker" }).check();
-      await page.getByRole("button", { name: "Make drafts (2)" }).click();
+      await page.getByRole("checkbox", { name: "Select Autumn opening hours" }).check();
+      await page.getByRole("checkbox", { name: "Select Hiring a morning baker" }).check();
+      await page.getByRole("button", { name: "Change to draft (2)" }).click();
     },
   },
   {
@@ -404,7 +404,7 @@ export const SCREENS: Screen[] = [
       await nav("Content")(page);
       await choose(page.getByRole("combobox", { name: "Show", exact: true }), { value: "trash" });
       await page.getByRole("button", { name: "Summer menu" }).click();
-      await page.getByRole("button", { name: "Bring it back from the trash" }).waitFor();
+      await page.getByRole("button", { name: "Bring back from the trash" }).waitFor();
     },
   },
   {
@@ -440,8 +440,8 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Media")(page);
       await page.getByRole("button", { name: "List", exact: true }).click();
-      await page.getByRole("checkbox", { name: "Tick sourdough" }).check();
-      await page.getByRole("checkbox", { name: "Tick menu-board" }).check();
+      await page.getByRole("checkbox", { name: "Select sourdough" }).check();
+      await page.getByRole("checkbox", { name: "Select menu-board" }).check();
       await page.getByRole("button", { name: /^shop-front/ }).waitFor();
     },
   },
@@ -460,6 +460,7 @@ export const SCREENS: Screen[] = [
     open: async (page) => {
       await nav("Media")(page);
       await page.getByLabel("Choose the new file").setInputFiles({ name: "shop-front-2026.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(500_000) });
+      await page.getByRole("button", { name: "Replace the file" }).click();
       await page.getByRole("button", { name: "Undo the replace" }).waitFor();
     },
   },
@@ -565,12 +566,12 @@ export const SCREENS: Screen[] = [
     },
   },
   {
-    name: "search",
+    // Search lives in the palette: commands, then sites, plugins, themes, clients, posts and pages.
+    name: "palette-search",
     open: async (page) => {
       await page.keyboard.press("Control+k");
-      await page.getByRole("combobox", { name: "Command" }).fill("menu");
-      await page.getByRole("option", { name: /^Search everything for/ }).click();
-      await page.getByRole("list", { name: "Results" }).getByRole("button", { name: /^View / }).first().waitFor();
+      await page.getByRole("combobox", { name: "Search or run a command" }).fill("menu");
+      await page.getByRole("group", { name: "Posts and pages" }).getByRole("option").first().waitFor();
     },
   },
   { name: "loading", fixture: "loading" },

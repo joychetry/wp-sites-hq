@@ -676,6 +676,8 @@ pub struct Job {
     pub finished_at: Option<i64>,
     /// `Human`, or `Agent` for a plan an AI agent proposed.
     pub proposed_by: Actor,
+    /// The AI app that proposed an agent's plan, as it names itself (untrusted, plain text).
+    pub agent_app: Option<String>,
     /// When a person confirmed it. An agent's plan waits until then.
     pub confirmed_at: Option<i64>,
     pub declined_at: Option<i64>,
@@ -742,7 +744,7 @@ fn get_job(conn: &Connection, id: i64) -> rusqlite::Result<Option<Job>> {
     conn.query_row(
         "SELECT id, title, created_at, finished_at, proposed_by, confirmed_at, declined_at,
                 proposed_by = 'agent' AND confirmed_at IS NULL AND declined_at IS NULL
-                AND created_at <= unixepoch() - ?2
+                AND created_at <= unixepoch() - ?2, agent_app
          FROM jobs WHERE id = ?1",
         params![id, PLAN_TTL],
         |r| {
@@ -755,6 +757,7 @@ fn get_job(conn: &Connection, id: i64) -> rusqlite::Result<Option<Job>> {
                 confirmed_at: r.get(5)?,
                 declined_at: r.get(6)?,
                 expired: r.get(7)?,
+                agent_app: r.get(8)?,
                 items: Vec::new(),
             })
         },
@@ -943,7 +946,7 @@ impl Core {
         title: &str,
         changes: Vec<Change>,
     ) -> Result<Job, SiteError> {
-        let id = self.insert_job(title, &changes, Actor::Human)?;
+        let id = self.insert_job(title, &changes, Actor::Human, None)?;
         let job = self.job(id)?;
         self.spawn_job(&job);
         Ok(job)
@@ -951,7 +954,13 @@ impl Core {
 
     /// An AI agent's plan: recorded, shown in the app, and left waiting for a
     /// person to confirm it there. Plugins and themes may be named by folder or name.
-    pub fn propose_plan(&self, title: &str, mut changes: Vec<Change>) -> Result<Job, SiteError> {
+    /// `app` is the AI app's own name for itself, kept as short plain text.
+    pub fn propose_plan(
+        &self,
+        title: &str,
+        mut changes: Vec<Change>,
+        app: Option<&str>,
+    ) -> Result<Job, SiteError> {
         if changes.len() > PLAN_MAX {
             return Err(plain(format!(
                 "A plan can hold at most {PLAN_MAX} changes. Split it into smaller plans."
@@ -976,7 +985,11 @@ impl Core {
         } else {
             title
         };
-        let id = self.insert_job(title, &changes, Actor::Agent)?;
+        let app: Option<String> = app
+            .map(|a| a.chars().filter(|c| !c.is_control()).collect::<String>())
+            .map(|a| a.trim().chars().take(60).collect::<String>())
+            .filter(|a| !a.is_empty());
+        let id = self.insert_job(title, &changes, Actor::Agent, app.as_deref())?;
         let job = self.job(id)?;
         let sites = job
             .items
@@ -1088,7 +1101,13 @@ impl Core {
         let _ = self.changed.send(Changed::Jobs);
     }
 
-    fn insert_job(&self, title: &str, changes: &[Change], by: Actor) -> Result<i64, SiteError> {
+    fn insert_job(
+        &self,
+        title: &str,
+        changes: &[Change],
+        by: Actor,
+        app: Option<&str>,
+    ) -> Result<i64, SiteError> {
         if changes.is_empty() {
             return Err(plain("Pick at least one change."));
         }
@@ -1102,9 +1121,9 @@ impl Core {
         self.db(|conn| {
             let tx = conn.unchecked_transaction()?;
             tx.execute(
-                "INSERT INTO jobs (title, proposed_by, confirmed_at)
-                 VALUES (?1, ?2, CASE WHEN ?2 = 'human' THEN unixepoch() END)",
-                params![title, by.as_str()],
+                "INSERT INTO jobs (title, proposed_by, confirmed_at, agent_app)
+                 VALUES (?1, ?2, CASE WHEN ?2 = 'human' THEN unixepoch() END, ?3)",
+                params![title, by.as_str(), app],
             )?;
             let job = tx.last_insert_rowid();
             for (site, (label, from, to), c) in &rows {
@@ -2077,7 +2096,7 @@ mod tests {
         assert_eq!(wait(&core, job.id).await.items[0].state, ItemState::Done);
 
         // An agent's plan whose saved change no longer reads fails; nothing is sent.
-        let plan = core.propose_plan("x", vec![deactivate]).unwrap();
+        let plan = core.propose_plan("x", vec![deactivate], None).unwrap();
         core.db(|c| {
             c.execute(
                 "UPDATE job_items SET action = '{\"do\":\"renamed\"}' WHERE job_id = ?1",
@@ -2303,12 +2322,14 @@ mod tests {
                 plugin: plugin.into(),
             },
         };
-        let err = core.propose_plan("x", vec![change("nope")]).unwrap_err();
+        let err = core
+            .propose_plan("x", vec![change("nope")], None)
+            .unwrap_err();
         assert_eq!(
             err.to_string(),
             "Test Site has no plugin nope. List its plugins and themes first."
         );
-        assert!(core.propose_plan("x", vec![]).is_err());
+        assert!(core.propose_plan("x", vec![], None).is_err());
         // Content, products, zips and installs from a link stay with a person.
         for action in [
             json!({"do": "trash_post", "post_type": "page", "post_id": 2, "title": "Old draft"}),
@@ -2328,6 +2349,7 @@ mod tests {
                         site_id: s.id,
                         action,
                     }],
+                    None,
                 )
                 .unwrap_err();
             assert_eq!(err.to_string(), AGENT_PLAN_ONLY);
@@ -2338,18 +2360,32 @@ mod tests {
         };
         assert!(slug.agent_may_propose());
         assert!(
-            core.propose_plan("x", vec![change("WooCommerce"); PLAN_MAX + 1])
+            core.propose_plan("x", vec![change("WooCommerce"); PLAN_MAX + 1], None)
                 .is_err()
         );
-        let plan = core.propose_plan(" ", vec![change("WooCommerce")]).unwrap();
+        let plan = core
+            .propose_plan(" ", vec![change("WooCommerce")], None)
+            .unwrap();
         assert_eq!(plan.title, "Plan from an AI agent");
+        assert_eq!(plan.agent_app, None);
+        // The AI app's name for itself is untrusted: no control characters, trimmed, capped.
+        let named = |app: &str| {
+            let p = core
+                .propose_plan("x", vec![change("WooCommerce")], Some(app))
+                .unwrap();
+            core.decline_plan(p.id).unwrap();
+            p.agent_app
+        };
+        assert_eq!(named("  Claude\n").as_deref(), Some("Claude"));
+        assert_eq!(named(&"x".repeat(100)).unwrap().len(), 60);
+        assert_eq!(named(" \u{7} "), None);
         let declined = core.decline_plan(plan.id).unwrap();
         assert!(declined.declined_at.is_some() && declined.finished_at.is_some());
         assert!(core.confirm_plan(plan.id).await.is_err());
         assert!(core.decline_plan(plan.id).is_err());
         // A plan nobody answers in 7 days expires: listed as expired, never runnable.
         let old = core
-            .propose_plan("Old", vec![change("WooCommerce")])
+            .propose_plan("Old", vec![change("WooCommerce")], None)
             .unwrap();
         assert!(!old.expired);
         core.db(|c| {

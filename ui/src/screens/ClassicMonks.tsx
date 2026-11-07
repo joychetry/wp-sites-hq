@@ -2,15 +2,14 @@
 // Classic Monks on one site: its features, the settings it lets WP Sites HQ change,
 // its activity log with undo, and changes waiting for approval (plan Phase 4).
 import "../styles/screens/classic-monks.css";
-import { Empty as EmptyState, Skeleton, toast } from "../components/feedback";
+import { Blocked, Empty as EmptyState, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
 import { Select, NumberInput, Tabs, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type ActivityRow, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
 import { SiteTile } from "../components/SiteTile";
-import { Button, Glyph, Status } from "../components/ui";
-import { Sheet } from "../components/Sheet";
-import { dayTime } from "../format";
+import { Button, Glyph, Icon, Status } from "../components/ui";
+import { day, dayTime } from "../format";
 
 type Tab = "features" | "settings" | "activity" | "approvals" | "reports";
 const TABS: [Tab, string, string][] = [
@@ -44,7 +43,7 @@ export const toolLabel = (tool: string) => {
 
 /** Who made a change, as the log names them: changes this app made are yours, also from before
  * its rename (older rows say Monks Central). */
-export const whoOf = (who: string) => (who === "WP Sites HQ" || who === "Monks Central" ? "You" : who || "Not known");
+export const whoOf = (who: string) => (/^(WP Sites HQ|Monks Central)$/.test(who) ? "You" : who || "Not known");
 const initials = (who: string) =>
   who
     .split(/[\s-]+/)
@@ -53,13 +52,35 @@ const initials = (who: string) =>
     .map((w) => w[0].toUpperCase())
     .join("") || "?";
 
-const firstCm = (sites: Site[]) => (sites.find((s) => !cmBlocked(s)) ?? sites[0])?.id ?? null;
+/** What a waiting change acts on: the site's own name for it, else the id in the tool's arguments. */
+export function targetOf(a: Approval): string {
+  const p = a.preview ?? {};
+  const name = [p.title, p.display_name, p.name, p.username].find((v) => typeof v === "string" && v.trim());
+  if (name) return `“${name}”`;
+  const args = a.input ?? {};
+  const ids: [string, string][] = [["post_id", "post"], ["user_id", "user"], ["comment_id", "comment"], ["term_id", "term"], ["plugin", "plugin"], ["theme", "theme"], ["id", "number"]];
+  const hit = ids.find(([k]) => ["string", "number"].includes(typeof args[k]));
+  return hit ? `${hit[1]} ${args[hit[0]]}` : "";
+}
 
-export function ClassicMonks({ sites }: { sites: Site[] }) {
-  const [siteId, setSiteId] = useState<number | null>(() => firstCm(sites));
+const firstCm = (sites: Site[]) => (sites.find((s) => !cmBlocked(s)) ?? sites[0])?.id ?? null;
+const suffix = (s: Site) => (cmBlocked(s) ? " (can't change here)" : "");
+
+// shortcut: the next ClassicMonks opens on this site's waiting changes (set by the AI page's link), upgrade to App state if more pages need it.
+let start: number | null = null;
+export const showApprovals = (siteId: number) => {
+  start = siteId;
+};
+
+export function ClassicMonks({ sites, onAi }: { sites: Site[]; onAi?: () => void }) {
+  const [initial] = useState(() => (sites.some((s) => s.id === start) ? start : null));
+  useEffect(() => {
+    start = null;
+  }, []);
+  const [siteId, setSiteId] = useState<number | null>(() => initial ?? firstCm(sites));
   const site = sites.find((s) => s.id === siteId) ?? sites.find((s) => s.id === firstCm(sites)) ?? null;
   const blocked = site ? cmBlocked(site) : null;
-  const [tab, setTab] = useState<Tab>("features");
+  const [tab, setTab] = useState<Tab>(initial != null ? "approvals" : "features");
   // Bumped after an undo so the open tab reads the site again.
   const [round, setRound] = useState(0);
   const [logged, setLogged] = useState(0);
@@ -113,10 +134,12 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
               </div>
               {update && <Status pill tone="ok">{update} ready</Status>}
             </div>
-            <p className="dim">
-              Each change applies to the site at once and is logged, so you can undo it from Activity. Locked features (security and login) change only in
-              WordPress, so a mistake here can't lock you out.
-            </p>
+            {current === "features" && (
+              <p className="dim">
+                Each change applies to the site at once and is logged, so you can undo it from Activity. Locked features (security and login) change only in
+                WordPress, so a mistake here can't lock you out.
+              </p>
+            )}
           </div>
         </section>
         {count > 0 && current !== "approvals" && (
@@ -148,7 +171,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
   return (
     <Page className="cm" side={side}>
       <Toolbar>
-        <label className="row">
+        <label className="row" data-tip={site ? `${site.name}${suffix(site)}` : undefined}>
           <span className="label">Site</span>
           <Select
             className="input"
@@ -162,7 +185,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
               <option key={s.id} value={s.id}>
                 <SiteTile site={s} size="sm" />
                 {s.name}
-                {cmBlocked(s) ? (s.mode === "basic" ? " (no Classic Monks)" : " (not available)") : ""}
+                {suffix(s)}
               </option>
             ))}
           </Select>
@@ -172,21 +195,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
         <Tabs
           label="Show"
           idBase="cm"
-          tabs={tools.map(([id, label]) => ({
-            id,
-            text: label,
-            label:
-              id === "approvals" && count > 0 ? (
-                <>
-                  {label}
-                  <span className="cm-n" aria-hidden="true">
-                    {count}
-                  </span>
-                </>
-              ) : (
-                label
-              ),
-          }))}
+          tabs={tools.map(([id, label]) => ({ id, label, count: id === "approvals" ? count : undefined }))}
           value={current}
           onChange={(t) => {
             setTab(t);
@@ -196,9 +205,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
       <div role={blocked || !site ? undefined : "tabpanel"} id="cm-panel" aria-labelledby={blocked || !site ? undefined : `cm-tab-${current}`}>
         {blocked || !site ? (
           <section className="card">
-            <EmptyState title={`Classic Monks isn't available on ${site?.name ?? "this site"}.`}>
-              <p>{blocked}</p>
-            </EmptyState>
+            {site && blocked && <Blocked site={site} reason={blocked} title={site.sign_in_again ? undefined : `Classic Monks can't be changed on ${site.name}`} />}
           </section>
         ) : (
           <div className="stack">
@@ -211,7 +218,7 @@ export function ClassicMonks({ sites }: { sites: Site[] }) {
             ) : current === "reports" ? (
               <Reports key={site.id} site={site} />
             ) : (
-              <Approvals key={site.id} site={site} onDone={setDone} read={waiting} />
+              <Approvals key={site.id} site={site} onDone={setDone} read={waiting} onAi={onAi} />
             )}
           </div>
         )}
@@ -255,10 +262,12 @@ function Loading({ label }: { label: string }) {
   );
 }
 
-function Empty({ title, children }: { title: string; children: ReactNode }) {
+function Empty({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className="card">
-      <EmptyState title={title}>{children}</EmptyState>
+      <EmptyState title={title} action={action}>
+        {children}
+      </EmptyState>
     </section>
   );
 }
@@ -271,10 +280,13 @@ function Features({ site, onDone, round }: Part) {
   if (error) return <Failed what="Classic Monks' features" error={error} retry={load} />;
   if (!data) return <Loading label={`Reading Classic Monks on ${site.name}…`} />;
   const words = typed.trim().toLowerCase();
+  // Search looks inside the chosen section; the count is always the whole site.
+  const inGroup = data.filter((g) => !group || g.key === group);
   const groups = words
-    ? [{ key: "", label: "Matching", toggles: data.flatMap((g) => g.toggles).filter((t) => `${t.label} ${t.name} ${t.description}`.toLowerCase().includes(words)) }]
-    : data.filter((g) => !group || g.key === group);
-  const on = groups.flatMap((g) => g.toggles).filter((t) => t.on).length;
+    ? [{ key: "", label: "Matching", toggles: inGroup.flatMap((g) => g.toggles).filter((t) => `${t.label} ${t.name} ${t.description}`.toLowerCase().includes(words)) }]
+    : inGroup;
+  const every = data.flatMap((g) => g.toggles);
+  const on = every.filter((t) => t.on).length;
   const flip = async (name: string, label: string, on: boolean) => {
     // Ignored while one changes, rather than disabled, so the switch keeps keyboard focus.
     if (busy) return;
@@ -294,7 +306,7 @@ function Features({ site, onDone, round }: Part) {
       <Toolbar>
         <label className="row">
           <span className="label">Section</span>
-          <Select className="input sm" aria-label="Section" value={group} disabled={!!words} onChange={(e) => setGroup(e.target.value)}>
+          <Select className="input sm" aria-label="Section" value={group} onChange={(e) => setGroup(e.target.value)}>
             <option value="">All sections</option>
             {data.map((g) => (
               <option key={g.key} value={g.key}>
@@ -305,12 +317,12 @@ function Features({ site, onDone, round }: Part) {
         </label>
         <SearchInput aria-label="Find a feature" placeholder="Find a feature" value={typed} onChange={(e) => setTyped(e.target.value)} />
         <span className="end dim" role="status">
-          <b>{on}</b> switched on
+          <b>{on}</b> of {every.length} turned on
         </span>
       </Toolbar>
       {groups.every((g) => g.toggles.length === 0) ? (
-        <Empty title="No feature matches">
-          <p>Try another word.</p>
+        <Empty title="No feature matches" action={<Button onClick={() => setTyped("")}>Clear search</Button>}>
+          <p>{group ? "Try another word, or look in All sections." : "Try another word."}</p>
         </Empty>
       ) : (
         <section className="card" aria-label={`Features on ${site.name}`}>
@@ -328,15 +340,15 @@ function Features({ site, onDone, round }: Part) {
                         checked={t.on}
                         disabled={t.locked}
                         aria-busy={busy === t.name}
-                        aria-describedby={t.description || t.section ? `fd-${t.name}` : undefined}
+                        aria-describedby={t.description ? `fd-${t.name}` : undefined}
                         onChange={() => flip(t.name, t.label, !t.on)}
                       />
                       <span className="what">
                         <label htmlFor={`f-${t.name}`}>{t.label}</label>
-                        {(t.description || t.section) && <small id={`fd-${t.name}`}>{t.description || t.section}</small>}
+                        {t.description && <small id={`fd-${t.name}`}>{t.description}</small>}
                       </span>
                       {t.locked && (
-                        <span className="tag" data-tip="Changes only in WordPress, so a mistake here can't lock you out.">
+                        <span className="tag" data-tip="Change it in the site's WordPress dashboard, so a mistake here can't lock you out.">
                           <Glyph name="lock" />
                           Locked
                         </span>
@@ -352,6 +364,10 @@ function Features({ site, onDone, round }: Part) {
     </>
   );
 }
+
+/** A setting's raw option, in words: "default" is WordPress's own, an empty one was never set. */
+const OPTION_WORD: Record<string, string> = { default: "WordPress default", "": "Not set" };
+const optionWord = (o: string) => OPTION_WORD[o] ?? o.charAt(0).toUpperCase() + o.slice(1);
 
 function Settings({ site, onDone, round }: Part) {
   const { data, error, load } = useRead<Setting[]>(() => api.settings(site.id), [site.id, round]);
@@ -372,7 +388,7 @@ function Settings({ site, onDone, round }: Part) {
     setBusy(s.name);
     try {
       const undo = await api.setSetting(site.id, s.name, value);
-      onDone({ text: `Set ${s.label} to ${raw} on ${site.name}.`, undo, ok: true });
+      onDone({ text: `Set ${s.label} to ${s.control === "select" ? optionWord(raw) : raw} on ${site.name}.`, undo, ok: true });
       setEdits(({ [s.name]: _, ...rest }) => rest);
       load();
     } catch (e) {
@@ -396,14 +412,14 @@ function Settings({ site, onDone, round }: Part) {
               </li>
             ),
             <li key={s.name}>
-              <div className="set-field">
-                <b id={`set-${s.name}`}>{s.label}</b>
+              <b id={`set-${s.name}`}>{s.label}</b>
+              <div className="row">
                 {s.control === "select" ? (
                   <Select className="input" aria-labelledby={`set-${s.name}`} value={valueOf(s)} onChange={(e) => setEdits({ ...edits, [s.name]: e.target.value })}>
-                    {!s.options.includes(valueOf(s)) && <option value={valueOf(s)}>{valueOf(s) || "not set"}</option>}
+                    {!s.options.includes(valueOf(s)) && <option value={valueOf(s)}>{optionWord(valueOf(s))}</option>}
                     {s.options.map((o) => (
                       <option key={o} value={o}>
-                        {o}
+                        {optionWord(o)}
                       </option>
                     ))}
                   </Select>
@@ -418,12 +434,12 @@ function Settings({ site, onDone, round }: Part) {
                     onChange={(e) => setEdits({ ...edits, [s.name]: e.target.value })}
                   />
                 )}
-                {(s.description || s.section) && <small>{s.description || s.section}</small>}
+                <Button kind={changed ? "soft" : undefined} disabled={!changed || busy === s.name} aria-label={`Save ${s.label}`} onClick={() => save(s)}>
+                  {busy === s.name ? "Saving…" : "Save"}
+                  {changed && <Glyph name="check" />}
+                </Button>
               </div>
-              <Button kind={changed ? "soft" : undefined} disabled={!changed || busy === s.name} aria-label={`Save ${s.label}`} onClick={() => save(s)}>
-                {busy === s.name ? "Saving…" : `Save ${s.label}`}
-                {changed && <Glyph name="check" />}
-              </Button>
+              {s.description && <small>{s.description}</small>}
             </li>,
           ];
         })}
@@ -435,40 +451,64 @@ function Settings({ site, onDone, round }: Part) {
   );
 }
 
-/** One logged change: who made it, what changed and when, then Undo or what became of it. */
-function Change({ row, busy, onUndo }: { row: ActivityRow; busy: boolean; onUndo: () => void }) {
-  const [word, tone] = STATUS_WORD[row.status] ?? [row.status, "unknown"];
+/** A status word with its icon; waiting for approval gets the clock, as in the waiting card. `small`: the icon alone, the word in a tip. */
+function StatusOf({ status, small }: { status: string; small?: boolean }) {
+  const [word, tone] = STATUS_WORD[status] ?? [status, "unknown"];
+  const icon = status === "pending" ? <Glyph name="clock" /> : <Icon tone={tone} />;
+  return small ? (
+    <span className={`st ${tone}`} data-tip={word}>
+      {icon}
+      <span className="sr-only">{word}</span>
+    </span>
+  ) : status === "pending" ? (
+    <span className={`st ${tone}`}>
+      {icon}
+      {word}
+    </span>
+  ) : (
+    <Status tone={tone}>{word}</Status>
+  );
+}
+
+/** One logged change: who made it, what changed and when, then Undo or what became of it. `small` (the side card) keeps it to one line each. */
+function Change({ row, busy, onUndo, small }: { row: ActivityRow; busy: boolean; onUndo: () => void; small?: boolean }) {
   const who = whoOf(row.who);
   const what = row.summary || toolLabel(row.tool);
+  const when = dayTime(row.time) || row.time;
+  const undo = `Undo ${what} from ${when}`;
   return (
     <li className="fix">
       <span className={`av ${who === "You" ? "me" : ""}`} aria-hidden="true">
         {who === "You" ? "You" : initials(who)}
       </span>
       <div>
-        <b>{what}</b>
-        <span>
-          {who} · {dayTime(row.time) || row.time}
+        <b data-tip={small ? what : undefined}>{what}</b>
+        <span data-tip={small ? `${who} · ${when}` : undefined}>
+          {who} · {when}
         </span>
       </div>
       {row.can_undo ? (
-        <Button small className="ghost" disabled={busy} aria-label={`Undo ${what} at ${row.time}`} onClick={onUndo}>
-          {busy ? "Undoing…" : "Undo"}
-          <Glyph name="undo" />
-        </Button>
+        small ? (
+          <button type="button" className="icon-btn" disabled={busy} aria-label={undo} data-tip="Undo" onClick={onUndo}>
+            <Glyph name="undo" />
+          </button>
+        ) : (
+          <Button small className="ghost" disabled={busy} aria-label={undo} onClick={onUndo}>
+            {busy ? "Undoing…" : "Undo"}
+            <Glyph name="undo" />
+          </Button>
+        )
       ) : (
-        <Status tone={tone}>{word}</Status>
+        <StatusOf status={row.status} small={small} />
       )}
     </li>
   );
 }
 
-/** Undo one logged change once you say so (the design's "Undo this change?"); the screen reads the site again. */
+/** Undo one logged change at once, as the toast's Undo does: an undo is itself logged and can be undone. */
 function useUndo(site: Site, onDone: (d: Done) => void) {
   const [busy, setBusy] = useState<number | null>(null);
-  const [asking, setAsking] = useState<ActivityRow | null>(null);
-  const run = async (r: ActivityRow) => {
-    setAsking(null);
+  const undo = async (r: ActivityRow) => {
     setBusy(r.id);
     try {
       await api.undo(site.id, r.id);
@@ -479,60 +519,31 @@ function useUndo(site: Site, onDone: (d: Done) => void) {
       setBusy(null);
     }
   };
-  const ask = asking && (
-    <Sheet
-      dialog
-      title={`Undo this change on ${site.name}?`}
-      intro="Classic Monks puts back what this change replaced, and logs the undo too."
-      onClose={() => setAsking(null)}
-      footer={
-        <>
-          <Button onClick={() => setAsking(null)}>Keep it</Button>
-          <Button kind="primary" className="disc" onClick={() => run(asking)}>
-            Undo
-            <span className="btn-disc">
-              <Glyph name="undo" />
-            </span>
-          </Button>
-        </>
-      }
-    >
-      <dl className="kv cm-undo">
-        <dt>Change</dt>
-        <dd>{asking.summary || toolLabel(asking.tool)}</dd>
-        <dt>Made by</dt>
-        <dd>
-          {whoOf(asking.who)} · {dayTime(asking.time) || asking.time}
-        </dd>
-      </dl>
-    </Sheet>
-  );
-  return { busy, undo: setAsking, ask };
+  return { busy, undo };
 }
 
 function Recent({ site, onDone, round, onAll }: Part & { onAll: () => void }) {
   const { data } = useRead<Activity>(() => api.activity(site.id, 1), [site.id, round]);
-  const { busy, undo, ask } = useUndo(site, onDone);
+  const { busy, undo } = useUndo(site, onDone);
   const rows = data?.rows.slice(0, 3) ?? [];
   return (
     <section className="card" aria-labelledby="cm-recent-t">
       <div className="card-head">
-        <h2 id="cm-recent-t">Recent changes</h2>
+        <h2 id="cm-recent-t">Latest changes</h2>
         <button type="button" className="link" onClick={onAll}>
-          Activity
+          Open Activity
           <Glyph name="arrow" />
         </button>
       </div>
       {data && rows.length === 0 ? (
         <p className="quiet">Nothing changed through Classic Monks yet.</p>
       ) : (
-        <ul className="fixes recent" aria-label="Recent changes">
+        <ul className="fixes recent" aria-label="Latest changes">
           {rows.map((r) => (
-            <Change key={r.id} row={r} busy={busy === r.id} onUndo={() => undo(r)} />
+            <Change key={r.id} row={r} busy={busy === r.id} onUndo={() => undo(r)} small />
           ))}
         </ul>
       )}
-      {ask}
     </section>
   );
 }
@@ -540,13 +551,13 @@ function Recent({ site, onDone, round, onAll }: Part & { onAll: () => void }) {
 function Log({ site, onDone, round }: Part) {
   const [page, setPage] = useState(1);
   const { data, error, load } = useRead<Activity>(() => api.activity(site.id, page), [site.id, page, round]);
-  const { busy, undo, ask } = useUndo(site, onDone);
+  const { busy, undo } = useUndo(site, onDone);
   if (error) return <Failed what="The activity log" error={error} retry={load} />;
   if (!data) return <Loading label={`Reading the activity log on ${site.name}…`} />;
   if (data.rows.length === 0)
     return (
       <Empty title="Nothing in the log yet">
-        <p>Changes made through Classic Monks' tools, by WP Sites HQ or an AI app, show here.</p>
+        <p>Changes made through Classic Monks, by WP Sites HQ or an AI app, show here.</p>
       </Empty>
     );
   return (
@@ -556,45 +567,80 @@ function Log({ site, onDone, round }: Part) {
           <Change key={r.id} row={r} busy={busy === r.id} onUndo={() => undo(r)} />
         ))}
       </ul>
-      <div className="card-foot pager">
-        <span>
-          Page {data.page} of {data.pages}, {data.total} {data.total === 1 ? "change" : "changes"}
-        </span>
-        <Button small disabled={page <= 1} onClick={() => setPage(page - 1)}>
-          <Glyph name="arrow-left" />
-          Previous page
-        </Button>
-        <Button small disabled={page >= data.pages} onClick={() => setPage(page + 1)}>
-          Next page
-          <Glyph name="arrow" />
-        </Button>
-      </div>
+      {data.pages > 1 && (
+        <div className="card-foot pager">
+          <span>
+            Page {data.page} of {data.pages}, {data.total} {data.total === 1 ? "change" : "changes"}
+          </span>
+          <Button small disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <Glyph name="arrow-left" />
+            Previous page
+          </Button>
+          <Button small disabled={page >= data.pages} onClick={() => setPage(page + 1)}>
+            Next page
+            <Glyph name="arrow" />
+          </Button>
+        </div>
+      )}
       <p className="card-foot note" id="activity-legend">
         Newest first, in the site's own time. Undo puts back what a change replaced; not every change can be undone.
       </p>
-      {ask}
     </section>
   );
 }
 
-function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
+/** How long a waiting change has left: plain at first, amber under 5 minutes, Expired at the end. */
+function Left({ seconds }: { seconds: number }) {
+  if (seconds <= 0) return <Status tone="unknown">Expired</Status>;
+  const min = Math.max(1, Math.round(seconds / 60));
+  return min < 5 ? <Status tone="warning">{min} min left</Status> : <span>{min} min left</span>;
+}
+
+function Approvals({ site, onDone, read, onAi }: Part & { read: Read<Approval[]>; onAi?: () => void }) {
   const { data, error, load } = read;
+  // Approving happens in the browser: coming back to the app reads the list again.
+  useEffect(() => {
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
+  }, [load]);
   if (error) return <Failed what="The changes waiting for approval" error={error} retry={load} />;
   if (!data) return <Loading label={`Reading ${site.name}…`} />;
+  const toAi = onAi && (
+    <>
+      {" "}
+      Changes on several sites wait as plans on the AI page.{" "}
+      <button type="button" className="link" onClick={onAi}>
+        Open AI
+        <Glyph name="arrow" />
+      </button>
+    </>
+  );
   if (data.length === 0)
     return (
-      <Empty title="Nothing is waiting for approval">
-        <p>When an AI app asks to change {site.name}, the request waits here until you approve it on the site.</p>
-        <Button onClick={load}>Check again</Button>
+      <Empty title="Nothing is waiting for approval" action={<Button onClick={load}>Check again</Button>}>
+        <p>
+          When an AI app asks to change {site.name}, the request waits here until you approve it on the site.
+          {toAi}
+        </p>
       </Empty>
     );
+  const what = (a: Approval) => [toolLabel(a.tool), targetOf(a)].filter(Boolean).join(" ");
   const open = (a: Approval) =>
     api.openApproval(site.id, a.id).then(
-      () => onDone({ text: `Opened the approval page for ${toolLabel(a.tool)} on ${site.name} in your browser.`, undo: null, ok: true }),
+      () => onDone({ text: `Opened the approval page for ${what(a)} on ${site.name} in your browser.`, undo: null, ok: true }),
       (e) => onDone({ text: String(e), undo: null, ok: false }),
     );
   return (
     <section className="card" aria-label={`Changes waiting on ${site.name}`}>
+      <div className="card-head">
+        <span className="dim">
+          {data.length === 1 ? "1 change waits" : `${data.length} changes wait`} on {site.name}
+        </span>
+        <Button small onClick={load}>
+          Check again
+          <Glyph name="refresh" />
+        </Button>
+      </div>
       <ul className="fixes" aria-label="Waiting for approval" aria-describedby="approvals-legend">
         {data.map((a) => (
           <li key={a.id} className="fix">
@@ -602,12 +648,12 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
               <Glyph name="clock" />
             </span>
             <div>
-              <b>{toolLabel(a.tool)}</b>
+              <b>{what(a)}</b>
               <span>
-                Asked by {a.who || "not known"} · {dayTime(a.time) || a.time} · {Math.max(1, Math.round(a.expires_in / 60))} min left
+                On {site.name} · Asked by {a.who || "Not known"} · {dayTime(a.time) || a.time} · <Left seconds={a.expires_in} />
               </span>
             </div>
-            <Button small aria-label={`Approve or decline on the site: ${toolLabel(a.tool)}`} onClick={() => open(a)}>
+            <Button small aria-label={`Approve or decline on the site: ${what(a)}`} disabled={a.expires_in <= 0} onClick={() => open(a)}>
               Approve or decline on the site
               <Glyph name="external" />
             </Button>
@@ -615,7 +661,8 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
         ))}
       </ul>
       <p className="card-foot note" id="approvals-legend">
-        Changes AI apps asked for. You decide each one on the site itself, so an app can never approve its own change.
+        Changes AI apps asked for on this site. You decide each one on the site itself, so an app can never approve its own change.
+        {toAi}
       </p>
     </section>
   );
@@ -623,6 +670,16 @@ function Approvals({ site, onDone, read }: Part & { read: Read<Approval[]> }) {
 
 const pct = (part: number, all: number) => (all ? `${Math.round((part / all) * 100)}%` : "no users");
 const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`;
+/** "administrator" -> "Administrators". */
+const roles = (role: string) => `${role.charAt(0).toUpperCase()}${role.slice(1).replace(/_/g, " ")}s`;
+/** The site a visitor came from, without the noise of the full address. */
+const host = (url: string) => {
+  try {
+    return new URL(url).host.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+};
 const REPORT_NAME: Record<string, string> = {
   "get-404-report": "Pages not found",
   "get-search-report": "Searches",
@@ -648,7 +705,7 @@ function Reports({ site }: { site: Site }) {
   const { data, error, load } = useRead<CmReports>(() => api.cmReports(site.id, days), [site.id, days]);
   const head = (
     <div className="card-head">
-      <h2>Module activity on {site.name}</h2>
+      <h2>What Classic Monks saw on {site.name}</h2>
       <div className="segmented" role="group" aria-label="Period">
         {[7, 30, 90].map((d) => (
           <button key={d} type="button" aria-pressed={d === days} onClick={() => setDays(d)}>
@@ -699,7 +756,7 @@ function Reports({ site }: { site: Site }) {
             )}
             {um && (
               <Num label="Unused media" n={um.has_results ? (um.counts.unused ?? 0) : "none"}>
-                {um.has_results ? `files, ${mb(um.listed_size)} listed` : "Not scanned yet"}
+                {um.has_results ? `files (${mb(um.listed_size)})` : "Not scanned yet"}
               </Num>
             )}
             {tf && (
@@ -722,6 +779,12 @@ function Reports({ site }: { site: Site }) {
             <h2>Pages not found, most visited</h2>
           </div>
           <table className="t" aria-label="Pages not found" aria-describedby="notfound-legend">
+            <colgroup>
+              <col className="c-fill" />
+              <col className="c-num" />
+              <col className="c-date" />
+              <col className="c-wide" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Address</th>
@@ -735,16 +798,22 @@ function Reports({ site }: { site: Site }) {
             <tbody>
               {nf.urls.map((u) => (
                 <tr key={u.id}>
-                  <td className="m cut">{u.url}</td>
+                  <td className="m cut" data-tip={u.url}>
+                    {u.url}
+                  </td>
                   <td className="r">{u.hits}</td>
-                  <td className="dim">{dayTime(u.last_seen) || u.last_seen}</td>
-                  <td className="dim cut">{u.referrer || "not known"}</td>
+                  <td className="dim" data-tip={dayTime(u.last_seen) || undefined}>
+                    {day(u.last_seen) || u.last_seen}
+                  </td>
+                  <td className="dim cut" data-tip={u.referrer || undefined}>
+                    {u.referrer ? host(u.referrer) : "Not known"}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="card-foot note" id="notfound-legend">
-            Addresses visitors asked for that the site doesn't have. Came from is the page that linked to it, when the browser said.
+            Addresses visitors asked for that the site doesn't have. Came from is the site that linked to it, when the browser said.
           </p>
         </section>
       )}
@@ -754,16 +823,13 @@ function Reports({ site }: { site: Site }) {
             <h2>What visitors search for</h2>
           </div>
           <ul className="fixes">
-            {se.top_searches.map((q) => (
-              <li key={q.query} className="fix two">
+            {[...se.top_searches.map((q) => ({ ...q, none: false })), ...se.zero_result_queries.map((q) => ({ ...q, none: true }))].map((q) => (
+              <li key={`${q.none}${q.query}`} className="fix two">
                 <b>{q.query}</b>
-                <span>{q.searches} times</span>
-              </li>
-            ))}
-            {se.zero_result_queries.map((q) => (
-              <li key={`0${q.query}`} className="fix two">
-                <b>{q.query}</b>
-                <Status pill tone="warning">Found nothing, {q.searches} times</Status>
+                <span>
+                  {q.searches === 1 ? "1 search" : `${q.searches} searches`}
+                  {q.none && ", found nothing"}
+                </span>
               </li>
             ))}
           </ul>
@@ -774,10 +840,14 @@ function Reports({ site }: { site: Site }) {
           <div className="card-head">
             <h2>Failed logins</h2>
           </div>
-          <p className="card-body dim">
-            Most tried names: {lo.top_usernames.map((u) => `${u.value} (${u.attempts})`).join(", ") || "none"}. Most active addresses:{" "}
-            {lo.top_ips.map((u) => `${u.value} (${u.attempts})`).join(", ")}. Lockdown is {lo.lockdown_enabled ? "on" : "off"}.
-          </p>
+          <dl className="card-body kv">
+            <dt>Most tried names</dt>
+            <dd>{lo.top_usernames.map((u) => `${u.value} (${u.attempts})`).join(", ") || "None"}</dd>
+            <dt>Most active addresses</dt>
+            <dd>{lo.top_ips.map((u) => `${u.value} (${u.attempts})`).join(", ")}</dd>
+            <dt>Login Lockdown</dt>
+            <dd>{lo.lockdown_enabled ? "On" : "Off"}</dd>
+          </dl>
         </section>
       )}
       {tf && (
@@ -786,8 +856,8 @@ function Reports({ site }: { site: Site }) {
             <h2>Two-factor sign-in</h2>
           </div>
           <p className="card-body dim">
-            {tf.enforcement.enabled ? `Required for ${tf.enforcement.roles.join(", ") || "no roles"}.` : "Not required for anyone."}{" "}
-            {tf.roles.map((r) => `${r.role}: ${r.with_2fa} of ${r.users}`).join(", ")}
+            {tf.enforcement.enabled ? `Required for ${tf.enforcement.roles.map((r) => roles(r).toLowerCase()).join(", ") || "no roles"}.` : "Not required for anyone."}{" "}
+            {tf.roles.map((r) => `${roles(r.role)}: ${r.with_2fa} of ${r.users}`).join(", ")}
           </p>
         </section>
       )}

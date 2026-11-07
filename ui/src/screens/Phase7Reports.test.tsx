@@ -15,7 +15,7 @@ afterEach(() => mockInvoke.mockReset());
 const A = site({ id: 1, name: "Alpha", client_id: 1, client: "Rosa" });
 const B = site({ id: 2, name: "Beta", client_id: 1, client: "Rosa" });
 const C = site({ id: 3, name: "Gamma" });
-const SAVED = { html: "/d/rosa-report-2026-09.html", pdf: "/d/rosa-report-2026-09.pdf", preview: "<h1>Rosa</h1>", sites: 2, notes: ["Beta: store: Timed out."] };
+const SAVED = { html: "/d/rosa-report-2026-09.html", pdf: "/d/rosa-report-2026-09.pdf", preview: "<h1>Rosa</h1>", sites: 2, notes: ["Beta's store numbers. Timed out."] };
 
 function core(clients = [{ id: 1, name: "Rosa", email: "", notes: "" }]) {
   const calls: [string, Record<string, unknown>][] = [];
@@ -65,7 +65,7 @@ test("a client's report is made, opened and its gaps named", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Open the PDF" }));
   expect(calls).toContainEqual(["report_make", { ask: { client_id: 1, site_ids: [], month: lastMonth() } }]);
   expect(calls).toContainEqual(["file_open", { path: SAVED.pdf }]);
-  expect(screen.getByText("Beta: store: Timed out.")).toBeInTheDocument();
+  expect(screen.getByText("Beta's store numbers. Timed out.")).toBeInTheDocument();
   expect(screen.getByTitle("Report preview")).toHaveAttribute("sandbox", "allow-same-origin");
 });
 
@@ -76,7 +76,7 @@ test("without clients, sites are picked one by one", async () => {
   fireEvent.click(await screen.findByRole("checkbox", { name: "Gamma" }));
   expect(make).toBeEnabled();
   fireEvent.click(make);
-  await screen.findByRole("button", { name: "Open the HTML" });
+  await screen.findByRole("button", { name: "Open the web page" });
   expect(calls.find(([c]) => c === "report_make")![1]).toEqual({ ask: { client_id: null, site_ids: [3], month: lastMonth() } });
 });
 
@@ -90,11 +90,12 @@ test("report branding saves, and Search Console asks for a client, then connects
   expect(calls.find(([c]) => c === "app_settings_save")![1].settings).toMatchObject({ report_name: "Studio North", white_label: true, search_console: false });
 
   fireEvent.click(screen.getByRole("switch", { name: /Google Search Console/ }));
-  const id = await screen.findByRole("textbox", { name: "Client ID" });
+  const id = await screen.findByRole("textbox", { name: "Google client ID" });
   fireEvent.change(id, { target: { value: "1.apps.googleusercontent.com" } });
-  fireEvent.change(screen.getByLabelText("Client secret"), { target: { value: "s" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save the client" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Connect your Google account" }));
+  fireEvent.change(screen.getByLabelText("Google client secret"), { target: { value: "s" } });
+  // The switch waits for the client: closing the dialog now would leave it off.
+  expect(screen.getByRole("switch", { name: /Google Search Console/ })).not.toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Save and connect" }));
   expect(await screen.findByText("Your Google account is connected, read only.")).toBeInTheDocument();
   expect(calls).toContainEqual(["gsc_set_client", { id: "1.apps.googleusercontent.com", secret: "s" }]);
   const status = screen.getAllByRole("status").find((s) => within(s).queryByText("Connected to Search Console."));

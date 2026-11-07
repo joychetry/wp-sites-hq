@@ -16,10 +16,9 @@ import { Sheet } from "../components/Sheet";
 import { MediaPicker } from "../components/MediaPicker";
 import { InlineText, RichText } from "../components/RichText";
 import { acfErrors, AcfGroups, invalid, type Acf } from "./AcfFields";
-import { STATUS_LABEL } from "./Content";
 import { leaveGuard } from "../fleet";
 import { Page } from "../components/page";
-import { dayTime } from "../format";
+import { dayTime, STATUS_LABEL } from "../format";
 
 
 /** "core/paragraph" -> "Paragraph", "acme/map" -> "Map (acme)", "" -> "Text". */
@@ -106,7 +105,10 @@ function FieldsEdit({ meta, value, owned, onChange }: { meta: Record<string, unk
                 </label>
               ) : (
                 <span className="grow">
-                  <b>{k}</b> <span className="dim">kept as is (not plain text)</span>
+                  <b>{k}</b>{" "}
+                  <span className="dim" data-tip="It isn't plain text, so it stays as the site has it.">
+                    Can't edit here
+                  </span>
                 </span>
               )}
               <button type="button" className="icon-btn line" aria-label={`Remove the field ${k}`} data-tip={`Remove ${k}`} onClick={() => onChange({ ...value, [k]: null })}>
@@ -198,11 +200,16 @@ function History({ site, post, onRestored }: { site: Site; post: Post; onRestore
               <b>Put back the version from {dayTime(asking.date) || asking.date}?</b> The title and body go back to that version. The current one is kept as a version too, so you can undo this.
             </p>
             <div className="row">
-              <Button small onClick={() => setAsking(null)}>
-                Keep the current one
-              </Button>
               <Button small kind="primary" disabled={busy} onClick={() => restore(asking)}>
                 {busy ? "Putting it back…" : "Put it back"}
+              </Button>
+              {/* The site's own compare screen shows what changed, before anything is put back. */}
+              <Button small onClick={() => api.openLink(`${site.url.replace(/\/$/, "")}/wp-admin/revision.php?revision=${asking.id}`, site.id).catch((e) => toast(String(e), { tone: "danger" }))}>
+                Compare on {site.name}
+                <Glyph name="external" />
+              </Button>
+              <Button small className="quiet" onClick={() => setAsking(null)}>
+                Keep the current version
               </Button>
             </div>
           </div>
@@ -292,10 +299,10 @@ function BlockRow({ b, onChange }: { b: Block; onChange: (html: string | null) =
             {b.html || "No text"}
           </span>
         )}
-        <span className="tag">
+        <small className="blk-ro" data-tip="This block's settings and content are changed in WordPress.">
           <Glyph name="lock" />
-          Kept as is
-        </span>
+          Can't edit here
+        </small>
       </li>
     );
   }
@@ -454,6 +461,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
 
   // Keep the unsaved-changes question and Ctrl+S in step with what is on the page.
   const saveRef = useRef<(to?: string) => void>(() => {});
+  const mac = /Mac/.test(navigator.userAgent);
   useEffect(() => {
     leaveGuard.ask = dirty ? (go) => setLeaving(() => go) : null;
     return () => {
@@ -471,7 +479,8 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
-  const save = async (to?: string) => {
+  // `after` runs once everything is saved (Save and leave); a new entry closes the page without it.
+  const save = async (to?: string, after?: () => void) => {
     if (saving || (!dirty && !to) || loadError || (!isNew && !post)) return;
     if (isNew && !title.trim()) {
       toast("Give it a title first.", { tone: "danger" });
@@ -486,7 +495,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
       }
       setAcfShown(bad);
       if (Object.keys(bad).length) {
-        toast(`Nothing was saved. Fix ${Object.keys(bad).length === 1 ? "the ACF field" : `${Object.keys(bad).length} ACF fields`} marked in red, then save again.`, { tone: "danger" });
+        toast(`Nothing was saved. Fix ${Object.keys(bad).length === 1 ? "the field" : `the ${Object.keys(bad).length} fields`} marked below, then save again.`, { tone: "danger" });
         return;
       }
     }
@@ -500,7 +509,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
         const p = await api.createPost(site.id, type.name, dr);
         onSaved(`Added “${p.title}” to ${site.name} as ${(STATUS_LABEL[p.status] ?? p.status).toLowerCase()}.`);
         leaveGuard.ask = null;
-        onClose();
+        (after ?? onClose)();
         return;
       }
       let p = post!;
@@ -515,20 +524,23 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
           const value = (a: Acf | null, k: string) => JSON.stringify(a?.groups.flatMap((g) => g.fields).find((f) => f.key === k)?.value ?? null);
           const fresh = (await api.acf(site.id, postId)) as Acf | null;
           if (Object.keys(acfValues).some((k) => value(fresh, k) !== value(acf, k))) {
-            toast("An ACF field was changed on the site after you opened it, so the ACF fields were not saved.", { tone: "danger", action: { label: "Open the site's version", run: () => loadAcf(postId) } });
+            toast("A field was changed on the site after you opened it, so the fields below were not saved.", { tone: "danger", action: { label: "Open the site's version", run: () => loadAcf(postId) } });
             return;
           }
           const done = await api.saveAcf(site.id, postId, acfValues);
           const n = Object.keys(acfValues).length;
           const back = done.undo;
-          toast(`Saved ${n === 1 ? "1 ACF field" : `${n} ACF fields`} of “${p.title}” on ${site.name}.`, back ? { undo: () => api.undo(site.id, back).then(() => (loadAcf(postId), toast("The ACF fields are back as they were."))) } : undefined);
+          toast(`Saved ${n === 1 ? "1 field" : `${n} fields`} of “${p.title}” on ${site.name}.`, back ? { undo: () => api.undo(site.id, back).then(() => (loadAcf(postId), toast("The fields are back as they were."))) } : undefined);
           loadAcf(postId);
         } catch (e) {
           const { byKey, rest } = acfErrors(acf, String(e));
           setAcfShown(byKey);
-          toast(rest.length ? rest.join(" ") : "ACF didn't take the fields marked in red, so none of the ACF fields were saved.", { tone: "danger" });
+          toast(rest.length ? rest.join(" ") : "The site didn't take the fields marked below, so none of them were saved.", { tone: "danger" });
+          return;
         }
       }
+      leaveGuard.ask = null;
+      after?.();
     } catch (e) {
       const why = String(e);
       // Someone changed it on the site since it opened: theirs can be opened, dropping ours.
@@ -597,6 +609,10 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
   const permalinkBase = post?.link && slug ? post.link.replace(/[^/]+\/?$/, "") : null;
   const primary = live ? "Update" : !type.can_publish ? "Submit for review" : future ? "Schedule" : "Publish";
   const primaryTo = visibility === "private" ? "private" : live ? undefined : !type.can_publish ? "pending" : "publish";
+  // WordPress doesn't edit a trashed entry: it opens read-only, with Bring back as the one action.
+  const trashed = !isNew && post?.status === "trash";
+  const canUntrash = cm && hasTool(site, "untrash-post");
+  const idle = !trashed && live && !dirty;
 
   if (loadError) {
     return (
@@ -621,9 +637,13 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
   if (!isNew && !post) bodyPart = <p role="status">Opening it…</p>;
   else if (post?.locked) {
     bodyPart = (
-      <p className="callout">
+      <p className="callout ed-locked">
         <Glyph name="lock" />
         <span>{post.locked}</span>
+        <Button small onClick={() => api.openLink(editUrl, site.id).catch((e) => toast(String(e), { tone: "danger" }))}>
+          Edit in WordPress
+          <Glyph name="external" />
+        </Button>
       </p>
     );
   } else if (isNew || isClassic(post!)) {
@@ -632,7 +652,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
     bodyPart = (
       <>
         <p className="help-text" id="blocks-help">
-          This {noun} is made of blocks. Click a text block to change its words; every other block, and every block's settings, stays exactly as it is.
+          You can change the words in text blocks. Other blocks and all block settings stay as they are.
         </p>
         <ol className="blocks" key={round} aria-label="Blocks" aria-describedby="blocks-help">
           {post!.blocks.map((b) => (
@@ -664,16 +684,40 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
         <h2 ref={heading} tabIndex={-1}>
           {isNew ? `New ${noun}` : `Edit ${noun}`} <span className="dim">on {site.name}</span>
         </h2>
-        {dirty && <Status pill tone="warning">Unsaved changes</Status>}
+        {dirty && !trashed && <Status pill tone="warning">Unsaved changes</Status>}
+        {idle && (
+          <span className="dim ed-idle" id="ed-idle">
+            No changes yet
+          </span>
+        )}
+        {trashed ? (
+          canUntrash && (
+            <Button kind="primary" disabled={saving} onClick={untrash}>
+              {saving ? "Bringing it back…" : "Bring back from the trash"}
+            </Button>
+          )
+        ) : (
+          <Button kind="primary" disabled={saving || (live && !dirty) || (!isNew && !post)} aria-describedby={idle ? "ed-idle" : undefined} onClick={() => save(primaryTo)}>
+            {saving ? "Saving…" : primary}
+          </Button>
+        )}
       </div>
-      <div className="ed-grid" inert={saving} aria-busy={saving || undefined}>
+      {trashed && (
+        <p className="callout ed-locked">
+          <Glyph name="trash" />
+          <span>
+            This {noun} is in the trash. {canUntrash ? "Bring it back to change it." : "Bring it back in WordPress to change it."}
+          </span>
+        </p>
+      )}
+      <div className={trashed ? "ed-grid off" : "ed-grid"} inert={saving || trashed} aria-busy={saving || undefined}>
         <div className="ed-main stack">
           <section className="card ed-card" aria-label="Title and body">
             <div className="ed-card-body">
               <input className="input title-lg" aria-label="Title" placeholder="Add title" value={title} onChange={(e) => setTitle(e.target.value)} />
               {pf && (
                 <label className="ed-slug row">
-                  <span className="dim">Permalink:</span>
+                  <span className="dim">Permalink</span>
                   {permalinkBase && <span className="mono cut ed-base">{permalinkBase}</span>}
                   <input className="input sm mono" aria-label="Slug" placeholder={isNew ? "made from the title" : "slug"} value={slug} onChange={(e) => setSlug(e.target.value)} />
                 </label>
@@ -722,12 +766,12 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               {visibility === "password" && <input className="input sm" aria-label="Password" placeholder="The password visitors type" value={password} onChange={(e) => setPassword(e.target.value)} />}
             </fieldset>
             <div className="field">
-              <span>Publish date (the site's time)</span>
+              <span>Publish date, site time</span>
               <DateInput type="datetime-local" aria-label="Publish date" value={date} onChange={(e) => setDate(e.target.value)} />
-              <small>{isNew ? "Empty means now. " : ""}A date after now schedules it.</small>
+              <small>{isNew ? "Leave empty to publish now. " : ""}A later date schedules it.</small>
             </div>
             <div className="ed-acts">
-              {!live && visibility !== "private" && (
+              {!live && !trashed && visibility !== "private" && (
                 <Button small disabled={saving || (!dirty && !isNew)} onClick={() => save(status === "pending" ? "pending" : "draft")}>
                   {status === "pending" ? "Save as pending" : "Save draft"}
                 </Button>
@@ -739,23 +783,14 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
                 </Button>
               )}
             </div>
-            <div className="ed-acts end">
-              {!isNew && post && post.status !== "trash" && type.can_delete && (
+            {!isNew && post && !trashed && type.can_delete && (
+              <div className="ed-acts end">
                 <Button kind="danger" onClick={() => setTrashing(true)}>
                   Move to the trash
                 </Button>
-              )}
-              {!isNew && post?.status === "trash" && canHistory ? (
-                <Button disabled={saving} onClick={untrash}>
-                  {saving ? "Bringing it back…" : "Bring it back from the trash"}
-                </Button>
-              ) : (
-                <Button kind="primary" disabled={saving || (live && !dirty) || (!isNew && !post)} onClick={() => save(primaryTo)}>
-                  {saving ? "Saving…" : primary}
-                </Button>
-              )}
-            </div>
-            <small className="dim">Ctrl+S saves.</small>
+              </div>
+            )}
+            {!trashed && <small className="dim">{mac ? "⌘S saves" : "Ctrl+S saves"}</small>}
           </Box>
           {type.taxonomies.map((t) => (
             <Box key={t.name} title={t.label}>
@@ -768,7 +803,6 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               {picking ? (
                 <MediaPicker
                   site={site}
-                  cancel="Keep the current image"
                   onCancel={() => setPicking(false)}
                   onPick={(m) => {
                     setImage({ id: m.id, url: m.url });
@@ -799,7 +833,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
           {authors.length > 0 && (
             <Box title="Author">
               <Select className="input sm" aria-label="Author" value={author} onChange={(e) => setAuthor(Number(e.target.value))}>
-                {authors.some((a) => a.id === author) || !post ? null : <option value={author}>{post.author || `User ${author}`}</option>}
+                {authors.some((a) => a.id === author) || !post ? null : <option value={author}>{post.author || `Untitled (#${author})`}</option>}
                 {authors.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
@@ -815,7 +849,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
                   <span>Parent</span>
                   <Select className="input sm" aria-label="Parent" value={parent} onChange={(e) => setParent(Number(e.target.value))}>
                     <option value={0}>No parent (top level)</option>
-                    {parents.some((x) => x.id === parent) || parent === 0 ? null : <option value={parent}>Entry {parent}</option>}
+                    {parents.some((x) => x.id === parent) || parent === 0 ? null : <option value={parent}>Untitled (#{parent})</option>}
                     {parents.map((x) => (
                       <option key={x.id} value={x.id}>
                         {x.title || "(no title)"}
@@ -867,7 +901,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             <>
               <Button onClick={() => setTrashing(false)}>Keep it</Button>
               <Button kind="danger" className="solid" disabled={saving} onClick={trash}>
-                {saving ? "Moving…" : "Move it to the trash"}
+                {saving ? "Moving…" : "Move to the trash"}
                 <Glyph name="trash" />
               </Button>
             </>
@@ -886,7 +920,6 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               <Button onClick={() => setLeaving(null)}>Keep editing</Button>
               <Button
                 kind="danger"
-                className="solid"
                 onClick={() => {
                   const go = leaving;
                   leaveGuard.ask = null;
@@ -896,10 +929,21 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               >
                 Leave without saving
               </Button>
+              <Button
+                kind="primary"
+                onClick={() => {
+                  const go = leaving;
+                  setLeaving(null);
+                  // A draft stays a draft: only the changes are saved on the way out.
+                  void save(live ? undefined : status, go);
+                }}
+              >
+                Save and leave
+              </Button>
             </>
           }
         >
-          <p>Your changes to {title ? <>&ldquo;{title}&rdquo;</> : `this ${noun}`} aren't saved. If you leave now, they are lost.</p>
+          <p>Your changes to {title ? <>&ldquo;{title}&rdquo;</> : `this ${noun}`} aren't saved. Save them now, or leave and lose them.</p>
         </Sheet>
       )}
     </Page>

@@ -3,7 +3,7 @@
 // upload files picked on this computer, change an item's details, replace its file, move items to the trash.
 import "../styles/screens/media.css";
 import { DateInput, FilePicker, SearchInput, Select } from "../components/controls";
-import { Empty, Progress, Skeleton, toast } from "../components/feedback";
+import { Blocked, Empty, Progress, Skeleton, toast } from "../components/feedback";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { fileSize, kind, limitOf, Pic, refusal, uploadKey, useProgress } from "../components/MediaPicker";
@@ -150,6 +150,9 @@ function Uploads({ site, lib, onUploaded, onClose, children }: { site: Site; lib
   );
 }
 
+// This year's dates drop the year on the tiles, so the meta line fits a 5-column grid (the tip has the full date).
+const shortDay = (d: string) => (day(d) || d).replace(` ${new Date().getFullYear()}`, "");
+const files = (n: number) => (n === 1 ? "1 file" : `${n} files`);
 const FIELDS = ["alt", "title", "caption", "description"] as const;
 const detailsOf = (m: Item): Required<MediaDetails> => ({ alt: m.alt, title: m.title, caption: m.caption, description: m.description });
 
@@ -159,6 +162,9 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
   const [usage, setUsage] = useState<number | null | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [keepName, setKeepName] = useState(false);
+  // The new file waits here until "Replace the file", so the name option is read first; `picks` clears the picker after.
+  const [staged, setStaged] = useState<File | null>(null);
+  const [picks, setPicks] = useState(0);
   const [replacing, setReplacing] = useState<{ key: string; size: number } | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   const sent = useProgress();
@@ -186,7 +192,7 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
   const was = detailsOf(item);
   const changed = Object.fromEntries(FIELDS.filter((f) => form[f] !== was[f]).map((f) => [f, form[f]])) as MediaDetails;
   const dirty = Object.keys(changed).length > 0;
-  const name = item.title || item.file_name || "this item";
+  const name = item.title || item.file_name || "this file";
 
   const save = async () => {
     setSaving(true);
@@ -212,7 +218,8 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
     }
   };
 
-  const replace = async (f: File | undefined) => {
+  const replace = async () => {
+    const f = staged;
     if (!f) return;
     const key = uploadKey();
     setReplacing({ key, size: f.size });
@@ -220,7 +227,9 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
       const m = await api.replaceMedia(site.id, item.id, key, f.name, await fileBase64(f), keepName);
       onChanged(m, true);
       setCanUndo(true);
-      toast(m.url === item.url ? `Replaced the file of ${name}. Its address stays the same.` : `Replaced the file of ${name}. Its new address is ${m.url}.`);
+      setStaged(null);
+      setPicks((n) => n + 1);
+      toast(m.url === item.url ? `Replaced the file of ${name}. Its address stays the same.` : `Replaced the file of ${name}. Its new address is ${m.url}.`, { undo: undoReplace });
     } catch (e) {
       const why = String(e);
       toast(why.startsWith("Stopped") ? "Stopped. The file wasn't replaced." : why, { tone: why.startsWith("Stopped") ? "ok" : "danger" });
@@ -245,7 +254,7 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
       () => toast("Couldn't copy. Select the address and copy it yourself.", { tone: "danger" }),
     );
 
-  const dims = item.width && item.height ? `${item.width} × ${item.height} pixels` : null;
+  const dims = item.width && item.height ? `${item.width} × ${item.height}` : null;
   return (
     <section className="mdetails" aria-labelledby="media-details">
       <div className="card-head">
@@ -257,52 +266,6 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
       <div className="card-body">
         <div className="mpreview">
           <Pic m={item} alt={item.alt} big fresh={fresh} />
-        </div>
-        <dl className="dl">
-          <div>
-            <dt>File</dt>
-            <dd className="mono cut" data-tip={item.file_name || undefined}>
-              {item.file_name || "not known"}
-            </dd>
-          </div>
-          <div>
-            <dt>Type</dt>
-            <dd>{kind(item.mime)}</dd>
-          </div>
-          <div>
-            <dt>Size</dt>
-            <dd>{item.size ? fileSize(item.size) : "not known"}</dd>
-          </div>
-          {dims && (
-            <div>
-              <dt>Dimensions</dt>
-              <dd>{dims}</dd>
-            </div>
-          )}
-          <div>
-            <dt>Uploaded</dt>
-            <dd>{day(item.date) || item.date || "not known"}</dd>
-          </div>
-          <div>
-            <dt>By</dt>
-            <dd>{item.author || "not known"}</dd>
-          </div>
-          {cm && (
-            <div>
-              <dt>Used in</dt>
-              <dd className={usage ? undefined : "dim"}>{usage === undefined ? "Counting…" : usage === null ? "not known" : usage === 0 ? "No posts or pages" : usage === 1 ? "1 post or page" : `${usage} posts and pages`}</dd>
-            </div>
-          )}
-        </dl>
-        <div className="field">
-          <label htmlFor="media-url">Address</label>
-          <div className="row nowrap">
-            <input id="media-url" className="input sm mono" readOnly value={item.url} onFocus={(e) => e.target.select()} />
-            <Button small onClick={copy}>
-              Copy
-              <Glyph name="copy" />
-            </Button>
-          </div>
         </div>
         <form
           className="mform"
@@ -343,18 +306,75 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
             )}
           </div>
         </form>
+        <dl className="dl">
+          <div>
+            <dt>File</dt>
+            <dd className="mono cut" data-tip={item.file_name || undefined}>
+              {item.file_name || "Not known"}
+            </dd>
+          </div>
+          <div>
+            <dt>Type</dt>
+            <dd>{kind(item.mime)}</dd>
+          </div>
+          <div>
+            <dt>Size</dt>
+            <dd>{item.size ? fileSize(item.size) : "Not known"}</dd>
+          </div>
+          {dims && (
+            <div>
+              <dt>Dimensions</dt>
+              <dd>{dims}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Uploaded</dt>
+            <dd>{day(item.date) || item.date || "Not known"}</dd>
+          </div>
+          <div>
+            <dt>Uploaded by</dt>
+            <dd>{item.author || "Not known"}</dd>
+          </div>
+          {cm && (
+            <div>
+              <dt>Used in</dt>
+              <dd className={usage ? undefined : "dim"}>{usage === undefined ? "Counting…" : usage === null ? "Not known" : usage === 0 ? "No posts or pages" : usage === 1 ? "1 post or page" : `${usage} posts and pages`}</dd>
+            </div>
+          )}
+        </dl>
+        <div className="field">
+          <label htmlFor="media-url">Address</label>
+          <input id="media-url" className="input sm mono" readOnly value={item.url} onFocus={(e) => e.target.select()} />
+          {/* Under the address, so the panel's width goes to the address itself. */}
+          <div className="row">
+            <Button small onClick={copy}>
+              Copy
+              <Glyph name="copy" />
+            </Button>
+            <Button small onClick={() => api.openLink(item.url).catch((e) => toast(String(e), { tone: "danger" }))}>
+              Open the file
+              <Glyph name="external" />
+            </Button>
+          </div>
+        </div>
         <div className="mreplace" role="group" aria-labelledby="media-replace">
           <h3 id="media-replace">Replace the file</h3>
           {canReplace ? (
             <>
               <p className="dim">Same item, new file: every post that shows it gets the new one. The site keeps the earlier file until the next replace.</p>
-              <FilePicker label="Choose the new file" disabled={!!replacing} busy={replacing ? "Replacing…" : undefined} onFile={replace} />
               <label className="row check">
                 <input type="checkbox" checked={keepName} disabled={!!replacing} onChange={(e) => setKeepName(e.target.checked)} />
                 <span>
-                  Use the new file's name <span className="dim">the address changes</span>
+                  Use the new file's name <span className="dim">(the address changes)</span>
                 </span>
               </label>
+              <FilePicker key={picks} label="Choose the new file" disabled={!!replacing} onFile={(f) => setStaged(f ?? null)} />
+              {staged && !replacing && (
+                <Button kind="primary" onClick={replace}>
+                  Replace the file
+                  <Glyph name="refresh" />
+                </Button>
+              )}
               {replacing && (
                 <div className="row nowrap">
                   <Progress label={`Replacing the file of ${name}`} value={sent[replacing.key] ?? 0} max={replacing.size} />
@@ -374,10 +394,6 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
             <p className="dim">{cm ? "Replacing files needs a newer Classic Monks on the site." : "Replacing files needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. This site is in Basic mode."}</p>
           )}
         </div>
-        <Button className="quiet" onClick={() => api.openLink(item.url).catch((e) => toast(String(e), { tone: "danger" }))}>
-          Open the file
-          <Glyph name="external" />
-        </Button>
       </div>
     </section>
   );
@@ -436,9 +452,11 @@ export function Media({ sites }: { sites: Site[] }) {
 
   if (sites.length === 0) {
     return (
-      <Empty title="No sites yet">
-        <p>Add a site on Sites, then its media library shows here.</p>
-      </Empty>
+      <Page>
+        <Empty picture="sites" title="No sites yet">
+          <p>Add a site on Sites, then its media library shows here.</p>
+        </Empty>
+      </Page>
     );
   }
 
@@ -484,17 +502,17 @@ export function Media({ sites }: { sites: Site[] }) {
       load(1, true);
       const n = r.done.length;
       if (n)
-        toast(`Moved ${n === 1 ? "1 item" : `${n} items`} to the trash on ${site.name}. Classic Monks keeps them there for a while before deleting them.`, {
+        toast(`Moved ${files(n)} to the trash on ${site.name}. You can undo this for a while.`, {
           undo: () =>
             api.trashMedia(site.id, r.done, true).then(
               (b) => {
-                toast(`Brought ${b.done.length === 1 ? "1 item" : `${b.done.length} items`} back from the trash.`);
+                toast(`Brought ${files(b.done.length)} back from the trash on ${site.name}.`);
                 load(1, true);
               },
               (e) => toast(String(e), { tone: "danger" }),
             ),
         });
-      if (r.skipped.length) toast(`${r.skipped.length === 1 ? "1 item stayed" : `${r.skipped.length} items stayed`}: ${r.skipped.map(([, why]) => why).join(" ")}`, { tone: "danger" });
+      if (r.skipped.length) toast(`${files(r.skipped.length)} stayed: ${r.skipped.map(([, why]) => why).join(" ")}`, { tone: "danger" });
     } catch (e) {
       toast(String(e), { tone: "danger" });
     }
@@ -510,23 +528,19 @@ export function Media({ sites }: { sites: Site[] }) {
         {canTrash && tickBox(m)}
         <button type="button" className="mthumb" aria-pressed={m.id === chosen?.id} onClick={() => setPicked(m.id)}>
           <b data-tip={m.title || m.file_name}>{m.title || m.file_name || "No title"}</b>
-          <small>
+          <small data-tip={m.date ? `${kind(m.mime)}, uploaded ${day(m.date) || m.date}` : undefined}>
             {kind(m.mime)}
-            {m.date && ` · ${day(m.date) || m.date}`}
+            {m.date && ` · ${shortDay(m.date)}`}
           </small>
         </button>
       </div>
     </>
   );
-  const tickBox = (m: Item) => <input type="checkbox" aria-label={`Tick ${m.title || m.file_name || "No title"}`} checked={ticked.has(m.id)} onChange={(e) => tick(m.id, e.target.checked)} />;
+  const tickBox = (m: Item) => <input type="checkbox" aria-label={`Select ${m.title || m.file_name || "No title"}`} checked={ticked.has(m.id)} onChange={(e) => tick(m.id, e.target.checked)} />;
 
   let body;
   if (blocked) {
-    body = (
-      <Empty title={`${site!.name}'s media isn't available here`}>
-        <p>{blocked}</p>
-      </Empty>
-    );
+    body = <Blocked site={site!} reason={blocked} title={`${site!.name}'s media isn't available here`} />;
   } else if (error) {
     body = (
       <Empty alert title="The media library didn't load" action={<Button onClick={() => load(1)}>Try again</Button>}>
@@ -561,7 +575,7 @@ export function Media({ sites }: { sites: Site[] }) {
     body = (
       <>
         <p className="sr-only" id="media-legend">
-          Newest first. Pick one to see its details, alt text and where it is used{canTrash ? ", or tick several to move them to the trash" : ""}.
+          Newest first. Pick one to see its details, alt text and where it is used{canTrash ? ", or select several to move them to the trash" : ""}.
         </p>
         {view === "grid" ? (
           <ul className="mthumbs mgrid" aria-label={`${site?.name} media`} aria-describedby="media-legend">
@@ -574,11 +588,19 @@ export function Media({ sites }: { sites: Site[] }) {
         ) : (
           <div className="mlist">
             <table className="t" aria-label={`${site?.name} media`} aria-describedby="media-legend">
+              <colgroup>
+                {canTrash && <col className="c-tick" />}
+                <col className="c-fill" />
+                <col className="c-num" />
+                <col className="c-num" />
+                <col className="c-num" />
+                <col className="c-date" />
+              </colgroup>
               <thead>
                 <tr>
                   {canTrash && (
                     <th scope="col" className="tick">
-                      <input type="checkbox" aria-label="Tick every item shown" checked={ticked.size === items.length} ref={(el) => {
+                      <input type="checkbox" aria-label="Select all shown" checked={ticked.size === items.length} ref={(el) => {
                           if (el) el.indeterminate = ticked.size > 0 && ticked.size < items.length;
                         }} onChange={(e) => setTicked(new Set(e.target.checked ? items.map((m) => m.id) : []))} />
                     </th>
@@ -588,14 +610,15 @@ export function Media({ sites }: { sites: Site[] }) {
                   <th scope="col" className="r">
                     Size
                   </th>
-                  <th scope="col">Dimensions</th>
+                  <th scope="col" className="r">
+                    Dimensions
+                  </th>
                   <th scope="col">Uploaded</th>
-                  <th scope="col">By</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((m) => (
-                  <tr key={m.id} className={m.id === chosen?.id || ticked.has(m.id) ? "sel" : undefined}>
+                  <tr key={m.id} className={[m.id === chosen?.id && "focus", ticked.has(m.id) && "sel"].filter(Boolean).join(" ") || undefined}>
                     {canTrash && <td className="tick">{tickBox(m)}</td>}
                     <td className="name">
                       <button type="button" className="mrow" aria-pressed={m.id === chosen?.id} onClick={() => setPicked(m.id)}>
@@ -604,17 +627,21 @@ export function Media({ sites }: { sites: Site[] }) {
                           <b className="cut" data-tip={m.title || m.file_name}>
                             {m.title || "No title"}
                           </b>
-                          <small className="mono cut">{m.file_name || "not known"}</small>
+                          <small className="mono cut">{m.file_name || "Not known"}</small>
                         </span>
                       </button>
                     </td>
                     <td>{kind(m.mime)}</td>
-                    <td className="r">{m.size ? fileSize(m.size) : "not known"}</td>
-                    <td>{m.width && m.height ? `${m.width} × ${m.height}` : "none"}</td>
+                    <td className="r">{m.size ? fileSize(m.size) : "Not known"}</td>
+                    <td className="r">{m.width && m.height ? `${m.width} × ${m.height}` : ""}</td>
                     <td>
-                      <span className="when">{day(m.date) || m.date || "not known"}</span>
+                      <span className="when">{day(m.date) || m.date || "Not known"}</span>
+                      {m.author && (
+                        <span className="sub cut" data-tip={`Uploaded by ${m.author}`}>
+                          by {m.author}
+                        </span>
+                      )}
                     </td>
-                    <td className="who">{m.author || "not known"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -622,8 +649,8 @@ export function Media({ sites }: { sites: Site[] }) {
           </div>
         )}
         {canTrash && ticked.size > 0 && (
-          <div className="selbar" role="group" aria-label="Change the ticked items">
-            <b>{ticked.size === 1 ? "1 item ticked" : `${ticked.size} items ticked`}</b>
+          <div className="selbar" role="group" aria-label="Change the selected files">
+            <b>{ticked.size} selected</b>
             <Button small onClick={trash}>
               Move to the trash ({ticked.size})
               <Glyph name="trash" />
@@ -640,9 +667,12 @@ export function Media({ sites }: { sites: Site[] }) {
   return (
     <Page
       side={
-        <SidePanel className="mside" label="Media details" empty="Pick a file to see and edit its details.">
-          {!blocked && site && chosen && <Details key={`${site.id}-${chosen.id}`} site={site} item={chosen} fresh={fresh[chosen.id]} onChanged={changed} />}
-        </SidePanel>
+        // A blocked site has no files to pick, so no details panel either.
+        blocked ? undefined : (
+          <SidePanel className="mside" label="Media details" empty="Pick a file to see and edit its details.">
+            {site && chosen && <Details key={`${site.id}-${chosen.id}`} site={site} item={chosen} fresh={fresh[chosen.id]} onChanged={changed} />}
+          </SidePanel>
+        )
       }
     >
       {site && !blocked && (
@@ -720,7 +750,7 @@ export function Media({ sites }: { sites: Site[] }) {
               </label>
               <div className="field">
                 <label htmlFor="media-import-alt">Alt text</label>
-                <input id="media-import-alt" className="input" placeholder="Describe the image for people who can't see it" value={alt} onChange={(e) => setAlt(e.target.value)} />
+                <input id="media-import-alt" className="input" placeholder="Describe the image" value={alt} onChange={(e) => setAlt(e.target.value)} />
               </div>
               <div>
                 <Button className="disc" type="submit" disabled={importing || !link.trim()}>
@@ -749,8 +779,9 @@ export function Media({ sites }: { sites: Site[] }) {
           <div className="card-foot">
             {/* Read out after Load more, so the new items are noticed. */}
             <span className="count" aria-live="polite">
-              {items.length} of {lib!.total === 1 ? "1 item" : `${lib!.total} items`}
+              {items.length} of {files(lib!.total)}
             </span>
+            {!canTrash && <span className="dim">This site can't move files to the trash from here.</span>}
             {more && (
               <Button small onClick={() => load(page + 1)}>
                 Load more

@@ -21,9 +21,10 @@ const names = (sites: Site[]) =>
   sites.length <= 3 ? sites.map((s) => s.name).join(", ").replace(/, ([^,]*)$/, " and $1") : `${sites.slice(0, 2).map((s) => s.name).join(", ")} and ${sites.length - 2} more`;
 
 const monthName = month;
+const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 
 /** What every report holds, in the order the report shows it. */
-const COVERS = ["Uptime and speed of each home page", "Updates made and what changed", "Security: known vulnerabilities and fixes", "What was published, and the store", "Search numbers, when they're on in Settings"];
+const COVERS = ["Uptime and speed of each home page", "Updates made and what changed", "Security: known vulnerabilities and fixes", "What was published, and the store"];
 
 /** `onSettings`: the footnote's link to where branding is set. */
 export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () => void }) {
@@ -104,7 +105,7 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
                   <Select className="input" aria-label="Client" value={clientId ?? ""} onChange={(e) => setClientId(Number(e.target.value))}>
                     {clients.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name} ({sites.filter((s) => s.client_id === c.id).length} sites)
+                        {c.name} ({plural(sites.filter((s) => s.client_id === c.id).length, "site")})
                       </option>
                     ))}
                   </Select>
@@ -157,51 +158,50 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
                 <span>{error}</span>
               </p>
             )}
-            {saved && (
-              <section className="card rep-ready" aria-labelledby="rep-ready">
-                <div className="card-body">
-                  <h2 id="rep-ready">
-                    <span className="tile sm" aria-hidden="true">
-                      <Glyph name="check" />
-                    </span>
-                    {monthName(month)} report on {saved.sites} site{saved.sites === 1 ? "" : "s"} is ready
-                  </h2>
-                  <p className="dim">Saved as PDF and HTML in Downloads.</p>
-                  <div className="row">
-                    <Button small kind="soft" onClick={() => open(saved.pdf)}>
-                      Open the PDF
-                      <Glyph name="file" />
-                    </Button>
-                    <Button small onClick={() => open(saved.html)}>
-                      Open the HTML
-                      <Glyph name="globe" />
-                    </Button>
-                  </div>
-                  <div>
-                    <button type="button" className="link quiet" onClick={() => api.showFile(saved.pdf).catch((e) => setError(String(e)))}>
-                      Show in folder
-                      <Glyph name="folder" />
-                    </button>
-                  </div>
-                  {saved.notes.length > 0 && (
-                    <div className="callout warning">
-                      <Glyph name="alert" />
-                      <div>
-                        <p>Left out because the site didn't answer:</p>
-                        <ul>
-                          {saved.notes.map((n) => (
-                            <li key={n}>{n}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
+            {saved && <span className="sr-only">The report is ready.</span>}
           </div>
+          {saved && (
+            <section className="card rep-ready" aria-labelledby="rep-ready">
+              <div className="card-body">
+                <h2 id="rep-ready">
+                  <span className="tile sm" aria-hidden="true">
+                    <Glyph name="check" />
+                  </span>
+                  {monthName(month)} report on {saved.sites} site{saved.sites === 1 ? "" : "s"} is ready
+                </h2>
+                <p className="dim">Saved as a PDF and a web page in Downloads.</p>
+                <div className="row">
+                  <Button small kind="soft" onClick={() => open(saved.pdf)}>
+                    Open the PDF
+                    <Glyph name="file" />
+                  </Button>
+                  <Button small kind="soft" onClick={() => open(saved.html)}>
+                    Open the web page
+                    <Glyph name="globe" />
+                  </Button>
+                  <Button small className="ghost" onClick={() => api.showFile(saved.pdf).catch((e) => setError(String(e)))}>
+                    Show in folder
+                    <Glyph name="folder" />
+                  </Button>
+                </div>
+                {saved.notes.length > 0 && (
+                  <div className="callout warning">
+                    <Glyph name="alert" />
+                    <div>
+                      <p>Left out:</p>
+                      <ul>
+                        {saved.notes.map((n) => (
+                          <li key={n}>{n}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
           <p className="dim rep-foot">
-            Branding, the footer line and data sources live in{" "}
+            Search numbers are in the report when they're on in Settings. Branding, the footer line and data sources live in{" "}
             <button type="button" className="link go" onClick={onSettings}>
               Settings
             </button>

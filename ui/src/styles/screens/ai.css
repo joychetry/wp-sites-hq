@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* AI (board 16, D08): tabs on the ground, plan cards beside the access and how-it-works cards */
-.ai .tabs .cnt { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: var(--radius-pill); background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); font-variant-numeric: tabular-nums; }
 
 /* A plan: who asked in a well head, what changes per site, the decision in a well foot */
 .ai .plan .card-head, .ai .plan .card-foot { background: var(--panel); }
@@ -16,10 +15,12 @@
 .ai .plan-what { display: grid; gap: 10px; }
 .ai-diffs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .ai-diff { display: grid; gap: var(--sp-2); padding: var(--sp-3) 14px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); }
-.ai-diff > div { display: grid; grid-template-columns: minmax(110px, 40%) minmax(0, 1fr); gap: 10px; align-items: center; font-size: var(--fs-sm); color: var(--text-3); }
+.ai-diff > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: var(--fs-sm); color: var(--text-3); }
+/* The site heads its box: the label then the name, both at the start. */
+.ai-diff > div:first-child { grid-template-columns: auto minmax(0, 1fr); }
 .ai-diff b { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--text); font-weight: 600; min-width: 0; }
 .ai-diff code { justify-self: start; padding: 2px 7px; border-radius: var(--radius-sm); background: var(--panel); color: var(--text); font: 500 var(--fs-sm)/var(--lh-tight) var(--mono); overflow-wrap: anywhere; }
-.ai-diff code.old { background: var(--danger-bg); color: var(--danger); text-decoration: line-through; }
+.ai-diff code.old { color: var(--text-3); text-decoration: line-through; }
 .ai-diff code.new { background: var(--tint); color: var(--brand-text); }
 .vdiff { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .vdiff > .glyph { width: 12px; height: 12px; color: var(--text-3); }
@@ -54,11 +55,20 @@
 .ai .log .feed li { grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start; }
 .ai .log .feed .why { margin-top: 2px; font-size: var(--fs-xs); color: var(--text-3); }
 .ai .log .quiet { padding: var(--sp-4) 20px; }
+.ai .log .feed time { font-family: var(--sans); }
+.ai .log .feed li > div > div { margin-top: var(--sp-2); }
+.ai .card-body > p.dim { margin: 0; font-size: var(--fs-sm); line-height: var(--lh); }
 
-/* Connect an AI app: the dark snippet, Copy under it, then a lock note */
+/* Connect an AI app: the app, its numbered steps (the first with the dark code block and Copy), then where it stands */
 .connect { display: grid; gap: var(--sp-4); }
-.connect .snip { display: grid; gap: var(--sp-2); justify-items: start; }
-.connect .code { display: block; width: 100%; padding: 14px var(--sp-4); border-radius: var(--radius); background: #0a0f0d; color: #edf2ef; font: 400 var(--fs-sm)/var(--lh) var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.connect .code em { color: #5bd394; font-style: normal; }
-[data-theme="dark"] .connect .code { background: #0b0b0b; border: 1px solid var(--line); }
-[data-theme="dark"] .connect .code em { color: var(--accent); }
+/* A grid item has no list marker, so the step numbers are drawn: a small disc before each step. */
+.connect .steps { margin: 0; padding: 0; display: grid; gap: var(--sp-3); list-style: none; counter-reset: step; }
+.connect .steps li { position: relative; padding-left: var(--sp-6); counter-increment: step; }
+.connect .steps li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); color: var(--text-2); display: grid; place-items: center; font: 600 var(--fs-xs)/1 var(--sans); }
+.connect .field { margin: 0; }
+.connect .field .select { width: min(100%, 32ch); }
+.connect .steps li { margin: 0; display: grid; gap: var(--sp-2); justify-items: start; }
+.connect .steps li > span { color: var(--text); }
+.connect .code { display: block; width: 100%; padding: 14px var(--sp-4); border-radius: var(--radius); background: var(--code-bg); color: var(--code-fg); font: 400 var(--fs-sm)/var(--lh) var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.connect .code em { color: var(--code-accent); font-style: normal; }
+[data-theme="dark"] .connect .code { border: 1px solid var(--line); }

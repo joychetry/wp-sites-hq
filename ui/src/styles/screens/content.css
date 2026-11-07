@@ -1,18 +1,22 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Content (screens/Content.tsx): the toolbar, then the entries card; the bulk bar (base.css .selbar) shows under it while entries are ticked. */
+/* Content (screens/Content.tsx): the toolbar, then the posts card; the bulk bar (base.css .selbar) shows under it while posts are selected. */
 
-/* Site and Show pickers (Media's too): the mono label beside the box, not .pick's plain words; a site shows its tile. */
+/* Site, Type and Show pickers (Media's too): the mono label beside the box, not .pick's plain words; a site shows its tile. */
 .pick > .label { font-size: var(--fs-xs); font-weight: 500; color: var(--text-3); }
+/* One width for the site box, so the toolbar doesn't move when the site changes; a long name ends in an ellipsis. */
+.pick-site .select { width: 15rem; }
+.select-v small.dim, .lb li small.dim { color: var(--text-3); font-size: var(--fs-sm); }
+/* The box shows the name only; the card under it says why the site is not available. */
+.select-v small.dim { display: none; }
 
-/* The table: bold titles, muted authors, mono dates; a ticked row is tinted. */
-.ctable .t { width: 100%; }
+/* The table (columns from base.css .t): bold titles that fill their cell, muted authors, mono dates. */
 .ctable .t td { height: 56px; }
-.ctable .t th:not(.tick), .ctable .t td:not(.tick) { padding-left: var(--sp-4); padding-right: var(--sp-4); }
-.ctable .t .tick { width: 44px; padding-left: var(--sp-4); padding-right: 0; }
-.ctable .t .name { width: 40%; }
-.ctable .linkish { font-weight: 600; text-decoration-color: transparent; }
+.ctable .linkish { font-weight: 600; text-decoration-color: transparent; width: 100%; max-width: none; min-height: 44px; }
 .ctable .linkish:hover { text-decoration-color: currentColor; }
-.ctable .who { color: var(--text-2); }
-.ctable .when { font: 400 var(--fs-xs)/var(--lh-tight) var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.ctable .who { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctable .when { color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* --sel is the ok pill's own tint: on a selected row the pill keeps a ground. */
 .ctable .card-foot .count { margin-right: auto; color: var(--text-3); font-size: var(--fs-sm); }
 .ctable > .legend { border-bottom: 1px solid var(--line); }
+/* The post type switch takes the toolbar's free room, so every type shows before any goes into "More". */
+.toolbar .pick:has(> .seg-row) { flex: 1 1 auto; min-width: 0; }

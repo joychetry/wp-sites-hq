@@ -2,13 +2,16 @@
 // Add a site (or sign one in again): OAuth in the browser through the site's plugin
 // (the WP Sites HQ plugin, Classic Monks or Classic Monks Pro), or
 // Basic mode with an application password.
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, pluginName, type Site } from "../api";
 import { Button, Glyph, Logo } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import "../styles/screens/addsite.css";
 
 type Mode = Site["mode"];
+
+/** The one sentence on which plugins give full control (Add a site, the Sites panel, the empty pages). */
+export const ANY_PLUGIN = "Any of these plugins on the site works: the WP Sites HQ plugin, Classic Monks or Classic Monks Pro.";
 
 /** What is wrong with a typed site address, in words, or null when it can be tried. */
 export function addressProblem(typed: string): string | null {
@@ -71,6 +74,15 @@ export function AddSite({ again, onClose, onDone }: Props) {
     }
   };
 
+  // Signing in again through a plugin needs nothing typed, so the browser opens at once (Basic mode asks for the password first).
+  const started = useRef(false);
+  useEffect(() => {
+    if (again && !basic && !started.current) {
+      started.current = true;
+      submit();
+    }
+  }, []);
+
   const close = () => {
     if (busy === "browser") api.cancelSignIn();
     onClose();
@@ -81,24 +93,27 @@ export function AddSite({ again, onClose, onDone }: Props) {
   const toStep2 = !again && basic && step === 1;
   const ready = addressOk && (!basic || toStep2 || signedIn);
   const go = () => {
+    setTouched(true);
     if (!ready || busy) return;
     if (toStep2) setStep(2);
     else submit();
   };
 
-  const waiting =
-    busy === "browser" ? (
-      <span className="sum waiting" role="status">
-        Waiting for you in the browser
-      </span>
-    ) : (
-      <span className="sum" />
-    );
-  const primary = (
-    <Button kind="primary" className="disc" disabled={!ready || busy !== null} onClick={go} keys="Enter">
+  const waiting = busy ? (
+    <span className="sum waiting" role="status">
+      {busy === "browser" ? "Waiting for you in the browser" : "Checking the password…"}
+    </span>
+  ) : (
+    <span className="sum" />
+  );
+  // A typed address with a problem can still be pressed: the press shows the problem instead of doing nothing.
+  const pressable = ready || (!!url.trim() && !!problem);
+  // While the browser is open the footer holds the waiting line and the way out, nothing to press twice.
+  const primary = busy !== "browser" && (
+    <Button kind="primary" className="disc" disabled={!pressable || busy !== null} onClick={go} keys={again ? undefined : "Enter"}>
       {toStep2 ? "Next" : !basic ? (again ? "Sign in again" : "Open the sign-in page") : again ? "Sign in" : "Add the site"}
       <span className="btn-disc">
-        <Glyph name={toStep2 ? "arrow" : basic ? "check" : "external"} />
+        <Glyph name={toStep2 ? "arrow" : again ? "login" : basic ? "check" : "external"} />
       </span>
     </Button>
   );
@@ -111,7 +126,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
     <>
       <label className="field">
         <span>WordPress user name</span>
-        <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" spellCheck={false} />
+        <input className="input" autoFocus={step === 2} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" spellCheck={false} />
       </label>
       <label className="field">
         <span>Application password</span>
@@ -142,7 +157,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
     return (
       <Sheet
         dialog
-        title={expired ? `${again.name}: the connection expired` : `${again.name}: sign in again`}
+        title={expired ? `${again.name}: sign-in expired` : `${again.name}: sign in again`}
         icon={
           <span className="tile warning">
             <Glyph name="login" />
@@ -157,7 +172,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
         footer={
           <>
             {waiting}
-            <Button onClick={close}>{busy === "browser" ? "Cancel the sign-in" : "Later"}</Button>
+            <Button onClick={close}>{busy === "browser" ? "Cancel the sign-in" : "Close"}</Button>
             {primary}
           </>
         }
@@ -167,7 +182,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
             <p className="lead">
               {expired
                 ? "Sign in on the site once and WP Sites HQ picks up where it left off. Your notes, tags and group stay as they are."
-                : "Sign in on the site again and tick the tool groups WP Sites HQ may use. Your notes, tags and group stay as they are."}
+                : "Sign in on the site again and allow what WP Sites HQ may do. Your notes, tags and group stay as they are."}
             </p>
             {basic && credentials}
             <p className="callout">
@@ -203,6 +218,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
         onClose={close}
         footer={
           <>
+            {waiting}
             <Button onClick={() => setStep(1)}>
               <Glyph name="arrow-left" />
               Back
@@ -214,7 +230,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
         {form(
           <>
             <div className="row chips">
-              <span className="pchip outline">
+              <span className="pchip">
                 <Glyph name="globe" />
                 {host}
               </span>
@@ -240,7 +256,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
       footer={
         <>
           {waiting}
-          <Button onClick={close}>{busy === "browser" ? "Cancel the sign-in" : "Close without adding"}</Button>
+          <Button onClick={close}>{busy === "browser" ? "Cancel the sign-in" : "Close without saving"}</Button>
           {primary}
         </>
       }
@@ -273,12 +289,9 @@ export function AddSite({ again, onClose, onDone }: Props) {
                 <Logo />
               </span>
               <b>
-                A WP Sites HQ plugin <span className="tag ok">Recommended</span>
+                WP Sites HQ plugin <span className="tag ok">Recommended</span>
               </b>
-              <span>
-                The WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site. Any of them works. Sign in on the site once and
-                every tool works, including undo.
-              </span>
+              <span>{ANY_PLUGIN} Sign in on the site once and every tool works, including undo.</span>
             </label>
             <label className="choice">
               <input className="sr-only" type="radio" name="mode" checked={basic} onChange={() => setMode("basic")} />
@@ -290,14 +303,19 @@ export function AddSite({ again, onClose, onDone }: Props) {
             </label>
           </fieldset>
           {!basic && (
-            <p className="callout">
+            <div className="callout">
               <Glyph name="info" />
-              <span>
-                Your browser opens the site. Sign in as an administrator. Tick the tool groups WP Sites HQ may use; with none
-                ticked it can't do anything. Tick <b>This is my WP Sites HQ app (operator)</b> (older plugins say Monks Central app) and press Connect. The site
-                appears here on its own. It needs WordPress 7.1 or newer.
-              </span>
-            </p>
+              <div>
+                <ol>
+                  <li>Your browser opens the site. Sign in as an administrator.</li>
+                  <li>
+                    Choose what WP Sites HQ may do, and check <b>This is my WP Sites HQ app</b>.
+                  </li>
+                  <li>Press Connect. The site appears here on its own.</li>
+                </ol>
+                <p>It needs WordPress 7.1 or newer.</p>
+              </div>
+            </div>
           )}
         </>,
       )}

@@ -1,17 +1,14 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Updates (board 03): kind tabs, one table grouped by site, a side column of what's waiting */
-.updates .t { table-layout: fixed; }
-.updates .t th:first-child, .updates .t td:first-child { width: 44px; padding-right: 0; }
-.updates .t th:nth-child(3) { width: 170px; }
-.updates .t th:nth-child(4) { width: 150px; }
+.updates .t th:first-child, .updates .t td:first-child { padding-right: 0; }
 .updates .t td { height: 56px; }
 .updates .t .grp td { height: 44px; background: var(--panel); white-space: normal; }
 .updates .grp .item { flex-wrap: wrap; row-gap: 4px; }
-.updates .t .grp td:first-child { background: var(--bg); }
-.updates .item { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.updates .item { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
 .updates .item > span { min-width: 0; }
 .updates .item b { display: block; font-weight: 600; }
-.updates .item b.cut { max-width: none; overflow: hidden; text-overflow: ellipsis; }
+.updates .item b.cut { max-width: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.updates .st.pill .glyph { width: 12px; height: 12px; }
 .updates .item small { display: block; font-size: var(--fs-xs); color: var(--text-3); }
 .updates .grp .item b { display: inline; }
 .updates .grp .dim { font-size: var(--fs-sm); }
@@ -21,17 +18,19 @@
 .updates-side { max-height: 100%; overflow: auto; }
 .updates .card-foot .grow { flex: 1; font-size: var(--fs-sm); }
 .k-tr { --k: var(--text-3); }
-/* Action needed: the updates that fix a known vulnerability */
-.upd-alert { background: var(--warn-paper); border-color: var(--warn-line); }
+/* Action needed: the updates that fix a known vulnerability, all in the danger tone. The pill drops under the title when it can't fit. */
+.upd-alert { border-color: var(--danger); }
 .upd-alert .card-body { gap: var(--sp-3); }
-.upd-alert .row { gap: 10px; }
+.upd-alert .row { flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
 .upd-alert .row > b { font-size: var(--fs-md); font-weight: 600; }
 /* Title at --fs-md; the reason, the fix and the vulnerability all body at --fs-sm, one line height. */
 .upd-alert p, .upd-fixes { margin: 0; font-size: var(--fs-sm); line-height: var(--lh); }
 .upd-fixes { list-style: none; padding: 0; display: grid; gap: var(--sp-2); }
 .upd-fixes small { display: block; font-size: inherit; color: var(--text-2); }
-/* Sites not in this list: a tile, the name and why */
+/* Sites not in this list (Updates, Plugins, Themes): a tile, the name and why, and the step that fixes it */
 .unseen-list { list-style: none; margin: 0; padding: 0; }
-.unseen-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: var(--sp-3) 20px; border-top: 1px solid var(--line); }
+.unseen-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--pad); border-top: 1px solid var(--line); }
 .unseen-list li:first-child { border-top: 0; }
+.unseen-list li > span { display: grid; gap: 2px; }
+.unseen-list b { font-weight: 600; }
 .unseen-list .dim { font-size: var(--fs-sm); }

@@ -11,14 +11,17 @@ import { Button, Glyph, HeadActions, Status } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { day } from "../format";
 
-/** "€12.50"; an unknown code still reads ("XYZ 12.50"). `whole` drops ".00" (the stat cards: "€340"). */
+/** "€12.50", "−€3.00" with a true minus; an unknown code still reads ("XYZ 12.50"). `whole` drops ".00" (the stat cards: "€340"). */
 export function money(cents: number, currency: string, whole = false): string {
   try {
-    return new Intl.NumberFormat("en", { style: "currency", currency, ...(whole && cents % 100 === 0 ? { minimumFractionDigits: 0 } : {}) }).format(cents / 100);
+    return new Intl.NumberFormat("en", { style: "currency", currency, ...(whole && cents % 100 === 0 ? { minimumFractionDigits: 0 } : {}) }).format(cents / 100).replace("-", "\u2212");
   } catch {
-    return `${currency} ${(cents / 100).toFixed(2)}`;
+    return `${currency} ${(cents / 100).toFixed(2)}`.replace("-", "\u2212");
   }
 }
+
+/** The currencies a cost can be in: the ones in use, then common ones. */
+const CURRENCIES = ["EUR", "USD", "GBP", "INR", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK", "PLN", "JPY", "NZD", "ZAR", "BRL"];
 
 /** What it comes to each month: a year counts a twelfth, a one-off nothing. */
 export const perMonth = (c: Cost) => (c.every === "month" ? c.cents : c.every === "year" ? Math.round(c.cents / 12) : 0);
@@ -53,7 +56,7 @@ export function daysTo(day: string, now = new Date()): number {
 function Amounts({ costs, what }: { costs: Cost[]; what: "cost" | "charge" | "left" }) {
   // Charged and Costs leave out a currency with nothing in that column; Left shows each.
   const list = [...sums(costs)].filter(([, t]) => (what === "left" ? t.cost || t.charge : t[what]));
-  if (list.length === 0) return <span className="dim">none</span>;
+  if (list.length === 0) return <span className="dim">None</span>;
   return (
     <>
       {list.map(([cur, t]) => {
@@ -70,11 +73,18 @@ function Amounts({ costs, what }: { costs: Cost[]; what: "cost" | "charge" | "le
 
 type Editing = { client: Client } | { cost: Cost } | null;
 
-export function Clients({ sites }: { sites: Site[] }) {
+/** `focus` opens that client's sheet once the list is in (a client picked in the palette). */
+export function Clients({ sites, focus }: { sites: Site[]; focus?: number }) {
   const [clients, setClients] = useState<Client[] | null>(null);
   const [costs, setCosts] = useState<Cost[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
+  const [want, setWant] = useState(focus);
+  if (clients && want != null) {
+    setWant(undefined);
+    const c = clients.find((x) => x.id === want);
+    if (c) setEditing({ client: c });
+  }
 
   const load = useCallback(() => {
     Promise.all([api.clients(), api.costs()]).then(
@@ -114,7 +124,8 @@ export function Clients({ sites }: { sites: Site[] }) {
     costs: costs.filter((k) => groupOf(k) === (c?.id ?? null)).sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "charge" ? -1 : 1)),
   });
   const currency = costs.at(-1)?.currency ?? "EUR";
-  const blankCost = (): Cost => ({ id: 0, site_id: null, client_id: clients[0]?.id ?? null, kind: "cost", label: "", cents: 0, currency, every: "year", renews_on: null });
+  // Opens on "Pick a client or a site", never a silent first client.
+  const blankCost = (): Cost => ({ id: 0, site_id: null, client_id: null, kind: "cost", label: "", cents: 0, currency, every: "year", renews_on: null });
   const done = (msg: string) => {
     toast(msg);
     setEditing(null);
@@ -129,13 +140,16 @@ export function Clients({ sites }: { sites: Site[] }) {
   const main = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? currency;
   const totals = sums(costs);
   const t = totals.get(main) ?? { cost: 0, charge: 0 };
-  // Other currencies, a quiet line under the number: "Also $23.25".
+  // Other currencies, a quiet line under the number: "Plus $23.25 in USD", or "Less $23.25 in USD" when that currency costs more than it brings.
   const also = (what: "cost" | "charge" | "left") => {
-    const rest = [...totals].filter(([cur, x]) => cur !== main && (what === "left" ? x.charge - x.cost : x[what]) !== 0).map(([cur, x]) => money(what === "left" ? x.charge - x.cost : x[what], cur, true));
-    return rest.length > 0 && <p className="stat-note">Also {rest.join(" and ")}</p>;
+    const rest = [...totals]
+      .map(([cur, x]) => [cur, what === "left" ? x.charge - x.cost : x[what]] as const)
+      .filter(([cur, v]) => cur !== main && v !== 0)
+      .map(([cur, v], i) => `${i === 0 ? (v < 0 ? "Less" : "Plus") : v < 0 ? "less" : "plus"} ${money(Math.abs(v), cur, true)} in ${cur}`);
+    return rest.length > 0 && <p className="stat-note">{rest.join(" and ")}</p>;
   };
   const paying = new Set(costs.filter((k) => k.kind === "charge" && perMonth(k) > 0).map(groupOf).filter((g) => g != null)).size;
-  const costWords = [...new Set(costs.filter((k) => k.kind === "cost").map((k) => k.label.toLowerCase()))].slice(0, 3).join(", ");
+  const costWords = [...new Set(costs.filter((k) => k.kind === "cost").map((k) => k.label))].slice(0, 3).join(", ");
   const left = t.charge - t.cost;
   const renewing = costs
     .filter((k) => k.renews_on)
@@ -147,7 +161,7 @@ export function Clients({ sites }: { sites: Site[] }) {
   return (
     <Page className="clients">
       <HeadActions>
-        <Button onClick={() => setEditing({ cost: blankCost() })} disabled={clients.length === 0 && sites.length === 0}>
+        <Button onClick={() => setEditing({ cost: blankCost() })} disabled={clients.length === 0 && sites.length === 0} data-tip={clients.length === 0 && sites.length === 0 ? "Add a client or a site first" : undefined}>
           Add a cost or charge
           <Glyph name="plus" />
         </Button>
@@ -160,8 +174,16 @@ export function Clients({ sites }: { sites: Site[] }) {
       </HeadActions>
       {clients.length === 0 && costs.length === 0 ? (
         <section className="card">
-          <Empty title="No clients yet">
-            <p>Add a client, tick their sites, then note what the sites cost you (hosting, domains, licences) and what you charge. Client reports use the same list.</p>
+          <Empty
+            title="No clients yet"
+            action={
+              <Button kind="primary" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
+                Add a client
+                <Glyph name="plus" />
+              </Button>
+            }
+          >
+            <p>Add a client, pick their sites, then note what the sites cost you (hosting, domains, licences) and what you charge. Client reports use the same list.</p>
           </Empty>
         </section>
       ) : (
@@ -198,6 +220,13 @@ export function Clients({ sites }: { sites: Site[] }) {
           <div className="cl-split">
             <section className="card" aria-label="Clients and costs">
               <table className="t" aria-label="Clients" aria-describedby="clients-legend">
+                <colgroup>
+                  <col className="c-fill" />
+                  <col className="c-text" />
+                  <col className="c-num" />
+                  <col className="c-num" />
+                  <col className="c-num" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Client or cost</th>
@@ -232,22 +261,22 @@ export function Clients({ sites }: { sites: Site[] }) {
                                 ) : (
                                   <b>No client yet</b>
                                 )}
-                                <small>{c ? c.email || "no email" : "Costs you pay yourself"}</small>
+                                {c ? <small>{c.email || "no email"}</small> : <small className="plain">Costs you pay yourself</small>}
                               </span>
                             </div>
                           </td>
                           <td>
                             {own.length ? (
-                              <span className="pchips">
-                                {own.map((s) => (
-                                  <span key={s.id} className="pchip">
-                                    <SiteTile site={s} size="sm" />
-                                    {s.name}
-                                  </span>
-                                ))}
+                              // One chip and "+2" keep the row one line tall; every name is in the tip and the client's sheet.
+                              <span className="pchips" data-tip={own.length > 1 ? own.map((s) => s.name).join(", ") : undefined}>
+                                <span className="pchip">
+                                  <SiteTile site={own[0]} size="sm" />
+                                  {own[0].name}
+                                </span>
+                                {own.length > 1 && <span className="dim">+{own.length - 1}</span>}
                               </span>
                             ) : (
-                              <span className="dim">none</span>
+                              <span className="dim">No sites</span>
                             )}
                           </td>
                           <td className="r">
@@ -261,19 +290,26 @@ export function Clients({ sites }: { sites: Site[] }) {
                           </td>
                         </tr>
                         {list.map((k) => {
-                          const on = k.site_id != null && own.length > 1 ? siteOf(k.site_id)?.name : null;
+                          const on = siteOf(k.site_id);
                           const when = k.renews_on ? `${k.every === "once" ? "due" : "renews"} ${day(k.renews_on) || k.renews_on}` : null;
                           return (
                             <tr key={k.id} className="item">
                               <td>
                                 <div className="item-t">
-                                  <button type="button" className="linkish" onClick={() => setEditing({ cost: k })}>
+                                  <button type="button" className="linkish" data-tip={k.label} onClick={() => setEditing({ cost: k })}>
                                     {k.label}
                                   </button>
-                                  <span>{[k.kind === "cost" ? "Cost" : "Charge", EVERY[k.every].toLowerCase(), on, when].filter(Boolean).join(" · ")}</span>
+                                  <span>{[k.kind === "cost" ? "Cost" : "Charge", EVERY[k.every].toLowerCase(), when].filter(Boolean).join(" · ")}</span>
                                 </div>
                               </td>
-                              <td />
+                              <td>
+                                {on && (
+                                  <span className="pchip">
+                                    <SiteTile site={on} size="sm" />
+                                    {on.name}
+                                  </span>
+                                )}
+                              </td>
                               <td className="r">{k.kind === "charge" && <span className="m">{money(k.cents, k.currency)}</span>}</td>
                               <td className="r">{k.kind === "cost" && <span className="m">{money(k.cents, k.currency)}</span>}</td>
                               <td />
@@ -307,17 +343,18 @@ export function Clients({ sites }: { sites: Site[] }) {
                       <span className="tile sm neutral">
                         <Glyph name={/domain/i.test(k.label) ? "globe" : /host/i.test(k.label) ? "monitor" : "package"} />
                       </span>
+                      {/* The pill shares the title's line, so the facts under it get the card's full width. */}
                       <div>
-                        <b>
-                          {k.label} · {whose(k)}
-                        </b>
+                        <div className="renew-t">
+                          <b data-tip={k.label}>{k.label}</b>
+                          <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>
+                            {days < 0 ? `Overdue ${-days} ${days === -1 ? "day" : "days"}` : days === 0 ? "Today" : `In ${days} ${days === 1 ? "day" : "days"}`}
+                          </Status>
+                        </div>
                         <span>
-                          {day(k.renews_on) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency, true)}
+                          {whose(k)} · {day(k.renews_on) || k.renews_on} · {EVERY[k.every].toLowerCase()} · {money(k.cents, k.currency)}
                         </span>
                       </div>
-                      <Status pill tone={days < 0 ? "danger" : days <= 30 ? "warning" : "unknown"}>
-                        {days < 0 ? `${-days} ${days === -1 ? "day" : "days"} ago` : days === 0 ? "today" : `${days} ${days === 1 ? "day" : "days"}`}
-                      </Status>
                     </li>
                   ))}
                 </ul>
@@ -327,7 +364,7 @@ export function Clients({ sites }: { sites: Site[] }) {
         </>
       )}
       {editing && "client" in editing && <ClientSheet client={editing.client} sites={sites} onClose={() => setEditing(null)} onDone={done} />}
-      {editing && "cost" in editing && <CostSheet cost={editing.cost} sites={sites} clients={clients} onClose={() => setEditing(null)} onDone={done} />}
+      {editing && "cost" in editing && <CostSheet cost={editing.cost} sites={sites} clients={clients} currencies={[...counts.keys()]} onClose={() => setEditing(null)} onDone={done} />}
     </Page>
   );
 }
@@ -369,8 +406,8 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
 
   const footer = deleting ? (
     <>
-      <span className="sum">Delete {client.name} and the costs and charges on them? Their sites stay.</span>
-      <Button onClick={() => setDeleting(false)}>Keep {client.name}</Button>
+      <span className="sum">Delete {client.name} and its costs and charges? Their sites stay.</span>
+      <Button onClick={() => setDeleting(false)}>Keep it</Button>
       <Button kind="danger" className="solid" disabled={busy} onClick={remove}>
         Delete the client
         <Glyph name="trash" />
@@ -424,8 +461,8 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
         ) : (
           <MultiSelect
             label="Their sites"
-            placeholder="Type a site name, Enter to add it"
-            options={sites.map((s) => ({ value: s.id, label: s.client && s.client_id !== client.id ? `${s.name} (now with ${s.client})` : s.name }))}
+            placeholder="Find a site to add"
+            options={sites.map((s) => ({ value: s.id, icon: <SiteTile site={s} size="sm" />, label: s.client && s.client_id !== client.id ? `${s.name} (now with ${s.client})` : s.name }))}
             value={[...picked]}
             onChange={(ids) => setPicked(new Set(ids))}
           />
@@ -435,12 +472,14 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
   );
 }
 
-function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; sites: Site[]; clients: Client[]; onClose: () => void; onDone: (msg: string) => void }) {
+function CostSheet({ cost, sites, clients, currencies, onClose, onDone }: { cost: Cost; sites: Site[]; clients: Client[]; currencies: string[]; onClose: () => void; onDone: (msg: string) => void }) {
   const isNew = cost.id === 0;
   const [k, setK] = useState(cost);
   const [amount, setAmount] = useState(isNew ? "" : (cost.cents / 100).toFixed(2));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const noun = k.kind === "cost" ? "cost" : "charge";
   const on = k.site_id != null ? `s${k.site_id}` : k.client_id != null ? `c${k.client_id}` : "";
   const cents = toCents(amount);
 
@@ -448,7 +487,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
     setBusy(true);
     setError(null);
     try {
-      const saved = await api.saveCost({ ...k, cents: cents ?? 0, currency: k.currency.trim().toUpperCase() });
+      const saved = await api.saveCost({ ...k, cents: cents ?? 0 });
       onDone(isNew ? `Added ${saved.label}.` : `Saved ${saved.label}.`);
     } catch (e) {
       setError(String(e));
@@ -466,11 +505,20 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
     }
   };
 
-  const footer = (
+  const footer = deleting ? (
+    <>
+      <span className="sum">Delete {cost.label}? It stops counting in Monthly.</span>
+      <Button onClick={() => setDeleting(false)}>Keep it</Button>
+      <Button kind="danger" className="solid" disabled={busy} onClick={remove}>
+        Delete the {noun}
+        <Glyph name="trash" />
+      </Button>
+    </>
+  ) : (
     <>
       {!isNew && (
-        <Button kind="danger" className="push" disabled={busy} onClick={remove}>
-          Delete it
+        <Button kind="danger" className="push" onClick={() => setDeleting(true)}>
+          Delete the {noun}
           <Glyph name="trash" />
         </Button>
       )}
@@ -478,7 +526,7 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
         Close without saving
       </Button>
       <Button kind="primary" className="disc" disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
-        {busy ? "Saving…" : isNew ? "Add it" : "Save changes"}
+        {busy ? "Saving…" : isNew ? `Add the ${noun}` : "Save changes"}
         <span className="btn-disc">
           <Glyph name={isNew ? "plus" : "check"} />
         </span>
@@ -503,10 +551,10 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
       </div>
       <div className="g2 pair">
       <label className="field">
-        <span>On</span>
+        <span>For</span>
         <Select
           className="input"
-          aria-label="On"
+          aria-label="For"
           value={on}
           onChange={(e) => {
             const v = e.target.value;
@@ -530,14 +578,14 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
             {sites.map((s) => (
               <option key={s.id} value={`s${s.id}`}>
                 <SiteTile site={s} size="sm" />
-                {s.name}
+                {s.name} (site)
               </option>
             ))}
           </optgroup>
         </Select>
       </label>
       <label className="field">
-        <span>What it is</span>
+        <span>Name</span>
         <input className="input" placeholder="Hosting, domain, care plan" value={k.label} onChange={(e) => setK({ ...k, label: e.target.value })} />
       </label>
       <div className="field amount">
@@ -553,7 +601,13 @@ function CostSheet({ cost, sites, clients, onClose, onDone }: { cost: Cost; site
       </div>
       <label className="field">
         <span>Currency</span>
-        <input className="input mono" maxLength={3} value={k.currency} onChange={(e) => setK({ ...k, currency: e.target.value.toUpperCase() })} />
+        <Select className="input" aria-label="Currency" value={k.currency} onChange={(e) => setK({ ...k, currency: e.target.value })}>
+          {[...new Set([k.currency, ...currencies, ...CURRENCIES])].map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
       </label>
       <label className="field">
         <span>How often</span>

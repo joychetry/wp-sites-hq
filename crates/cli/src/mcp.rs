@@ -262,6 +262,17 @@ where
     F: Fn(&'static str, Value) -> Fut,
     Fut: Future<Output = Result<Value, ClientError>>,
 {
+    // The AI app's name from `initialize` (Claude, Cursor), so the person sees who planned what.
+    let app = std::cell::RefCell::new(None::<String>);
+    let call = |method: &'static str, mut params: Value| {
+        if method == "plan.create"
+            && let Some(p) = params.as_object_mut()
+        {
+            // Always set, so a tool argument can't pose as the app.
+            p.insert("agent_app".into(), json!(*app.borrow()));
+        }
+        call(method, params)
+    };
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
     let mut out = tokio::io::stdout();
     while let Some(line) = lines.next_line().await? {
@@ -269,7 +280,14 @@ where
             continue;
         }
         let reply = match serde_json::from_str::<Value>(&line) {
-            Ok(msg) => handle(&msg, &call).await,
+            Ok(msg) => {
+                if msg["method"] == "initialize" {
+                    *app.borrow_mut() = msg["params"]["clientInfo"]["name"]
+                        .as_str()
+                        .map(String::from);
+                }
+                handle(&msg, &call).await
+            }
             Err(e) => Some(json!({
                 "jsonrpc": "2.0", "id": null,
                 "error": { "code": -32700, "message": format!("Parse error: {e}") },

@@ -59,7 +59,7 @@ export function productChange(p: Product, regular: string, sale: string, stock: 
 
 const shop = (s: Site) => hasTool(s, "list-products");
 
-type Props = { sites: Site[]; onPlan: (title: string, rows: PlanRow[], start?: "plan" | "confirm") => void };
+type Props = { sites: Site[]; onPlan: (title: string, rows: PlanRow[], start?: "plan" | "confirm" | "run") => void };
 
 export function Store({ sites, onPlan }: Props) {
   const [siteId, setSiteId] = useState<number | null>(() => (sites.find(shop) ?? sites[0])?.id ?? null);
@@ -96,6 +96,11 @@ export function Store({ sites, onPlan }: Props) {
   useEffect(() => {
     load();
   }, [load]);
+  // The list follows the search box as you type, once typing pauses.
+  useEffect(() => {
+    const t = setTimeout(() => setQuery((q) => ((q.search ?? "") === typed.trim() ? q : { ...q, search: typed.trim() || undefined, page: 1 })), 300);
+    return () => clearTimeout(t);
+  }, [typed]);
   // A product change ran: read the store again.
   useEffect(() => {
     const un = listen("jobs-changed", () => setRound((r) => r + 1));
@@ -247,17 +252,7 @@ export function Store({ sites, onPlan }: Props) {
               }}
             >
               <h2 id="store-products">Products</h2>
-              {/* Enter searches; clearing the box shows every product again. */}
-              <SearchInput
-                className="sm"
-                aria-label="Search products"
-                placeholder="Search products"
-                value={typed}
-                onChange={(e) => {
-                  setTyped(e.target.value);
-                  if (!e.target.value && query.search) setQuery({ ...query, search: undefined, page: 1 });
-                }}
-              />
+              <SearchInput className="sm" aria-label="Search products" placeholder="Search products" value={typed} onChange={(e) => setTyped(e.target.value)} />
               <label className="row pick">
                 <span>Stock</span>
                 <Select
@@ -278,16 +273,25 @@ export function Store({ sites, onPlan }: Props) {
             {list && list.products.length === 0 && <Empty small title="No products match" />}
             {list && list.products.length > 0 && (
               <table className="t" aria-label="Products" aria-describedby="products-legend">
+                <colgroup>
+                  <col className="c-fill" />
+                  <col className="c-text" />
+                  <col className="c-wide" />
+                  <col className="c-status" />
+                  <col className="c-act-lg" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Product</th>
                     <th scope="col" className="r">
                       Price
                     </th>
-                    <th scope="col">Stock</th>
+                    <th scope="col" className="r">
+                      Stock
+                    </th>
                     <th scope="col">Status</th>
-                    <th scope="col">
-                      <span className="sr-only">Change</span>
+                    <th scope="col" className="act">
+                      <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
@@ -297,8 +301,8 @@ export function Store({ sites, onPlan }: Props) {
                     const out = p.stock_status === "outofstock";
                     const counted = p.manage_stock && p.stock_quantity != null;
                     return (
-                      <tr key={p.id} className={isLow ? "warn" : undefined}>
-                        <td>
+                      <tr key={p.id}>
+                        <td data-tip={p.name}>
                           <div className="site">
                             <span className={`pthumb t${i % 3}`} aria-hidden="true">
                               <Glyph name="image" />
@@ -318,31 +322,36 @@ export function Store({ sites, onPlan }: Props) {
                             price(p.regular_price || p.price, cur)
                           )}
                         </td>
-                        <td>
-                          <span className="row nowrap">
-                            {counted && <span className="m">{p.stock_quantity}</span>}
+                        <td className="r">
+                          <span className="row nowrap stock">
                             {out || p.stock_status === "onbackorder" ? (
                               <Status pill tone={out ? "danger" : "warning"}>{STOCK[p.stock_status]}</Status>
                             ) : isLow ? (
                               <Status pill tone="warning">Low</Status>
                             ) : (
-                              !counted && <span className="tag">{STOCK[p.stock_status] ?? p.stock_status}</span>
+                              <Status pill tone="ok">{STOCK[p.stock_status] ?? p.stock_status}</Status>
                             )}
+                            {counted && <span className="m">{p.stock_quantity}</span>}
                           </span>
                         </td>
                         <td className="dim">{STATUS[p.status] ?? p.status}</td>
-                        <td className="r">
+                        <td className="act">
                           {p.type === "simple" || p.type === "external" ? (
-                            <Button
-                              small
-                              className={isLow || out ? undefined : "ghost"}
-                              aria-label={`Change price or stock of ${p.name}`}
-                              onClick={() => setEditing(p)}
-                            >
-                              Change price or stock
+                            <Button small aria-label={`Change price or stock of ${p.name}`} data-tip="Change price or stock" onClick={() => setEditing(p)}>
+                              Change
+                              <Glyph name="edit" />
                             </Button>
                           ) : (
-                            <span className="dim">Change it in wp-admin</span>
+                            <Button
+                              small
+                              className="ghost"
+                              aria-label={`Change ${p.name} in WordPress on ${site.name}`}
+                              data-tip="Products with options are changed in WordPress"
+                              onClick={() => api.openLink(`${site.url.replace(/\/$/, "")}/wp-admin/post.php?post=${p.id}&action=edit`, site.id).catch((e) => toast(String(e), { tone: "danger" }))}
+                            >
+                              In WordPress
+                              <Glyph name="external" />
+                            </Button>
                           )}
                         </td>
                       </tr>
@@ -354,7 +363,7 @@ export function Store({ sites, onPlan }: Props) {
             {list && list.products.length > 0 && (
               <div className="card-foot">
                 <span className="dim grow" id="products-legend">
-                  Struck-through prices are the regular price during a sale. Products with options are changed in wp-admin.
+                  Struck-through prices are the regular price during a sale. Products with options are changed in WordPress on the site.
                 </span>
                 {list.pages > 1 && (
                   <>
@@ -383,7 +392,7 @@ export function Store({ sites, onPlan }: Props) {
           onClose={() => setEditing(null)}
           onPlan={(a) => {
             setEditing(null);
-            onPlan(`Change ${editing.name}`, [{ change: { site_id: site.id, action: a }, site: site.name, label: label(a) }], "confirm");
+            onPlan(`Change ${editing.name}`, [{ change: { site_id: site.id, action: a }, site: site.name, label: label(a) }], "run");
           }}
         />
       )}
@@ -409,13 +418,18 @@ function ProductSheet({ product, site, thumb, currency, onClose, onPlan }: Sheet
   const [sale, setSale] = useState(product.sale_price);
   const [stock, setStock] = useState(product.stock_quantity == null ? "" : String(product.stock_quantity));
   const change = productChange(product, regular, sale, stock);
+  // Which field a problem is about, so it shows under that field.
+  const bad = typeof change === "string" && change !== "Nothing changed yet." ? change : null;
+  const on = bad && (/sale price/.test(bad) ? "sale" : /stock/.test(bad) ? "stock" : "regular");
+  const err = (f: string) => (on === f ? { "aria-invalid": true, "aria-describedby": "prod-err" } : {});
+  const errLine = (f: string) => on === f && <small className="err" id="prod-err">{bad}</small>;
   const footer = (
     <>
       <Button onClick={onClose}>Close without saving</Button>
       <Button kind="primary" className="disc" disabled={typeof change === "string"} onClick={() => typeof change !== "string" && onPlan(change)}>
-        Review the change
+        {`Change ${product.name}`}
         <span className="btn-disc">
-          <Glyph name="arrow" />
+          <Glyph name="check" />
         </span>
       </Button>
     </>
@@ -441,25 +455,28 @@ function ProductSheet({ product, site, thumb, currency, onClose, onPlan }: Sheet
       <div className="g2 prodf">
         <label className="field">
           <span>Price</span>
-          <input className="input m" inputMode="decimal" value={regular} onChange={(e) => setRegular(e.target.value)} />
+          <input className="input m" inputMode="decimal" value={regular} onChange={(e) => setRegular(e.target.value)} {...err("regular")} />
+          {errLine("regular")}
         </label>
         <label className="field">
           <span>Sale price</span>
-          <input className="input m" inputMode="decimal" value={sale} onChange={(e) => setSale(e.target.value)} />
+          <input className="input m" inputMode="decimal" value={sale} onChange={(e) => setSale(e.target.value)} {...err("sale")} />
           <small>Leave it empty for no sale.</small>
+          {errLine("sale")}
         </label>
       </div>
       <label className="field">
         <span>Stock</span>
-        <input className="input m" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} />
+        <input className="input m" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} {...err("stock")} />
         <small>
           {product.manage_stock
             ? `How many the store has.${product.stock_quantity != null ? ` Now ${product.stock_quantity}.` : ""}`
             : "The store doesn't count this product yet. A number turns counting on."}
         </small>
+        {errLine("stock")}
       </label>
       <p className="dim" role="status">
-        {typeof change === "string" ? change : label(change)}
+        {typeof change === "string" ? (bad ? "" : change) : label(change)}
       </p>
     </Sheet>
   );

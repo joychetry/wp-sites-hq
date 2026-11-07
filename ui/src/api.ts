@@ -10,6 +10,8 @@ export type CoreStatus = {
   role: "operator" | "agent";
   headless: boolean;
   home: string;
+  /** When an AI app last asked WP Sites HQ for something, unix seconds; 0 for never. */
+  agent_seen?: number;
 };
 
 export type Health = "unknown" | "ok" | "warning" | "down";
@@ -195,6 +197,8 @@ export type Job = {
   finished_at: number | null;
   /** "agent" for a plan an AI agent proposed; it runs only after you confirm it. */
   proposed_by: "human" | "agent";
+  /** The AI app that proposed an agent's plan, as it names itself (Claude, Cursor). Plain text. */
+  agent_app: string | null;
   confirmed_at: number | null;
   declined_at: number | null;
   /** An agent's plan nobody answered within 7 days. It never runs; you can only remove it. */
@@ -407,7 +411,8 @@ export type Setting = {
 };
 export type ActivityRow = { id: number; time: string; who: string; tool: string; status: string; summary: string; can_undo: boolean };
 export type Activity = { rows: ActivityRow[]; total: number; page: number; pages: number };
-export type Approval = { id: number; tool: string; who: string; time: string; expires_in: number };
+/** `input` is the tool's arguments; `preview` the site's view of its target (a post's title, a user's name), when the tool has one. */
+export type Approval = { id: number; tool: string; who: string; time: string; expires_in: number; input?: Record<string, unknown> | null; preview?: Record<string, unknown> | null };
 
 // Reads a page asks for first, started early (a nav item's hover or focus, or when the app is idle) by `warm`.
 // Each warmed answer is used once, within 30 s; any change made from here, or any change the core reports,
@@ -472,7 +477,7 @@ export const api = {
   security: () => invoke<SecurityReport[]>("security_list"),
   scanSecurity: (id?: number) => invoke<void>("security_scan", { id }),
   monitors: () => invoke<Monitor[]>("monitors_list"),
-  checkMonitors: () => invoke<void>("monitors_check"),
+  checkMonitors: (id?: number) => invoke<void>("monitors_check", { id }),
   pageSpeed: (id: number) => invoke<PageSpeed>("pagespeed_run", { id }),
   /** Opens an https link from a feed in the browser. */
   /** `site`: the link came from that site, so it must point at it. */
@@ -590,25 +595,25 @@ export function hasTool(s: Site, tool: string): boolean {
 
 /** Why this site's users or comments can't be managed here now, or null. Basic mode uses core REST. */
 export function peopleBlocked(s: Site, tool: string): string | null {
-  if (s.sign_in_again) return "Sign in again first.";
-  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
-  if (s.mode === "classic_monks" && !hasTool(s, tool)) return "This connection can't do this. Sign in again and tick the user and comment tool groups.";
+  if (s.sign_in_again) return "The sign-in for this site expired. Sign in again to work on it here.";
+  if (noTools(s)) return "WP Sites HQ was given no permissions on this site. Sign in again and allow what it may do.";
+  if (s.mode === "classic_monks" && !hasTool(s, tool)) return "WP Sites HQ isn't allowed to change users and comments here. Sign in again and allow them.";
   return null;
 }
 
 /** Why Classic Monks itself can't be managed on this site, or null. */
 export function cmBlocked(s: Site): string | null {
   if (s.mode === "basic") return "This site doesn't have Classic Monks. It's connected in Basic mode.";
-  if (s.sign_in_again) return "Sign in again first.";
-  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
-  if (!hasTool(s, "get-features")) return "This connection can't change Classic Monks. Sign in again and tick its tool groups.";
+  if (s.sign_in_again) return "The sign-in for this site expired. Sign in again to work on it here.";
+  if (noTools(s)) return "WP Sites HQ was given no permissions on this site. Sign in again and allow what it may do.";
+  if (!hasTool(s, "get-features")) return "WP Sites HQ isn't allowed to change Classic Monks here. Sign in again and allow it.";
   return null;
 }
 
 /** Why this site's content can't be managed here now, or null. */
 export function contentBlocked(s: Site): string | null {
-  if (s.sign_in_again) return "Sign in again first.";
-  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
+  if (s.sign_in_again) return "The sign-in for this site expired. Sign in again to work on it here.";
+  if (noTools(s)) return "WP Sites HQ was given no permissions on this site. Sign in again and allow what it may do.";
   const tools = s.capabilities.abilities;
   if (s.mode === "classic_monks" && !(Array.isArray(tools) && tools.includes("list-post-types")))
     return "Classic Monks on this site is older. Update it, then check the site, to manage its content here.";
@@ -715,9 +720,9 @@ export function can(s: Site, what: Action["do"], tool = TOOL[what]): boolean {
 
 /** Sites that can't be changed now, and why, in a few words. */
 export function blocked(s: Site, inv: SiteInventory | undefined): string | null {
-  if (s.sign_in_again) return "Sign in again first.";
+  if (s.sign_in_again) return "The sign-in for this site expired. Sign in again to work on it here.";
   if (s.health === "down") return "Down when last checked. Check the site first.";
-  if (noTools(s)) return "This connection has no tools. Sign in again and tick the tool groups.";
+  if (noTools(s)) return "WP Sites HQ was given no permissions on this site. Sign in again and allow what it may do.";
   if (!inv) return "Not read yet. Check the site.";
   return null;
 }
@@ -760,19 +765,19 @@ export function noTools(s: Site): boolean {
   return s.mode === "classic_monks" && !s.sign_in_again && Array.isArray(tools) && tools.length === 0;
 }
 
-export const NO_TOOLS = "Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.";
+export const NO_TOOLS = "Connected, but WP Sites HQ was given no permissions. Sign in again and allow what it may do.";
 
 /** Slow is a note on a healthy site, never a warning. */
 export const slow = (s: Site) => s.health === "ok" && s.health_detail.startsWith("Slow");
 
 /** What the status column says about a site. */
 export function siteStatus(s: Site): { tone: Tone; label: string } {
-  if (s.sign_in_again) return { tone: "warning", label: "Sign in again" };
+  if (s.sign_in_again) return { tone: "warning", label: "Sign-in expired" };
   if (s.health === "down") return { tone: "danger", label: "Down" };
   if (noTools(s)) return { tone: "warning", label: "No tools yet" };
   switch (s.health) {
     case "ok":
-      return { tone: "ok", label: "Healthy" };
+      return { tone: "ok", label: slow(s) ? "Healthy, slow" : "Healthy" };
     case "warning":
       return { tone: "warning", label: "Needs a look" };
     default:

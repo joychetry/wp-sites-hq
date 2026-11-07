@@ -50,6 +50,7 @@ function core(over: Record<string, (a: Record<string, unknown>) => unknown> = {}
 test("money sums by month and currency", () => {
   expect(money(1250, "EUR")).toBe("€12.50");
   expect(money(100, "ZZ")).toBe("ZZ 1.00");
+  expect(money(-2325, "USD")).toBe("\u2212$23.25");
   expect(COSTS.map(perMonth)).toEqual([2000, 9900, 0]);
   expect([...sums(COSTS)]).toEqual([
     ["EUR", { cost: 2000, charge: 9900 }],
@@ -70,11 +71,15 @@ test("lists clients with their sites and what is left each month", async () => {
   const none = within(table).getByText("No client yet").closest("tr")!;
   expect(within(none).getByText("Beta")).toBeInTheDocument();
   // Each cost or charge is a row under its client, with how often and when it renews or is due.
-  expect(within(table).getByRole("button", { name: "Domain" }).closest("tr")).toHaveTextContent(`Cost · once · due ${day("2026-12-01")}$15.00`);
+  const domain = within(table).getByRole("button", { name: "Domain" }).closest("tr")!;
+  expect(domain).toHaveTextContent(`Cost · once · due ${day("2026-12-01")}`);
+  // The cost's own site sits in Sites, not in the line under it.
+  expect(within(domain).getByText("Beta")).toBeInTheDocument();
+  expect(domain).toHaveTextContent(/\$15\.00$/);
   expect(within(table).getByRole("button", { name: "Care plan" }).closest("tr")).toHaveTextContent("Charge · monthly€99.00");
   // What renews soon, in date order.
   const soon = screen.getByRole("region", { name: "Renewing soon" });
-  expect(within(soon).getAllByRole("listitem").map((li) => li.querySelector("b")!.textContent)).toEqual(["Domain · Beta", "Hosting · Alpha"]);
+  expect(within(soon).getAllByRole("listitem").map((li) => li.querySelector("b")!.textContent)).toEqual(["Domain", "Hosting"]);
 });
 
 test("adds a client with their sites, and a cost on a site", async () => {
@@ -96,15 +101,15 @@ test("adds a client with their sites, and a cost on a site", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Add a cost or charge" }));
   sheet = screen.getByRole("dialog", { name: "Add a cost or charge" });
-  choose(within(sheet).getByRole("combobox", { name: "On" }), "s2");
-  fireEvent.change(within(sheet).getByRole("textbox", { name: "What it is" }), { target: { value: "Backups" } });
+  choose(within(sheet).getByRole("combobox", { name: "For" }), "s2");
+  fireEvent.change(within(sheet).getByRole("textbox", { name: "Name" }), { target: { value: "Backups" } });
   fireEvent.change(within(sheet).getByRole("textbox", { name: "Amount" }), { target: { value: "abc" } });
   expect(within(sheet).getByText(/Write the amount as a number/)).toBeInTheDocument();
-  expect(within(sheet).getByRole("button", { name: "Add it" })).toBeDisabled();
+  expect(within(sheet).getByRole("button", { name: "Add the cost" })).toBeDisabled();
   fireEvent.change(within(sheet).getByRole("textbox", { name: "Amount" }), { target: { value: "5,50" } });
   choose(within(sheet).getByRole("combobox", { name: "How often" }), "month");
   fireEvent.click(within(sheet).getByRole("button", { name: "A charge to the client" }));
-  fireEvent.click(within(sheet).getByRole("button", { name: "Add it" }));
+  fireEvent.click(within(sheet).getByRole("button", { name: "Add the charge" }));
   await waitFor(() =>
     expect(calls.find((c) => c[0] === "cost_save")?.[1].cost).toEqual({ id: 0, site_id: 2, client_id: null, kind: "charge", label: "Backups", cents: 550, currency: "USD", every: "month", renews_on: null }),
   );
@@ -171,11 +176,11 @@ test("WP Sites HQ checks for a new version on request and installs only on a cli
   render(<Settings theme="system" setTheme={() => {}} density="comfortable" setDensity={() => {}} />);
   expect(await screen.findByText("0.1.0")).toBeInTheDocument();
   expect(screen.getByText("None, you have the newest")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
   expect(await screen.findByText("You have the newest version of WP Sites HQ.")).toBeInTheDocument();
   // Notes are shown as text: markup in latest.json stays words on the screen.
   now = { ...status({ version: "0.2.0", notes: "### Media\n- Grid view <img src=x onerror=alert(1)>", date: 1761696000 }), progress: [3145728, 10485760] };
-  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
   const notes = await screen.findByRole("region", { name: "What's new in 0.2.0" });
   expect(notes).toHaveTextContent("Media - Grid view <img src=x onerror=alert(1)>");
   expect(notes.querySelector("img")).toBeNull();
@@ -183,7 +188,7 @@ test("WP Sites HQ checks for a new version on request and installs only on a cli
   expect(screen.getByText(/Downloading 0\.2\.0: 3\.0 MB of 10\.0 MB/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Install 0.2.0 now" })).toBeDisabled();
   now = { ...now, progress: null };
-  fireEvent.click(screen.getByRole("button", { name: "Check now" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check for a new version" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Install 0.2.0 now" })).toBeEnabled());
   expect(calls.some(([c]) => c === "app_update_install")).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Install 0.2.0 now" }));
@@ -208,4 +213,18 @@ test("installing updates automatically is off until switched on, then saved and 
   expect(await screen.findByText("New versions now install by themselves when nothing is running.")).toBeInTheDocument();
   await waitFor(() => expect(calls.some(([c]) => c === "app_update_check")).toBe(true));
   expect(screen.getByRole("switch", { name: "Install updates automatically" })).toBeChecked();
+});
+
+test("deleting a cost asks first, and Keep it leaves it", async () => {
+  const calls = core();
+  render(<Clients sites={[A, B]} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Domain" }));
+  const sheet = screen.getByRole("dialog", { name: "Edit Domain" });
+  fireEvent.click(within(sheet).getByRole("button", { name: "Delete the cost" }));
+  expect(within(sheet).getByText("Delete Domain? It stops counting in Monthly.")).toBeInTheDocument();
+  fireEvent.click(within(sheet).getByRole("button", { name: "Keep it" }));
+  expect(calls.some((c) => c[0] === "cost_delete")).toBe(false);
+  fireEvent.click(within(sheet).getByRole("button", { name: "Delete the cost" }));
+  fireEvent.click(within(sheet).getAllByRole("button", { name: "Delete the cost" }).at(-1)!);
+  await waitFor(() => expect(calls.some((c) => c[0] === "cost_delete")).toBe(true));
 });

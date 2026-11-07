@@ -20,13 +20,15 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { day as dayText, month as monthText } from "../format";
+import { Glyph } from "./ui";
 
 type Change = { target: { value: string } };
 const changed = (value: string): Change => ({ target: { value } });
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
 /** Where a popover goes: under its anchor, or above when there is no room below. */
-function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: number) {
+function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: number, pop?: RefObject<HTMLElement | null>) {
   const [style, setStyle] = useState<CSSProperties>({});
   useLayoutEffect(() => {
     if (!open) return;
@@ -34,7 +36,8 @@ function usePlace(anchor: RefObject<HTMLElement | null>, open: boolean, width?: 
       const r = anchor.current?.getBoundingClientRect();
       if (!r) return;
       const below = innerHeight - r.bottom;
-      const up = below < 260 && r.top > below;
+      // The popover's own height (a calendar is about 400px), not a guess, decides if it fits below.
+      const up = below < (pop?.current?.scrollHeight || 260) + 8 && r.top > below;
       const w = Math.max(r.width, width ?? 0);
       // Inside a sheet the list stays 8px inside the sheet's edges, not just the window's.
       const box = anchor.current?.closest('[aria-modal="true"]')?.getBoundingClientRect();
@@ -74,7 +77,7 @@ type PopoverProps = {
 /** A floating panel tied to an anchor. It closes on a click outside; Escape is the owner's job. */
 export function Popover({ anchor, open, onClose, width, className, children }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const style = usePlace(anchor, open, width);
+  const style = usePlace(anchor, open, width, ref);
   useEffect(() => {
     if (!open) return;
     const down = (e: PointerEvent) => {
@@ -349,7 +352,7 @@ export function Combobox({ suggestions, onPick, onChange, onKeyDown, className, 
 
 type MultiProps<T extends string | number> = {
   label: string;
-  options: { value: T; label: string; disabled?: boolean }[];
+  options: { value: T; label: string; disabled?: boolean; icon?: ReactNode }[];
   value: T[];
   onChange: (v: T[]) => void;
   placeholder?: string;
@@ -380,7 +383,8 @@ export function MultiSelect<T extends string | number>({ label, options, value, 
           {value.map((v) => {
             const o = byValue.get(v);
             return (
-              <li key={String(v)} className="tag">
+              <li key={String(v)} className="pchip">
+                {o?.icon}
                 {o?.label ?? String(v)}
                 <button
                   type="button"
@@ -406,7 +410,7 @@ export function MultiSelect<T extends string | number>({ label, options, value, 
         aria-autocomplete="list"
         aria-activedescendant={open && hits[active] ? `${list}-${active}` : undefined}
         autoComplete="off"
-        placeholder={placeholder ?? "Type to find, Enter to tick"}
+        placeholder={placeholder ?? "Type to find, Enter to choose"}
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
@@ -469,16 +473,10 @@ const parseDay = (s: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
 };
-/** "28 Oct 2026" for a value like "2026-10-28". */
-export const dayLabel = (s: string) => {
-  const d = parseDay(s);
-  return d ? `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}` : "";
-};
+/** "28 Oct 2026" for a value like "2026-10-28": format.ts day(), the one date format the lists use too. */
+export const dayLabel = (s: string) => (parseDay(s) ? dayText(s) : "");
 /** "October 2026" for "2026-10". */
-export const monthLabel = (s: string) => {
-  const m = /^(\d{4})-(\d{2})$/.exec(s);
-  return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : "";
-};
+export const monthLabel = (s: string) => (/^\d{4}-\d{2}$/.test(s) ? monthText(s) : "");
 
 /** A month grid (WAI-ARIA date picker dialog): arrows move a day or a week, Page keys a month. */
 function Calendar({ value, max, onPick, onClose }: { value: string; max?: string; onPick: (d: string) => void; onClose: () => void }) {
@@ -504,13 +502,13 @@ function Calendar({ value, max, onPick, onClose }: { value: string; max?: string
     <div className="cal" role="dialog" aria-modal="true" aria-labelledby={label}>
       <div className="cal-head">
         <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => move(0, -1)}>
-          ‹
+          <Glyph name="chevron-left" />
         </button>
         <h2 id={label} aria-live="polite">
           {MONTHS[focus.getMonth()]} {focus.getFullYear()}
         </h2>
         <button type="button" className="icon-btn" aria-label="Next month" onClick={() => move(0, 1)}>
-          ›
+          <Glyph name="chevron-right" />
         </button>
       </div>
       <table
@@ -597,13 +595,13 @@ function MonthGrid({ value, max, onPick, onClose }: { value: string; max?: strin
     <div className="cal" role="dialog" aria-modal="true" aria-labelledby={label} ref={box}>
       <div className="cal-head">
         <button type="button" className="icon-btn" aria-label="Previous year" onClick={() => setYear(year - 1)}>
-          ‹
+          <Glyph name="chevron-left" />
         </button>
         <h2 id={label} aria-live="polite">
           {year}
         </h2>
         <button type="button" className="icon-btn" aria-label="Next year" onClick={() => setYear(year + 1)}>
-          ›
+          <Glyph name="chevron-right" />
         </button>
       </div>
       <div className="months">
@@ -668,12 +666,13 @@ export function DateInput({ type, value, onChange, max, className, disabled, id,
           {calendar}
         </button>
       ) : (
-        <>
+        // One box, like the month field: the typed date with its calendar button inside the right edge.
+        <span className="dt-box">
           <DayField value={day} disabled={disabled} label={`${name}: date`} onChange={(d) => set(d)} />
           <button ref={btn} type="button" className="icon-btn dt-cal" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} aria-label={`Choose the ${name.toLowerCase()} from a calendar`} onClick={() => setOpen(!open)}>
             {calendar}
           </button>
-        </>
+        </span>
       )}
       {type === "datetime-local" && (
         <TimeField value={time.slice(0, 5)} disabled={disabled || !day} label={`${name}: time`} onChange={(t) => set(day, t)} />
@@ -741,7 +740,7 @@ function DayField({ value, onChange, label, disabled }: { value: string; onChang
         aria-label={label}
         aria-invalid={bad || undefined}
         aria-describedby={bad ? err : undefined}
-        placeholder="e.g. 1 Dec 2026"
+        placeholder={`e.g. ${dayText("2026-12-01")}`}
         disabled={disabled}
         value={draft}
         onChange={(e) => {
@@ -753,7 +752,7 @@ function DayField({ value, onChange, label, disabled }: { value: string; onChang
       />
       {bad && (
         <span id={err} className="err dt-err">
-          Write a date like 1 Dec 2026
+          Write a date like {dayText("2026-12-01")}
         </span>
       )}
     </>
@@ -1106,7 +1105,8 @@ export function Slider({ label, value, min, max, step: by = 1, format = String, 
 
 // ---- Menu and tabs --------------------------------------------------------------------------
 
-export type MenuItem = { label: string; run: () => void; danger?: boolean; disabled?: boolean };
+/** `checked`: the menu picks one of several (a filter); the current one is marked. */
+export type MenuItem = { label: string; run: () => void; danger?: boolean; disabled?: boolean; checked?: boolean };
 
 /** A menu button (WAI-ARIA): arrows move, Enter runs, Escape closes and gives focus back. */
 /** `className` replaces the button's look (a filter chip: "chip"). */
@@ -1115,7 +1115,7 @@ export function Menu({ label, items, children, small, className }: { label: stri
   const btn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const id = useId();
-  const focusAt = (i: number) => list.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled])')[i]?.focus();
+  const focusAt = (i: number) => list.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled])')[i]?.focus();
   useEffect(() => {
     if (open) focusAt(0);
   }, [open]);
@@ -1158,7 +1158,7 @@ export function Menu({ label, items, children, small, className }: { label: stri
           aria-label={label}
           className="lb menu"
           onKeyDown={(e) => {
-            const all = [...list.current!.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled])')];
+            const all = [...list.current!.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled])')];
             const i = all.indexOf(document.activeElement as HTMLElement);
             const go: Record<string, number> = { ArrowDown: (i + 1) % all.length, ArrowUp: (i - 1 + all.length) % all.length, Home: 0, End: all.length - 1 };
             if (e.key in go) {
@@ -1176,7 +1176,8 @@ export function Menu({ label, items, children, small, className }: { label: stri
           {items.map((m) => (
             <li
               key={m.label}
-              role="menuitem"
+              role={m.checked === undefined ? "menuitem" : "menuitemradio"}
+              aria-checked={m.checked}
               tabIndex={-1}
               aria-disabled={m.disabled || undefined}
               className={cx(m.danger && "danger")}
@@ -1194,6 +1195,7 @@ export function Menu({ label, items, children, small, className }: { label: stri
               }}
             >
               {m.label}
+              {m.checked && <Glyph name="check" />}
             </li>
           ))}
         </ul>
@@ -1269,7 +1271,7 @@ function More({ label, items }: { label: string; items: MenuItem[] }) {
  * "More" menu after it; arrows still move through every tab, and the chosen one is always on the row.
  * `text` names a tab whose label isn't plain words, for the menu.
  */
-export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }: { label: string; tabs: { id: T; label: ReactNode; text?: string }[]; value: T; onChange: (t: T) => void; idBase: string }) {
+export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }: { label: string; tabs: { id: T; label: ReactNode; text?: string; count?: number }[]; value: T; onChange: (t: T) => void; idBase: string }) {
   const list = useRef<HTMLDivElement>(null);
   const at = tabs.findIndex((t) => t.id === value);
   const { row, measure, shown } = useOverflow(tabs.length, at);
@@ -1303,6 +1305,7 @@ export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }:
                 onClick={() => onChange(t.id)}
               >
                 {t.label}
+                {!!t.count && <span className="n">{` ${t.count}`}</span>}
               </button>
             ),
         )}
@@ -1315,6 +1318,7 @@ export function Tabs<T extends string>({ label, tabs, value, onChange, idBase }:
         {tabs.map((t) => (
           <span key={t.id} className="tab-like">
             {t.label}
+            {!!t.count && <span className="n">{` ${t.count}`}</span>}
           </span>
         ))}
       </div>
@@ -1329,7 +1333,7 @@ export function Segmented<T extends string>({ label, options, value, onChange }:
   const body = (o: { label: string; count?: number }) => (
     <>
       {o.label}
-      {o.count !== undefined && <small>{o.count}</small>}
+      {o.count !== undefined && <small>{` ${o.count}`}</small>}
     </>
   );
   return (

@@ -2,7 +2,7 @@
 // Feedback pieces: toasts (with Undo), tooltips, loading skeletons, a progress bar and empty states.
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Glyph, Icon, type GlyphName } from "./ui";
+import { Button, Glyph, Icon, type GlyphName } from "./ui";
 import type { Tone } from "../api";
 
 type Action = { label: string; icon?: GlyphName; run: () => unknown };
@@ -196,6 +196,8 @@ const PICTURES: Record<string, ReactNode> = {
   plug: <path d="M12 4v6M20 4v6M8 10h16v4a8 8 0 0 1-16 0zM16 22v6" />,
   lock: <path d="M8 14h16v13H8zM11 14v-4a5 5 0 0 1 10 0v4M16 19v3" />,
   alert: <path d="M16 5 3.5 26h25zM16 13v6M16 22.5v.5" />,
+  pulse: <path d="M3 17h6l3-8 5 15 4-11 2 4h6" />,
+  shield: <path d="M16 4l10 4v7c0 7-4.5 11-10 13-5.5-2-10-6-10-13V8zM11.5 16l3 3 6-6" />,
 };
 
 /** An empty or error state: a picture, a heading, plain words and the next step. */
@@ -211,5 +213,32 @@ export function Empty({ picture, title, children, action, alert, small }: { pict
       {children}
       {action && <div className="row">{action}</div>}
     </div>
+  );
+}
+
+/** Ask the app shell to open the Sign in again sheet, or open a site in Sites (App.tsx listens). */
+export const askSignIn = (siteId: number) => window.dispatchEvent(new CustomEvent("wpshq:sign-in-again", { detail: siteId }));
+export const askOpenSite = (siteId: number) => window.dispatchEvent(new CustomEvent("wpshq:open-site", { detail: siteId }));
+
+/**
+ * A site this page can't work with yet, and the one step that fixes it: never a sentence alone.
+ * Sign in again when the sign-in expired or allows too little; otherwise open the site in Sites
+ * (Basic mode, where the WP Sites HQ plugin is got, or an older plugin to update). `extra` is a second action.
+ */
+export function Blocked({ site, reason, title, extra, small }: { site: { id: number; sign_in_again?: boolean; mode: string }; reason: string; title?: string; extra?: ReactNode; small?: boolean }) {
+  const signIn = site.sign_in_again || /sign in again/i.test(reason);
+  const action = signIn ? (
+    <Button kind="primary" onClick={() => askSignIn(site.id)}>
+      Sign in again
+    </Button>
+  ) : (
+    <Button kind="primary" onClick={() => askOpenSite(site.id)}>
+      {site.mode === "basic" ? "Get the WP Sites HQ plugin" : "Open in Sites"}
+    </Button>
+  );
+  return (
+    <Empty picture="lock" title={title ?? (site.sign_in_again ? "Sign-in expired" : "Not available on this site")} small={small} action={<>{action}{extra}</>}>
+      <p>{reason}</p>
+    </Empty>
   );
 }

@@ -80,7 +80,7 @@ function YourData() {
           Export as CSV
           <Glyph name="download" />
         </Button>
-        <FilePicker label="Import a JSON or CSV file" accept=".json,.csv,application/json,text/csv" disabled={busy} onFile={importFile} />
+        <FilePicker label="Import a JSON or CSV file" accept=".json,.csv,application/json,text/csv" disabled={busy} onFile={importFile} hint="" />
       </div>
     </Card>
   );
@@ -117,7 +117,13 @@ function useReportSettings() {
 }
 type ReportSettings = ReturnType<typeof useReportSettings>;
 
-function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
+function Reports({ s, setS: set, busy, save }: ReportSettings & { s: AppSettings }) {
+  // This card saves on its button; the rest of the page applies at once, so say when something here waits.
+  const [dirty, setDirty] = useState(false);
+  const setS = (next: AppSettings) => {
+    set(next);
+    setDirty(true);
+  };
   const accent = /^#[0-9a-f]{6}$/i.test(s.report_accent) ? s.report_accent : "#111111";
   return (
     <Card icon="file" title="Reports" id="set-reports">
@@ -132,7 +138,7 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
       <div className="field">
         <span>Accent colour</span>
         <ColorInput label="Accent colour" value={s.report_accent} onChange={(c) => setS({ ...s, report_accent: c })} />
-        <small>Empty uses black.</small>
+        <small>Use a colour code like #1F6FEB, or leave it empty for black.</small>
       </div>
       <label className="row check">
         <input type="checkbox" checked={s.white_label} onChange={(e) => setS({ ...s, white_label: e.target.checked })} />
@@ -151,19 +157,20 @@ function Reports({ s, setS, busy, save }: ReportSettings & { s: AppSettings }) {
           )}
         </div>
       </div>
-      <div>
-        <Button kind="primary" className="disc" disabled={busy} onClick={() => save(s)}>
-          Save report settings
+      <div className="row">
+        <Button kind="primary" className="disc" aria-label="Save report settings" disabled={busy} onClick={async () => (await save(s)) && setDirty(false)}>
+          Save
           <span className="btn-disc">
             <Glyph name="check" />
           </span>
         </Button>
+        {dirty && <span className="dim">Unsaved changes</span>}
       </div>
     </Card>
   );
 }
 
-function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: AppSettings }) {
+function DataSources({ s, setS, gsc, setGsc, busy, run, save }: ReportSettings & { s: AppSettings }) {
   const [setup, setSetup] = useState(false);
   const [client, setClient] = useState({ id: "", secret: "" });
   const gscLine = !s.search_console
@@ -198,10 +205,11 @@ function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: 
           aria-describedby="ds-gsc-d"
           checked={s.search_console}
           disabled={busy}
-          onChange={async (e) => {
+          onChange={(e) => {
             const on = e.target.checked;
-            const ok = await save({ ...s, search_console: on }, on ? "Search Console is on. Add your Google client next." : "Search Console is off.");
-            if (ok && on && !gsc?.client) setSetup(true);
+            // Without a Google client nothing would work yet: the switch turns on from the dialog's Save and connect.
+            if (on && !gsc?.client) return setSetup(true);
+            save({ ...s, search_console: on }, on ? "Search Console is on." : "Search Console is off.");
           }}
         />
         <div>
@@ -245,11 +253,16 @@ function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: 
                 kind="primary"
                 className="disc"
                 disabled={busy || !client.id.trim() || !client.secret.trim()}
-                onClick={async () => {
-                  if (await run(async () => setGsc(await api.gscSetClient(client.id, client.secret)), "Saved your Google client.")) setSetup(false);
-                }}
+                onClick={() =>
+                  run(async () => {
+                    setGsc(await api.gscSetClient(client.id, client.secret));
+                    if (!s.search_console) setS(await api.saveAppSettings({ ...s, search_console: true }));
+                    setSetup(false);
+                    setGsc(await api.gscConnect());
+                  }, "Connected to Search Console.")
+                }
               >
-                Save the client
+                Save and connect
                 <span className="btn-disc">
                   <Glyph name="check" />
                 </span>
@@ -262,12 +275,12 @@ function DataSources({ s, gsc, setGsc, busy, run, save }: ReportSettings & { s: 
             <span>Make an OAuth client of the Desktop app type in Google Cloud, with the Search Console API turned on, then paste its ID and secret here.</span>
           </p>
           <label className="field">
-            <span>Client ID</span>
+            <span>Google client ID</span>
             <input className="input mono" spellCheck={false} autoComplete="off" value={client.id} onChange={(e) => setClient({ ...client, id: e.target.value })} />
           </label>
           <div className="field">
             <label className="field">
-              <span>Client secret</span>
+              <span>Google client secret</span>
               <input className="input" type="password" autoComplete="off" aria-describedby="gsc-kept" value={client.secret} onChange={(e) => setClient({ ...client, secret: e.target.value })} />
             </label>
             <small className="lockline" id="gsc-kept">
@@ -384,7 +397,7 @@ function AppUpdate({ s, save, saving }: { s: AppSettings | null; save: ReportSet
       )}
       <div className="row acts-row">
         <Button small disabled={!!busy} onClick={check}>
-          {busy === "check" ? "Checking…" : "Check now"}
+          {busy === "check" ? "Checking…" : "Check for a new version"}
         </Button>
         {found && (
           <Button small kind="primary" disabled={!!busy || !!progress} onClick={install}>

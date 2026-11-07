@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
 import { Comments, plainText } from "./Comments";
-import { ClassicMonks, toolLabel, whoOf } from "./ClassicMonks";
+import { ClassicMonks, targetOf, toolLabel, whoOf } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
@@ -60,7 +60,7 @@ function core(over: Record<string, (args: Record<string, unknown>) => unknown> =
       case "cm_activity":
         return { rows: [{ id: 9, time: "2026-10-28 10:00:00", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true }], total: 1, page: 1, pages: 1 };
       case "cm_approvals":
-        return [{ id: 31, tool: "delete-post", who: "Claude", time: "2026-10-28 09:00:00", expires_in: 300 }];
+        return [{ id: 31, tool: "delete-post", who: "Claude", time: "2026-10-28 09:00:00", expires_in: 300, input: { post_id: 12 }, preview: { id: 12, title: "Hello world" } }];
       case "user_reset":
         return "sam@x.test";
       case "user_create":
@@ -80,28 +80,31 @@ describe("Users", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(4);
     expect(within(table).getAllByText("Editor")).toHaveLength(1);
     expect(screen.getByText("Alpha: showing 2 of 60 users. Search to find the others.")).toBeInTheDocument();
-    expect(screen.getByText(/^Older: This connection can't do this/)).toBeInTheDocument();
-    // Only Classic Monks with M7 can email a reset.
-    expect(screen.getAllByRole("button", { name: /^Send password reset/ })).toHaveLength(2);
+    expect(screen.getByText(/^Older: WP Sites HQ isn't allowed/)).toBeInTheDocument();
+    // Only Classic Monks with M7 can email a reset; elsewhere the slot stays, marked unavailable, so rows line up.
+    const resets = screen.getAllByRole("button", { name: /^Send password reset/ });
+    expect(resets).toHaveLength(3);
+    expect(resets.filter((b) => b.getAttribute("aria-disabled") === "true")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
   });
 
   it("searches, sends a reset and changes a role", async () => {
     const calls = core();
     render(<Users sites={[CM]} />);
     await screen.findByRole("table", { name: "Users" });
+    // Searches as you type, once the typing pauses.
     fireEvent.change(screen.getByRole("searchbox", { name: "Search users" }), { target: { value: "sam" } });
-    fireEvent.click(screen.getByRole("button", { name: "Search" }));
     await waitFor(() => expect(calls).toContainEqual(["users_list", { id: 1, search: "sam", page: 1 }]));
     fireEvent.click(await screen.findByRole("button", { name: "Send password reset to SAM on Alpha" }));
-    expect(await screen.findByText("Sent sam a link to set a new password (sam@x.test).")).toBeInTheDocument();
+    expect(await screen.findByText("Sent SAM a link to set a new password (sam@x.test).")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Change role for SAM on Alpha" }));
     const sheet = screen.getByRole("dialog", { name: "Change SAM's role" });
-    expect(within(sheet).getByRole("button", { name: "Make them Editor" })).toBeDisabled();
+    expect(within(sheet).getByRole("button", { name: "Make them an editor" })).toBeDisabled();
     choose(within(sheet).getByRole("combobox", { name: "New role" }), "administrator");
     expect(within(sheet).getByText(/An administrator can change everything/)).toBeInTheDocument();
-    fireEvent.click(within(sheet).getByRole("button", { name: "Make them Administrator" }));
-    expect(await screen.findByText("SAM is now Administrator on Alpha.")).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Make them an administrator" }));
+    expect(await screen.findByText("SAM is now an administrator on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["user_set_role", { id: 1, userId: 2, role: "administrator" }]);
   });
 
@@ -131,12 +134,21 @@ describe("Users", () => {
     choose(within(sheet).getByRole("combobox", { name: "Site" }), "2");
     expect(await within(sheet).findByText(/Lost your password/)).toBeInTheDocument();
     choose(within(sheet).getByRole("combobox", { name: "Site" }), "1");
-    await within(sheet).findByRole("checkbox", { name: "Email them a link to set their password" });
+    const box = await within(sheet).findByRole("checkbox", { name: "Email them a link to set their password" });
+    // The words toggle the box too.
+    fireEvent.click(within(sheet).getByText("Email them a link to set their password"));
+    expect(box).not.toBeChecked();
+    fireEvent.click(box);
+    expect(box).toBeChecked();
+    // Add says which field is missing instead of sitting disabled.
+    fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
+    expect(within(sheet).getByText("Fill in the username.")).toBeInTheDocument();
+    expect(within(sheet).getByText("Fill in the email address.")).toBeInTheDocument();
     fireEvent.change(within(sheet).getByRole("textbox", { name: /^Username/ }), { target: { value: "lee" } });
-    fireEvent.change(within(sheet).getByRole("textbox", { name: "Email address" }), { target: { value: "lee@x.test" } });
+    fireEvent.change(within(sheet).getByRole("textbox", { name: /^Email address/ }), { target: { value: "lee@x.test" } });
     choose(within(sheet).getByRole("combobox", { name: "Role" }), "editor");
     fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
-    expect(await screen.findByText("Added lee to Alpha as Editor. They were emailed a link to set their password.")).toBeInTheDocument();
+    expect(await screen.findByText("Added lee to Alpha as an editor. They were emailed a link to set their password.")).toBeInTheDocument();
     expect(calls).toContainEqual(["user_create", { id: 1, user: { username: "lee", email: "lee@x.test", role: "editor" } }]);
     expect(calls).toContainEqual(["user_reset", { id: 1, userId: 7 }]);
   });
@@ -150,7 +162,7 @@ describe("Users", () => {
     fireEvent.change(within(sheet).getByRole("textbox", { name: /^Username/ }), { target: { value: "lee" } });
     fireEvent.change(within(sheet).getByRole("textbox", { name: "Email address" }), { target: { value: "lee@x.test" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
-    expect(await screen.findByText("Added lee to Alpha as Editor. The password email didn't go out: Error: The email could not be sent.")).toBeInTheDocument();
+    expect(await screen.findByText("Added lee to Alpha as an editor. The password email didn't go out: Error: The email could not be sent.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Add a user" })).not.toBeInTheDocument();
   });
 
@@ -189,10 +201,13 @@ describe("Comments", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Reply to Ana on Alpha" }));
     const box = screen.getByRole("textbox", { name: /^Your reply to Ana/ });
-    expect(screen.getByRole("button", { name: "Send the reply" })).toBeDisabled();
+    // A waiting comment is approved with the reply, so the reply never shows under a hidden comment.
+    expect(screen.getByRole("button", { name: "Approve and reply" })).toBeDisabled();
     fireEvent.change(box, { target: { value: "Thanks!" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send the reply" }));
-    expect(await screen.findByText("Replied to Ana on Alpha.")).toBeInTheDocument();
+    const approvals = calls.filter((c) => c[0] === "comment_moderate" && c[1].action === "approve").length;
+    fireEvent.click(screen.getByRole("button", { name: "Approve and reply" }));
+    expect(await screen.findByText("Approved and replied to Ana on Alpha.")).toBeInTheDocument();
+    expect(calls.filter((c) => c[0] === "comment_moderate" && c[1].action === "approve")).toHaveLength(approvals + 1);
     expect(calls).toContainEqual(["comment_reply", { id: 1, commentId: 5, postId: 4, text: "Thanks!" }]);
 
     fireEvent.click(screen.getByRole("button", { name: "Spam" }));
@@ -238,6 +253,21 @@ describe("Comments", () => {
     expect(await screen.findByText("Comment not found.")).toBeInTheDocument();
   });
 
+  it("counts follow the Site filter, the waiting count shows on every list, and trash has Undo", async () => {
+    const calls = core();
+    render(<Comments sites={[CM, BASIC]} />);
+    expect(await screen.findByRole("button", { name: /^Waiting for approval\s*4$/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Site:/ }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Alpha" }));
+    expect(screen.getByRole("button", { name: /^Waiting for approval\s*1$/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Move to the trash: Ana's comment on Alpha" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(calls).toContainEqual(["comment_moderate", { id: 1, commentId: 5, action: "unapprove" }]));
+    fireEvent.click(screen.getByRole("button", { name: "Spam" }));
+    await waitFor(() => expect(calls).toContainEqual(["comments_list", { id: 1, status: "spam" }]));
+    expect(screen.getByRole("button", { name: /^Waiting for approval\s*\d/ })).toBeInTheDocument();
+  });
+
   it("strips a site's HTML to words", () => {
     expect(plainText("<p>Hi &lt;there&gt; &quot;you&quot; &#039;all&#39;&nbsp;</p>")).toBe("Hi <there> \"you\" 'all'");
   });
@@ -269,8 +299,12 @@ describe("Classic Monks", () => {
     expect(within(list).getByText("Login Lockdown")).toBeInTheDocument();
     expect(within(list).getByText("Locked")).toBeInTheDocument();
     expect(within(list).queryByRole("button")).toBeNull();
+    // The count is the whole site's, not the rows shown.
+    expect(screen.getByText(/of 2 turned on$/)).toHaveTextContent("1 of 2 turned on");
     fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "zzz" } });
     expect(screen.getByText("No feature matches")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByRole("switch", { name: "SVG Support" })).toBeInTheDocument();
   });
 
   it("saves a setting, undoes from the log and opens an approval on the site", async () => {
@@ -289,16 +323,16 @@ describe("Classic Monks", () => {
     fireEvent.click(within(tabs).getByRole("tab", { name: "Activity" }));
     const table = await screen.findByRole("list", { name: "Activity" });
     expect(within(table).getByText("Update features")).toBeInTheDocument();
-    fireEvent.click(within(table).getByRole("button", { name: /^Undo/ }));
-    // Nothing changes until the dialog's Undo; Keep it would leave it.
-    const ask = screen.getByRole("dialog", { name: "Undo this change on Alpha?" });
-    expect(calls.some(([c]) => c === "cm_undo")).toBe(false);
-    fireEvent.click(within(ask).getByRole("button", { name: "Undo" }));
+    // Undo runs at once, as the toast's does; the undo is logged too.
+    fireEvent.click(within(table).getByRole("button", { name: /^Undo Update features from / }));
     expect(await screen.findByText("Undone: Update features on Alpha.")).toBeInTheDocument();
+    expect(calls).toContainEqual(["cm_undo", { id: 1, row: 9 }]);
 
-    fireEvent.click(within(tabs).getByRole("tab", { name: "Waiting for approval" }));
-    fireEvent.click(await screen.findByRole("button", { name: /^Approve or decline on the site/ }));
-    expect(await screen.findByText("Opened the approval page for Delete post on Alpha in your browser.")).toBeInTheDocument();
+    fireEvent.click(within(tabs).getByRole("tab", { name: /^Waiting for approval\s?1$/ }));
+    const waiting = await screen.findByRole("list", { name: "Waiting for approval" });
+    expect(within(waiting).getByText("Delete post “Hello world”")).toBeInTheDocument();
+    fireEvent.click(within(waiting).getByRole("button", { name: "Approve or decline on the site: Delete post “Hello world”" }));
+    expect(await screen.findByText("Opened the approval page for Delete post “Hello world” on Alpha in your browser.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_approval_open", { id: 1, op: 31 }]);
   });
 
@@ -310,15 +344,20 @@ describe("Classic Monks", () => {
     expect(within(screen.getByRole("tablist", { name: "Show" })).getAllByRole("tab").map((b) => b.textContent)).toEqual(["Features"]);
     choose(screen.getByRole("combobox", { name: "Site" }), "2");
     expect(screen.getByText("This site doesn't have Classic Monks. It's connected in Basic mode.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Get the WP Sites HQ plugin" })).toBeInTheDocument();
   });
 
   it("names tools and blocks plainly", () => {
     expect(toolLabel("classic-monks/update-features")).toBe("Update features");
-    expect(cmBlocked(OLD)).toMatch(/can't change Classic Monks/);
-    expect(cmBlocked(site({ sign_in_again: true }))).toBe("Sign in again first.");
+    const ask = { id: 1, tool: "update-user", who: "", time: "", expires_in: 60 };
+    expect(targetOf({ ...ask, preview: { display_name: "Sam" } })).toBe("“Sam”");
+    expect(targetOf({ ...ask, input: { user_id: 4 } })).toBe("user 4");
+    expect(targetOf(ask)).toBe("");
+    expect(cmBlocked(OLD)).toMatch(/allowed to change Classic Monks/);
+    expect(cmBlocked(site({ sign_in_again: true }))).toBe("The sign-in for this site expired. Sign in again to work on it here.");
     expect(peopleBlocked(BASIC, "get-users")).toBeNull();
     expect(peopleBlocked(CM, "get-users")).toBeNull();
-    expect(peopleBlocked(OLD, "get-users")).toMatch(/tick the user and comment tool groups/);
+    expect(peopleBlocked(OLD, "get-users")).toMatch(/allowed to change users and comments/);
   });
 });
 

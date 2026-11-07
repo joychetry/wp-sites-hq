@@ -2,9 +2,9 @@
 // Plugins and Themes: one row per plugin or theme, one column per site, and an
 // inspector for the cell in focus. Arrow keys move between cells.
 import "../styles/screens/matrix.css";
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { api, blocked, can, type Action, type Change, type Item, type PluginVersions, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
-import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
+import { Button, Details, Glyph, HeadActions, Icon } from "../components/ui";
 import { Menu, SearchInput } from "../components/controls";
 import { Sheet } from "../components/Sheet";
 import { SiteTile } from "../components/SiteTile";
@@ -12,6 +12,8 @@ import { PkgTile, slugOf } from "../components/PkgTile";
 import { Empty, toast } from "../components/feedback";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
+import { vulnSummary } from "../format";
+import { NotInList } from "./Updates";
 
 export type Kind = "plugins" | "themes";
 
@@ -21,11 +23,13 @@ type Props = {
   kind: Kind;
   sites: Site[];
   inventory: Map<number, SiteInventory>;
-  /** Review first: many sites, or a change that removes or switches something. */
-  onPlan: (title: string, rows: PlanRow[], start: "plan" | "confirm", danger?: boolean) => void;
+  /** Review first: many sites, or a change that removes or switches something. `onBack` reopens the form the rows came from. */
+  onPlan: (title: string, rows: PlanRow[], start: "plan" | "confirm", danger?: boolean, onBack?: () => void, backLabel?: string) => void;
   /** Run now and show progress: one site, nothing lost if it goes wrong. */
   onRun: (title: string, changes: Change[]) => void;
   onInstall?: () => void;
+  /** Opens already filtered to this name (a plugin or theme picked in the palette). */
+  filter?: string;
 };
 
 /** A stable release older than the installed one: rolling back never upgrades, and never lands on a beta. */
@@ -46,9 +50,21 @@ const itemsOf = (kind: Kind, inv: SiteInventory | undefined) => (kind === "plugi
 
 export { slugOf };
 
-/** A known vulnerability in the version this site runs, from the last security check. */
-const vulnOf = (reports: SecurityReport[], kind: Kind, site: number, it: Item | undefined) =>
-  it && reports.find((r) => r.site_id === site)?.vulnerabilities.find((v) => v.kind === (kind === "plugins" ? "plugin" : "theme") && v.id === it.id && v.installed === it.version);
+/** Every known vulnerability for this plugin or theme, from any site's last security check. */
+const advisoriesOf = (reports: SecurityReport[], kind: Kind, id: string) =>
+  reports.flatMap((r) => r.vulnerabilities).filter((v) => v.kind === (kind === "plugins" ? "plugin" : "theme") && v.id === id);
+
+/** A known vulnerability in the version this site runs. Matched on the version, so the same version reads the same on every site. */
+export const vulnOf = (reports: SecurityReport[], kind: Kind, it: Item | undefined) => it && advisoriesOf(reports, kind, it.id).find((v) => v.installed === it.version);
+
+const below = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true }) < 0;
+
+/** Whether a known advisory covers this version: below its fix, or (with no fix yet) at or below the version it was found on. */
+export const affected = (version: string, advisories: Vulnerability[]) =>
+  advisories.some((v) => (v.fixed_in ? below(version, v.fixed_in) : !below(v.installed, version)));
+
+/** The plugin WP Sites HQ reaches the site through: turning it off or deleting it cuts the site off. */
+export const isConnector = (id: string) => /^(classic-monks(-pro)?|wp-sites-hq)$/.test(slugOf(id));
 
 type Tone = "up" | "on" | "idle" | "none" | "vuln";
 
@@ -56,8 +72,8 @@ type Tone = "up" | "on" | "idle" | "none" | "vuln";
 export function cellOf(kind: Kind, it: Item | undefined, vuln?: Vulnerability): { tone: Tone; word: string } {
   const plugin = kind === "plugins";
   if (!it) return { tone: "none", word: "Not installed" };
-  if (vuln) return { tone: "vuln", word: vuln.fixed_in && it.update ? "Vulnerable · fix ready" : "Vulnerable" };
-  if (it.update) return { tone: "up", word: `Update to ${it.update}${plugin && !it.active ? " · inactive" : !plugin && it.active ? " · active" : ""}` };
+  if (vuln) return { tone: "vuln", word: vuln.fixed_in && it.update ? "Vulnerable\u00a0· fix ready" : "Vulnerable" };
+  if (it.update) return { tone: "up", word: `Update to ${it.update}${plugin && !it.active ? "\u00a0· inactive" : !plugin && it.active ? "\u00a0· active" : ""}` };
   if (it.active) return { tone: "on", word: plugin ? "Active" : "Active theme" };
   return { tone: "idle", word: plugin ? "Inactive" : "Installed" };
 }
@@ -65,9 +81,9 @@ export function cellOf(kind: Kind, it: Item | undefined, vuln?: Vulnerability): 
 const STATUS = ["Any", "Update ready", "Inactive", "Known vulnerability", "Not on every site"] as const;
 type StatusFilter = (typeof STATUS)[number];
 
-export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Props) {
+export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall, filter }: Props) {
   const [onlyUpdates, setOnlyUpdates] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(filter ?? "");
   const [status, setStatus] = useState<StatusFilter>("Any");
   const [cursor, setCursor] = useState<[number, number]>([0, 0]);
   const [sel, setSel] = useState<{ site: number; item: string } | null>(null);
@@ -105,7 +121,6 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
   const notReady = shown.filter((s) => blocked(s, inventory.get(s.id)));
   const items = useMemo(() => new Map(read.map((s) => [s.id, new Map(itemsOf(kind, inventory.get(s.id)).map((i) => [i.id, i]))])), [read, inventory, kind]);
   const itemAt = (site: number, id: string) => items.get(site)?.get(id);
-  const waiting = cols.reduce((n, c) => n + c.updates, 0);
 
   const q = query.trim().toLowerCase();
   const rows = cols.filter((c) => {
@@ -113,7 +128,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
     const on = ready.map((s) => itemAt(s.id, c.id));
     if (status === "Update ready") return on.some((i) => i?.update);
     if (status === "Inactive") return on.some((i) => i && !i.active);
-    if (status === "Known vulnerability") return ready.some((s) => vulnOf(reports, kind, s.id, itemAt(s.id, c.id)));
+    if (status === "Known vulnerability") return ready.some((s) => vulnOf(reports, kind, itemAt(s.id, c.id)));
     if (status === "Not on every site") return on.some((i) => !i);
     return true;
   });
@@ -160,7 +175,9 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
 
   const selSite = sel && sites.find((s) => s.id === sel.site);
   const selCol = sel && cols.find((c) => c.id === sel.item);
-  const updateLabel = waiting === 0 ? `No ${noun} updates` : `Update ${waiting === 1 ? `1 ${noun}` : `${waiting} ${noun}s`}`;
+  // Counted from the rows the plan gets, so the button, the plan's title and its rows agree.
+  const allUpdates = updateRows();
+  const updateLabel = allUpdates.length === 0 ? `No ${noun} updates` : `Update ${allUpdates.length === 1 ? `1 ${noun}` : `${allUpdates.length} ${noun}s`}`;
 
   const themesAside = !plugin && ready.length > 0 && cols.length > 0;
   const side = (
@@ -176,13 +193,17 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
           site={selSite}
           col={selCol}
           item={itemAt(selSite.id, selCol.id)}
-          vuln={vulnOf(reports, kind, selSite.id, itemAt(selSite.id, selCol.id))}
+          vuln={vulnOf(reports, kind, itemAt(selSite.id, selCol.id))}
+          advisories={advisoriesOf(reports, kind, selCol.id)}
           others={read.flatMap((s) => {
             const it = itemAt(s.id, selCol.id);
+            // Only sites the table can read: a blocked site's list is out of date.
+            if (!it || blocked(s, inventory.get(s.id))) return [];
             // Why an update listed here is not in the update button below it.
-            const held = !it?.update ? null : blocked(s, inventory.get(s.id)) ?? (can(s, plugin ? "update_plugin" : "update_theme") ? null : "This connection has no tool to update it.");
-            return it ? [{ site: s, item: it, held }] : [];
+            const held = it.update && !can(s, plugin ? "update_plugin" : "update_theme") ? "This connection has no tool to update it." : null;
+            return [{ site: s, item: it, held }];
           })}
+          out={notReady.map((s) => s.name)}
           everywhere={updateRows(selCol.id)}
           onPlan={onPlan}
           onRun={onRun}
@@ -202,10 +223,13 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                     <SiteTile site={s} />
                     <span>
                       <b>{s.name}</b>
-                      <span>{it ? `${it.name} ${it.version}` : "Not known"}</span>
+                      <span data-tip={it ? `${it.name} ${it.version}` : undefined}>{it ? `${it.name} ${it.version}` : "Not known"}</span>
                     </span>
                     {it?.update ? (
-                      <Status pill tone="ok">Update ready</Status>
+                      <span className="st pill up">
+                        <Glyph name="download" />
+                        Update ready
+                      </span>
                     ) : it ? (
                       <span className="st pill ok">
                         <Icon tone="ok" />
@@ -227,13 +251,13 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
       <HeadActions>
         {onInstall && (
           <Button onClick={onInstall}>
-            Install a plugin
+            Install a {noun}
             <Glyph name="plus" />
           </Button>
         )}
-        <Button kind="primary" className={waiting ? "disc" : undefined} disabled={waiting === 0} onClick={() => onPlan(updateLabel, updateRows(), "plan")}>
+        <Button kind="primary" className={allUpdates.length ? "disc" : undefined} disabled={allUpdates.length === 0} onClick={() => onPlan(updateLabel, allUpdates, "plan")}>
           {updateLabel}
-          {waiting > 0 && (
+          {allUpdates.length > 0 && (
             <span className="btn-disc">
               <Glyph name="arrow" />
             </span>
@@ -268,8 +292,24 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                     : `WP Sites HQ reads each site's ${noun}s when it checks the site. Check all sites now, then come back.`}
                 </p>
               </Empty>
-            ) : rows.length === 0 || ready.length === 0 ? (
-              <Empty small title={ready.length === 0 ? "None of these sites can be read now. See why below." : `No ${noun} matches these filters.`} />
+            ) : ready.length === 0 ? (
+              <Empty small title="None of these sites can be read now. See why below." />
+            ) : rows.length === 0 ? (
+              <Empty
+                small
+                title={`No ${noun} matches these filters.`}
+                action={
+                  <Button
+                    onClick={() => {
+                      setQuery("");
+                      setStatus("Any");
+                      setOnlyUpdates(false);
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                }
+              />
             ) : (
               <div className="mx-box">
                 <table
@@ -280,12 +320,20 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                   aria-label={plugin ? "Plugins on every site" : "Themes on every site"}
                   aria-describedby={`${kind}-legend`}
                   onKeyDown={onKey}
+                  // The name column keeps its room however many sites there are; the box scrolls sideways past that.
+                  style={{ "--sites": ready.length } as CSSProperties}
                 >
+                  <colgroup>
+                    <col className="c-fill" />
+                    {ready.map((s) => (
+                      <col key={s.id} className="c-text" />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr>
                       <th scope="col">{Noun}</th>
                       {ready.map((s) => (
-                        <th key={s.id} scope="col" data-tip={s.name}>
+                        <th key={s.id} scope="col" data-tip={s.url}>
                           <span className="colname">{s.name}</span>
                         </th>
                       ))}
@@ -298,14 +346,14 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                           <span className="mx-plug">
                             <Tile kind={kind} id={col.id} name={col.name} />
                             <span>
-                              <b>{col.name}</b>
+                              <b data-tip={col.name}>{col.name}</b>
                               <small>{plugin ? slugOf(col.id) : col.id}</small>
                             </span>
                           </span>
                         </th>
                         {ready.map((s, c) => {
                           const it = itemAt(s.id, col.id);
-                          const { tone, word } = cellOf(kind, it, vulnOf(reports, kind, s.id, it));
+                          const { tone, word } = cellOf(kind, it, vulnOf(reports, kind, it));
                           const on = sel?.site === s.id && sel.item === col.id;
                           return (
                             <td key={s.id} role="gridcell">
@@ -321,15 +369,11 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                                 <span className="sr-only">
                                   {col.name} on {s.name}:
                                 </span>{" "}
-                                {it ? (
+                                {it && (
                                   <>
                                     <span className="v">{it.version || "version not known"}</span>
                                     <span className="sr-only">,</span>{" "}
                                   </>
-                                ) : (
-                                  <span className="v" aria-hidden="true">
-                                    –
-                                  </span>
                                 )}
                                 <span className="w">{word}</span>
                               </button>
@@ -342,47 +386,33 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Pro
                 </table>
               </div>
             )}
-          </section>
-          {cols.length > 0 && (
-            <ul className="mx-legend" id={`${kind}-legend`} aria-label="What the cells mean">
-              <li>
-                <span className="cell up" aria-hidden="true" />
-                Update ready
-              </li>
-              <li>
-                <span className="cell on" aria-hidden="true" />
-                Active
-              </li>
-              <li>
-                <span className="cell idle" aria-hidden="true" />
-                {plugin ? "Inactive" : "Installed"}
-              </li>
-              <li>
-                <span className="cell none" aria-hidden="true" />
-                Not installed
-              </li>
-              <li>
-                <span className="cell vuln" aria-hidden="true" />
-                Known vulnerability
-              </li>
-              <li className="end">Arrow keys move, Enter opens the {noun} on that site.</li>
-            </ul>
-          )}
-          {notReady.length > 0 && (
-            <section className="mx-notes" aria-label="Sites not in this table">
-              <h2 className="mx-label">Not in this table</h2>
-              <ul>
-                {notReady.map((s) => (
-                  <li key={s.id} className="callout">
-                    <Glyph name="info" />
-                    <span>
-                      <b>{s.name}</b> {blocked(s, inventory.get(s.id))}
-                    </span>
-                  </li>
-                ))}
+            {ready.length > 0 && rows.length > 0 && (
+              <ul className="mx-legend" id={`${kind}-legend`} aria-label="What the cells mean">
+                <li>
+                  <span className="cell up" aria-hidden="true" />
+                  Update ready
+                </li>
+                <li>
+                  <span className="cell on" aria-hidden="true" />
+                  Active
+                </li>
+                <li>
+                  <span className="cell idle" aria-hidden="true" />
+                  {plugin ? "Inactive" : "Installed"}
+                </li>
+                <li>
+                  <span className="cell none" aria-hidden="true" />
+                  Not installed
+                </li>
+                <li>
+                  <span className="cell vuln" aria-hidden="true" />
+                  Known vulnerability
+                </li>
+                <li className="end">Arrow keys move, Enter opens the {noun} on that site.</li>
               </ul>
-            </section>
-          )}
+            )}
+          </section>
+          <NotInList notes={notReady.map((s) => [s, blocked(s, inventory.get(s.id))!])} />
       </Page>
     </>
   );
@@ -399,21 +429,29 @@ type InspectorProps = {
   col: Col;
   item: Item | undefined;
   vuln: Vulnerability | undefined;
+  advisories: Vulnerability[];
   others: { site: Site; item: Item; held: string | null }[];
+  /** Sites the table leaves out, by name. */
+  out: string[];
   everywhere: PlanRow[];
   onPlan: Props["onPlan"];
   onRun: Props["onRun"];
   onClose: () => void;
 };
 
-function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan, onRun, onClose }: InspectorProps) {
-  const [rolling, setRolling] = useState(false);
+function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, everywhere, onPlan, onRun, onClose }: InspectorProps) {
+  // The version list: closed (false), or open with the version picked before going back from the review.
+  const [rolling, setRolling] = useState<string | null | false>(false);
   const autoId = useId();
   const plugin = kind === "plugins";
   const name = item?.name || col.name;
   const one = (action: Action) => [{ site_id: s.id, action }];
-  const updateAll = `Update ${name} on ${everywhere.length === 1 ? everywhere[0].site : `${everywhere.length} sites`}`;
-  const held = others.filter((o) => o.held);
+  // "Update to X" above runs this site now; this button is only for an update that reaches other sites too.
+  const fleetWide = everywhere.some((r) => r.change.site_id !== s.id);
+  const where = everywhere.length === 1 ? everywhere[0].site : `${everywhere.length} sites`;
+  const held = fleetWide ? others.filter((o) => o.held) : [];
+  // WP Sites HQ talks to the site through this plugin (not in Basic mode, which signs in with WordPress itself).
+  const connector = plugin && isConnector(col.id) && s.mode !== "basic";
   const row = (label: string, action: Action, from?: string | null, to?: string | null): PlanRow[] => [
     { site: s.name, label, from, to, change: { site_id: s.id, action } },
   ];
@@ -444,7 +482,7 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
           <Glyph name="power" />
         </Button>,
       );
-    if (plugin && item.active && can(s, "deactivate_plugin"))
+    if (plugin && item.active && !connector && can(s, "deactivate_plugin"))
       acts.push(
         <Button key="deact" small onClick={() => onPlan(`Deactivate ${name} on ${s.name}`, row(`Deactivate ${name}`, { do: "deactivate_plugin", plugin: id }), "confirm", true)}>
           Deactivate
@@ -468,17 +506,19 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
   }
   const auto = plugin && item && item.auto_update != null && can(s, "auto_update_plugin");
   const roll = plugin && item && can(s, "rollback_plugin") && can(s, "rollback_plugin", "list-plugin-versions");
-  const canDelete = item && (plugin ? can(s, "delete_plugin") : can(s, "delete_theme")) && !(item.active && (!plugin || s.mode === "basic"));
+  const canDelete = item && !connector && (plugin ? can(s, "delete_plugin") : can(s, "delete_theme")) && !(item.active && (!plugin || s.mode === "basic"));
   const nothing = acts.length === 0 && !auto && !roll && !canDelete;
   const themeInUse = !plugin && item?.active && (nothing || can(s, "delete_theme"));
   const why =
     themeInUse && s.mode !== "basic"
       ? "This is the theme the site uses. Use another theme first to delete it."
-      : !nothing
-        ? null
-        : s.mode === "basic"
-          ? `Basic mode can't change ${plugin ? "this plugin here" : "themes"}. That needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.`
-          : "This connection has no tools for this. Sign in again and tick the plugin and theme tool groups.";
+      : connector
+        ? `WP Sites HQ reaches ${s.name} through this plugin, so it can't be turned off or deleted from here. That would cut ${s.name} off.`
+        : !nothing
+          ? null
+          : s.mode === "basic"
+            ? `Basic mode can't change ${plugin ? "this plugin here" : "themes"}. That needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on the site.`
+            : "This connection may not change plugins or themes. Sign in again and allow them.";
 
   return (
     <>
@@ -486,8 +526,8 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
         <Tile kind={kind} id={col.id} name={name} big />
         <div>
           <h2>{name}</h2>
-          <small>
-            on {s.name} · {state}
+          <small data-tip={`On ${s.name} · ${state}`}>
+            On {s.name} · {state}
           </small>
         </div>
         <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
@@ -496,12 +536,13 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
       </div>
       <div className="mx-ibody">
         {vuln ? (
-          <p className="callout danger">
+          <div className="callout danger">
             <Glyph name="alert" />
             <span>
-              <b>{vuln.title}.</b> {vuln.fixed_in ? `Fixed in ${vuln.fixed_in}.` : "No fix yet."}
+              <b>Known vulnerability.</b> {vulnSummary(vuln.title)} {vuln.fixed_in ? `Fixed in ${vuln.fixed_in}.` : "No fix yet."}
+              <Details>{vuln.title}</Details>
             </span>
-          </p>
+          </div>
         ) : item?.update ? (
           <p className="callout ok">
             <Glyph name="download" />
@@ -547,7 +588,7 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
                 <div key={o.site.id}>
                   <dt>{o.site.name}</dt>
                   <dd>
-                    {o.item.version || "not known"}
+                    <span className="mono">{o.item.version || "Not known"}</span>
                     {o.item.update && " · update ready"}
                     {!o.item.active && (plugin ? " · inactive" : "")}
                     {!plugin && o.item.active && " · active"}
@@ -558,10 +599,11 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
           ) : (
             <p className="dim">Not installed on any site.</p>
           )}
-          {everywhere.length > 0 && (
+          {out.length > 0 && <p className="dim">Not in this list: {out.join(", ")}.</p>}
+          {fleetWide && (
             <div>
-              <Button small kind="soft" onClick={() => onPlan(updateAll, everywhere, "plan")}>
-                {updateAll}
+              <Button small kind="soft" onClick={() => onPlan(`Update ${name} on ${where}`, everywhere, "plan")}>
+                Update on {where}
               </Button>
             </div>
           )}
@@ -574,7 +616,7 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
         {(roll || canDelete) && (
           <div className="mx-foot">
             {roll && (
-              <Button small className="ghost" onClick={() => setRolling(true)}>
+              <Button small className="ghost" onClick={() => setRolling(null)}>
                 Choose an older version
                 <Glyph name="history" />
               </Button>
@@ -599,17 +641,19 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
           </div>
         )}
       </div>
-      {rolling && item && (
+      {rolling !== false && item && (
         <RollBack
           site={s}
           id={id}
           name={name}
           item={item}
           canAuto={!!auto}
+          advisories={advisories}
+          initial={rolling}
           onClose={() => setRolling(false)}
-          onPick={(rows) => {
+          onPick={(rows, version) => {
             setRolling(false);
-            onPlan(`Roll back ${name} on ${s.name}`, rows, "confirm", true);
+            onPlan(`Roll back ${name} on ${s.name}`, rows, "confirm", true, () => setRolling(version), "Back to the versions");
           }}
         />
       )}
@@ -617,10 +661,21 @@ function Inspector({ kind, site: s, col, item, vuln, others, everywhere, onPlan,
   );
 }
 
-type RollBackProps = { site: Site; id: string; name: string; item: Item; canAuto: boolean; onClose: () => void; onPick: (rows: PlanRow[]) => void };
+type RollBackProps = {
+  site: Site;
+  id: string;
+  name: string;
+  item: Item;
+  canAuto: boolean;
+  advisories: Vulnerability[];
+  /** The version picked before going back from the review. */
+  initial: string | null;
+  onClose: () => void;
+  onPick: (rows: PlanRow[], version: string) => void;
+};
 
 /** Choose an older stable release; the job sheet confirms it as a risky change. */
-function RollBack({ site: s, id, name, item, canAuto, onClose, onPick }: RollBackProps) {
+function RollBack({ site: s, id, name, item, canAuto, advisories, initial, onClose, onPick }: RollBackProps) {
   const [versions, setVersions] = useState<PluginVersions | null>(null);
   const [pick, setPick] = useState<string | null>(null);
   const [autoOff, setAutoOff] = useState(true);
@@ -630,7 +685,7 @@ function RollBack({ site: s, id, name, item, canAuto, onClose, onPick }: RollBac
     api.pluginVersions(s.id, id).then(
       (v) => {
         setVersions(v);
-        setPick((v.versions ?? []).find((x) => olderStable(x.version, item.version))?.version ?? null);
+        setPick(initial ?? (v.versions ?? []).find((x) => olderStable(x.version, item.version))?.version ?? null);
       },
       (e) => {
         toast(String(e), { tone: "danger" });
@@ -646,22 +701,34 @@ function RollBack({ site: s, id, name, item, canAuto, onClose, onPick }: RollBac
     const rows: PlanRow[] = [];
     // Off first, so WordPress doesn't update it again before the roll back lands.
     if (turnOff) rows.push({ site: s.name, label: `Turn automatic updates off for ${name}`, change: { site_id: s.id, action: { do: "auto_update_plugin", plugin: id, on: false } } });
-    rows.push({ site: s.name, label: `Roll back ${name}`, from: item.version, to: pick, change: { site_id: s.id, action: { do: "rollback_plugin", plugin: id, version: pick } } });
-    onPick(rows);
+    rows.push({
+      site: s.name,
+      label: `Roll back ${name}`,
+      from: item.version,
+      to: pick,
+      note: affected(pick, advisories) ? `${pick} has a known vulnerability` : undefined,
+      change: { site_id: s.id, action: { do: "rollback_plugin", plugin: id, version: pick } },
+    });
+    onPick(rows, pick);
   };
 
   return (
     <Sheet
+      fit
       title={`Roll back ${name} on ${s.name}`}
-      intro={<span className="mono">Now on {item.version || "a version not known"}</span>}
+      intro={
+        <>
+          Now on <span className="mono">{item.version || "a version not known"}</span>
+        </>
+      }
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose}>Close without changes</Button>
           <Button kind="primary" className="disc" disabled={!pick} onClick={go}>
-            Roll back {name}
+            Review the rollback
             <span className="btn-disc">
-              <Glyph name="history" />
+              <Glyph name="arrow" />
             </span>
           </Button>
         </>
@@ -683,6 +750,12 @@ function RollBack({ site: s, id, name, item, canAuto, onClose, onPick }: RollBac
               <label key={v.version} className={pick === v.version ? "on" : undefined}>
                 <input type="radio" name={group} checked={pick === v.version} onChange={() => setPick(v.version)} />
                 <b>{v.version}</b>
+                {affected(v.version, advisories) && (
+                  <span className="st danger">
+                    <Glyph name="alert" />
+                    Has a known vulnerability
+                  </span>
+                )}
               </label>
             ))}
           </div>

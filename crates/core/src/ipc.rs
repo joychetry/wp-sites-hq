@@ -78,10 +78,17 @@ pub fn status(core: &crate::Core, role: Role) -> Value {
         "pid": std::process::id(),
         "role": role,
         "headless": core.headless,
+        "agent_seen": core.agent_seen.load(std::sync::atomic::Ordering::Relaxed),
     })
 }
 
 async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, RpcError> {
+    // The app's Connect dialog says an AI app reached WP Sites HQ; `status` is only a liveness check.
+    if req.method != "status" {
+        let now = crate::oauth::now().max(0) as u64;
+        core.agent_seen
+            .store(now, std::sync::atomic::Ordering::Relaxed);
+    }
     match req.method.as_str() {
         "status" => Ok(status(core, Role::Agent)),
         // Agents may read (plan 5.6). Sites hold no secrets.
@@ -129,7 +136,8 @@ async fn dispatch_socket(core: &crate::Core, req: &Request) -> Result<Value, Rpc
                 });
             }
             let title = p["title"].as_str().unwrap_or_default();
-            core.propose_plan(title, changes)
+            // `monks mcp` adds the AI app's name from its MCP `initialize`.
+            core.propose_plan(title, changes, p["agent_app"].as_str())
                 .map(|j| json!(j))
                 .map_err(agent_error)
         }
@@ -576,13 +584,14 @@ mod tests {
             &core,
             &call(
                 "plan.create",
-                json!({ "title": "Update WooCommerce", "changes": changes }),
+                json!({ "title": "Update WooCommerce", "changes": changes, "agent_app": "Claude" }),
             ),
         )
         .await
         .unwrap();
         let id = plan["id"].as_i64().unwrap();
         assert_eq!(plan["proposed_by"], "agent");
+        assert_eq!(plan["agent_app"], "Claude");
         assert!(plan["confirmed_at"].is_null());
         assert_eq!(plan["items"].as_array().unwrap().len(), 3);
         assert_eq!(plan["items"][0]["label"], "Update WooCommerce");

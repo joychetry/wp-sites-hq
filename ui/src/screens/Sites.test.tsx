@@ -27,8 +27,8 @@ test("table, statuses and the inspector for the focused site", () => {
   render(<Harness />);
   expect(screen.getAllByRole("row")).toHaveLength(4);
   expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("Basic");
-  expect(screen.getAllByText("Sign in again").length).toBeGreaterThan(0);
-  expect(screen.getByRole("complementary", { name: "Alpha details" })).toHaveTextContent("Full, ticked on the site");
+  expect(screen.getAllByText("Sign-in expired").length).toBeGreaterThan(0);
+  expect(screen.getByRole("complementary", { name: "Alpha details" })).toHaveTextContent("AccessFull");
 });
 
 test("keys: j moves, x selects, / filters, a adds", () => {
@@ -42,7 +42,7 @@ test("keys: j moves, x selects, / filters, a adds", () => {
   rerender(<Sites sites={SITES} groups={[]} focusId={2} setFocusId={vi.fn()} onAdd={onAdd} onSignInAgain={vi.fn()} />);
   expect(screen.getByRole("complementary", { name: "Beta details" })).toBeInTheDocument();
   fireEvent.keyDown(document, { key: "x" });
-  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("1 site ticked");
+  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("1 selected");
   fireEvent.keyDown(document, { key: "/" });
   expect(screen.getByRole("searchbox", { name: "Filter sites" })).toHaveFocus();
   fireEvent.change(screen.getByRole("searchbox", { name: "Filter sites" }), { target: { value: "gam" } });
@@ -91,7 +91,7 @@ test("a connection with no tools says so in the table and offers Sign in again",
   render(<Sites sites={[empty]} groups={[]} focusId={4} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={onSignInAgain} />);
   expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("No tools yet");
   const insp = screen.getByRole("complementary", { name: "Empty details" });
-  expect(insp).toHaveTextContent("Connected, but this connection can't do anything yet. Sign in again and tick the tool groups.");
+  expect(insp).toHaveTextContent("Connected, but WP Sites HQ was given no permissions. Sign in again and allow what it may do.");
   expect(insp).not.toHaveTextContent("older");
   fireEvent.click(within(insp).getByRole("button", { name: "Sign in again" }));
   expect(onSignInAgain).toHaveBeenCalledWith(empty);
@@ -99,7 +99,7 @@ test("a connection with no tools says so in the table and offers Sign in again",
 
 test("the table's foot says how many show and which keys work", () => {
   render(<Harness />);
-  expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Showing 3 of 3 sites.*move.*tick.*filter.*check the open site.*add a site/);
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveAccessibleDescription(/Showing 3 of 3 sites.*move.*select.*filter.*check again.*add a site/);
 });
 
 test("Space on a row's checkbox is left to that checkbox; rows say selected only when they are", () => {
@@ -111,7 +111,7 @@ test("Space on a row's checkbox is left to that checkbox; rows say selected only
   fireEvent.click(beta);
   expect(screen.getByRole("row", { selected: true })).toHaveTextContent("Beta");
   fireEvent.keyDown(screen.getByRole("grid", { name: "Sites" }), { key: " " });
-  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("2 sites ticked");
+  expect(screen.getByRole("region", { name: "Selection" })).toHaveTextContent("2 selected");
 });
 
 test("one-click login shows only where the connection can make a login link", async () => {
@@ -184,19 +184,19 @@ test("the inspector names the plugin running the connector and the spare copies"
   const { rerender } = render(<Sites sites={sites} groups={[]} focusId={7} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   let insp = screen.getByRole("complementary", { name: "Both details" });
   expect(insp).toHaveTextContent("PluginClassic Monks Free 1.9.0, connector 1.1.0");
-  expect(insp).toHaveTextContent("Also on the siteWP Sites HQ 0.2.0, not running");
+  expect(insp).toHaveTextContent("Other pluginWP Sites HQ 0.2.0 (turned off)");
   expect(insp).toHaveTextContent("Classic Monks Free, full access");
   rerender(<Sites sites={sites} groups={[]} focusId={8} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   insp = screen.getByRole("complementary", { name: "Old details" });
   expect(insp).toHaveTextContent("PluginClassic Monks 2.5.0, built-in connector");
-  expect(insp).not.toHaveTextContent("Also on the site");
+  expect(insp).not.toHaveTextContent("Other plugin");
   // Classic Monks 2.5.0 has no get-hq-status, so no version.
   const older = site({ id: 9, name: "Older", cm_version: null, capabilities: { operator: null, abilities: ["get-posts"], degraded: true } });
   rerender(<Sites sites={[older]} groups={[]} focusId={9} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   expect(screen.getByRole("complementary", { name: "Older details" })).toHaveTextContent("PluginClassic Monks, built-in connector");
 });
 
-test("Basic mode: install WP Sites HQ for me saves the checked zip, opens the upload page, then connects", async () => {
+test("Basic mode: Download the WP Sites HQ plugin saves the checked zip, opens the upload page, then connects", async () => {
   mockInvoke.mockImplementation(async (c) =>
     c === "plugin_download"
       ? { version: "1.2.0", path: "/home/me/Downloads/wp-sites-hq-1.2.0.zip" }
@@ -208,9 +208,9 @@ test("Basic mode: install WP Sites HQ for me saves the checked zip, opens the up
   );
   render(<Sites sites={SITES} groups={[]} focusId={2} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   const insp = screen.getByRole("complementary", { name: "Beta details" });
-  expect(insp).toHaveTextContent("the WP Sites HQ plugin, Classic Monks or Classic Monks Pro. Any of them works.");
-  fireEvent.click(within(insp).getByRole("button", { name: "Install the WP Sites HQ plugin for me" }));
-  await waitFor(() => expect(insp).toHaveTextContent("The WP Sites HQ plugin 1.2.0 is saved as /home/me/Downloads/wp-sites-hq-1.2.0.zip, checked against the SHA-256"));
+  expect(insp).toHaveTextContent("Any of these plugins on the site works: the WP Sites HQ plugin, Classic Monks or Classic Monks Pro.");
+  fireEvent.click(within(insp).getByRole("button", { name: "Download the WP Sites HQ plugin" }));
+  await waitFor(() => expect(insp).toHaveTextContent("Saved as wp-sites-hq-1.2.0.zip (version 1.2.0, checked)"));
   expect(mockInvoke).toHaveBeenCalledWith("plugin_download", { id: 2 });
   expect(mockInvoke).toHaveBeenCalledWith("link_open", { url: "https://mc-a.local/wp-admin/plugin-install.php?tab=upload", site: 2 });
   fireEvent.click(within(insp).getByRole("button", { name: "Connect through the plugin" }));
@@ -228,4 +228,22 @@ test("the plugin shows under its old and new names, also mid-move with both on t
     },
   });
   expect(connectorInfo(moving)).toEqual({ running: "WP Sites HQ 0.2.0, connector 1.2.0", spare: ["Monks Central (old) 0.1.4"] });
+});
+
+test("the Connection filter is a list, and Needs attention can be the opening tab", () => {
+  render(<Sites sites={SITES} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} show="attention" />);
+  expect(screen.getByRole("button", { name: /^Needs attention/ })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getAllByRole("row")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: /^All/ }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Connection" }));
+  fireEvent.click(screen.getByRole("option", { name: "Basic mode" }));
+  expect(screen.getAllByRole("row")).toHaveLength(2);
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("Beta");
+});
+
+test("with no sites there is one Add a site button and nothing to filter", () => {
+  render(<Sites sites={[]} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+  expect(screen.getAllByRole("button", { name: /^Add a site/ })).toHaveLength(1);
+  expect(screen.queryByRole("textbox", { name: "Filter sites" })).toBeNull();
+  expect(screen.queryByRole("complementary")).toBeNull();
 });

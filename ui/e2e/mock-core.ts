@@ -240,29 +240,78 @@ let inventory: SiteInventory[] =
       ];
 
 const jobs: Job[] = [];
-const label = (a: Action) => a.do.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+/** A job row's words and versions, as the real core builds them (crates/core/src/fleet.rs). */
+function describe(c: Change): { label: string; from: string | null; to: string | null } {
+  const i = inventory.find((x) => x.site_id === c.site_id)?.inventory;
+  const plugin = (id: string) => i?.plugins.find((p) => p.id === id);
+  const theme = (id: string) => i?.themes.find((t) => t.id === id);
+  const a = c.action;
+  const none = { from: null, to: null };
+  switch (a.do) {
+    case "update_plugin":
+      return { label: `Update ${plugin(a.plugin)?.name ?? a.plugin}`, from: plugin(a.plugin)?.version ?? null, to: plugin(a.plugin)?.update ?? null };
+    case "rollback_plugin":
+      return { label: `Roll back ${plugin(a.plugin)?.name ?? a.plugin}`, from: plugin(a.plugin)?.version ?? null, to: a.version };
+    case "activate_plugin":
+      return { label: `Activate ${plugin(a.plugin)?.name ?? a.plugin}`, ...none };
+    case "deactivate_plugin":
+      return { label: `Deactivate ${plugin(a.plugin)?.name ?? a.plugin}`, ...none };
+    case "delete_plugin":
+      return { label: `Delete ${plugin(a.plugin)?.name ?? a.plugin}`, from: plugin(a.plugin)?.version ?? null, to: null };
+    case "auto_update_plugin":
+      return { label: `Turn ${a.on ? "on" : "off"} automatic updates for ${plugin(a.plugin)?.name ?? a.plugin}`, ...none };
+    case "install_plugin":
+      return { label: `Install ${a.source}`, ...none };
+    case "update_theme":
+      return { label: `Update the ${theme(a.theme)?.name ?? a.theme} theme`, from: theme(a.theme)?.version ?? null, to: theme(a.theme)?.update ?? null };
+    case "activate_theme":
+      return { label: `Use the ${theme(a.theme)?.name ?? a.theme} theme`, ...none };
+    case "delete_theme":
+      return { label: `Delete the ${theme(a.theme)?.name ?? a.theme} theme`, from: theme(a.theme)?.version ?? null, to: null };
+    case "update_core":
+      return { label: "Update WordPress", from: i?.wordpress ?? null, to: i?.wordpress_update ?? null };
+    case "update_translations":
+      return { label: "Update translations", ...none };
+    case "install_zip":
+      return { label: a.kind === "theme" ? `Install the theme from ${a.name}` : `Install ${a.name}`, ...none };
+    case "publish_post":
+      return { label: a.status === "publish" ? `Publish \u201c${a.title}\u201d` : `Add \u201c${a.title}\u201d as a ${a.status}`, ...none };
+    case "set_post_status":
+      return { label: a.status === "publish" ? `Publish \u201c${a.title}\u201d` : `Make \u201c${a.title}\u201d a ${a.status}`, ...none };
+    case "trash_post":
+      return { label: `Move \u201c${a.title}\u201d to the trash`, ...none };
+    case "untrash_post":
+      return { label: `Bring \u201c${a.title}\u201d back from the trash`, ...none };
+    case "update_product":
+      return { label: `Change ${a.name}`, ...none };
+  }
+}
 /** Runs the job a step at a time; the second change fails, so the screens show both. */
-function startJob(title: string, changes: Change[]): Job {
+function startJob(title: string, changes: Change[], labels: string[] = []): Job {
   const job: Job = {
     id: jobs.length + 1,
     title,
     created_at: now,
     finished_at: null,
     proposed_by: "human",
+    agent_app: null,
     confirmed_at: now,
     declined_at: null,
     expired: false,
-    items: changes.map((c, i) => ({
-      id: i + 1,
-      site_id: c.site_id,
-      site_name: sites.find((s) => s.id === c.site_id)?.name ?? "a site",
-      action: c.action,
-      label: label(c.action),
-      from_version: "10.2.0",
-      to_version: "10.3.0",
-      state: "waiting",
-      message: "",
-    })),
+    items: changes.map((c, i) => {
+      const d = describe(c);
+      return {
+        id: i + 1,
+        site_id: c.site_id,
+        site_name: sites.find((s) => s.id === c.site_id)?.name ?? "a site",
+        action: c.action,
+        label: labels[i] ?? d.label,
+        from_version: d.from,
+        to_version: d.to,
+        state: "waiting",
+        message: "",
+      };
+    }),
   };
   jobs.push(job);
   job.items.forEach((it, i) => {
@@ -279,7 +328,11 @@ function startJob(title: string, changes: Change[]): Job {
         ? "The site took too long to answer. Nothing was changed."
         : back
           ? "Rolled back to 5.3. The home page answered 500 after the update: PHP Fatal error: Uncaught Error: Call to undefined function akismet_boot() in ABSPATH/wp-content/plugins/akismet/akismet.php on line 41"
-          : "Updated. The site works after the update.";
+          : /^update_(plugin|theme|core)$/.test(it.action.do)
+            ? "Updated. The site works after the update."
+            : it.action.do === "update_product"
+              ? "Product changed."
+              : "Done.";
       if (i === job.items.length - 1) job.finished_at = now;
       changed();
     }, 250 + i * 200);
@@ -308,6 +361,7 @@ let PLANS: Job[] =
           created_at: now - 8 * 86400,
           finished_at: null,
           proposed_by: "agent",
+          agent_app: "Claude",
           confirmed_at: null,
           declined_at: null,
           expired: true,
@@ -319,6 +373,7 @@ let PLANS: Job[] =
           created_at: now - 240,
           finished_at: null,
           proposed_by: "agent",
+          agent_app: "Claude",
           confirmed_at: null,
           declined_at: null,
           expired: false,
@@ -648,7 +703,7 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
   switch (cmd) {
     case "core_status":
       if (fixture === "error") throw "The core didn't start: another copy is still closing.";
-      return r({ version: "0.0.1", pid: 1, role: "operator", headless: false, home: "" });
+      return r({ version: "0.4.0", pid: 1, role: "operator", headless: false, home: "" });
     case "sites_list":
       if (fixture === "loading") return new Promise<T>(() => {});
       return r(sites);
@@ -687,11 +742,15 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(null);
     case "plugin_versions":
       return r({ installed: "10.2.0", versions: ["10.3.0", "10.2.0", "10.1.0", "10.0.4"].map((version) => ({ version })) });
-    case "plugin_search":
-      return r([
-        { slug: "wordpress-seo", name: "Yoast SEO – Advanced SEO with real-time guidance", version: "26.2", active_installs: 10000000, summary: "Improve your SEO with real-time feedback and schema." },
-        { slug: "seo-by-rank-math", name: "Rank Math SEO", version: "1.0.250", active_installs: 3000000, summary: "SEO made easy for everyone." },
-      ]);
+    case "plugin_search": {
+      const q = String(args.query ?? "").toLowerCase();
+      return r(
+        [
+          { slug: "wordpress-seo", name: "Yoast SEO – Advanced SEO with real-time guidance", version: "26.2", active_installs: 10000000, summary: "Improve your SEO with real-time feedback and schema." },
+          { slug: "seo-by-rank-math", name: "Rank Math SEO", version: "1.0.250", active_installs: 3000000, summary: "SEO made easy for everyone." },
+        ].filter((f) => `${f.slug} ${f.name} ${f.summary}`.toLowerCase().includes(q)),
+      );
+    }
     case "content_types":
       return r(TYPES);
     case "content_list": {
@@ -732,9 +791,9 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "app_update_status":
     case "app_update_check":
       return r({
-        current: "0.1.0",
+        current: "0.4.0",
         checked_at: Math.floor(Date.now() / 1000) - 600,
-        found: fixture === "update" ? { version: "0.2.0", notes: "### Media\n- Grid and list views.\n- Upload several files at once.", date: 1761696000 } : null,
+        found: fixture === "update" ? { version: "0.5.0", notes: "### Media\n- Grid and list views.\n- Upload several files at once.", date: 1761696000 } : null,
         ready: false,
         progress: null,
       });
@@ -765,7 +824,7 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
         .map((s) => `<h2>${s.name}</h2><p>${s.url}</p><dl><dt>Uptime</dt><dd>99.95% (2,880 checks)</dd><dt>Changes made</dt><dd>6</dd><dt>Security</dt><dd>No known problems</dd></dl><h3>Work done</h3><ul><li>Update WooCommerce to 10.3.0</li><li>Publish “Autumn menu”</li></ul>`)
         .join("")}<footer>hello@studio-north.test. Made with WP Sites HQ</footer></body></html>`;
       const stem = who.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      return r({ html: `/home/you/Downloads/${stem}-report-${ask.month}.html`, pdf: `/home/you/Downloads/${stem}-report-${ask.month}.pdf`, preview, sites: own.length, notes: ["Corner Bakery: store: The site didn't answer within 20 seconds."] });
+      return r({ html: `/home/you/Downloads/${stem}-report-${ask.month}.html`, pdf: `/home/you/Downloads/${stem}-report-${ask.month}.pdf`, preview, sites: own.length, notes: ["Corner Bakery's store numbers. The site didn't answer within 20 seconds."] });
     }
     case "file_open":
       return r(null);
@@ -935,8 +994,8 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       return r(null);
     case "cm_approvals":
       return r([
-        { id: 40, tool: "delete-post", who: "Claude", time: "2026-10-28 09:12:40", expires_in: 540 },
-        { id: 37, tool: "update-user", who: "Cursor", time: "2026-10-28 09:05:11", expires_in: 120 },
+        { id: 40, tool: "delete-post", who: "Claude", time: "2026-10-28 09:12:40", expires_in: 540, input: { post_id: 12 }, preview: { id: 12, title: "Spring menu" } },
+        { id: 37, tool: "update-user", who: "Cursor", time: "2026-10-28 09:05:11", expires_in: 120, input: { user_id: 4 }, preview: { id: 4, display_name: "Sam Baker" } },
       ]);
     case "job_start":
       return r(startJob(args.title as string, args.changes as Change[]));
@@ -947,7 +1006,8 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "plan_confirm": {
       const plan = PLANS.find((p) => p.id === id)!;
       PLANS = PLANS.filter((p) => p.id !== id);
-      return r(startJob(plan.title, plan.items.map((i) => ({ site_id: i.site_id!, action: i.action }))));
+      // The rows keep the words the plan showed.
+      return r(startJob(plan.title, plan.items.map((i) => ({ site_id: i.site_id!, action: i.action })), plan.items.map((i) => i.label)));
     }
     case "plan_decline":
       PLANS = PLANS.filter((p) => p.id !== id);

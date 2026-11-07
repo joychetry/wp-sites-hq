@@ -102,10 +102,12 @@ test("the top bar says when sites were checked and how many need attention, as p
   render(<App />);
   expect(await screen.findByText("Checked 2 min ago")).toHaveAttribute("aria-hidden", "true");
   expect(screen.getByText(/^Last checked: /)).toHaveClass("sr-only");
-  const go = screen.getByRole("button", { name: "1 site needs attention, open Sites" });
+  const go = screen.getByRole("button", { name: "1 site needs attention, show on Sites" });
   expect(go).toHaveTextContent(/^1 site needs attention/);
   fireEvent.click(go);
   expect(screen.getByRole("heading", { level: 1, name: /^Sites/ })).toBeInTheDocument();
+  // It opens on the Needs attention tab, so only the sites it counted show.
+  expect(await screen.findByRole("button", { name: /^Needs attention/ })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("shows the core error in plain words", async () => {
@@ -120,11 +122,11 @@ test("Ctrl K opens the palette and runs a command", async () => {
   render(<App />);
   await screen.findByText("Both sites are healthy.");
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });
-  const input = screen.getByRole("combobox", { name: "Command" });
+  const input = screen.getByRole("combobox", { name: "Search or run a command" });
   fireEvent.change(input, { target: { value: "hq test" } });
   expect(screen.getByRole("option", { name: /WP Sites HQ Test/ })).toHaveAttribute("aria-selected", "true");
   fireEvent.keyDown(input, { key: "Enter" });
-  expect(screen.queryByRole("dialog", { name: "Command palette" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Search or run a command" })).not.toBeInTheDocument();
   expect(screen.getByRole("complementary", { name: "WP Sites HQ Test details" })).toBeInTheDocument();
 });
 
@@ -164,9 +166,53 @@ test("the palette logs in to a site's dashboard where the connection can", async
   render(<App />);
   await screen.findByText("Both sites are healthy.");
   fireEvent.keyDown(document, { key: "k", ctrlKey: true });
-  const input = screen.getByRole("combobox", { name: "Command" });
+  const input = screen.getByRole("combobox", { name: "Search or run a command" });
   fireEvent.change(input, { target: { value: "dashboard" } });
   expect(screen.queryByRole("option", { name: /Plain's dashboard/ })).toBeNull();
   fireEvent.click(screen.getByRole("option", { name: /Log in to MC A's dashboard/ }));
   expect(mockInvoke).toHaveBeenCalledWith("site_login", { id: 1 });
+});
+
+test("a post found in the palette opens in the editor on Content", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  const ready = site({ capabilities: { operator: true, abilities: ["list-post-types"] } });
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    if (cmd === "core_status") return STATUS;
+    if (cmd === "sites_list") return [ready];
+    if (cmd === "content_search") return { hits: [{ site_id: 1, post_type: "post", id: 9, title: "Menu news", status: "publish", link: "https://a.test/news" }], failed: [] };
+    if (cmd === "content_types") return [{ name: "post", label: "Posts", singular: "Post", hierarchical: false, supports: ["title", "editor"], can_publish: true, can_delete: true, taxonomies: [], rest_base: "posts" }];
+    if (cmd === "content_get") return new Promise(() => {});
+    return null;
+  });
+  render(<App />);
+  await screen.findByText("Your one site is healthy.");
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByRole("combobox", { name: "Search or run a command" }), { target: { value: "menu" } });
+  fireEvent.click(await screen.findByRole("option", { name: /Menu news Post · MC A · Published/ }));
+  expect(await screen.findByRole("heading", { name: "Edit post on MC A" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Content" })).toHaveAttribute("aria-current", "page");
+  expect(mockInvoke).toHaveBeenCalledWith("content_types", { id: 1 });
+  vi.useRealTimers();
+});
+
+test("a plugin found in the palette opens Plugins filtered to it, a client opens its sheet", async () => {
+  const s = site({ client_id: 1, client: "Rosa" });
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    if (cmd === "core_status") return STATUS;
+    if (cmd === "sites_list") return [s];
+    if (cmd === "inventory_list") return [{ site_id: 1, fetched_at: 0, inventory: { plugins: [{ id: "woocommerce/woocommerce.php", name: "WooCommerce", version: "10.2.0", active: true, update: null, auto_update: false }], themes: [] } }];
+    if (cmd === "clients_list") return [{ id: 1, name: "Rosa", email: "rosa@x.test", notes: "" }];
+    if (cmd === "costs_list") return [];
+    return null;
+  });
+  render(<App />);
+  await screen.findByText("Your one site is healthy.");
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByRole("combobox", { name: "Search or run a command" }), { target: { value: "woo" } });
+  fireEvent.click(await screen.findByRole("option", { name: /^WooCommerce On MC A/ }));
+  expect(await screen.findByRole("searchbox", { name: "Find a plugin" })).toHaveValue("WooCommerce");
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByRole("combobox", { name: "Search or run a command" }), { target: { value: "rosa@" } });
+  fireEvent.click(await screen.findByRole("option", { name: /^Rosa/ }));
+  expect(await screen.findByRole("dialog", { name: /Rosa/ })).toBeInTheDocument();
 });

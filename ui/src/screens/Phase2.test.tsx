@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Updates, the Plugins and Themes matrix, Install and the job sheet.
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { fixes, planTitle, Updates, updatesOf } from "./Updates";
-import { Matrix, cellOf, olderStable } from "./Matrix";
-import { Install } from "./Install";
-import { JobSheet, type PlanRow } from "../components/JobSheet";
+import { Matrix, affected, cellOf, isConnector, olderStable, vulnOf } from "./Matrix";
+import { Install, shortName } from "./Install";
+import { JobSheet, outcome, type PlanRow } from "../components/JobSheet";
 import { HeadSlot } from "../components/ui";
 import { site } from "../test-fixtures";
 import type { Item, Job, SiteInventory } from "../api";
@@ -43,7 +43,7 @@ test("Updates lists every waiting update, says which sites are left out, and pla
   expect(within(table).getAllByRole("row")).toHaveLength(7);
   expect(within(table).getByRole("checkbox", { name: "Select every update on Alpha" })).toBeInTheDocument();
   expect(within(table).getByText("7.1.4")).toBeInTheDocument();
-  const out = screen.getByRole("region", { name: "Sites not in this list" });
+  const out = screen.getByRole("region", { name: "Not in this list" });
   expect(out).toHaveTextContent("Basic mode can't see updates");
   expect(out).toHaveTextContent("Down when last checked");
   fireEvent.click(screen.getByRole("checkbox", { name: "Select Update WooCommerce on Beta" }));
@@ -53,16 +53,20 @@ test("Updates lists every waiting update, says which sites are left out, and pla
   ]);
   fireEvent.click(screen.getByRole("button", { name: "Update all 4" }));
   expect(onPlan.mock.calls[1][1]).toHaveLength(4);
-  expect(onPlan.mock.calls[1][0]).toBe("Update 4 things on 2 sites");
+  expect(onPlan.mock.calls[1][0]).toBe("4 updates on 2 sites");
+  // The primary button follows the kind filter.
+  fireEvent.click(screen.getByRole("button", { name: /^WordPress/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Update 1 shown" }));
+  expect(onPlan.mock.lastCall).toEqual(["Update WordPress on Alpha", [expect.objectContaining({ change: { site_id: 1, action: { do: "update_core" } } })]]);
 });
 
 test("Updates: nothing waiting, and reading every site again", async () => {
   mockInvoke.mockResolvedValue(null);
   render(<HeadSlot.Provider value={document.body}><Updates sites={[BASIC]} inventory={INV} onPlan={vi.fn()} /></HeadSlot.Provider>);
   expect(screen.getByText("No updates waiting")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Read every site again" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
   expect(mockInvoke).toHaveBeenCalledWith("inventory_refresh", { id: undefined });
-  await waitFor(() => expect(screen.getByRole("button", { name: "Read every site again" })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole("button", { name: "Check for updates" })).toBeEnabled());
 });
 
 test("Updates marks an update that fixes a known vulnerability, and only when the new version has the fix", () => {
@@ -138,10 +142,10 @@ test("the matrix finds a plugin by name and filters by status", () => {
 
 test("a cell says what state it is in, in words", () => {
   const vuln = { kind: "plugin" as const, id: WOO, name: "WooCommerce", installed: "10.2.0", title: "XSS", severity: "high", fixed_in: "10.3.0", link: null };
-  expect(cellOf("plugins", item(), vuln)).toEqual({ tone: "vuln", word: "Vulnerable · fix ready" });
+  expect(cellOf("plugins", item(), vuln)).toEqual({ tone: "vuln", word: "Vulnerable\u00a0· fix ready" });
   expect(cellOf("plugins", item({ update: null }), vuln)).toEqual({ tone: "vuln", word: "Vulnerable" });
-  expect(cellOf("plugins", item({ active: false }))).toEqual({ tone: "up", word: "Update to 10.3.0 · inactive" });
-  expect(cellOf("themes", item())).toEqual({ tone: "up", word: "Update to 10.3.0 · active" });
+  expect(cellOf("plugins", item({ active: false }))).toEqual({ tone: "up", word: "Update to 10.3.0\u00a0· inactive" });
+  expect(cellOf("themes", item())).toEqual({ tone: "up", word: "Update to 10.3.0\u00a0· active" });
   expect(cellOf("plugins", item({ update: null }))).toEqual({ tone: "on", word: "Active" });
   expect(cellOf("themes", item({ update: null, active: false }))).toEqual({ tone: "idle", word: "Installed" });
   expect(cellOf("plugins", undefined)).toEqual({ tone: "none", word: "Not installed" });
@@ -157,7 +161,8 @@ test("the inspector updates, deactivates and turns automatic updates on for one 
   expect(p.onRun.mock.calls[1][1][0].action).toEqual({ do: "auto_update_plugin", plugin: WOO, on: true });
   fireEvent.click(within(insp).getByRole("button", { name: "Deactivate" }));
   expect(p.onPlan).toHaveBeenLastCalledWith("Deactivate WooCommerce on Alpha", [expect.objectContaining({ label: "Deactivate WooCommerce" })], "confirm", true);
-  fireEvent.click(within(insp).getByRole("button", { name: "Update WooCommerce on 2 sites" }));
+  fireEvent.click(within(insp).getByRole("button", { name: "Update on 2 sites" }));
+  expect(p.onPlan.mock.lastCall![0]).toBe("Update WooCommerce on 2 sites");
   expect(p.onPlan.mock.lastCall![1]).toHaveLength(2);
   fireEvent.click(screen.getByRole("button", { name: "Update 2 plugins" }));
   expect(p.onPlan.mock.lastCall![2]).toBe("plan");
@@ -186,13 +191,19 @@ test("rolling back asks the site for older versions, then confirms as a risky ch
   // Only older stable releases: not the installed one, not newer ones, not betas or release candidates.
   expect(within(sheet).getAllByRole("radio").map((b) => b.closest("label")!.textContent)).toEqual(["10.1.0"]);
   expect(within(sheet).queryByRole("checkbox", { name: /automatic updates/ })).not.toBeInTheDocument();
-  fireEvent.click(within(sheet).getByRole("button", { name: "Roll back WooCommerce" }));
+  fireEvent.click(within(sheet).getByRole("button", { name: "Review the rollback" }));
   expect(p.onPlan).toHaveBeenLastCalledWith(
     "Roll back WooCommerce on Alpha",
     [expect.objectContaining({ from: "10.2.0", to: "10.1.0", change: { site_id: 1, action: { do: "rollback_plugin", plugin: WOO, version: "10.1.0" } } })],
     "confirm",
     true,
+    expect.any(Function),
+    "Back to the versions",
   );
+  // Back from the review reopens the list on the version picked.
+  act(() => p.onPlan.mock.lastCall![4]());
+  const again = await screen.findByRole("dialog", { name: "Roll back WooCommerce on Alpha" });
+  expect(await within(again).findByRole("radio", { name: "10.1.0" })).toBeChecked();
 });
 
 test("rolling back where automatic updates are on turns them off first", async () => {
@@ -203,7 +214,7 @@ test("rolling back where automatic updates are on turns them off first", async (
   const sheet = await screen.findByRole("dialog", { name: "Roll back WooCommerce on Alpha" });
   expect(await within(sheet).findByRole("radio", { name: "10.1.0" })).toBeChecked();
   expect(within(sheet).getByRole("checkbox", { name: /^Turn automatic updates off/ })).toBeChecked();
-  fireEvent.click(within(sheet).getByRole("button", { name: "Roll back WooCommerce" }));
+  fireEvent.click(within(sheet).getByRole("button", { name: "Review the rollback" }));
   expect(p.onPlan.mock.lastCall![1].map((r: PlanRow) => r.change.action)).toEqual([
     { do: "auto_update_plugin", plugin: WOO, on: false },
     { do: "rollback_plugin", plugin: WOO, version: "10.1.0" },
@@ -240,10 +251,12 @@ test("Install searches WordPress.org, skips sites that have it, then plans the i
   expect(screen.getByRole("checkbox", { name: "Install on Alpha" })).toBeDisabled();
   expect(screen.getByText("Already installed.")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("checkbox", { name: "Activate it after installing" }));
-  fireEvent.click(screen.getByRole("button", { name: "Review 1 site" }));
-  expect(onPlan).toHaveBeenCalledWith("Install WooCommerce on Fresh", [
-    expect.objectContaining({ label: "Install WooCommerce", change: { site_id: 5, action: { do: "install_plugin", source: "woocommerce", activate: false } } }),
-  ]);
+  fireEvent.click(screen.getByRole("button", { name: "Review the change" }));
+  expect(onPlan).toHaveBeenCalledWith(
+    "Install WooCommerce on Fresh",
+    [expect.objectContaining({ label: "Install WooCommerce", change: { site_id: 5, action: { do: "install_plugin", source: "woocommerce", activate: false } } })],
+    expect.objectContaining({ chosen: [5], activate: false }),
+  );
 });
 
 test("Install from a link needs a full address", () => {
@@ -266,6 +279,7 @@ function job(over: Partial<Job> = {}): Job {
     created_at: 0,
     finished_at: 1,
     proposed_by: "human",
+    agent_app: null,
     confirmed_at: 0,
     declined_at: null,
     expired: false,
@@ -281,7 +295,7 @@ test("a safe update that broke a site says it was rolled back and why, and isn't
   const reason = "Rolled back to 10.2.0. The home page answered 500 after the update: PHP Fatal error: Uncaught Error.";
   mockInvoke.mockImplementation(async () => job({ items: [{ ...job().items[1], state: "rolled_back", message: reason }] }));
   render(<JobSheet state={{ title: "Update WooCommerce", jobId: 9 }} onClose={vi.fn()} />);
-  expect(await screen.findByText("Finished. 0 changes done, 1 rolled back.")).toBeInTheDocument();
+  expect(await screen.findByText("Finished. 1 change was rolled back.")).toBeInTheDocument();
   expect(screen.getByText("Rolled back")).toHaveClass("warning");
   // The PHP error is behind a disclosure; the row says it plainly.
   expect(screen.getByText("Rolled back to 10.2.0 because the update broke the site.")).toBeInTheDocument();
@@ -296,7 +310,7 @@ test("the job sheet goes plan, confirm, progress and only sends what stayed tick
   expect(screen.getByText("Pick").closest("li")).toHaveAttribute("aria-current", "step");
   fireEvent.click(screen.getByRole("checkbox", { name: "Update WooCommerce on Beta" }));
   expect(screen.getByRole("checkbox", { name: "Every change on Beta" })).toHaveAttribute("aria-checked", "false");
-  fireEvent.click(screen.getByRole("button", { name: "Review 1 change" }));
+  fireEvent.click(screen.getByRole("button", { name: "Review the change" }));
   expect(screen.getByText("Review").closest("li")).toHaveAttribute("aria-current", "step");
   fireEvent.click(screen.getByRole("button", { name: "Back" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Every change on Beta" }));
@@ -312,7 +326,7 @@ test("the job sheet goes plan, confirm, progress and only sends what stayed tick
   // A plain reason stays in the row, with nothing to open.
   expect(screen.queryByText("Show the details")).toBeNull();
   mockInvoke.mockImplementation(async (cmd: string) => (cmd === "job_start" ? job({ id: 10, finished_at: null }) : new Promise(() => {})));
-  fireEvent.click(screen.getByRole("button", { name: "Try the 1 failed change again" }));
+  fireEvent.click(screen.getByRole("button", { name: "Try the failed change again" }));
   await waitFor(() =>
     expect(mockInvoke).toHaveBeenCalledWith("job_start", { title: "Try again: Update WooCommerce on 2 sites", changes: [ROWS[1].change] }),
   );
@@ -323,7 +337,7 @@ test("the job sheet goes plan, confirm, progress and only sends what stayed tick
 test("a plan titled from its updates follows the ticks", () => {
   const named = ROWS.map((r, i) => ({ ...r, name: "WooCommerce", site: i ? "Beta" : "Alpha" }));
   render(<JobSheet state={{ title: planTitle(named), rows: named, start: "plan" }} onClose={vi.fn()} />);
-  expect(screen.getByRole("dialog", { name: /^Update 2 things on 2 sites/ })).toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: /^2 updates on 2 sites/ })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("checkbox", { name: "Update WooCommerce on Beta" }));
   expect(screen.getByRole("dialog", { name: /^Update WooCommerce on Alpha/ })).toBeInTheDocument();
 });
@@ -353,4 +367,52 @@ test("a running job can be hidden and says it keeps going", async () => {
   expect(screen.getByText("Running")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Hide this panel" }));
   expect(onClose).toHaveBeenCalled();
+});
+
+test("a review opened from a form goes back to it; a change with nothing to pick has no Pick step", () => {
+  const onClose = vi.fn();
+  const onBack = vi.fn();
+  const { unmount } = render(<JobSheet state={{ title: "Install X on Alpha", rows: [ROWS[0]], start: "confirm", onBack, backLabel: "Back to the form" }} onClose={onClose} />);
+  expect(screen.getByRole("list", { name: "Steps" })).toHaveTextContent("Pick");
+  fireEvent.click(screen.getByRole("button", { name: "Back to the form" }));
+  expect(onClose).toHaveBeenCalled();
+  expect(onBack).toHaveBeenCalled();
+  unmount();
+  render(<JobSheet state={{ title: "Delete X on Alpha", rows: [ROWS[0]], start: "confirm", danger: true }} onClose={vi.fn()} />);
+  expect(screen.getByRole("list", { name: "Steps" })).not.toHaveTextContent("Pick");
+  expect(screen.queryByRole("button", { name: /^Back/ })).not.toBeInTheDocument();
+});
+
+test("a known vulnerability reads the same on every site with that version, and marks older versions it covers", () => {
+  const v = { kind: "plugin" as const, id: WOO, name: "WooCommerce", installed: "10.2.0", title: "XSS", severity: "high", fixed_in: "10.3.0", link: null };
+  const reports = [{ site_id: 1, checked_at: 0, vulnerabilities: [v], abandoned: [], checksums: null, notes: [] }];
+  expect(vulnOf(reports, "plugins", item())).toBe(v);
+  expect(vulnOf(reports, "plugins", item({ version: "10.3.0" }))).toBeUndefined();
+  expect(affected("10.1.0", [v])).toBe(true);
+  expect(affected("10.3.0", [v])).toBe(false);
+  expect(affected("3.29.0", [{ ...v, installed: "3.30.2", fixed_in: null }])).toBe(true);
+  expect(affected("3.31.0", [{ ...v, installed: "3.30.2", fixed_in: null }])).toBe(false);
+});
+
+test("the plugin WP Sites HQ connects through can't be turned off or deleted from the inspector", () => {
+  expect(isConnector("classic-monks/classic-monks.php")).toBe(true);
+  expect(isConnector("classic-monks-pro/classic-monks-pro.php")).toBe(true);
+  expect(isConnector("woocommerce/woocommerce.php")).toBe(false);
+  const CM = item({ id: "classic-monks/classic-monks.php", name: "Classic Monks", update: null });
+  matrix({ sites: [A], inventory: new Map([[1, inv(1, { plugins: [CM] })]]) });
+  fireEvent.click(screen.getByRole("button", { name: /^Classic Monks on Alpha/ }));
+  const insp = screen.getByRole("complementary", { name: "Classic Monks on Alpha" });
+  expect(within(insp).queryByRole("button", { name: /Deactivate|Delete/ })).not.toBeInTheDocument();
+  expect(insp).toHaveTextContent("WP Sites HQ reaches Alpha through this plugin");
+});
+
+test("WordPress.org names lose their tagline", () => {
+  expect(shortName("Yoast SEO – Advanced SEO with real-time guidance")).toBe("Yoast SEO");
+  expect(shortName("Rank Math SEO")).toBe("Rank Math SEO");
+});
+
+test("a finished job's outcome never leads with a zero", () => {
+  expect(outcome(1, 1, 0)).toBe("1 change done, 1 failed");
+  expect(outcome(0, 0, 1)).toBe("1 change was rolled back");
+  expect(outcome(0, 2, 1)).toBe("2 changes failed, 1 rolled back");
 });

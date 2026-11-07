@@ -27,6 +27,9 @@
   --green-hover: #016b3f;
   --on-green: #ffffff;
   --accent: #01824c; /* dots and icons */
+  --code-bg: #0a0f0d; /* text to copy into another app: a dark block in both themes */
+  --code-fg: #edf2ef;
+  --code-accent: #5bd394;
   --brand-text: #016b3f; /* green words: links, the current page */
   /* Ink: the light primary button, bulk bar, toasts, AI avatar */
   --btn-ink: #0d1411;
@@ -98,7 +101,7 @@
   /* Every button, text box, select, search, date and segmented track: one of two heights. */
   --control: 36px;
   --control-sm: 32px;
-  --control-lg: 44px; /* the one large field on a page: the editor title, the Search everything query */
+  --control-lg: 44px; /* the one large field on a page: the editor title */
   --control-line: var(--line-2); /* buttons and chips at rest (their words identify them); fields use --line-ui */
   --ring: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
   /* Page rhythm: under the page head, and between a page's toolbar, cards and sections */
@@ -122,7 +125,7 @@
   --bg: #141414;
   --panel: #1b1b1b;
   --raise: #222222;
-  --sel: #222222;
+  --sel: #1a2b22; /* green-tinted like light, so a selected row stands apart from a hovered one (--panel) */
   --tint: #16261e; /* green-tinted, so ticked rows, ready cells and ok callouts keep their hue */
   --tint-2: #1d3328;
   --highlight: #3a3a3a;
@@ -137,6 +140,8 @@
   --green-hover: #016b3f;
   --on-green: #ffffff;
   --accent: #3dbf82;
+  --code-bg: #0b0b0b;
+  --code-accent: var(--accent);
   --brand-text: #ededed;
   --btn-ink: #262626;
   --btn-ink-hover: #2c2c2c;
@@ -150,10 +155,11 @@
   --warn-paper: #17140f;
   --warn-line: #3b3020;
   --saffron: #e8a13a;
-  --k-core: #e6e6e6;
-  --k-plugin: #9c9c9c;
-  --k-theme: #4f4f4f;
-  --k-off: #333333;
+  /* The light theme's green ramp, turned for the dark ground; every step 3:1 or more on --panel. */
+  --k-core: #c4ead3;
+  --k-plugin: #3dbf82;
+  --k-theme: #23955e;
+  --k-off: #6b6b6b;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 20px rgba(0, 0, 0, 0.35);
   --shadow-pop: 0 2px 6px rgba(0, 0, 0, 0.6), 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-2);

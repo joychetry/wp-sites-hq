@@ -2,15 +2,15 @@
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme.
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { api, contentBlocked, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type ContentHit, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { ago, dayTime, time } from "./format";
 import { AddSiteButton, Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
-import { Palette, type Command } from "./components/Palette";
+import { Palette, PALETTE_KEYS, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { Page } from "./components/page";
-import { AddSite } from "./screens/AddSite";
-import { Install } from "./screens/Install";
+import { AddSite, ANY_PLUGIN } from "./screens/AddSite";
+import { Install, type InstallStart } from "./screens/Install";
 import { attention, leaveGuard, planTitle, summary, toFix, updatesOf } from "./fleet";
 import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
@@ -19,11 +19,11 @@ export type { CoreStatus };
 
 const GROUPS = [
   ["", ["Overview"]],
-  ["Fleet", ["Sites", "Updates", "Plugins", "Themes"]],
+  ["Your sites", ["Sites", "Updates", "Plugins", "Themes"]],
   ["Content", ["Content", "Media", "Users", "Comments"]],
   ["Care", ["Classic Monks", "Monitoring", "Security"]],
   ["Business", ["Clients", "Store", "Reports"]],
-  ["App", ["AI", "Settings", "Search"]],
+  ["App", ["AI", "Settings"]],
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
@@ -47,31 +47,30 @@ const NAV_ICONS: Record<(typeof SECTIONS)[number], GlyphName | null> = {
   Reports: "chart",
   AI: "sparkle",
   Settings: "gear",
-  Search: "search",
 };
 type Section = (typeof SECTIONS)[number];
-const LABEL: Partial<Record<Section, string>> = { Search: "Search everything" };
+/** What a palette find opens its page on: a plugin or theme by name, a client, a post or page. */
+type Pick = { name?: string; client?: number; post?: { siteId: number; type: string; postId: number } };
 
 // The line under each page title.
 const ABOUT: Record<Section, string> = {
-  Overview: "What needs you across the fleet, right now.",
+  Overview: "What needs you across your sites, right now.",
   Sites: "See every site, open it, and keep its notes.",
-  Updates: "Every pending update across the fleet. Pick what to run, review exactly what changes, then run it.",
+  Updates: "Every pending update across your sites. Pick what to run, review exactly what changes, then run it.",
   Plugins: "Every plugin on every site in one grid. Open a cell to manage that plugin on that site.",
   Themes: "Every theme on every site in one grid. Open a cell to manage that theme on that site.",
-  Content: "Posts, pages and every custom post type, site by site.",
+  Content: "Posts, pages and anything else your sites publish, one site at a time.",
   Media: "Upload, describe and replace the files in a site's media library.",
-  Users: "Every user on every site. Add people, change roles, and remove them.",
+  Users: "Every user on every site. Add people, change roles and remove them.",
   Comments: "Moderate every site's comments in one queue.",
-  "Classic Monks": "Switch module features on each site, change their settings, and undo what changed.",
+  "Classic Monks": "Turn Classic Monks features on or off, site by site, change their settings and undo what changed.",
   Monitoring: "Uptime and speed of every home page.",
-  Security: "Known vulnerabilities across the fleet, fixed in one place.",
+  Security: "Known vulnerabilities across your sites, fixed in one place.",
   Clients: "Who owns which sites, and what each one costs you and earns you.",
   Store: "WooCommerce sales and stock, site by site.",
   Reports: "A monthly client report, as a PDF and a web page, with your branding.",
   AI: "Confirm what AI agents plan to change, and decide which sites they can reach. Nothing runs without your OK.",
   Settings: "How the app looks, how your reports are branded, where numbers come from, and your data.",
-  Search: "Find any post, page or product across every site.",
 };
 const CHECK_EVERY = 15 * 60;
 
@@ -86,7 +85,13 @@ export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
   // Anything that would close the editor asks first while it has unsaved changes.
   const guarded = (go: () => void) => (leaveGuard.ask ? leaveGuard.ask(go) : go());
-  const setSection = (s: Section) => guarded(() => setSectionNow(s));
+  // What a palette find opens its page on; any other way onto a page clears it.
+  const [pick, setPick] = useState<Pick>({});
+  const setSection = (s: Section, p: Pick = {}) =>
+    guarded(() => {
+      setSectionNow(s);
+      setPick(p);
+    });
   const sectionRef = useRef(section);
   sectionRef.current = section;
   // Messages belong to the screen they came from; on another screen they would only cover it.
@@ -100,12 +105,16 @@ export default function App() {
   const { reports } = useSecurity();
   const monitors = useMonitors();
   const [sheet, setSheet] = useState<SheetState | null>(null);
-  const [installing, setInstalling] = useState(false);
+  const [installing, setInstalling] = useState<boolean | InstallStart>(false);
   // Errors float as toasts, so the screen under them doesn't move.
   const setJobError = (text: string) => toast(text, { tone: "danger" });
   const [scopeChoice, setScope] = useState("");
+  // The top bar's attention chip opens Sites on its Needs attention tab; any other way in opens All.
+  const [sitesShow, setSitesShow] = useState<"any" | "attention">("any");
+  useEffect(() => {
+    if (section !== "Sites") setSitesShow("any");
+  }, [section]);
   const [focusId, setFocusId] = useState<number | null>(null);
-  const [searchFor, setSearchFor] = useState("");
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
   // Under 900px wide (and at 200% zoom) the nav folds behind a Menu button, so the page comes first.
@@ -191,19 +200,24 @@ export default function App() {
   const nextAt = `${nextCheck ? `Next check at ${nextCheck}.` : "Checks every 15 minutes."} Automatic checks run only while the app or its tray agent is open.`;
   const needs = scoped.filter((s) => attention(s)).length;
   const { lead, rest } = summary(scoped);
-  const sentence = rest ? `${lead} ${rest}` : lead;
   const inv = inventory ?? new Map();
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
   const inScope = new Set(scoped.map((s) => s.id));
   const vulnerable = (reports ?? []).filter((r) => inScope.has(r.site_id)).reduce((n, r) => n + r.vulnerabilities.length, 0);
   const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
+  // The summary looks at uptime; open problems join it, so it never calls a site healthy next to a known vulnerability.
+  const open = [
+    vulnerable && `${vulnerable === 1 ? "One plugin needs" : `${vulnerable} plugins need`} a fix.`,
+    approvals + livePlans && `${approvals + livePlans === 1 ? "One decision waits" : `${approvals + livePlans} decisions wait`} on you.`,
+  ].filter(Boolean);
+  const sentence = [open.length ? lead.replace(/ healthy\.$/, " up.") : lead, rest, ...open].filter(Boolean).join(" ");
   const ofKind = (k: string) => new Set(waiting.filter((w) => w.kind === k).map((w) => w.name)).size;
   // The design's sidebar counts: what waits on each page, amber where something is wrong.
   const counts: Partial<Record<Section, { n: number; say: string; alert?: boolean }>> = Object.fromEntries(
     (
       [
-        ["Overview", toFix(needs, vulnerable, livePlans, waiting.length), "to fix", true],
+        ["Overview", toFix(needs, vulnerable, livePlans, waiting.length), "to do", true],
         ["Sites", scoped.length, scoped.length === 1 ? "site" : "sites"],
         ["Updates", waiting.length, "waiting"],
         ["Plugins", ofKind("Plugin"), "with an update waiting"],
@@ -211,15 +225,15 @@ export default function App() {
         ["Classic Monks", approvals, "waiting for approval"],
         ["Monitoring", offline, "down", true],
         ["Security", vulnerable, "known vulnerabilities", true],
-        ["AI", livePlans, "to confirm"],
+        ["AI", livePlans, "plans to confirm"],
       ] as const
     )
       .filter(([, n]) => n > 0)
       .map(([s, n, say, alert]) => [s, { n, say, alert }]),
   );
 
-  const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" = "plan", danger?: boolean) =>
-    setSheet({ title, rows, start, danger });
+  const plan = (title: string, rows: PlanRow[], start: "plan" | "confirm" | "run" = "plan", danger?: boolean, onBack?: () => void, backLabel?: string) =>
+    setSheet({ title, rows, start, danger, onBack, backLabel });
   const runNow = async (title: string, changes: Change[]) => {
     try {
       const job = await api.startJob(title, changes);
@@ -235,14 +249,41 @@ export default function App() {
   };
   const checkAll = async () => {
     setChecking(true);
-    await api.check().catch(() => {});
+    await api.check().then(
+      () => toast(`Checked ${all.length === 1 ? "your site" : `all ${all.length} sites`}.`),
+      (e) => setJobError(`Check all sites: ${e}`),
+    );
     setChecking(false);
+  };
+  // A post or page found in the palette opens in the editor on Content, as Content would open it.
+  const openPost = async (h: ContentHit) => {
+    const s = all.find((x) => x.id === h.site_id);
+    if (!s) return toast("That site is no longer in WP Sites HQ.", { tone: "danger" });
+    if (!scoped.includes(s)) setScope("");
+    const post = { siteId: s.id, type: h.post_type, postId: h.id };
+    // A site that can't be edited now still opens on Content, which says why and how to fix it.
+    if (contentBlocked(s)) return setSection("Content", { post });
+    const type = (await api.postTypes(s.id).catch(() => [])).find((t) => t.name === h.post_type);
+    if (type) setSection("Content", { post });
+    else toast(`Couldn't open it here. Open it on Content for ${s.name}.`, { tone: "danger" });
   };
   const login = (s: Site) => api.login(s.id).catch((e) => setJobError(`Log in to ${s.name}: ${e}`));
   const signInAgain = (id: number) => {
     const site = all.find((s) => s.id === id);
     if (site) setAdding({ again: site });
   };
+
+  // Any screen can ask for these (components/feedback.tsx Blocked).
+  useEffect(() => {
+    const again = (e: Event) => signInAgain((e as CustomEvent<number>).detail);
+    const open = (e: Event) => openSite((e as CustomEvent<number>).detail);
+    window.addEventListener("wpshq:sign-in-again", again);
+    window.addEventListener("wpshq:open-site", open);
+    return () => {
+      window.removeEventListener("wpshq:sign-in-again", again);
+      window.removeEventListener("wpshq:open-site", open);
+    };
+  });
 
   const commands: Command[] = [
     { id: "add", group: "Actions", label: "Add a site", keys: "A", icon: "plus", run: () => setAdding({}) },
@@ -255,8 +296,24 @@ export default function App() {
       run: () => (waiting.length ? plan(planTitle(waiting), waiting) : setSection("Updates")),
     },
     { id: "install", group: "Actions", label: "Install a plugin", icon: "plug", run: () => setInstalling(true) },
-    { id: "scan", group: "Actions", label: "Scan all sites for security problems", icon: "shield", run: () => api.scanSecurity().catch(() => {}) },
-    { id: "read", group: "Actions", label: "Read every site's plugins and themes again", icon: "refresh", run: () => api.refreshInventory().catch(() => {}) },
+    {
+      id: "scan",
+      group: "Actions",
+      label: "Scan all sites for security problems",
+      icon: "shield",
+      run: () =>
+        api.scanSecurity().then(
+          () => toast("Scanned your sites. Security shows what it found.", { action: { label: "Open Security", run: () => setSection("Security") } }),
+          (e) => setJobError(`Security scan: ${e}`),
+        ),
+    },
+    {
+      id: "read",
+      group: "Actions",
+      label: "Refresh plugin and theme lists",
+      icon: "package",
+      run: () => api.refreshInventory().then(() => toast("Refreshed the plugin and theme lists."), (e) => setJobError(`Refresh plugin and theme lists: ${e}`)),
+    },
     {
       id: "theme",
       group: "Actions",
@@ -291,11 +348,11 @@ export default function App() {
     })),
     ...all
       .filter((s) => hasTool(s, "create-login-link") && !s.sign_in_again)
-      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, icon: "login" as const, run: () => login(s) })),
+      .map((s) => ({ id: `login-${s.id}`, group: "Sites", label: `Log in to ${s.name}'s dashboard`, icon: "dashboard" as const, run: () => login(s) })),
     ...all
       .filter((s) => s.sign_in_again)
       .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, icon: "login" as const, run: () => signInAgain(s.id) })),
-    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${LABEL[s] ?? s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
+    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
   ];
 
   // Counts, status pills and the generated summary only once the sites have loaded and the core is up.
@@ -315,7 +372,7 @@ export default function App() {
           Try again
           <Glyph name="refresh" />
         </Button>
-        <p className="mono dim detail">{coreError}</p>
+        <p className="dim detail">Details: {coreError}</p>
       </div>
     );
   } else if (error) {
@@ -332,7 +389,7 @@ export default function App() {
           Try again
           <Glyph name="refresh" />
         </Button>
-        <p className="mono dim detail">{error}</p>
+        <p className="dim detail">Details: {error}</p>
       </div>
     );
   } else if (!sites) {
@@ -345,10 +402,10 @@ export default function App() {
         <section className="card">
           <Empty
             picture="sites"
-            title={`${section} fills in once you add a site`}
+            title="This page fills in once you add a site"
             action={<AddSiteButton onClick={() => setAdding({})} />}
           >
-            <p>Add a site with the WP Sites HQ plugin, Classic Monks or Classic Monks Pro on it for full control, or any WordPress 7.1 site in Basic mode.</p>
+            <p>{ANY_PLUGIN} Or use Basic mode on any WordPress 7.1 site.</p>
           </Empty>
         </section>
       </Page>
@@ -371,6 +428,8 @@ export default function App() {
   } else if (section === "Sites") {
     body = (
       <S.Sites
+        key={sitesShow}
+        show={sitesShow}
         sites={scoped}
         groups={groups}
         focusId={focusId}
@@ -385,17 +444,18 @@ export default function App() {
   } else if (section === "Plugins" || section === "Themes") {
     body = (
       <S.Matrix
-        key={section}
+        key={section + (pick.name ?? "")}
+        filter={pick.name}
         kind={section === "Plugins" ? "plugins" : "themes"}
         sites={scoped}
         inventory={inv}
         onPlan={plan}
         onRun={runNow}
-        onInstall={section === "Plugins" ? () => setInstalling(true) : undefined}
+        onInstall={() => setInstalling(section === "Themes" ? { theme: true } : true)}
       />
     );
   } else if (section === "Content") {
-    body = <S.Content sites={scoped} onPlan={plan} />;
+    body = <S.Content key={pick.post ? `${pick.post.siteId}-${pick.post.postId}` : ""} sites={scoped} start={pick.post} onPlan={plan} />;
   } else if (section === "Media") {
     body = <S.Media sites={scoped} />;
   } else if (section === "Users") {
@@ -403,29 +463,19 @@ export default function App() {
   } else if (section === "Comments") {
     body = <S.Comments sites={scoped} />;
   } else if (section === "Classic Monks") {
-    body = <S.ClassicMonks sites={scoped} />;
+    body = <S.ClassicMonks sites={scoped} onAi={() => setSection("AI")} />;
   } else if (section === "Monitoring") {
     body = <S.Monitoring sites={scoped} monitors={monitors ?? []} />;
   } else if (section === "Security") {
     body = <S.Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Clients") {
-    body = <S.Clients sites={all} />;
+    body = <S.Clients key={pick.client} sites={all} focus={pick.client} />;
   } else if (section === "Store") {
     body = <S.Store sites={scoped} onPlan={plan} />;
   } else if (section === "Reports") {
     body = <S.Reports sites={scoped} onSettings={() => setSection("Settings")} />;
-  } else if (section === "Search") {
-    body = (
-      <S.Search
-        key={searchFor}
-        sites={all}
-        inventory={inv}
-        query={searchFor}
-        onGo={(s, id) => (id ? openSite(id) : setSection(s))}
-      />
-    );
   } else if (section === "AI") {
-    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} />;
+    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} onApprovals={() => setSection("Classic Monks")} />;
   } else {
     body = <S.Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   }
@@ -466,7 +516,7 @@ export default function App() {
                       onFocus={() => preload(s, scoped)}
                     >
                       {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
-                      {LABEL[s] ?? s}
+                      {s}
                       {live && counts[s] && (
                         <span className={counts[s].alert ? "n alert" : "n"}>
                           {counts[s].n}
@@ -501,7 +551,7 @@ export default function App() {
                 <option value="">All sites ({all.length})</option>
                 {groups.map((g) => (
                   <option key={g} value={g}>
-                    Group: {g}
+                    {g} ({all.filter((s) => s.group === g).length})
                   </option>
                 ))}
               </Select>
@@ -530,19 +580,26 @@ export default function App() {
                 </span>
               )}
               {needs > 0 && (
-                <button type="button" className="pill warning" onClick={() => setSection("Sites")}>
+                <button
+                  type="button"
+                  className="pill warning"
+                  onClick={() => {
+                    setSitesShow("attention");
+                    setSection("Sites");
+                  }}
+                >
                   {needs} {needs === 1 ? "site needs" : "sites need"} attention
-                  <span className="sr-only">, open Sites</span>
+                  <span className="sr-only">, show on Sites</span>
                   <Glyph name="alert" />
                 </button>
               )}
             </p>
           )}
           <div className="top-end">
-            <button type="button" className="kbar" onClick={() => setPalette(true)}>
+            <button type="button" className="kbar" aria-keyshortcuts={PALETTE_KEYS === "⌘K" ? "Meta+K" : "Control+K"} onClick={() => setPalette(true)}>
               <Glyph name="search" />
-              <span>Search or run…</span>
-              <Kbd>Ctrl K</Kbd>
+              <span>Search or run a command</span>
+              <Kbd>{PALETTE_KEYS}</Kbd>
             </button>
             {live && sites.length > 0 && (
               // The page head holds each page's main action, so this is the same plain button on every page.
@@ -557,7 +614,7 @@ export default function App() {
           <header className="phead">
             <div className={section === "Classic Monks" ? "marked" : undefined}>
               {section === "Classic Monks" && <Logo />}
-              <h1>{LABEL[section] ?? section}</h1>
+              <h1>{section}</h1>
               <p>{section === "Overview" && all.length > 0 && live ? sentence : ABOUT[section]}</p>
             </div>
             <div className="phead-acts" ref={setHeadSlot}>
@@ -568,7 +625,7 @@ export default function App() {
             <Suspense
               fallback={
                 <div className="page-loading">
-                  <Skeleton label={`Loading ${LABEL[section] ?? section}…`} />
+                  <Skeleton label={`Loading ${section}…`} />
                 </div>
               }
             >
@@ -581,10 +638,10 @@ export default function App() {
         <Palette
           commands={commands}
           onClose={() => setPalette(false)}
-          onSearch={(q) => {
-            setSearchFor(q);
-            setSection("Search");
-          }}
+          sites={all}
+          inventory={inv}
+          onLocal={(h) => (h.siteId ? openSite(h.siteId) : h.clientId ? setSection("Clients", { client: h.clientId }) : setSection(h.kind, { name: h.label }))}
+          onPost={openPost}
         />
       )}
       {sheet && <JobSheet key={"jobId" in sheet ? sheet.jobId : sheet.title} state={sheet} onClose={() => setSheet(null)} />}
@@ -592,10 +649,11 @@ export default function App() {
         <Install
           sites={scoped}
           inventory={inv}
+          start={typeof installing === "object" ? installing : undefined}
           onClose={() => setInstalling(false)}
-          onPlan={(t, r) => {
+          onPlan={(t, r, back) => {
             setInstalling(false);
-            plan(t, r, "confirm");
+            plan(t, r, "confirm", false, () => setInstalling(back), "Back to the sites");
           }}
         />
       )}
