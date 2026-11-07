@@ -39,7 +39,7 @@ function core() {
         two_factor: { stats: { total_users: 4, users_with_2fa: 3 }, enforcement: { enabled: false, roles: [] }, roles: [] },
         failed: [["get-search-report", "Timed out."]],
       };
-    if (cmd === "cm_features") return [];
+    if (cmd === "cm_controls") return { tabs: [], on: 0, total: 0 };
     throw new Error(cmd);
   });
 }
@@ -116,7 +116,8 @@ test("a site without the store tools says what it needs", () => {
 test("Classic Monks' reports show what the site has and name what failed", async () => {
   core();
   render(<ClassicMonks sites={[A]} />);
-  fireEvent.click(await screen.findByRole("tab", { name: "Reports" }));
+  // The reports live under Logs, as on the plugin's dashboard.
+  fireEvent.click(await screen.findByRole("button", { name: /^Logs/ }));
   expect(await screen.findByRole("table", { name: "Pages not found" })).toHaveTextContent("/old");
   expect(screen.getByText("75%")).toBeInTheDocument();
   expect(screen.getByText("Not scanned yet")).toBeInTheDocument();

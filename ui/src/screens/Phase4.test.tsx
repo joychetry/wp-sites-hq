@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Users, the comment inbox and Classic Monks (features, settings, activity, approvals).
-import { render as draw, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { act, render as draw, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Users } from "./Users";
@@ -9,6 +9,7 @@ import { ClassicMonks, targetOf, toolLabel, whoOf } from "./ClassicMonks";
 import { site, choose } from "../test-fixtures";
 import { HeadSlot } from "../components/ui";
 import { cmBlocked, peopleBlocked, type Comment, type User } from "../api";
+import { leaveGuard } from "../fleet";
 
 // The page head's action slot, as App gives it: the screen's main actions render there.
 const head = document.body.appendChild(document.createElement("div"));
@@ -46,15 +47,39 @@ function core(over: Record<string, (args: Record<string, unknown>) => unknown> =
           : { users: [user(1, "admin", "administrator")], total: 1, roles: ROLES, can_reset: false };
       case "comments_list":
         return a.id === 1 ? { comments: [comment(5, "Ana", "2026-10-27 10:00:00")], total: 1 } : { comments: [comment(6, "Bo", "2026-10-28 10:00:00")], total: 3 };
-      case "cm_features":
-        return [
-          { key: "perf", label: "Performance", toggles: [{ name: "enable_svg", label: "SVG Support", description: "", section: "Media", on: false, locked: false }] },
-          { key: "sec", label: "Security", toggles: [{ name: "enable_lock", label: "Login Lockdown", description: "Blocks bad logins.", section: "", on: true, locked: true }] },
-        ];
+      case "cm_controls":
+        return {
+          on: 1,
+          total: 3,
+          tabs: [
+            {
+              key: "performance",
+              label: "Performance",
+              subtabs: [
+                {
+                  key: "m",
+                  label: "Media",
+                  description: "Uploads and image sizes.",
+                  cards: [
+                    {
+                      title: "Media Enhancements",
+                      toggles: [{ name: "enable_svg", label: "SVG Support", description: "", on: false, locked: false }],
+                      settings: [{ name: "auto_q", label: "Image Quality", description: "", control: "number", options: [], min: 1, max: 100, step: 1, value: 82 }],
+                      elsewhere: 2,
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              key: "security",
+              label: "Security",
+              subtabs: [{ key: "p", label: "Protection", description: "", cards: [{ title: "Logins", toggles: [{ name: "enable_lock", label: "Login Lockdown", description: "Blocks bad logins.", on: true, locked: true }], settings: [], elsewhere: 0 }] }],
+            },
+          ],
+        };
       case "cm_set_feature":
         return 42;
-      case "cm_settings":
-        return [{ name: "auto_q", label: "Image Quality", description: "", tab: "Performance", section: "Media", control: "number", options: [], min: 1, max: 100, step: 1, value: 82 }];
       case "cm_set_setting":
         return null;
       case "cm_activity":
@@ -274,61 +299,94 @@ describe("Comments", () => {
 });
 
 describe("Classic Monks", () => {
-  it("turns a feature on and undoes it", async () => {
+  const bar = () => screen.queryByRole("region", { name: "Unsaved changes" });
+
+  it("collects changes, saves each on its own and undoes them together", async () => {
     const calls = core();
     render(<ClassicMonks sites={[CM]} />);
     const svg = await screen.findByRole("switch", { name: "SVG Support" });
-    expect(svg).not.toBeChecked();
+    expect(screen.getByRole("heading", { name: "Media" })).toBeInTheDocument();
+    expect(screen.getByText("Uploads and image sizes.")).toBeInTheDocument();
+    expect(screen.getByText("2 more settings here change only in the site's WordPress dashboard.")).toBeInTheDocument();
+    // A switch flipped back is no change at all.
     fireEvent.click(svg);
-    expect(await screen.findByText("Turned on SVG Support on Alpha.")).toBeInTheDocument();
+    expect(bar()).toHaveTextContent("1 change not saved");
+    fireEvent.click(svg);
+    expect(bar()).toBeNull();
+    fireEvent.click(svg);
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Image Quality" }), { target: { value: "70" } });
+    expect(bar()).toHaveTextContent("2 changes not saved");
+    expect(calls.filter(([c]) => c.startsWith("cm_set"))).toEqual([]);
+    fireEvent.click(within(bar()!).getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Saved 2 changes on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_set_feature", { id: 1, name: "enable_svg", on: true }]);
-    expect(screen.getByRole("switch", { name: "SVG Support" })).toBeChecked();
+    expect(calls).toContainEqual(["cm_set_setting", { id: 1, name: "auto_q", value: 70 }]);
+    expect(bar()).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(await screen.findByText("Undone: Turned on SVG Support on Alpha.")).toBeInTheDocument();
+    expect(await screen.findByText("Undone: Saved 2 changes on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_undo", { id: 1, row: 42 }]);
-    // The list reads the site again, so it shows what the undo put back.
-    await waitFor(() => expect(screen.getByRole("switch", { name: "SVG Support" })).not.toBeChecked());
   });
 
-  it("finds features in every section and shows locked ones as locked", async () => {
+  it("keeps a change that failed, discards on request and asks before leaving", async () => {
+    core({
+      cm_set_feature: () => {
+        throw "The site said no.";
+      },
+    });
+    render(<ClassicMonks sites={[CM]} />);
+    fireEvent.click(await screen.findByRole("switch", { name: "SVG Support" }));
+    fireEvent.click(within(bar()!).getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("SVG Support: The site said no.")).toBeInTheDocument();
+    expect(bar()).toHaveTextContent("1 change not saved");
+    expect(screen.getByRole("switch", { name: "SVG Support" })).toBeChecked();
+
+    const go = vi.fn();
+    act(() => leaveGuard.ask!(go));
+    const ask = screen.getByRole("dialog", { name: "Leave without saving?" });
+    expect(ask).toHaveTextContent("1 change to Classic Monks on Alpha isn't saved.");
+    fireEvent.click(within(ask).getByRole("button", { name: "Keep editing" }));
+    expect(go).not.toHaveBeenCalled();
+
+    fireEvent.click(within(bar()!).getByRole("button", { name: "Discard" }));
+    expect(bar()).toBeNull();
+    expect(screen.getByRole("switch", { name: "SVG Support" })).not.toBeChecked();
+    expect(leaveGuard.ask).toBeNull();
+  });
+
+  it("searches every tab, keeps locked features locked and counts the whole site", async () => {
     core();
     render(<ClassicMonks sites={[CM]} />);
     await screen.findByRole("switch", { name: "SVG Support" });
-    fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "bad logins" } });
-    const list = screen.getByRole("list", { name: "Matching features" });
-    expect(within(list).getByText("Login Lockdown")).toBeInTheDocument();
-    expect(within(list).getByText("Locked")).toBeInTheDocument();
-    expect(within(list).queryByRole("button")).toBeNull();
-    // The count is the whole site's, not the rows shown.
-    expect(screen.getByText(/of 2 turned on$/)).toHaveTextContent("1 of 2 turned on");
-    fireEvent.change(screen.getByRole("searchbox", { name: "Find a feature" }), { target: { value: "zzz" } });
-    expect(screen.getByText("No feature matches")).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Performance", "Security 1 on"]);
+    expect(screen.getByText(/features turned on/)).toHaveTextContent("1 of 3 features turned on.");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search settings" }), { target: { value: "bad logins" } });
+    const card = screen.getByRole("region", { name: "Logins Security, Protection" });
+    expect(within(card).getByRole("switch", { name: "Login Lockdown" })).toBeDisabled();
+    expect(within(card).getByText("Locked")).toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "SVG Support" })).toBeNull();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search settings" }), { target: { value: "zzz" } });
+    expect(screen.getByText("Nothing matches")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
     expect(screen.getByRole("switch", { name: "SVG Support" })).toBeInTheDocument();
+    // The rail moves between a tab's sections.
+    fireEvent.click(screen.getByRole("tab", { name: "Security 1 on" }));
+    expect(within(screen.getByRole("navigation", { name: "Security sections" })).getByRole("button", { name: /^Protection/ })).toHaveAttribute("aria-current", "true");
   });
 
-  it("saves a setting, undoes from the log and opens an approval on the site", async () => {
+  it("opens Activity and the waiting changes as sheets", async () => {
     const calls = core();
     render(<ClassicMonks sites={[CM]} />);
     await screen.findByRole("switch", { name: "SVG Support" });
-    const tabs = screen.getByRole("tablist", { name: "Show" });
-    fireEvent.click(within(tabs).getByRole("tab", { name: "Settings" }));
-    const q = await screen.findByRole("spinbutton", { name: "Image Quality" });
-    expect(screen.getByRole("button", { name: "Save Image Quality" })).toBeDisabled();
-    fireEvent.change(q, { target: { value: "70" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save Image Quality" }));
-    expect(await screen.findByText("Set Image Quality to 70 on Alpha.")).toBeInTheDocument();
-    expect(calls).toContainEqual(["cm_set_setting", { id: 1, name: "auto_q", value: 70 }]);
-
-    fireEvent.click(within(tabs).getByRole("tab", { name: "Activity" }));
-    const table = await screen.findByRole("list", { name: "Activity" });
-    expect(within(table).getByText("Update features")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Activity" }));
+    const log = await screen.findByRole("list", { name: "Activity" });
+    expect(within(log).getByText("Update features")).toBeInTheDocument();
     // Undo runs at once, as the toast's does; the undo is logged too.
-    fireEvent.click(within(table).getByRole("button", { name: /^Undo Update features from / }));
+    fireEvent.click(within(log).getByRole("button", { name: /^Undo Update features from / }));
     expect(await screen.findByText("Undone: Update features on Alpha.")).toBeInTheDocument();
     expect(calls).toContainEqual(["cm_undo", { id: 1, row: 9 }]);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
-    fireEvent.click(within(tabs).getByRole("tab", { name: /^Waiting for approval\s?1$/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Waiting for approval 1" }));
     const waiting = await screen.findByRole("list", { name: "Waiting for approval" });
     expect(within(waiting).getByText("Delete post “Hello world”")).toBeInTheDocument();
     fireEvent.click(within(waiting).getByRole("button", { name: "Approve or decline on the site: Delete post “Hello world”" }));
@@ -336,12 +394,14 @@ describe("Classic Monks", () => {
     expect(calls).toContainEqual(["cm_approval_open", { id: 1, op: 31 }]);
   });
 
-  it("explains sites without Classic Monks, and tabs the site lacks are hidden", async () => {
+  it("explains sites without Classic Monks, and buttons the site lacks are hidden", async () => {
     core();
-    const released = site({ id: 4, name: "Released", capabilities: { abilities: ["get-features", "update-features"] } });
+    const released = site({ id: 4, name: "Released", capabilities: { abilities: ["get-features", "update-features", "get-404-report"] } });
     render(<ClassicMonks sites={[BASIC, released]} />);
     expect(await screen.findByRole("switch", { name: "SVG Support" })).toBeInTheDocument();
-    expect(within(screen.getByRole("tablist", { name: "Show" })).getAllByRole("tab").map((b) => b.textContent)).toEqual(["Features"]);
+    expect(screen.queryByRole("button", { name: "Activity" })).toBeNull();
+    // The reports get a Logs section when the dashboard has none.
+    expect(within(screen.getByRole("navigation", { name: "Performance sections" })).getByRole("button", { name: /^Logs/ })).toBeInTheDocument();
     choose(screen.getByRole("combobox", { name: "Site" }), "2");
     expect(screen.getByText("This site doesn't have Classic Monks. It's connected in Basic mode.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Get the WP Sites HQ plugin" })).toBeInTheDocument();
