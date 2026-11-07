@@ -3,7 +3,7 @@
 // browser (vite --mode mock). Pick the data with ?fixture=fleet|fleet300|first|empty|loading|error
 // (first: one site, as just after adding it).
 import { ACF_FIELDS } from "./acf-fixture";
-import type { Action, ActivityRow, AppSettings, ReportAsk, Bundle, Change, Client, Comment, Cost, Entry, FeatureGroup, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Setting, Site, SiteInventory, Summary, User } from "../src/api";
+import type { Action, ActivityRow, AppSettings, ReportAsk, Bundle, Change, Client, Comment, Cost, Controls, Entry, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Site, SiteInventory, Summary, User } from "../src/api";
 
 const now = Math.floor(Date.now() / 1000);
 // Real tool names first, so the screens offer the actions a Classic Monks site has.
@@ -578,25 +578,115 @@ let COMMENTS: Record<number, Comment[]> = {
   ],
   3: [comment(14, "Guest", "Hello world", "First visit, nice blog &amp; photos.", "2026-10-28 07:15:00")],
 };
-let FEATURES: FeatureGroup[] = [
-  {
-    key: "performance",
-    label: "Performance",
-    toggles: [
-      { name: "enable_svg_support", label: "SVG Support", description: "Allow SVG uploads to the media library, cleaned before saving.", section: "Media", on: false, locked: false },
-      { name: "enable_lazy_load", label: "Lazy Loading", description: "Load images and videos as they scroll into view.", section: "Lazy Loading", on: true, locked: false },
-    ],
-  },
-  {
-    key: "security",
-    label: "Security",
-    toggles: [{ name: "enable_login_lockdown", label: "Login Lockdown", description: "Block an address after repeated failed logins.", section: "Login", on: true, locked: true }],
-  },
-];
-const SETTINGS: Setting[] = [
-  { name: "limit_post_revisions", label: "Limit Post Revisions", description: "", tab: "Performance", section: "Heartbeat", control: "select", options: ["default", "disable", "1", "2", "3"], min: null, max: null, step: null, value: "default" },
-  { name: "auto_resize_quality", label: "Image Quality (%)", description: "JPEG and WebP quality, 1 to 100.", tab: "Performance", section: "Media", control: "number", options: [], min: 1, max: 100, step: 1, value: 82 },
-];
+// Classic Monks Pro 2.6 as mc-a reads it: the dashboard's tabs (AI, Woo and Bricks are off there), subtabs, and cards.
+const tg = (name: string, label: string, on = false, locked = false, description = "") => ({ name, label, description, on, locked });
+const num = (name: string, label: string, value: number, min: number, max: number, description = "") => ({ name, label, description, control: "number", options: [], min, max, step: 1, value });
+const pick = (name: string, label: string, value: string, options: string[], description = "") => ({ name, label, description, control: "select", options, min: null, max: null, step: null, value });
+const card = (title: string, toggles: ReturnType<typeof tg>[], settings: (ReturnType<typeof num> | ReturnType<typeof pick>)[] = [], elsewhere = 0) => ({ title, toggles, settings, elsewhere });
+const sub = (key: string, label: string, description: string, cards: ReturnType<typeof card>[]) => ({ key: `subtab-${key}`, label, description, cards });
+let CONTROLS: Controls = {
+  on: 0,
+  total: 803,
+  tabs: [
+    {
+      key: "core",
+      label: "Core",
+      subtabs: [
+        sub("setup", "Setup", "Initial site configuration, analytics tracking, code management, and server utilities.", [
+          card(
+            "Utilities",
+            [
+              tg("enable_plugin_download", "Plugin ZIP Download", false, false, "Allows downloading plugin ZIP files directly from the WordPress admin."),
+              tg("enable_theme_download", "Theme ZIP Download", false, false, "Allows downloading theme ZIP files directly from the WordPress admin."),
+              tg("enable_self_hosted_analytics", "Self-Host Google Analytics v4", true, false, "Self-host Google Analytics with a small, fast tracking script."),
+              tg("analytics_disable_for_admins", "Disable for logged in admins", true, false, "Keep administrators out of your analytics."),
+              tg("enable_code_manager", "Code Manager", false, true, "Manage PHP, CSS, and JavaScript code without editing theme files."),
+            ],
+            [],
+            2,
+          ),
+          card("Modular Tabs", [tg("enable_tab_ai", "AI Tab", false, true), tg("enable_tab_woocommerce", "WooCommerce Tab", false, true), tg("enable_tab_bricks", "Bricks Builder Tab", false, true)]),
+        ]),
+        sub("content", "Content", "Post types, taxonomies, ordering and editorial tools.", [
+          card("Custom Post Type & Taxonomy Controls", [tg("enable_post_type_switcher", "Post Type Switcher"), tg("enable_taxonomy_switcher", "Taxonomy Switcher"), tg("enable_order_post_types", "Order Post Types", true)], [], 1),
+          card("Editorial Workflow", [tg("disable_edit_author", "Lock Post Author"), tg("enable_content_duplication", "Content Duplication", true), tg("enable_public_preview", "Public Preview")], [], 3),
+        ]),
+        sub("gutenberg", "Gutenberg", "Block editor tweaks.", [card("Gutenberg Editor", [tg("disable_gutenberg", "Disable Gutenberg"), tg("enable_block_visibility", "Block Visibility")])]),
+        sub("users", "Users", "Accounts, roles and switching.", [card("User Management", [tg("enable_user_switching", "User Switching"), tg("enable_disable_user_account", "Disable User Accounts", false, true)])]),
+        sub("logs", "Logs", "404s, redirects, searches and the debug log.", [
+          card("Logs", [
+            tg("enable_404_logging", "Enable 404 Error Logging", true),
+            tg("enable_broken_link_detection", "Enable Broken Link Detection"),
+            tg("enable_redirect_logging", "Enable Redirection & Logging"),
+            tg("enable_search_logging", "Enable Search Logging", true),
+            tg("enable_debug_logging", "Enable WP Debug Logging"),
+          ]),
+        ]),
+      ],
+    },
+    {
+      key: "performance",
+      label: "Performance",
+      subtabs: [
+        sub("wp-optimizations", "WP Optimizations", "Trim what WordPress loads on every page.", [
+          card(
+            "WordPress Optimizations",
+            [tg("disable_emojis", "Disable Emojis", true), tg("disable_embeds", "Disable Embeds"), tg("remove_query_strings", "Remove Query Strings")],
+            [
+              pick("limit_post_revisions", "Limit Post Revisions", "default", ["default", "disable", "1", "2", "3", "5", "10"]),
+              pick("autosave_interval", "Autosave Interval", "default", ["default", "120", "300", "600"]),
+            ],
+          ),
+        ]),
+        sub("heartbeat", "Heartbeat", "How often the editor and dashboard call home.", [
+          card("Heartbeat", [], [pick("disable_heartbeat", "Disable Heartbeat", "default", ["default", "disable_everywhere", "allow_posts"]), pick("heartbeat_frequency", "Heartbeat Frequency", "default", ["default", "30", "60", "120"])]),
+        ]),
+        sub("media", "Media Enhancements", "Uploads, image sizes and formats.", [
+          card(
+            "Media Enhancements",
+            [
+              tg("enable_svg_support", "SVG Support", false, false, "Allow SVG uploads to the media library, cleaned before saving."),
+              tg("enable_auto_resize", "Resize Large Images", true, false, "Scale images down to a maximum size on upload."),
+            ],
+            [num("auto_resize_max_width", "Max Width (px)", 2560, 100, 10000), num("auto_resize_max_height", "Max Height (px)", 2560, 100, 10000), num("auto_resize_quality", "Image Quality (%)", 82, 1, 100, "JPEG and WebP quality, 1 to 100.")],
+            3,
+          ),
+        ]),
+        sub("lazy-loading", "Lazy Loading", "Load images and videos as they scroll into view.", [
+          card(
+            "Lazy Loading",
+            [tg("enable_lazy_load", "Lazy Loading", true, false, "Load images and videos as they scroll into view."), tg("lazy_load_youtube", "YouTube Previews")],
+            [num("lazy_load_threshold", "Loading Threshold (px)", 200, 0, 2000), num("lazy_load_animation_duration", "Animation Duration (ms)", 300, 0, 3000)],
+            12,
+          ),
+        ]),
+      ],
+    },
+    {
+      key: "security",
+      label: "Security",
+      subtabs: [
+        sub("wp-protection", "WP Protection", "Logins, XML-RPC and what WordPress tells strangers.", [
+          card("WordPress Protection", [tg("enable_login_lockdown", "Login Lockdown", true, true, "Block an address after repeated failed logins."), tg("disable_xmlrpc", "Disable XML-RPC", false, true), tg("hide_wp_version", "Hide WordPress Version")], [], 18),
+        ]),
+        sub("2fa", "2FA", "Two-factor sign-in.", [card("Two-Factor Authentication", [tg("enable_2fa_totp", "Authenticator App", false, true), tg("enable_2fa_email", "Email Codes", false, true)], [], 9)]),
+      ],
+    },
+    { key: "white-label", label: "White Label", subtabs: [sub("wp-branding", "Branding", "Your name on the dashboard.", [card("WordPress Branding", [tg("cm_enable_white_label", "White Label", false, true)], [], 5)])] },
+    {
+      key: "interface",
+      label: "Interface",
+      subtabs: [
+        sub("folders", "Folders", "Folders for media, posts and pages.", [card("Folder Manager", [tg("enable_folder_manager", "Folder Manager"), tg("enable_media_folders", "Media Folders")], [], 5)]),
+        sub("laser-loader", "Laser Loader", "A thin bar while pages load.", [
+          card("Laser Loader", [tg("enable_laser_loader", "Laser Loader")], [pick("laser_loader_position", "Position", "top", ["top", "bottom"]), num("laser_loader_height", "Height (px)", 3, 1, 10)], 5),
+        ]),
+      ],
+    },
+    { key: "email", label: "Email", subtabs: [sub("email-settings", "Email Settings", "", [card("Email Settings", [tg("enable_smtp", "SMTP", false, false), tg("enable_email_log", "Email Log")], [], 1)])] },
+    { key: "options", label: "Options", subtabs: [sub("enviroment", "Environment", "Staging, debug and import or export.", [card("Environment", [tg("enable_environment_badge", "Environment Badge", true)], [], 16)])] },
+  ],
+};
 let ACTIVITY: ActivityRow[] = [
   { id: 41, time: "2026-10-28 09:30:12", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true },
   { id: 40, time: "2026-10-28 09:12:40", who: "Claude", tool: "delete-post", status: "pending", summary: "", can_undo: false },
@@ -977,15 +1067,18 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
     case "site_login":
     case "cm_approval_open":
       return r(null);
-    case "cm_features":
-      return r(FEATURES);
+    case "cm_controls": {
+      const on = CONTROLS.tabs.flatMap((t) => t.subtabs.flatMap((s) => s.cards.flatMap((c) => c.toggles))).filter((x) => x.on).length;
+      // The rest of the site's 803 features: 47 more are on in tabs the mock leaves out.
+      return r({ ...CONTROLS, on: on + 47 });
+    }
     case "cm_set_feature":
-      FEATURES = FEATURES.map((g) => ({ ...g, toggles: g.toggles.map((t) => (t.name === args.name ? { ...t, on: args.on as boolean } : t)) }));
+      CONTROLS = { ...CONTROLS, tabs: CONTROLS.tabs.map((t) => ({ ...t, subtabs: t.subtabs.map((s) => ({ ...s, cards: s.cards.map((c) => ({ ...c, toggles: c.toggles.map((x) => (x.name === args.name ? { ...x, on: args.on as boolean } : x)) })) })) })) };
       ACTIVITY = [{ id: 42, time: "2026-10-28 10:00:00", who: "WP Sites HQ", tool: "update-features", status: "ok", summary: "", can_undo: true }, ...ACTIVITY];
       return r(42);
-    case "cm_settings":
-      return r(SETTINGS);
     case "cm_set_setting":
+      CONTROLS = { ...CONTROLS, tabs: CONTROLS.tabs.map((t) => ({ ...t, subtabs: t.subtabs.map((s) => ({ ...s, cards: s.cards.map((c) => ({ ...c, settings: c.settings.map((x) => (x.name === args.name ? { ...x, value: args.value } : x)) })) })) })) };
+      ACTIVITY = [{ id: 43, time: "2026-10-28 10:01:00", who: "WP Sites HQ", tool: "update-settings", status: "ok", summary: "", can_undo: true }, ...ACTIVITY];
       return r(43);
     case "cm_activity":
       return r({ rows: ACTIVITY, total: ACTIVITY.length, page: 1, pages: 1 });

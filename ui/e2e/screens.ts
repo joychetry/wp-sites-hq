@@ -120,7 +120,7 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-reports",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Reports", exact: true }).click();
+      await page.getByRole("navigation", { name: "Core sections" }).getByRole("button", { name: /^Logs/ }).click();
       await page.getByRole("table", { name: "Pages not found" }).waitFor();
     },
   },
@@ -195,7 +195,10 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-undo",
     open: async (page) => {
       await nav("Classic Monks")(page);
+      await page.getByRole("tab", { name: /^Performance/ }).click();
+      await page.getByRole("navigation", { name: "Performance sections" }).getByRole("button", { name: /^Media Enhancements/ }).click();
       await page.getByRole("switch", { name: "SVG Support" }).click();
+      await page.getByRole("region", { name: "Unsaved changes" }).getByRole("button", { name: "Save" }).click();
       await page.getByRole("button", { name: "Undo", exact: true }).waitFor();
     },
   },
@@ -203,15 +206,26 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-settings",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Settings", exact: true }).click();
-      await page.getByRole("list", { name: "Settings" }).waitFor();
+      await page.getByRole("tab", { name: /^Performance/ }).click();
+      await page.getByRole("navigation", { name: "Performance sections" }).getByRole("button", { name: /^Media Enhancements/ }).click();
+      await page.getByRole("switch", { name: "SVG Support" }).click();
+      await page.getByRole("spinbutton", { name: "Image Quality (%)" }).fill("70");
+      await page.getByRole("region", { name: "Unsaved changes" }).waitFor();
+    },
+  },
+  {
+    name: "classic-monks-search",
+    open: async (page) => {
+      await nav("Classic Monks")(page);
+      await page.getByRole("searchbox", { name: "Search settings" }).fill("lazy");
+      await page.getByRole("switch", { name: "Lazy Loading" }).waitFor();
     },
   },
   {
     name: "classic-monks-activity",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
+      await page.getByRole("button", { name: "Activity", exact: true }).click();
       await page.getByRole("list", { name: "Activity" }).waitFor();
     },
   },
@@ -219,7 +233,7 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-undone",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: "Activity", exact: true }).click();
+      await page.getByRole("button", { name: "Activity", exact: true }).click();
       await page.getByRole("list", { name: "Activity" }).getByRole("button", { name: /^Undo/ }).first().click();
       await page.getByText(/^Undone:/).waitFor();
     },
@@ -228,7 +242,7 @@ export const SCREENS: Screen[] = [
     name: "classic-monks-approvals",
     open: async (page) => {
       await nav("Classic Monks")(page);
-      await page.getByRole("tablist", { name: "Show" }).getByRole("tab", { name: /^Waiting for approval/ }).click();
+      await page.getByRole("button", { name: /^Waiting for approval/ }).click();
       await page.getByRole("list", { name: "Waiting for approval" }).waitFor();
     },
   },
