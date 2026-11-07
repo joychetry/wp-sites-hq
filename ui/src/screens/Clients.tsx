@@ -73,11 +73,18 @@ function Amounts({ costs, what }: { costs: Cost[]; what: "cost" | "charge" | "le
 
 type Editing = { client: Client } | { cost: Cost } | null;
 
-export function Clients({ sites }: { sites: Site[] }) {
+/** `focus` opens that client's sheet once the list is in (a client picked in the palette). */
+export function Clients({ sites, focus }: { sites: Site[]; focus?: number }) {
   const [clients, setClients] = useState<Client[] | null>(null);
   const [costs, setCosts] = useState<Cost[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
+  const [want, setWant] = useState(focus);
+  if (clients && want != null) {
+    setWant(undefined);
+    const c = clients.find((x) => x.id === want);
+    if (c) setEditing({ client: c });
+  }
 
   const load = useCallback(() => {
     Promise.all([api.clients(), api.costs()]).then(

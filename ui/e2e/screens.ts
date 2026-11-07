@@ -566,12 +566,12 @@ export const SCREENS: Screen[] = [
     },
   },
   {
-    name: "search",
+    // Search lives in the palette: commands, then sites, plugins, themes, clients, posts and pages.
+    name: "palette-search",
     open: async (page) => {
       await page.keyboard.press("Control+k");
       await page.getByRole("combobox", { name: "Search or run a command" }).fill("menu");
-      await page.getByRole("option", { name: /^Search everything for/ }).click();
-      await page.getByRole("list", { name: "Results" }).getByRole("button", { name: /^View / }).first().waitFor();
+      await page.getByRole("group", { name: "Posts and pages" }).getByRole("option").first().waitFor();
     },
   },
   { name: "loading", fixture: "loading" },

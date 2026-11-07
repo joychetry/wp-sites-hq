@@ -28,6 +28,8 @@ type Props = {
   /** Run now and show progress: one site, nothing lost if it goes wrong. */
   onRun: (title: string, changes: Change[]) => void;
   onInstall?: () => void;
+  /** Opens already filtered to this name (a plugin or theme picked in the palette). */
+  filter?: string;
 };
 
 /** A stable release older than the installed one: rolling back never upgrades, and never lands on a beta. */
@@ -79,9 +81,9 @@ export function cellOf(kind: Kind, it: Item | undefined, vuln?: Vulnerability): 
 const STATUS = ["Any", "Update ready", "Inactive", "Known vulnerability", "Not on every site"] as const;
 type StatusFilter = (typeof STATUS)[number];
 
-export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall }: Props) {
+export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall, filter }: Props) {
   const [onlyUpdates, setOnlyUpdates] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(filter ?? "");
   const [status, setStatus] = useState<StatusFilter>("Any");
   const [cursor, setCursor] = useState<[number, number]>([0, 0]);
   const [sel, setSel] = useState<{ site: number; item: string } | null>(null);

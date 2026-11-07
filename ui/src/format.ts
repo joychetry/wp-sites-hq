@@ -84,3 +84,13 @@ export function vulnSummary(title: string): string {
   const who = /unauthenticated/i.test(title) ? " No account is needed." : /\bauthenticated\b|[a-z]\+/i.test(title) ? " It needs a signed-in account." : "";
   return harm + who;
 }
+
+/** A post status in words. */
+export const STATUS_LABEL: Record<string, string> = {
+  publish: "Published",
+  draft: "Draft",
+  pending: "Pending review",
+  private: "Private",
+  future: "Scheduled",
+  trash: "In the trash",
+};

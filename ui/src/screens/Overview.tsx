@@ -5,6 +5,7 @@ import { ago, api, noTools, siteStatus, slow, type Entry, type Job, type Monitor
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { AddSiteButton, Button, Glyph, Icon, Kbd, Logo, Status, type GlyphName } from "../components/ui";
+import { PALETTE_KEYS } from "../components/Palette";
 import { SiteTile } from "../components/SiteTile";
 import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
@@ -78,7 +79,7 @@ function Welcome({ onAdd }: Pick<Props, "onAdd">) {
         </div>
       </div>
       <p className="dim">
-        Your sign-ins stay on this computer, encrypted. Nothing goes to a WP Sites HQ server. Press <Kbd>Ctrl K</Kbd> to search or run a
+        Your sign-ins stay on this computer, encrypted. Nothing goes to a WP Sites HQ server. Press <Kbd>{PALETTE_KEYS}</Kbd> to search or run a
         command from any page.
       </p>
     </section>

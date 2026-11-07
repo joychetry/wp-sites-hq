@@ -16,10 +16,9 @@ import { Sheet } from "../components/Sheet";
 import { MediaPicker } from "../components/MediaPicker";
 import { InlineText, RichText } from "../components/RichText";
 import { acfErrors, AcfGroups, invalid, type Acf } from "./AcfFields";
-import { STATUS_LABEL } from "./Content";
 import { leaveGuard } from "../fleet";
 import { Page } from "../components/page";
-import { dayTime } from "../format";
+import { dayTime, STATUS_LABEL } from "../format";
 
 
 /** "core/paragraph" -> "Paragraph", "acme/map" -> "Map (acme)", "" -> "Text". */

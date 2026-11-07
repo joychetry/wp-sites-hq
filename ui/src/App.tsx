@@ -2,11 +2,11 @@
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme.
 import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { api, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type CoreStatus, type Site } from "./api";
+import { api, contentBlocked, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type ContentHit, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { ago, dayTime, time } from "./format";
 import { AddSiteButton, Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
-import { Palette, type Command } from "./components/Palette";
+import { Palette, PALETTE_KEYS, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { Page } from "./components/page";
 import { AddSite, ANY_PLUGIN } from "./screens/AddSite";
@@ -23,7 +23,7 @@ const GROUPS = [
   ["Content", ["Content", "Media", "Users", "Comments"]],
   ["Care", ["Classic Monks", "Monitoring", "Security"]],
   ["Business", ["Clients", "Store", "Reports"]],
-  ["App", ["AI", "Settings", "Search"]],
+  ["App", ["AI", "Settings"]],
 ] as const;
 
 export const SECTIONS = GROUPS.flatMap(([, items]) => items);
@@ -47,10 +47,10 @@ const NAV_ICONS: Record<(typeof SECTIONS)[number], GlyphName | null> = {
   Reports: "chart",
   AI: "sparkle",
   Settings: "gear",
-  Search: "search",
 };
 type Section = (typeof SECTIONS)[number];
-const LABEL: Partial<Record<Section, string>> = { Search: "Search everything" };
+/** What a palette find opens its page on: a plugin or theme by name, a client, a post or page. */
+type Pick = { name?: string; client?: number; post?: { siteId: number; type: string; postId: number } };
 
 // The line under each page title.
 const ABOUT: Record<Section, string> = {
@@ -71,7 +71,6 @@ const ABOUT: Record<Section, string> = {
   Reports: "A monthly client report, as a PDF and a web page, with your branding.",
   AI: "Confirm what AI agents plan to change, and decide which sites they can reach. Nothing runs without your OK.",
   Settings: "How the app looks, how your reports are branded, where numbers come from, and your data.",
-  Search: "Find sites, plugins, themes, clients, posts and pages across every site.",
 };
 const CHECK_EVERY = 15 * 60;
 
@@ -86,7 +85,13 @@ export default function App() {
   const [section, setSectionNow] = useState<Section>("Overview");
   // Anything that would close the editor asks first while it has unsaved changes.
   const guarded = (go: () => void) => (leaveGuard.ask ? leaveGuard.ask(go) : go());
-  const setSection = (s: Section) => guarded(() => setSectionNow(s));
+  // What a palette find opens its page on; any other way onto a page clears it.
+  const [pick, setPick] = useState<Pick>({});
+  const setSection = (s: Section, p: Pick = {}) =>
+    guarded(() => {
+      setSectionNow(s);
+      setPick(p);
+    });
   const sectionRef = useRef(section);
   sectionRef.current = section;
   // Messages belong to the screen they came from; on another screen they would only cover it.
@@ -110,7 +115,6 @@ export default function App() {
     if (section !== "Sites") setSitesShow("any");
   }, [section]);
   const [focusId, setFocusId] = useState<number | null>(null);
-  const [searchFor, setSearchFor] = useState("");
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
   const [palette, setPalette] = useState(false);
   // Under 900px wide (and at 200% zoom) the nav folds behind a Menu button, so the page comes first.
@@ -251,6 +255,18 @@ export default function App() {
     );
     setChecking(false);
   };
+  // A post or page found in the palette opens in the editor on Content, as Content would open it.
+  const openPost = async (h: ContentHit) => {
+    const s = all.find((x) => x.id === h.site_id);
+    if (!s) return toast("That site is no longer in WP Sites HQ.", { tone: "danger" });
+    if (!scoped.includes(s)) setScope("");
+    const post = { siteId: s.id, type: h.post_type, postId: h.id };
+    // A site that can't be edited now still opens on Content, which says why and how to fix it.
+    if (contentBlocked(s)) return setSection("Content", { post });
+    const type = (await api.postTypes(s.id).catch(() => [])).find((t) => t.name === h.post_type);
+    if (type) setSection("Content", { post });
+    else toast(`Couldn't open it here. Open it on Content for ${s.name}.`, { tone: "danger" });
+  };
   const login = (s: Site) => api.login(s.id).catch((e) => setJobError(`Log in to ${s.name}: ${e}`));
   const signInAgain = (id: number) => {
     const site = all.find((s) => s.id === id);
@@ -336,7 +352,7 @@ export default function App() {
     ...all
       .filter((s) => s.sign_in_again)
       .map((s) => ({ id: `again-${s.id}`, group: "Sites", label: `Sign in to ${s.name} again`, icon: "login" as const, run: () => signInAgain(s.id) })),
-    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${LABEL[s] ?? s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
+    ...SECTIONS.map((s) => ({ id: `go-${s}`, group: "Pages", label: `Go to ${s}`, icon: NAV_ICONS[s] ?? undefined, run: () => setSection(s) })),
   ];
 
   // Counts, status pills and the generated summary only once the sites have loaded and the core is up.
@@ -428,7 +444,8 @@ export default function App() {
   } else if (section === "Plugins" || section === "Themes") {
     body = (
       <S.Matrix
-        key={section}
+        key={section + (pick.name ?? "")}
+        filter={pick.name}
         kind={section === "Plugins" ? "plugins" : "themes"}
         sites={scoped}
         inventory={inv}
@@ -438,7 +455,7 @@ export default function App() {
       />
     );
   } else if (section === "Content") {
-    body = <S.Content sites={scoped} onPlan={plan} />;
+    body = <S.Content key={pick.post ? `${pick.post.siteId}-${pick.post.postId}` : ""} sites={scoped} start={pick.post} onPlan={plan} />;
   } else if (section === "Media") {
     body = <S.Media sites={scoped} />;
   } else if (section === "Users") {
@@ -452,21 +469,11 @@ export default function App() {
   } else if (section === "Security") {
     body = <S.Security sites={scoped} reports={reports ?? []} inventory={inv} onPlan={(t, r) => plan(t, r)} />;
   } else if (section === "Clients") {
-    body = <S.Clients sites={all} />;
+    body = <S.Clients key={pick.client} sites={all} focus={pick.client} />;
   } else if (section === "Store") {
     body = <S.Store sites={scoped} onPlan={plan} />;
   } else if (section === "Reports") {
     body = <S.Reports sites={scoped} onSettings={() => setSection("Settings")} />;
-  } else if (section === "Search") {
-    body = (
-      <S.Search
-        key={searchFor}
-        sites={all}
-        inventory={inv}
-        query={searchFor}
-        onGo={(s, id) => (id ? openSite(id) : setSection(s))}
-      />
-    );
   } else if (section === "AI") {
     body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} onApprovals={() => setSection("Classic Monks")} />;
   } else {
@@ -509,7 +516,7 @@ export default function App() {
                       onFocus={() => preload(s, scoped)}
                     >
                       {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
-                      {LABEL[s] ?? s}
+                      {s}
                       {live && counts[s] && (
                         <span className={counts[s].alert ? "n alert" : "n"}>
                           {counts[s].n}
@@ -589,10 +596,10 @@ export default function App() {
             </p>
           )}
           <div className="top-end">
-            <button type="button" className="kbar" aria-keyshortcuts="Control+K" onClick={() => setPalette(true)}>
+            <button type="button" className="kbar" aria-keyshortcuts={PALETTE_KEYS === "⌘K" ? "Meta+K" : "Control+K"} onClick={() => setPalette(true)}>
               <Glyph name="search" />
               <span>Search or run a command</span>
-              <Kbd>Ctrl K</Kbd>
+              <Kbd>{PALETTE_KEYS}</Kbd>
             </button>
             {live && sites.length > 0 && (
               // The page head holds each page's main action, so this is the same plain button on every page.
@@ -607,7 +614,7 @@ export default function App() {
           <header className="phead">
             <div className={section === "Classic Monks" ? "marked" : undefined}>
               {section === "Classic Monks" && <Logo />}
-              <h1>{LABEL[section] ?? section}</h1>
+              <h1>{section}</h1>
               <p>{section === "Overview" && all.length > 0 && live ? sentence : ABOUT[section]}</p>
             </div>
             <div className="phead-acts" ref={setHeadSlot}>
@@ -618,7 +625,7 @@ export default function App() {
             <Suspense
               fallback={
                 <div className="page-loading">
-                  <Skeleton label={`Loading ${LABEL[section] ?? section}…`} />
+                  <Skeleton label={`Loading ${section}…`} />
                 </div>
               }
             >
@@ -631,10 +638,10 @@ export default function App() {
         <Palette
           commands={commands}
           onClose={() => setPalette(false)}
-          onSearch={(q) => {
-            setSearchFor(q);
-            setSection("Search");
-          }}
+          sites={all}
+          inventory={inv}
+          onLocal={(h) => (h.siteId ? openSite(h.siteId) : h.clientId ? setSection("Clients", { client: h.clientId }) : setSection(h.kind, { name: h.label }))}
+          onPost={openPost}
         />
       )}
       {sheet && <JobSheet key={"jobId" in sheet ? sheet.jobId : sheet.title} state={sheet} onClose={() => setSheet(null)} />}

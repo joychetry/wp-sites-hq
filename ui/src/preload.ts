@@ -19,7 +19,6 @@ const LOAD = {
   Clients: () => import("./screens/Clients"),
   Store: () => import("./screens/Store"),
   Reports: () => import("./screens/Reports"),
-  Search: () => import("./screens/Search"),
   Ai: () => import("./screens/Ai"),
   Settings: () => import("./screens/Settings"),
 };
@@ -44,7 +43,6 @@ export const SCREENS = {
   Clients: screen(LOAD.Clients, "Clients"),
   Store: screen(LOAD.Store, "Store"),
   Reports: screen(LOAD.Reports, "Reports"),
-  Search: screen(LOAD.Search, "Search"),
   Ai: screen(LOAD.Ai, "Ai"),
   Settings: screen(LOAD.Settings, "Settings"),
 };
@@ -78,7 +76,7 @@ export function preload(section: string, sites: Site[] = []) {
 }
 
 // The pages people go to next, most likely first; the rest follow.
-const NEXT = ["Sites", "Updates", "Plugins", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "Clients", "Store", "Reports", "AI", "Settings", "Search", "Overview"];
+const NEXT = ["Sites", "Updates", "Plugins", "Content", "Media", "Users", "Comments", "Classic Monks", "Monitoring", "Security", "Clients", "Store", "Reports", "AI", "Settings", "Overview"];
 
 /** After the first paint, loads the other pages' code one per idle moment. Returns a stop function. */
 export function prefetchIdle(current: string): () => void {

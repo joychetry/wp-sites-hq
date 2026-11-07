@@ -27,7 +27,6 @@ const PAGES: [page: string, board: string, screens: string[]][] = [
   ["15-reports", "15-reports", ["reports"]],
   ["16-ai", "16-ai", ["ai"]],
   ["17-settings", "17-settings", ["settings"]],
-  ["18-search", "18-search-everything", ["search"]],
   ["sidebar", "component-sidebar", ["overview"]],
   ["d01-empty-error", "d01-overview-empty-and-error", ["overview-empty", "error"]],
   ["d02-add-site", "d02-sites-add-a-site-sign-in-again", ["add-site", "add-site-basic", "sign-in-again"]],

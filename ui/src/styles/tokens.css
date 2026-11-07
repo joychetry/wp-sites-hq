@@ -101,7 +101,7 @@
   /* Every button, text box, select, search, date and segmented track: one of two heights. */
   --control: 36px;
   --control-sm: 32px;
-  --control-lg: 44px; /* the one large field on a page: the editor title, the Search everything query */
+  --control-lg: 44px; /* the one large field on a page: the editor title */
   --control-line: var(--line-2); /* buttons and chips at rest (their words identify them); fields use --line-ui */
   --ring: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
   /* Page rhythm: under the page head, and between a page's toolbar, cards and sections */

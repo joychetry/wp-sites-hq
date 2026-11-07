@@ -172,3 +172,47 @@ test("the palette logs in to a site's dashboard where the connection can", async
   fireEvent.click(screen.getByRole("option", { name: /Log in to MC A's dashboard/ }));
   expect(mockInvoke).toHaveBeenCalledWith("site_login", { id: 1 });
 });
+
+test("a post found in the palette opens in the editor on Content", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  const ready = site({ capabilities: { operator: true, abilities: ["list-post-types"] } });
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    if (cmd === "core_status") return STATUS;
+    if (cmd === "sites_list") return [ready];
+    if (cmd === "content_search") return { hits: [{ site_id: 1, post_type: "post", id: 9, title: "Menu news", status: "publish", link: "https://a.test/news" }], failed: [] };
+    if (cmd === "content_types") return [{ name: "post", label: "Posts", singular: "Post", hierarchical: false, supports: ["title", "editor"], can_publish: true, can_delete: true, taxonomies: [], rest_base: "posts" }];
+    if (cmd === "content_get") return new Promise(() => {});
+    return null;
+  });
+  render(<App />);
+  await screen.findByText("Your one site is healthy.");
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByRole("combobox", { name: "Search or run a command" }), { target: { value: "menu" } });
+  fireEvent.click(await screen.findByRole("option", { name: /Menu news Post · MC A · Published/ }));
+  expect(await screen.findByRole("heading", { name: "Edit post on MC A" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Content" })).toHaveAttribute("aria-current", "page");
+  expect(mockInvoke).toHaveBeenCalledWith("content_types", { id: 1 });
+  vi.useRealTimers();
+});
+
+test("a plugin found in the palette opens Plugins filtered to it, a client opens its sheet", async () => {
+  const s = site({ client_id: 1, client: "Rosa" });
+  mockInvoke.mockImplementation(async (cmd: string) => {
+    if (cmd === "core_status") return STATUS;
+    if (cmd === "sites_list") return [s];
+    if (cmd === "inventory_list") return [{ site_id: 1, fetched_at: 0, inventory: { plugins: [{ id: "woocommerce/woocommerce.php", name: "WooCommerce", version: "10.2.0", active: true, update: null, auto_update: false }], themes: [] } }];
+    if (cmd === "clients_list") return [{ id: 1, name: "Rosa", email: "rosa@x.test", notes: "" }];
+    if (cmd === "costs_list") return [];
+    return null;
+  });
+  render(<App />);
+  await screen.findByText("Your one site is healthy.");
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByRole("combobox", { name: "Search or run a command" }), { target: { value: "woo" } });
+  fireEvent.click(await screen.findByRole("option", { name: /^WooCommerce On MC A/ }));
+  expect(await screen.findByRole("searchbox", { name: "Find a plugin" })).toHaveValue("WooCommerce");
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  fireEvent.change(screen.getByRole("combobox", { name: "Search or run a command" }), { target: { value: "rosa@" } });
+  fireEvent.click(await screen.findByRole("option", { name: /^Rosa/ }));
+  expect(await screen.findByRole("dialog", { name: /Rosa/ })).toBeInTheDocument();
+});

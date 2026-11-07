@@ -12,16 +12,7 @@ import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Icon } from "../components/ui";
 import { Editor } from "./Editor";
 import { PublishMany } from "./PublishMany";
-import { day, dayTime } from "../format";
-
-export const STATUS_LABEL: Record<string, string> = {
-  publish: "Published",
-  draft: "Draft",
-  pending: "Pending review",
-  private: "Private",
-  future: "Scheduled",
-  trash: "In the trash",
-};
+import { day, dayTime, STATUS_LABEL } from "../format";
 
 /** A status pill's tone: live is ok, scheduled is information (not a problem), the rest are neutral. */
 const STATUS_TONE: Record<string, Tone | "info"> = { publish: "ok", future: "info" };
@@ -99,23 +90,28 @@ export function bulkRows(site: Site, type: PostType, posts: Summary[], what: Bul
   });
 }
 
-type Props = { sites: Site[]; onPlan?: (title: string, rows: PlanRow[], start?: "plan" | "confirm", danger?: boolean) => void };
+type Props = {
+  sites: Site[];
+  onPlan?: (title: string, rows: PlanRow[], start?: "plan" | "confirm", danger?: boolean) => void;
+  /** Opens on this site with this entry in the editor (a post or page picked in the palette). */
+  start?: { siteId: number; type: string; postId: number };
+};
 
-export function Content({ sites, onPlan }: Props) {
-  const [siteId, setSiteId] = useState<number | null>(() => firstUsable(sites));
+export function Content({ sites, onPlan, start }: Props) {
+  const [siteId, setSiteId] = useState<number | null>(() => start?.siteId ?? firstUsable(sites));
   // The group filter can hide the picked site: fall back to the first one shown.
   const site = sites.find((s) => s.id === siteId) ?? sites.find((s) => s.id === firstUsable(sites)) ?? null;
   const current = site?.id ?? null;
   const blocked = site ? contentBlocked(site) : null;
   const [types, setTypes] = useState<PostType[] | null>(null);
-  const [typeName, setTypeName] = useState("post");
+  const [typeName, setTypeName] = useState(start?.type ?? "post");
   const [status, setStatus] = useState("");
   const [typed, setTyped] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [list, setList] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<Open | null>(null);
+  const [open, setOpen] = useState<Open | null>(start ?? null);
   useEffect(() => setOpen((o) => (o && o.siteId !== current ? null : o)), [current]);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   // The entry the editor was opened from gets focus back when it closes.
