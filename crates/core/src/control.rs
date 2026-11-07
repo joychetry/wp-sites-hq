@@ -21,18 +21,9 @@ pub struct Toggle {
     pub name: String,
     pub label: String,
     pub description: String,
-    pub section: String,
     pub on: bool,
     /// Can't be changed from WP Sites HQ (security and login features).
     pub locked: bool,
-}
-
-/// One tab of Classic Monks' settings page, with its on/off features.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct FeatureGroup {
-    pub key: String,
-    pub label: String,
-    pub toggles: Vec<Toggle>,
 }
 
 /// A value Classic Monks lets WP Sites HQ change (`hq_editable`).
@@ -41,8 +32,6 @@ pub struct Setting {
     pub name: String,
     pub label: String,
     pub description: String,
-    pub tab: String,
-    pub section: String,
     /// `select` or `number`.
     pub control: String,
     pub options: Vec<String>,
@@ -50,6 +39,39 @@ pub struct Setting {
     pub max: Option<f64>,
     pub step: Option<f64>,
     pub value: Value,
+}
+
+/// One card of a subtab, as on the plugin's dashboard: its switches, then the values that go with them.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CmCard {
+    pub title: String,
+    pub toggles: Vec<Toggle>,
+    pub settings: Vec<Setting>,
+    /// Fields on this card that change only in WordPress (locked, secret, lists, free text).
+    pub elsewhere: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CmSubtab {
+    pub key: String,
+    pub label: String,
+    pub description: String,
+    pub cards: Vec<CmCard>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CmTab {
+    pub key: String,
+    pub label: String,
+    pub subtabs: Vec<CmSubtab>,
+}
+
+/// Classic Monks' dashboard on one site: tabs, subtabs, cards, and how many features are on.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Controls {
+    pub tabs: Vec<CmTab>,
+    pub on: usize,
+    pub total: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -110,25 +132,57 @@ fn humane(name: &str) -> String {
     s
 }
 
-/// Every field of `get-settings-schema`, with the label of its tab.
-fn fields(schema: &Value) -> impl Iterator<Item = (&Value, &Value)> {
-    schema["tabs"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .flat_map(|tab| {
-            tab["subtabs"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .flat_map(|sub| sub["fields"].as_array().into_iter().flatten())
-                .map(move |f| (tab, f))
-        })
+/// The dashboard's tab order (the schema lists tabs in template order).
+const TAB_ORDER: [&str; 10] = [
+    "core",
+    "ai",
+    "performance",
+    "security",
+    "white-label",
+    "interface",
+    "email",
+    "woocommerce",
+    "bricks-builder",
+    "options",
+];
+// shortcut: the Modular Tabs switches by name, drop once the schema says per tab whether it shows.
+const TAB_SWITCH: [(&str, &str); 3] = [
+    ("ai", "enable_tab_ai"),
+    ("woocommerce", "enable_tab_woocommerce"),
+    ("bricks-builder", "enable_tab_bricks"),
+];
+
+fn setting(f: &Value) -> Setting {
+    let num = |v: &Value| v.as_f64();
+    Setting {
+        name: text(&f["name"]),
+        label: text(&f["label"]),
+        description: text(&f["description"]),
+        control: text(&f["control"]),
+        options: f["enum"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|o| match o {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
+            })
+            .collect(),
+        min: num(&f["min"]),
+        max: num(&f["max"]),
+        step: num(&f["step"]),
+        value: f["default"].clone(),
+    }
 }
 
-/// Features from `get-features`, grouped by `get-settings-schema` tabs when
-/// the site has it. Toggles no tab places go under "Other features".
-pub fn feature_groups(features: &Value, schema: Option<&Value>) -> Vec<FeatureGroup> {
+fn editable(f: &Value) -> bool {
+    f["hq_editable"] == true && f["locked"] != true && f["secret"] != true
+}
+
+/// The dashboard from `get-features`, laid out by `get-settings-schema` when the site has it: a field's
+/// card is its `card` (newer plugins) or its `section`. `values` is `get-settings` for the editable
+/// fields; without it they change only in WordPress. Toggles no tab places go under an "Other" tab.
+pub fn controls_of(features: &Value, schema: Option<&Value>, values: Option<&Value>) -> Controls {
     let states = features["features"]
         .as_object()
         .cloned()
@@ -139,89 +193,134 @@ pub fn feature_groups(features: &Value, schema: Option<&Value>) -> Vec<FeatureGr
         .flatten()
         .filter_map(Value::as_str)
         .collect();
-    let toggle = |name: &str, label: String, description: String, section: String| Toggle {
+    let toggle = |name: &str, label: String, description: String, writable: bool| Toggle {
         name: name.into(),
         on: states.get(name) == Some(&Value::Bool(true)),
-        locked: locked.contains(&name),
+        locked: !writable || locked.contains(&name),
         label,
         description,
-        section,
     };
-    let mut groups: Vec<FeatureGroup> = Vec::new();
     let mut placed = std::collections::HashSet::new();
-    if let Some(schema) = schema {
-        for (tab, f) in fields(schema) {
-            let name = text(&f["name"]);
-            if f["write_with"] != "update-features"
-                || !states.contains_key(&name)
-                || !placed.insert(name.clone())
-            {
-                continue;
+    let mut tabs = Vec::new();
+    for tab in schema
+        .and_then(|s| s["tabs"].as_array())
+        .into_iter()
+        .flatten()
+    {
+        let key = text(&tab["key"]);
+        let mut subtabs = Vec::new();
+        for sub in tab["subtabs"].as_array().into_iter().flatten() {
+            let mut cards: Vec<CmCard> = Vec::new();
+            for f in sub["fields"].as_array().into_iter().flatten() {
+                let name = text(&f["name"]);
+                if !placed.insert(name.clone()) {
+                    continue;
+                }
+                let title = [&f["card"], &f["section"], &sub["label"]]
+                    .into_iter()
+                    .map(text)
+                    .find(|t| !t.is_empty())
+                    .unwrap_or_default();
+                if cards.last().is_none_or(|c| c.title != title) {
+                    cards.push(CmCard {
+                        title,
+                        toggles: Vec::new(),
+                        settings: Vec::new(),
+                        elsewhere: 0,
+                    });
+                }
+                let card = cards.last_mut().expect("pushed above");
+                let value = values.map(|v| &v["settings"][&name]);
+                if f["control"] == "checkbox" && states.contains_key(&name) {
+                    card.toggles.push(toggle(
+                        &name,
+                        text(&f["label"]),
+                        text(&f["description"]),
+                        f["write_with"] == "update-features"
+                            || f["write_with"].is_null() && f["locked"] != true,
+                    ));
+                } else if let (true, Some(v)) = (editable(f), value) {
+                    let mut s = setting(f);
+                    if !v.is_null() {
+                        s.value = v.clone();
+                    }
+                    card.settings.push(s);
+                } else {
+                    card.elsewhere += 1;
+                }
             }
-            let key = text(&tab["key"]);
-            let t = toggle(
-                &name,
-                text(&f["label"]),
-                text(&f["description"]),
-                text(&f["section"]),
-            );
-            match groups.iter_mut().find(|g| g.key == key) {
-                Some(g) => g.toggles.push(t),
-                None => groups.push(FeatureGroup {
-                    label: text(&tab["label"]),
-                    key,
-                    toggles: vec![t],
-                }),
+            cards.retain(|c| !c.toggles.is_empty() || !c.settings.is_empty());
+            if !cards.is_empty() {
+                subtabs.push(CmSubtab {
+                    key: text(&sub["key"]),
+                    label: text(&sub["label"]),
+                    description: text(&sub["description"]),
+                    cards,
+                });
             }
         }
+        let off = TAB_SWITCH
+            .iter()
+            .any(|(k, sw)| *k == key && states.get(*sw) == Some(&Value::Bool(false)));
+        if !off && !subtabs.is_empty() {
+            tabs.push(CmTab {
+                label: text(&tab["label"]),
+                key,
+                subtabs,
+            });
+        }
     }
+    let at = |k: &str| {
+        TAB_ORDER
+            .iter()
+            .position(|o| *o == k)
+            .unwrap_or(TAB_ORDER.len())
+    };
+    tabs.sort_by_key(|t| at(&t.key));
     let mut rest: Vec<Toggle> = states
         .keys()
         .filter(|n| !placed.contains(*n))
-        .map(|n| toggle(n, humane(n), String::new(), String::new()))
+        .map(|n| toggle(n, humane(n), String::new(), true))
         .collect();
     rest.sort_by(|a, b| a.label.cmp(&b.label));
     if !rest.is_empty() {
-        let label = if groups.is_empty() {
-            "All features"
+        let (key, label, sub) = if tabs.is_empty() {
+            ("features", "Features", "All features")
         } else {
-            "Other features"
+            ("other", "Other", "Other features")
         };
-        groups.push(FeatureGroup {
-            key: "other".into(),
+        tabs.push(CmTab {
+            key: key.into(),
             label: label.into(),
-            toggles: rest,
+            subtabs: vec![CmSubtab {
+                key: key.into(),
+                label: sub.into(),
+                description: String::new(),
+                cards: vec![CmCard {
+                    title: sub.into(),
+                    toggles: rest,
+                    settings: Vec::new(),
+                    elsewhere: 0,
+                }],
+            }],
         });
     }
-    groups
+    Controls {
+        on: states.values().filter(|v| **v == Value::Bool(true)).count(),
+        total: states.len(),
+        tabs,
+    }
 }
 
-/// The settings Classic Monks lets WP Sites HQ change, without their values.
-pub fn editable_settings(schema: &Value) -> Vec<Setting> {
-    let num = |v: &Value| v.as_f64();
-    fields(schema)
-        .filter(|(_, f)| f["hq_editable"] == true && f["locked"] != true && f["secret"] != true)
-        .map(|(tab, f)| Setting {
-            name: text(&f["name"]),
-            label: text(&f["label"]),
-            description: text(&f["description"]),
-            tab: text(&tab["label"]),
-            section: text(&f["section"]),
-            control: text(&f["control"]),
-            options: f["enum"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .map(|o| match o {
-                    Value::String(s) => s.clone(),
-                    other => other.to_string(),
-                })
-                .collect(),
-            min: num(&f["min"]),
-            max: num(&f["max"]),
-            step: num(&f["step"]),
-            value: f["default"].clone(),
-        })
+/// The names of the settings Classic Monks lets WP Sites HQ change.
+fn editable_names(schema: &Value) -> Vec<String> {
+    let all = |v: &Value, k: &str| v[k].as_array().cloned().unwrap_or_default();
+    all(schema, "tabs")
+        .iter()
+        .flat_map(|t| all(t, "subtabs"))
+        .flat_map(|s| all(&s, "fields"))
+        .filter(editable)
+        .map(|f| text(&f["name"]))
         .collect()
 }
 
@@ -385,22 +484,30 @@ impl Core {
         on_site(&site, &text(&v["url"]))
     }
 
-    /// Classic Monks' on/off features, by tab.
-    pub async fn features(&self, id: i64) -> Result<Vec<FeatureGroup>, SiteError> {
+    /// Classic Monks' dashboard on this site: every on/off feature and the settings WP Sites HQ may
+    /// change, with their values, by tab, subtab and card.
+    pub async fn controls(&self, id: i64) -> Result<Controls, SiteError> {
         let _work = self.working().await;
         let site = self.cm_site(id, "get-features")?;
         let features = self
             .call_ability_inner(id, "get-features", json!({}))
             .await?;
-        let schema = if has_tool(&site, "get-settings-schema") {
+        if !has_tool(&site, "get-settings-schema") {
+            return Ok(controls_of(&features, None, None));
+        }
+        let schema = self
+            .call_ability_inner(id, "get-settings-schema", json!({}))
+            .await?;
+        let names = editable_names(&schema);
+        let values = if names.is_empty() || !has_tool(&site, "get-settings") {
+            None
+        } else {
             Some(
-                self.call_ability_inner(id, "get-settings-schema", json!({}))
+                self.call_ability_inner(id, "get-settings", json!({ "names": names }))
                     .await?,
             )
-        } else {
-            None
         };
-        Ok(feature_groups(&features, schema.as_ref()))
+        Ok(controls_of(&features, Some(&schema), values.as_ref()))
     }
 
     /// Turn a feature on or off. Returns the activity row that undoes it, if any.
@@ -455,30 +562,6 @@ impl Core {
                         .any(|m| m.get(key).is_some())
             })
             .and_then(|r| r["id"].as_i64()))
-    }
-
-    /// The settings WP Sites HQ may change here, with their values.
-    pub async fn settings(&self, id: i64) -> Result<Vec<Setting>, SiteError> {
-        let _work = self.working().await;
-        self.cm_site(id, "get-settings-schema")?;
-        self.cm_site(id, "get-settings")?;
-        let schema = self
-            .call_ability_inner(id, "get-settings-schema", json!({ "editable_only": true }))
-            .await?;
-        let mut list = editable_settings(&schema);
-        if list.is_empty() {
-            return Ok(list);
-        }
-        let names: Vec<&str> = list.iter().map(|s| s.name.as_str()).collect();
-        let v = self
-            .call_ability_inner(id, "get-settings", json!({ "names": names }))
-            .await?;
-        for s in &mut list {
-            if let Some(value) = v["settings"].get(&s.name).filter(|v| !v.is_null()) {
-                s.value = value.clone();
-            }
-        }
-        Ok(list)
     }
 
     /// Change one setting. Returns the activity row that undoes it, if any.
@@ -661,7 +744,7 @@ mod tests {
             e.to_string()
                 .contains("needs the WP Sites HQ plugin, Classic Monks or Classic Monks Pro")
         );
-        assert!(core.features(basic.id).await.is_err());
+        assert!(core.controls(basic.id).await.is_err());
 
         let old = TestSite::start().await;
         old.state().released = true;
@@ -671,10 +754,13 @@ mod tests {
         let e = core.activity(s.id, 1).await.unwrap_err();
         assert!(e.to_string().contains("Update Classic Monks"));
         // Released Classic Monks still has its features, as one plain list.
-        let groups = core.features(s.id).await.unwrap();
-        assert_eq!(groups.len(), 1);
-        assert_eq!(groups[0].label, "All features");
-        assert_eq!(groups[0].toggles[0].label, "Enable maintenance mode");
+        let c = core.controls(s.id).await.unwrap();
+        assert_eq!(c.tabs.len(), 1);
+        assert_eq!(c.tabs[0].subtabs[0].label, "All features");
+        assert_eq!(
+            c.tabs[0].subtabs[0].cards[0].toggles[0].label,
+            "Enable maintenance mode"
+        );
         assert_eq!(
             core.set_feature(s.id, "enable_svg_support", true)
                 .await
@@ -688,11 +774,15 @@ mod tests {
         let (_h, core) = core().await;
         let site = TestSite::start().await;
         let s = core.add_site_oauth(&site.url, browser).await.unwrap();
-        let groups = core.features(s.id).await.unwrap();
-        let labels: Vec<&str> = groups.iter().map(|g| g.label.as_str()).collect();
-        assert_eq!(labels, ["Security", "Performance", "Other features"]);
-        assert!(groups[0].toggles[0].locked);
-        let svg = &groups[1].toggles[0];
+        let c = core.controls(s.id).await.unwrap();
+        let labels: Vec<&str> = c.tabs.iter().map(|g| g.label.as_str()).collect();
+        assert_eq!(
+            labels,
+            ["Performance", "Security", "Other"],
+            "the dashboard's order"
+        );
+        assert!(c.tabs[1].subtabs[0].cards[0].toggles[0].locked);
+        let svg = &c.tabs[0].subtabs[0].cards[0].toggles[0];
         assert_eq!((svg.label.as_str(), svg.on), ("SVG Support", false));
 
         let undo = core
@@ -728,12 +818,31 @@ mod tests {
         let (_h, core) = core().await;
         let site = TestSite::start().await;
         let s = core.add_site_oauth(&site.url, browser).await.unwrap();
-        let list = core.settings(s.id).await.unwrap();
+        let settings = |c: &Controls| -> Vec<Setting> {
+            let cards = c
+                .tabs
+                .iter()
+                .flat_map(|t| &t.subtabs)
+                .flat_map(|s| &s.cards);
+            cards.flat_map(|c| c.settings.clone()).collect()
+        };
+        let c = core.controls(s.id).await.unwrap();
+        let list = settings(&c);
         let names: Vec<&str> = list.iter().map(|x| x.name.as_str()).collect();
         assert_eq!(
             names,
             ["limit_post_revisions", "auto_resize_quality"],
             "secrets stay out"
+        );
+        let cards: Vec<(&str, usize)> = c.tabs[0].subtabs[0]
+            .cards
+            .iter()
+            .map(|c| (c.title.as_str(), c.elsewhere))
+            .collect();
+        assert_eq!(
+            cards,
+            [("Media", 0), ("Heartbeat", 0), ("Media", 1)],
+            "cards follow the fields, the secret is counted"
         );
         assert_eq!(list[0].options, ["default", "disable", "1", "2"]);
         assert_eq!(
@@ -745,7 +854,10 @@ mod tests {
             .await
             .unwrap();
         assert!(undo.is_some());
-        assert_eq!(core.settings(s.id).await.unwrap()[1].value, json!(70));
+        assert_eq!(
+            settings(&core.controls(s.id).await.unwrap())[1].value,
+            json!(70)
+        );
 
         let waiting = core.approvals(s.id).await.unwrap();
         assert_eq!(
@@ -771,6 +883,58 @@ mod tests {
         assert_eq!(who(&json!({ "client_label": "", "user": "joy" })), "joy");
         let a = activity_from(&json!({ "total": 51, "rows": [] }), 2);
         assert_eq!((a.pages, a.page), (3, 2));
-        assert!(feature_groups(&json!({}), None).is_empty());
+        assert!(controls_of(&json!({}), None, None).tabs.is_empty());
+    }
+
+    #[test]
+    fn controls_follow_the_dashboard() {
+        let features = json!({ "features": { "a": true, "b": false, "enable_tab_ai": false, "ai_x": true, "stray": false }, "locked": ["b"] });
+        let f = |name: &str, extra: Value| {
+            let mut v = json!({ "name": name, "label": name, "section": "Setup WP", "control": "checkbox", "write_with": "update-features" });
+            v.as_object_mut()
+                .unwrap()
+                .extend(extra.as_object().unwrap().clone());
+            v
+        };
+        let schema = json!({ "tabs": [
+            { "key": "ai", "label": "AI", "subtabs": [{ "key": "g", "label": "General", "fields": [f("ai_x", json!({}))] }] },
+            { "key": "core", "label": "Core", "subtabs": [{ "key": "s", "label": "Setup", "description": "Utilities.", "fields": [
+                f("a", json!({ "card": "Utilities" })),
+                f("id", json!({ "card": "Utilities", "control": "text", "locked": true, "write_with": null })),
+                f("n", json!({ "card": "Utilities", "control": "number", "hq_editable": true, "write_with": "update-settings", "default": 1 })),
+                f("enable_tab_ai", json!({ "card": "Modular Tabs", "locked": true, "write_with": null })),
+                f("b", json!({ "card": "Modular Tabs" })),
+            ] }, { "key": "e", "label": "Empty", "fields": [f("secret", json!({ "control": "password", "secret": true }))] }] },
+        ] });
+        let c = controls_of(
+            &features,
+            Some(&schema),
+            Some(&json!({ "settings": { "n": 5 } })),
+        );
+        assert_eq!((c.on, c.total), (2, 5));
+        let tabs: Vec<&str> = c.tabs.iter().map(|t| t.label.as_str()).collect();
+        assert_eq!(
+            tabs,
+            ["Core", "Other"],
+            "AI is off on the site, Empty has nothing to change"
+        );
+        let setup = &c.tabs[0].subtabs[0];
+        assert_eq!(setup.description, "Utilities.");
+        let [util, tabs_card] = &setup.cards[..] else {
+            panic!("two cards")
+        };
+        assert_eq!(
+            (util.title.as_str(), util.toggles.len(), util.elsewhere),
+            ("Utilities", 1, 1)
+        );
+        assert_eq!(util.settings[0].value, json!(5));
+        assert!(
+            tabs_card.toggles.iter().all(|t| t.locked),
+            "write_with null and the site's locked list"
+        );
+        assert_eq!(c.tabs[1].subtabs[0].cards[0].toggles[0].name, "stray");
+        // Without get-settings the values aren't known: they stay in WordPress.
+        let c = controls_of(&features, Some(&schema), None);
+        assert_eq!(c.tabs[0].subtabs[0].cards[0].elsewhere, 2);
     }
 }

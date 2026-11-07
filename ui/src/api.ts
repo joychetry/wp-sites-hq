@@ -394,14 +394,11 @@ export type Comment = {
 export type Comments = { comments: Comment[]; total: number };
 export type Moderation = "approve" | "unapprove" | "spam" | "trash";
 
-export type Toggle = { name: string; label: string; description: string; section: string; on: boolean; locked: boolean };
-export type FeatureGroup = { key: string; label: string; toggles: Toggle[] };
+export type Toggle = { name: string; label: string; description: string; on: boolean; locked: boolean };
 export type Setting = {
   name: string;
   label: string;
   description: string;
-  tab: string;
-  section: string;
   control: string;
   options: string[];
   min: number | null;
@@ -409,6 +406,11 @@ export type Setting = {
   step: number | null;
   value: unknown;
 };
+/** Classic Monks' dashboard on one site. `elsewhere`: fields on a card that change only in WordPress. */
+export type CmCard = { title: string; toggles: Toggle[]; settings: Setting[]; elsewhere: number };
+export type CmSubtab = { key: string; label: string; description: string; cards: CmCard[] };
+export type CmTab = { key: string; label: string; subtabs: CmSubtab[] };
+export type Controls = { tabs: CmTab[]; on: number; total: number };
 export type ActivityRow = { id: number; time: string; who: string; tool: string; status: string; summary: string; can_undo: boolean };
 export type Activity = { rows: ActivityRow[]; total: number; page: number; pages: number };
 /** `input` is the tool's arguments; `preview` the site's view of its target (a post's title, a user's name), when the tool has one. */
@@ -519,9 +521,8 @@ export const api = {
   moderate: (id: number, commentId: number, action: Moderation) => invoke<void>("comment_moderate", { id, commentId, action }),
   reply: (id: number, commentId: number, postId: number, text: string) => invoke<void>("comment_reply", { id, commentId, postId, text }),
   login: (id: number) => invoke<void>("site_login", { id }),
-  features: (id: number) => read<FeatureGroup[]>("cm_features", { id }),
+  controls: (id: number) => read<Controls>("cm_controls", { id }),
   setFeature: (id: number, name: string, on: boolean) => invoke<number | null>("cm_set_feature", { id, name, on }),
-  settings: (id: number) => invoke<Setting[]>("cm_settings", { id }),
   setSetting: (id: number, name: string, value: unknown) => invoke<number | null>("cm_set_setting", { id, name, value }),
   activity: (id: number, page: number) => invoke<Activity>("cm_activity", { id, page }),
   undo: (id: number, row: number) => invoke<void>("cm_undo", { id, row }),

@@ -1,27 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Classic Monks on one site: its features, the settings it lets WP Sites HQ change,
-// its activity log with undo, and changes waiting for approval (plan Phase 4).
+// Classic Monks on one site, laid out like its own dashboard: tabs, a rail of subtabs, cards with each
+// feature's switch and its values together, and one Save for every change. Activity and the changes
+// waiting for approval open as sheets; the reports sit under Core, Logs, as in the plugin.
 import "../styles/screens/classic-monks.css";
 import { Blocked, Empty as EmptyState, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
 import { Select, NumberInput, Tabs, SearchInput } from "../components/controls";
+import { Sheet } from "../components/Sheet";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type ActivityRow, type Approval, type CmReports, type FeatureGroup, type Setting, type Site } from "../api";
+import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type ActivityRow, type Approval, type CmCard, type CmReports, type CmSubtab, type Controls, type Setting, type Site } from "../api";
+import { leaveGuard } from "../fleet";
 import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, Icon, Status } from "../components/ui";
 import { day, dayTime } from "../format";
 
-type Tab = "features" | "settings" | "activity" | "approvals" | "reports";
-const TABS: [Tab, string, string][] = [
-  ["features", "Features", "get-features"],
-  ["settings", "Settings", "get-settings-schema"],
-  ["activity", "Activity", "list-ai-activity"],
-  ["approvals", "Waiting for approval", "list-pending-approvals"],
-  ["reports", "Reports", "get-404-report"],
-];
-
-/** A change on the site, with the activity row that reverses it. */
-type Done = { text: string; undo: number | null; ok: boolean; undone?: boolean };
+/** A change on the site, with the activity rows that reverse it (newest last). */
+type Done = { text: string; undo?: number[]; ok: boolean; undone?: boolean };
+type Open = "activity" | "approvals" | null;
 
 const STATUS_WORD: Record<string, [string, "ok" | "warning" | "danger" | "unknown" | "info"]> = {
   ok: ["Done", "ok"],
@@ -65,6 +60,7 @@ export function targetOf(a: Approval): string {
 
 const firstCm = (sites: Site[]) => (sites.find((s) => !cmBlocked(s)) ?? sites[0])?.id ?? null;
 const suffix = (s: Site) => (cmBlocked(s) ? " (can't change here)" : "");
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // shortcut: the next ClassicMonks opens on this site's waiting changes (set by the AI page's link), upgrade to App state if more pages need it.
 let start: number | null = null;
@@ -80,12 +76,12 @@ export function ClassicMonks({ sites, onAi }: { sites: Site[]; onAi?: () => void
   const [siteId, setSiteId] = useState<number | null>(() => initial ?? firstCm(sites));
   const site = sites.find((s) => s.id === siteId) ?? sites.find((s) => s.id === firstCm(sites)) ?? null;
   const blocked = site ? cmBlocked(site) : null;
-  const [tab, setTab] = useState<Tab>(initial != null ? "approvals" : "features");
-  // Bumped after an undo so the open tab reads the site again.
+  const [open, setOpen] = useState<Open>(initial != null ? "approvals" : null);
+  // Bumped after an undo so the controls read the site again.
   const [round, setRound] = useState(0);
   const [logged, setLogged] = useState(0);
   const { inventory } = useInventory();
-  // The waiting changes, read once for the tab's count, the side card and the tab itself.
+  // The waiting changes, read once for the button's count and the sheet.
   const canWait = !!site && !blocked && hasTool(site, "list-pending-approvals");
   const waiting = useRead<Approval[]>(() => (canWait ? api.approvals(site!.id) : Promise.resolve([])), [site?.id, canWait]);
 
@@ -97,15 +93,15 @@ export function ClassicMonks({ sites, onAi }: { sites: Site[]; onAi?: () => void
     );
   }
 
-  const tools = TABS.filter(([, , tool]) => site && hasTool(site, tool));
-  const current = tools.some(([t]) => t === tab) ? tab : "features";
   const count = canWait ? (waiting.data?.length ?? 0) : 0;
-  // Results float as toasts, so nothing above the list moves under the pointer.
+  // Results float as toasts, so nothing above the controls moves under the pointer.
   const setDone = (done: Done) => {
     const on = site;
+    const rows = done.undo ?? [];
     const undo = async () => {
       try {
-        await api.undo(on!.id, done.undo!);
+        // Newest first, so each change puts back what the one before it left.
+        for (const row of [...rows].reverse()) await api.undo(on!.id, row);
         toast(`Undone: ${done.text}`);
         setRound((r) => r + 1);
         setLogged((n) => n + 1);
@@ -113,74 +109,21 @@ export function ClassicMonks({ sites, onAi }: { sites: Site[]; onAi?: () => void
         toast(String(e), { tone: "danger" });
       }
     };
-    toast(done.text, { tone: done.ok ? "ok" : "danger", undo: on && done.undo != null ? undo : undefined });
-    // The log changed: the recent changes and Activity read it again.
+    toast(done.text, { tone: done.ok ? "ok" : "danger", undo: on && rows.length ? undo : undefined });
+    // The log changed: Activity reads it again.
     if (done.ok) setLogged((n) => n + 1);
     if (done.undone) setRound((r) => r + 1);
   };
   const update = site && inventory?.get(site.id)?.inventory.plugins.find((p) => p.id.startsWith("classic-monks/"))?.update;
-
-  // The site's own cards beside every tab: its Classic Monks, what waits, recent changes.
-  const side =
-    !blocked && site ? (
-      <div className="stack cm-side">
-        <section className="card" aria-label={`Classic Monks on ${site.name}`}>
-          <div className="card-body">
-            <div className="cm-site">
-              <SiteTile site={site} />
-              <div>
-                <b>{site.name}</b>
-                <small>{site.cm_version ? `${pluginName(site)} ${site.cm_version}` : pluginName(site)}</small>
-              </div>
-              {update && <Status pill tone="ok">{update} ready</Status>}
-            </div>
-            {current === "features" && (
-              <p className="dim">
-                Each change applies to the site at once and is logged, so you can undo it from Activity. Locked features (security and login) change only in
-                WordPress, so a mistake here can't lock you out.
-              </p>
-            )}
-          </div>
-        </section>
-        {count > 0 && current !== "approvals" && (
-          <section className="card cm-wait" aria-labelledby="cm-wait-t">
-            <div className="card-body">
-              <div className="row">
-                <span className="tile sm warning">
-                  <Glyph name="clock" />
-                </span>
-                <b id="cm-wait-t">
-                  {count === 1 ? "1 change waits" : `${count} changes wait`} for approval
-                </b>
-              </div>
-              <p className="dim">Changes AI apps asked for. Approve or decline each one on the site itself.</p>
-              <div>
-                <Button small onClick={() => setTab("approvals")}>
-                  See what's waiting
-                </Button>
-              </div>
-            </div>
-          </section>
-        )}
-        {current !== "activity" && hasTool(site, "list-ai-activity") && (
-          <Recent key={site.id} site={site} onDone={setDone} round={round + logged} onAll={() => setTab("activity")} />
-        )}
-      </div>
-    ) : undefined;
+  // Changing site with unsaved changes asks first, as leaving the page does.
+  const pick = (id: number) => (leaveGuard.ask ? leaveGuard.ask(() => setSiteId(id)) : setSiteId(id));
 
   return (
-    <Page className="cm" side={side}>
+    <Page className="cm">
       <Toolbar>
         <label className="row" data-tip={site ? `${site.name}${suffix(site)}` : undefined}>
           <span className="label">Site</span>
-          <Select
-            className="input"
-            aria-label="Site"
-            value={site?.id ?? ""}
-            onChange={(e) => {
-              setSiteId(Number(e.target.value));
-            }}
-          >
+          <Select className="input" aria-label="Site" value={site?.id ?? ""} onChange={(e) => pick(Number(e.target.value))}>
             {sites.map((s) => (
               <option key={s.id} value={s.id}>
                 <SiteTile site={s} size="sm" />
@@ -190,39 +133,54 @@ export function ClassicMonks({ sites, onAi }: { sites: Site[]; onAi?: () => void
             ))}
           </Select>
         </label>
-      </Toolbar>
-      {!blocked && site && (
-        <Tabs
-          label="Show"
-          idBase="cm"
-          tabs={tools.map(([id, label]) => ({ id, label, count: id === "approvals" ? count : undefined }))}
-          value={current}
-          onChange={(t) => {
-            setTab(t);
-          }}
-        />
-      )}
-      <div role={blocked || !site ? undefined : "tabpanel"} id="cm-panel" aria-labelledby={blocked || !site ? undefined : `cm-tab-${current}`}>
-        {blocked || !site ? (
-          <section className="card">
-            {site && blocked && <Blocked site={site} reason={blocked} title={site.sign_in_again ? undefined : `Classic Monks can't be changed on ${site.name}`} />}
-          </section>
-        ) : (
-          <div className="stack">
-            {current === "features" ? (
-              <Features key={site.id} site={site} onDone={setDone} round={round} />
-            ) : current === "settings" ? (
-              <Settings key={site.id} site={site} onDone={setDone} round={round} />
-            ) : current === "activity" ? (
-              <Log key={site.id} site={site} onDone={setDone} round={round + logged} />
-            ) : current === "reports" ? (
-              <Reports key={site.id} site={site} />
-            ) : (
-              <Approvals key={site.id} site={site} onDone={setDone} read={waiting} onAi={onAi} />
-            )}
-          </div>
+        {site && !blocked && (
+          <>
+            <span className="tag">{site.cm_version ? `${pluginName(site)} ${site.cm_version}` : pluginName(site)}</span>
+            {update && <Status pill tone="ok">{update} ready</Status>}
+            <span className="end row">
+              {hasTool(site, "list-ai-activity") && (
+                <Button small onClick={() => setOpen("activity")}>
+                  Activity
+                  <Glyph name="history" />
+                </Button>
+              )}
+              {canWait && (
+                <Button small kind={count ? "soft" : undefined} className={count ? "waits" : undefined} onClick={() => setOpen("approvals")}>
+                  Waiting for approval
+                  {count > 0 && (
+                    <>
+                      {" "}
+                      <span className="n">{count}</span>
+                    </>
+                  )}
+                  <Glyph name="clock" />
+                </Button>
+              )}
+            </span>
+          </>
         )}
-      </div>
+      </Toolbar>
+      {blocked || !site ? (
+        <section className="card">{site && blocked && <Blocked site={site} reason={blocked} title={site.sign_in_again ? undefined : `Classic Monks can't be changed on ${site.name}`} />}</section>
+      ) : hasTool(site, "get-features") ? (
+        <ControlsView key={site.id} site={site} onDone={setDone} round={round} />
+      ) : hasTool(site, "get-404-report") ? (
+        <Reports key={site.id} site={site} />
+      ) : (
+        <Empty title="No settings to change here">
+          <p>This plugin doesn't share its settings with WP Sites HQ. Its activity and waiting changes are above.</p>
+        </Empty>
+      )}
+      {open === "activity" && site && (
+        <Sheet title="Activity" intro={`Changes made through Classic Monks on ${site.name}.`} onClose={() => setOpen(null)}>
+          <Log key={site.id} site={site} onDone={setDone} round={round + logged} />
+        </Sheet>
+      )}
+      {open === "approvals" && site && (
+        <Sheet title="Waiting for approval" onClose={() => setOpen(null)}>
+          <Approvals key={site.id} site={site} onDone={setDone} read={waiting} onAi={onAi} />
+        </Sheet>
+      )}
     </Page>
   );
 }
@@ -272,181 +230,312 @@ function Empty({ title, action, children }: { title: string; action?: ReactNode;
   );
 }
 
-function Features({ site, onDone, round }: Part) {
-  const { data, setData, error, load } = useRead<FeatureGroup[]>(() => api.features(site.id), [site.id, round]);
-  const [group, setGroup] = useState("");
+/** A setting's raw option, in words: "default" is WordPress's own, an empty one was never set. */
+const OPTION_WORD: Record<string, string> = { default: "WordPress default", "": "Not set" };
+const optionWord = (o: string) => OPTION_WORD[o] ?? o.charAt(0).toUpperCase() + o.slice(1);
+const raw = (s: Setting) => (s.value == null ? "" : String(s.value));
+/** The subtab the reports live under, as on the plugin's dashboard. */
+const LOGS = "subtab-logs";
+
+/** Unsaved changes by name: a switch's new state, or a setting's typed value. */
+type Edits = Record<string, boolean | string>;
+
+function ControlsView({ site, onDone, round }: Part) {
+  const { data, error, load } = useRead<Controls>(() => api.controls(site.id), [site.id, round]);
+  const [tabKey, setTabKey] = useState("");
+  const [subKey, setSubKey] = useState("");
   const [typed, setTyped] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-  if (error) return <Failed what="Classic Monks' features" error={error} retry={load} />;
+  const [edits, setEdits] = useState<Edits>({});
+  const [saving, setSaving] = useState(false);
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
+  const dirty = Object.keys(edits).length > 0;
+  useEffect(() => {
+    leaveGuard.ask = dirty ? (go) => setLeaving(() => go) : null;
+    return () => {
+      leaveGuard.ask = null;
+    };
+  }, [dirty]);
+  if (error) return <Failed what="Classic Monks' settings" error={error} retry={load} />;
   if (!data) return <Loading label={`Reading Classic Monks on ${site.name}…`} />;
-  const words = typed.trim().toLowerCase();
-  // Search looks inside the chosen section; the count is always the whole site.
-  const inGroup = data.filter((g) => !group || g.key === group);
-  const groups = words
-    ? [{ key: "", label: "Matching", toggles: inGroup.flatMap((g) => g.toggles).filter((t) => `${t.label} ${t.name} ${t.description}`.toLowerCase().includes(words)) }]
-    : inGroup;
-  const every = data.flatMap((g) => g.toggles);
-  const on = every.filter((t) => t.on).length;
-  const flip = async (name: string, label: string, on: boolean) => {
-    // Ignored while one changes, rather than disabled, so the switch keeps keyboard focus.
-    if (busy) return;
-    setBusy(name);
-    try {
-      const undo = await api.setFeature(site.id, name, on);
-      setData(data.map((g) => ({ ...g, toggles: g.toggles.map((t) => (t.name === name ? { ...t, on } : t)) })));
-      onDone({ text: `Turned ${on ? "on" : "off"} ${label} on ${site.name}.`, undo, ok: true });
-    } catch (e) {
-      onDone({ text: String(e), undo: null, ok: false });
-    } finally {
-      setBusy(null);
+
+  const tabs = data.tabs.map((t) => ({ ...t, subtabs: [...t.subtabs] }));
+  // Sites whose dashboard has no Logs subtab still get one for the reports.
+  if (hasTool(site, "get-404-report") && !tabs.some((t) => t.subtabs.some((s) => s.key === LOGS))) {
+    if (!tabs.length) tabs.push({ key: "core", label: "Core", subtabs: [] });
+    tabs[0].subtabs.push({ key: LOGS, label: "Logs", description: "", cards: [] });
+  }
+  const tab = tabs.find((t) => t.key === tabKey) ?? tabs[0];
+  const sub = tab?.subtabs.find((s) => s.key === subKey) ?? tab?.subtabs[0];
+  const all = tabs.flatMap((t) => t.subtabs.flatMap((s) => s.cards.map((c) => ({ t, s, c }))));
+  const label = new Map(all.flatMap(({ c }) => [...c.toggles, ...c.settings].map((x) => [x.name, x] as const)));
+
+  const edit = (name: string, value: boolean | string, saved: boolean | string) =>
+    setEdits(({ [name]: _, ...rest }) => (value === saved ? rest : { ...rest, [name]: value }));
+  // A number box with letters in it would save as nothing at all: it waits until it holds a number.
+  const ready = Object.entries(edits).filter(([n, v]) => typeof v === "boolean" || (label.get(n) as Setting).control !== "number" || (v !== "" && Number.isFinite(Number(v))));
+
+  const save = async (then?: () => void) => {
+    setSaving(true);
+    const undo: number[] = [];
+    const said: string[] = [];
+    let failed: string | null = null;
+    // One call per change, so each keeps its own row (and its own Undo) in Activity.
+    for (const [name, v] of ready) {
+      const x = label.get(name)!;
+      try {
+        const row = typeof v === "boolean" ? await api.setFeature(site.id, name, v) : await api.setSetting(site.id, name, (x as Setting).control === "number" ? Number(v) : v);
+        if (row != null) undo.push(row);
+        said.push(typeof v === "boolean" ? `Turned ${v ? "on" : "off"} ${x.label}` : `Set ${x.label} to ${(x as Setting).control === "select" ? optionWord(v) : v}`);
+        setEdits(({ [name]: _, ...rest }) => rest);
+      } catch (e) {
+        failed = `${x.label}: ${String(e)}`;
+        break;
+      }
     }
+    setSaving(false);
+    if (said.length) onDone({ text: said.length === 1 ? `${said[0]} on ${site.name}.` : `Saved ${said.length} changes on ${site.name}.`, undo, ok: true });
+    if (failed) onDone({ text: failed, ok: false });
+    load();
+    if (!failed) then?.();
   };
+
+  const words = typed.trim().toLowerCase();
+  const hit = (x: { name: string; label: string; description: string }) => `${x.label} ${x.name} ${x.description}`.toLowerCase().includes(words);
+  const found = words
+    ? all
+        .map(({ t, s, c }) => ({ ...c, toggles: c.toggles.filter(hit), settings: c.settings.filter(hit), where: `${t.label}, ${s.label}` }))
+        .filter((c) => c.toggles.length + c.settings.length > 0)
+    : [];
+  const onIn = (cards: CmCard[]) => cards.reduce((n, c) => n + c.toggles.filter((x) => x.on).length, 0);
+  const card = (c: CmCard & { where?: string }, i: number) => <Card key={`${c.where ?? ""}${c.title}${i}`} card={c} edits={edits} onEdit={edit} busy={saving} />;
+
   return (
     <>
-      <Toolbar>
-        <label className="row">
-          <span className="label">Section</span>
-          <Select className="input sm" aria-label="Section" value={group} onChange={(e) => setGroup(e.target.value)}>
-            <option value="">All sections</option>
-            {data.map((g) => (
-              <option key={g.key} value={g.key}>
-                {g.label} ({g.toggles.length})
-              </option>
+      <div className="cm-bar">
+        <Tabs
+          label="Classic Monks tabs"
+          idBase="cm"
+          tabs={tabs.map((t) => {
+            const on = onIn(t.subtabs.flatMap((s) => s.cards));
+            return { id: t.key, text: t.label, label: <>
+                  {t.label}
+                  {on > 0 && (
+                    <>
+                      {" "}
+                      <span className="on">{on} on</span>
+                    </>
+                  )}
+                </> };
+          })}
+          value={words ? "" : (tab?.key ?? "")}
+          onChange={(k) => {
+            setTyped("");
+            setTabKey(k);
+            setSubKey("");
+          }}
+        />
+        <SearchInput aria-label="Search settings" placeholder="Search settings" value={typed} onChange={(e) => setTyped(e.target.value)} />
+      </div>
+      <div className={words ? "cm-dash found" : "cm-dash"} role={words ? undefined : "tabpanel"} id="cm-panel" aria-labelledby={words || !tab ? undefined : `cm-tab-${tab.key}`}>
+        {!words && tab && (
+          <nav className="cm-rail" aria-label={`${tab.label} sections`}>
+            {tab.subtabs.map((s) => (
+              <button key={s.key} type="button" className="navitem" aria-current={s.key === sub?.key ? "true" : undefined} onClick={() => setSubKey(s.key)}>
+                {s.label}
+                <span className="n" aria-label={plural(size(s), "setting")}>
+                  {size(s)}
+                </span>
+              </button>
             ))}
-          </Select>
-        </label>
-        <SearchInput aria-label="Find a feature" placeholder="Find a feature" value={typed} onChange={(e) => setTyped(e.target.value)} />
-        <span className="end dim" role="status">
-          <b>{on}</b> of {every.length} turned on
-        </span>
-      </Toolbar>
-      {groups.every((g) => g.toggles.length === 0) ? (
-        <Empty title="No feature matches" action={<Button onClick={() => setTyped("")}>Clear search</Button>}>
-          <p>{group ? "Try another word, or look in All sections." : "Try another word."}</p>
-        </Empty>
-      ) : (
-        <section className="card" aria-label={`Features on ${site.name}`}>
-          <div className="card-body feats">
-            {groups.map((g) => (
-              <div key={g.key} className="feat-group">
-                {!words && <h2 className="label">{g.label}</h2>}
-                <ul className="feat-list" aria-label={words ? "Matching features" : `${g.label} features`}>
-                  {g.toggles.map((t) => (
-                    <li key={t.name}>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        id={`f-${t.name}`}
-                        checked={t.on}
-                        disabled={t.locked}
-                        aria-busy={busy === t.name}
-                        aria-describedby={t.description ? `fd-${t.name}` : undefined}
-                        onChange={() => flip(t.name, t.label, !t.on)}
-                      />
-                      <span className="what">
-                        <label htmlFor={`f-${t.name}`}>{t.label}</label>
-                        {t.description && <small id={`fd-${t.name}`}>{t.description}</small>}
-                      </span>
-                      {t.locked && (
-                        <span className="tag" data-tip="Change it in the site's WordPress dashboard, so a mistake here can't lock you out.">
-                          <Glyph name="lock" />
-                          Locked
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+          </nav>
+        )}
+        <div className="cm-main">
+          {words ? (
+            found.length === 0 ? (
+              <Empty title="Nothing matches" action={<Button onClick={() => setTyped("")}>Clear search</Button>}>
+                <p>Try another word. Search looks through every tab.</p>
+              </Empty>
+            ) : (
+              <>
+                <h2 className="cm-title" role="status">
+                  {plural(found.reduce((n, c) => n + c.toggles.length + c.settings.length, 0), "setting")} match “{typed.trim()}”
+                </h2>
+                {found.map(card)}
+              </>
+            )
+          ) : sub ? (
+            <>
+              <div className="cm-head">
+                <h2 className="cm-title">{sub.label}</h2>
+                {sub.description && <p>{sub.description}</p>}
               </div>
-            ))}
-          </div>
-        </section>
+              {sub.cards.map(card)}
+              {sub.key === LOGS && hasTool(site, "get-404-report") && <Reports site={site} />}
+            </>
+          ) : (
+            <Empty title="Nothing to change here">
+              <p>Classic Monks on {site.name} shares no settings with WP Sites HQ yet.</p>
+            </Empty>
+          )}
+          <p className="cm-foot">
+            <b>{data.on}</b> of {plural(data.total, "feature")} turned on. Everything else stays off and loads nothing.
+          </p>
+        </div>
+      </div>
+      {dirty && (
+        <div className="cm-save" role="region" aria-label="Unsaved changes">
+          <span role="status">
+            <b>{Object.keys(edits).length}</b> {Object.keys(edits).length === 1 ? "change" : "changes"} not saved
+          </span>
+          <Button disabled={saving} onClick={() => setEdits({})}>
+            Discard
+          </Button>
+          <Button kind="primary" disabled={saving || ready.length === 0} onClick={() => save()}>
+            {saving ? "Saving…" : "Save"}
+            <Glyph name="check" />
+          </Button>
+        </div>
+      )}
+      {leaving && (
+        <Sheet
+          dialog
+          title="Leave without saving?"
+          onClose={() => setLeaving(null)}
+          footer={
+            <>
+              <Button onClick={() => setLeaving(null)}>Keep editing</Button>
+              <Button
+                kind="danger"
+                onClick={() => {
+                  const go = leaving;
+                  leaveGuard.ask = null;
+                  setLeaving(null);
+                  go();
+                }}
+              >
+                Leave without saving
+              </Button>
+              <Button
+                kind="primary"
+                onClick={() => {
+                  const go = leaving;
+                  setLeaving(null);
+                  void save(() => {
+                    leaveGuard.ask = null;
+                    go();
+                  });
+                }}
+              >
+                Save and leave
+              </Button>
+            </>
+          }
+        >
+          <p>
+            {plural(Object.keys(edits).length, "change")} to Classic Monks on {site.name} {Object.keys(edits).length === 1 ? "isn't" : "aren't"} saved. Save now, or leave and lose{" "}
+            {Object.keys(edits).length === 1 ? "it" : "them"}.
+          </p>
+        </Sheet>
       )}
     </>
   );
 }
 
-/** A setting's raw option, in words: "default" is WordPress's own, an empty one was never set. */
-const OPTION_WORD: Record<string, string> = { default: "WordPress default", "": "Not set" };
-const optionWord = (o: string) => OPTION_WORD[o] ?? o.charAt(0).toUpperCase() + o.slice(1);
+/** The controls on a subtab, as its rail counts them. */
+const size = (s: CmSubtab) => s.cards.reduce((n, c) => n + c.toggles.length + c.settings.length, 0);
 
-function Settings({ site, onDone, round }: Part) {
-  const { data, error, load } = useRead<Setting[]>(() => api.settings(site.id), [site.id, round]);
-  const [edits, setEdits] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
-  if (error) return <Failed what="Classic Monks' settings" error={error} retry={load} />;
-  if (!data) return <Loading label={`Reading Classic Monks' settings on ${site.name}…`} />;
-  if (data.length === 0)
-    return (
-      <Empty title="Nothing to change here">
-        <p>This Classic Monks lets WP Sites HQ change no settings. Its features are under Features.</p>
-      </Empty>
-    );
-  const valueOf = (s: Setting) => edits[s.name] ?? (s.value == null ? "" : String(s.value));
-  const save = async (s: Setting) => {
-    const raw = valueOf(s);
-    const value = s.control === "number" ? Number(raw) : raw;
-    setBusy(s.name);
-    try {
-      const undo = await api.setSetting(site.id, s.name, value);
-      onDone({ text: `Set ${s.label} to ${s.control === "select" ? optionWord(raw) : raw} on ${site.name}.`, undo, ok: true });
-      setEdits(({ [s.name]: _, ...rest }) => rest);
-      load();
-    } catch (e) {
-      onDone({ text: String(e), undo: null, ok: false });
-    } finally {
-      setBusy(null);
-    }
-  };
-  let tab = "";
+/** One card: its switches in two columns, then the values that go with them. */
+function Card({ card, edits, onEdit, busy }: { card: CmCard & { where?: string }; edits: Edits; onEdit: (name: string, v: boolean | string, saved: boolean | string) => void; busy: boolean }) {
+  const id = `cmc-${card.where ?? ""}${card.title}`.replace(/\W+/g, "-");
   return (
-    <section className="card" aria-label={`Classic Monks settings on ${site.name}`}>
-      <ul className="sets" aria-label="Settings" aria-describedby="settings-legend">
-        {data.map((s) => {
-          const head = s.tab !== tab ? (tab = s.tab) : null;
-          // A number box with letters in it would save as nothing at all.
-          const changed = valueOf(s) !== (s.value == null ? "" : String(s.value)) && (s.control !== "number" || Number.isFinite(Number(valueOf(s))));
-          return [
-            head && (
-              <li key={`h-${head}`} className="head">
-                <h2 className="label">{head}</h2>
-              </li>
-            ),
-            <li key={s.name}>
-              <b id={`set-${s.name}`}>{s.label}</b>
-              <div className="row">
-                {s.control === "select" ? (
-                  <Select className="input" aria-labelledby={`set-${s.name}`} value={valueOf(s)} onChange={(e) => setEdits({ ...edits, [s.name]: e.target.value })}>
-                    {!s.options.includes(valueOf(s)) && <option value={valueOf(s)}>{optionWord(valueOf(s))}</option>}
-                    {s.options.map((o) => (
-                      <option key={o} value={o}>
-                        {optionWord(o)}
-                      </option>
-                    ))}
-                  </Select>
-                ) : (
-                  <NumberInput
-                    className="input"
-                    aria-labelledby={`set-${s.name}`}
-                    min={s.min ?? undefined}
-                    max={s.max ?? undefined}
-                    step={s.step ?? undefined}
-                    value={valueOf(s)}
-                    onChange={(e) => setEdits({ ...edits, [s.name]: e.target.value })}
+    <section className="card cm-card" aria-labelledby={id}>
+      <div className="card-body">
+        <h3 id={id}>
+          {card.title}
+          {card.where && (
+            <>
+              {" "}
+              <small>{card.where}</small>
+            </>
+          )}
+        </h3>
+        {card.toggles.length > 0 && (
+          <ul className="cm-toggles" aria-label={`${card.title} switches`}>
+            {card.toggles.map((t) => {
+              const on = (edits[t.name] as boolean | undefined) ?? t.on;
+              return (
+                <li key={t.name} className={t.name in edits ? "changed" : undefined}>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    id={`f-${t.name}`}
+                    checked={on}
+                    disabled={t.locked || busy}
+                    aria-describedby={t.description ? `fd-${t.name}` : undefined}
+                    onChange={() => onEdit(t.name, !on, t.on)}
                   />
-                )}
-                <Button kind={changed ? "soft" : undefined} disabled={!changed || busy === s.name} aria-label={`Save ${s.label}`} onClick={() => save(s)}>
-                  {busy === s.name ? "Saving…" : "Save"}
-                  {changed && <Glyph name="check" />}
-                </Button>
-              </div>
-              {s.description && <small>{s.description}</small>}
-            </li>,
-          ];
-        })}
-      </ul>
-      <p className="card-foot note" id="settings-legend">
-        The settings Classic Monks lets WP Sites HQ change, each saved on its own. Everything else stays in WordPress.
-      </p>
+                  <span className="what">
+                    <label htmlFor={`f-${t.name}`}>{t.label}</label>
+                    {t.description && (
+                      <small id={`fd-${t.name}`} data-tip={t.description}>
+                        {t.description}
+                      </small>
+                    )}
+                  </span>
+                  {t.locked && (
+                    <span className="tag" data-tip="Change it in the site's WordPress dashboard, so a mistake here can't lock you out.">
+                      Locked
+                      <Glyph name="lock" />
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {card.settings.length > 0 && (
+          <div className="cm-fields">
+            {card.settings.map((s) => {
+              const v = (edits[s.name] as string | undefined) ?? raw(s);
+              const set = (to: string) => onEdit(s.name, to, raw(s));
+              return (
+                <div key={s.name} className={s.name in edits ? "field changed" : "field"}>
+                  <label htmlFor={`s-${s.name}`}>{s.label}</label>
+                  {s.control === "select" ? (
+                    <Select id={`s-${s.name}`} className="input" aria-label={s.label} disabled={busy} value={v} onChange={(e) => set(e.target.value)}>
+                      {!s.options.includes(v) && <option value={v}>{optionWord(v)}</option>}
+                      {s.options.map((o) => (
+                        <option key={o} value={o}>
+                          {optionWord(o)}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <NumberInput
+                      id={`s-${s.name}`}
+                      className="input"
+                      aria-label={s.label}
+                      disabled={busy}
+                      aria-describedby={s.description ? `sd-${s.name}` : undefined}
+                      min={s.min ?? undefined}
+                      max={s.max ?? undefined}
+                      step={s.step ?? undefined}
+                      value={v}
+                      onChange={(e) => set(e.target.value)}
+                    />
+                  )}
+                  {s.description && <small id={`sd-${s.name}`}>{s.description}</small>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {card.elsewhere > 0 && (
+          <p className="cm-else">
+            {card.elsewhere === 1 ? "1 more setting here changes" : `${card.elsewhere} more settings here change`} only in the site's WordPress dashboard.
+          </p>
+        )}
+      </div>
     </section>
   );
 }
@@ -512,40 +601,14 @@ function useUndo(site: Site, onDone: (d: Done) => void) {
     setBusy(r.id);
     try {
       await api.undo(site.id, r.id);
-      onDone({ text: `Undone: ${r.summary || toolLabel(r.tool)} on ${site.name}.`, undo: null, ok: true, undone: true });
+      onDone({ text: `Undone: ${r.summary || toolLabel(r.tool)} on ${site.name}.`, ok: true, undone: true });
     } catch (e) {
-      onDone({ text: String(e), undo: null, ok: false });
+      onDone({ text: String(e), ok: false });
     } finally {
       setBusy(null);
     }
   };
   return { busy, undo };
-}
-
-function Recent({ site, onDone, round, onAll }: Part & { onAll: () => void }) {
-  const { data } = useRead<Activity>(() => api.activity(site.id, 1), [site.id, round]);
-  const { busy, undo } = useUndo(site, onDone);
-  const rows = data?.rows.slice(0, 3) ?? [];
-  return (
-    <section className="card" aria-labelledby="cm-recent-t">
-      <div className="card-head">
-        <h2 id="cm-recent-t">Latest changes</h2>
-        <button type="button" className="link" onClick={onAll}>
-          Open Activity
-          <Glyph name="arrow" />
-        </button>
-      </div>
-      {data && rows.length === 0 ? (
-        <p className="quiet">Nothing changed through Classic Monks yet.</p>
-      ) : (
-        <ul className="fixes recent" aria-label="Latest changes">
-          {rows.map((r) => (
-            <Change key={r.id} row={r} busy={busy === r.id} onUndo={() => undo(r)} small />
-          ))}
-        </ul>
-      )}
-    </section>
-  );
 }
 
 function Log({ site, onDone, round }: Part) {
@@ -627,8 +690,8 @@ function Approvals({ site, onDone, read, onAi }: Part & { read: Read<Approval[]>
   const what = (a: Approval) => [toolLabel(a.tool), targetOf(a)].filter(Boolean).join(" ");
   const open = (a: Approval) =>
     api.openApproval(site.id, a.id).then(
-      () => onDone({ text: `Opened the approval page for ${what(a)} on ${site.name} in your browser.`, undo: null, ok: true }),
-      (e) => onDone({ text: String(e), undo: null, ok: false }),
+      () => onDone({ text: `Opened the approval page for ${what(a)} on ${site.name} in your browser.`, ok: true }),
+      (e) => onDone({ text: String(e), ok: false }),
     );
   return (
     <section className="card" aria-label={`Changes waiting on ${site.name}`}>

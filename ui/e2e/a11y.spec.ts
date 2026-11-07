@@ -274,10 +274,13 @@ test("a comment is answered from the keyboard", async ({ page }) => {
   await expect(page.getByRole("status").getByText("Approved and replied to Mira Patel on MC A.")).toBeVisible();
 });
 
-test("a feature is turned on and undone from the keyboard", async ({ page }) => {
+test("a feature is turned on, saved and undone from the keyboard", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
+  await page.getByRole("searchbox", { name: "Search settings" }).fill("svg");
   await page.getByRole("switch", { name: "SVG Support" }).focus();
   await page.keyboard.press("Space");
+  await page.getByRole("region", { name: "Unsaved changes" }).getByRole("button", { name: "Save" }).focus();
+  await page.keyboard.press("Enter");
   const undo = page.getByRole("button", { name: "Undo", exact: true });
   await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
   await undo.focus();
@@ -384,7 +387,7 @@ test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({
 
 test.describe("200% zoom", () => {
   test.use({ viewport: { width: 720, height: 450 }, deviceScaleFactor: 2 });
-  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "content-classic", "content-acf", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-activity", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "palette-search", "store", "store-change", "classic-monks-reports", "reports", "reports-made", "settings-search-console"]) {
+  for (const name of ["overview", "sites", "settings", "add-site", "updates", "plugins", "updates-plan", "install", "content", "content-editor", "content-classic", "content-acf", "media", "users", "users-add", "comments", "classic-monks", "classic-monks-settings", "classic-monks-search", "classic-monks-activity", "classic-monks-approvals", "ai", "ai-access", "ai-activity", "ai-connect", "security", "updates-progress", "monitoring", "content-history", "content-bulk", "publish-many", "clients", "client-edit", "cost-add", "settings-exported", "install-zip", "install-bundle-edit", "palette-search", "store", "store-change", "classic-monks-reports", "reports", "reports-made", "settings-search-console"]) {
     test(`${name} loses nothing sideways`, async ({ page }) => {
       await show(page, SCREENS.find((s) => s.name === name)!, "light");
       const wide = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -478,9 +481,14 @@ test("results never move the rows: ticking sites, a check, a feature and its Und
   expect(await y(portfolio)).toBe(before);
 
   await show(page, SCREENS.find((s) => s.name === "classic-monks")!, "light");
+  await page.getByRole("tab", { name: /^Performance/ }).click();
+  await page.getByRole("navigation", { name: "Performance sections" }).getByRole("button", { name: /^Media Enhancements/ }).click();
   const first = page.getByRole("switch").first();
   const top = await y(first);
   await page.getByRole("switch", { name: "SVG Support" }).click();
+  // The Save bar comes in below the cards, so nothing above it moves.
+  expect(await y(first)).toBe(top);
+  await page.getByRole("region", { name: "Unsaved changes" }).getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Turned on SVG Support on MC A.")).toBeVisible();
   expect(await y(first)).toBe(top);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
