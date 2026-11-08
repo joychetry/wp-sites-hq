@@ -24,6 +24,8 @@ pub struct Toggle {
     pub on: bool,
     /// Can't be changed from WP Sites HQ (security and login features).
     pub locked: bool,
+    /// The switch that shows this one on the dashboard; empty when always shown.
+    pub depends_on: String,
 }
 
 /// A value Classic Monks lets WP Sites HQ change (`hq_editable`).
@@ -39,6 +41,8 @@ pub struct Setting {
     pub max: Option<f64>,
     pub step: Option<f64>,
     pub value: Value,
+    /// The switch that shows this value on the dashboard; empty when always shown.
+    pub depends_on: String,
 }
 
 /// One card of a subtab, as on the plugin's dashboard: its switches, then the values that go with them.
@@ -172,6 +176,7 @@ fn setting(f: &Value) -> Setting {
         max: num(&f["max"]),
         step: num(&f["step"]),
         value: f["default"].clone(),
+        depends_on: text(&f["depends_on"]),
     }
 }
 
@@ -193,12 +198,13 @@ pub fn controls_of(features: &Value, schema: Option<&Value>, values: Option<&Val
         .flatten()
         .filter_map(Value::as_str)
         .collect();
-    let toggle = |name: &str, label: String, description: String, writable: bool| Toggle {
+    let toggle = |f: &Value, name: &str, label: String, writable: bool| Toggle {
         name: name.into(),
         on: states.get(name) == Some(&Value::Bool(true)),
         locked: !writable || locked.contains(&name),
         label,
-        description,
+        description: text(&f["description"]),
+        depends_on: text(&f["depends_on"]),
     };
     let mut placed = std::collections::HashSet::new();
     let mut tabs = Vec::new();
@@ -233,9 +239,9 @@ pub fn controls_of(features: &Value, schema: Option<&Value>, values: Option<&Val
                 let value = values.map(|v| &v["settings"][&name]);
                 if f["control"] == "checkbox" && states.contains_key(&name) {
                     card.toggles.push(toggle(
+                        f,
                         &name,
                         text(&f["label"]),
-                        text(&f["description"]),
                         f["write_with"] == "update-features"
                             || f["write_with"].is_null() && f["locked"] != true,
                     ));
@@ -259,9 +265,11 @@ pub fn controls_of(features: &Value, schema: Option<&Value>, values: Option<&Val
                 });
             }
         }
-        let off = TAB_SWITCH
-            .iter()
-            .any(|(k, sw)| *k == key && states.get(*sw) == Some(&Value::Bool(false)));
+        // `enabled` (newer plugins) is also false when the tab's plugin or theme is inactive.
+        let off = tab["enabled"] == false
+            || TAB_SWITCH
+                .iter()
+                .any(|(k, sw)| *k == key && states.get(*sw) == Some(&Value::Bool(false)));
         if !off && !subtabs.is_empty() {
             tabs.push(CmTab {
                 label: text(&tab["label"]),
@@ -280,7 +288,7 @@ pub fn controls_of(features: &Value, schema: Option<&Value>, values: Option<&Val
     let mut rest: Vec<Toggle> = states
         .keys()
         .filter(|n| !placed.contains(*n))
-        .map(|n| toggle(n, humane(n), String::new(), true))
+        .map(|n| toggle(&Value::Null, n, humane(n), true))
         .collect();
     rest.sort_by(|a, b| a.label.cmp(&b.label));
     if !rest.is_empty() {
@@ -324,6 +332,36 @@ fn editable_names(schema: &Value) -> Vec<String> {
         .collect()
 }
 
+/// Classic Monks logs a settings change as its JSON result (`{"updated":{"x":true}}`): say it in words.
+fn said(summary: &str) -> String {
+    let Ok(v) = serde_json::from_str::<Value>(summary) else {
+        return summary.into();
+    };
+    if let Some(n) = v["undone"].as_i64() {
+        return format!("Undid change #{n}.");
+    }
+    let Some(updated) = v["updated"].as_object().filter(|u| !u.is_empty()) else {
+        return summary.into();
+    };
+    let plain = |v: &Value| v.as_str().map_or_else(|| v.to_string(), String::from);
+    updated
+        .iter()
+        .map(|(name, to)| match to {
+            Value::Bool(on) => {
+                format!("Turned {} {}", if *on { "on" } else { "off" }, humane(name))
+            }
+            _ if to.get("after").is_some() => format!(
+                "Set {} from {} to {}",
+                humane(name),
+                plain(&to["before"]),
+                plain(&to["after"])
+            ),
+            _ => format!("Changed {}", humane(name)),
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
 pub fn activity_from(v: &Value, page: u32) -> Activity {
     let total = v["total"].as_u64().unwrap_or_default();
     Activity {
@@ -337,7 +375,7 @@ pub fn activity_from(v: &Value, page: u32) -> Activity {
                 who: who(r),
                 tool: text(&r["tool"]),
                 status: text(&r["status"]),
-                summary: text(&r["summary"]),
+                summary: said(&text(&r["summary"])),
                 can_undo: r["can_undo"] == true,
             })
             .collect(),
@@ -887,8 +925,26 @@ mod tests {
     }
 
     #[test]
+    fn logged_settings_changes_read_as_words() {
+        assert_eq!(
+            said(r#"{"updated":{"enable_monks_preload":true}}"#),
+            "Turned on Enable monks preload"
+        );
+        assert_eq!(
+            said(r#"{"updated":{"monks_preload_delay":{"before":"5","after":7}}}"#),
+            "Set Monks preload delay from 5 to 7"
+        );
+        assert_eq!(
+            said(r#"{"undone":219,"tool":"update-settings"}"#),
+            "Undid change #219."
+        );
+        assert_eq!(said(r#"{"post_id":40}"#), r#"{"post_id":40}"#);
+        assert_eq!(said("Undid change #219."), "Undid change #219.");
+    }
+
+    #[test]
     fn controls_follow_the_dashboard() {
-        let features = json!({ "features": { "a": true, "b": false, "enable_tab_ai": false, "ai_x": true, "stray": false }, "locked": ["b"] });
+        let features = json!({ "features": { "a": true, "b": false, "enable_tab_ai": false, "ai_x": true, "stray": false, "bx": false }, "locked": ["b"] });
         let f = |name: &str, extra: Value| {
             let mut v = json!({ "name": name, "label": name, "section": "Setup WP", "control": "checkbox", "write_with": "update-features" });
             v.as_object_mut()
@@ -898,12 +954,13 @@ mod tests {
         };
         let schema = json!({ "tabs": [
             { "key": "ai", "label": "AI", "subtabs": [{ "key": "g", "label": "General", "fields": [f("ai_x", json!({}))] }] },
+            { "key": "bricks-builder", "label": "Bricks", "enabled": false, "subtabs": [{ "key": "x", "label": "Setup", "fields": [f("bx", json!({}))] }] },
             { "key": "core", "label": "Core", "subtabs": [{ "key": "s", "label": "Setup", "description": "Utilities.", "fields": [
                 f("a", json!({ "card": "Utilities" })),
                 f("id", json!({ "card": "Utilities", "control": "text", "locked": true, "write_with": null })),
                 f("n", json!({ "card": "Utilities", "control": "number", "hq_editable": true, "write_with": "update-settings", "default": 1 })),
                 f("enable_tab_ai", json!({ "card": "Modular Tabs", "locked": true, "write_with": null })),
-                f("b", json!({ "card": "Modular Tabs" })),
+                f("b", json!({ "card": "Modular Tabs", "depends_on": "a" })),
             ] }, { "key": "e", "label": "Empty", "fields": [f("secret", json!({ "control": "password", "secret": true }))] }] },
         ] });
         let c = controls_of(
@@ -911,12 +968,12 @@ mod tests {
             Some(&schema),
             Some(&json!({ "settings": { "n": 5 } })),
         );
-        assert_eq!((c.on, c.total), (2, 5));
+        assert_eq!((c.on, c.total), (2, 6));
         let tabs: Vec<&str> = c.tabs.iter().map(|t| t.label.as_str()).collect();
         assert_eq!(
             tabs,
             ["Core", "Other"],
-            "AI is off on the site, Empty has nothing to change"
+            "AI is off on the site, Bricks' theme is inactive, Empty has nothing to change"
         );
         let setup = &c.tabs[0].subtabs[0];
         assert_eq!(setup.description, "Utilities.");
@@ -928,6 +985,14 @@ mod tests {
             ("Utilities", 1, 1)
         );
         assert_eq!(util.settings[0].value, json!(5));
+        assert_eq!(
+            (
+                tabs_card.toggles[1].depends_on.as_str(),
+                util.toggles[0].depends_on.as_str()
+            ),
+            ("a", ""),
+            "the dashboard shows b only while a is on"
+        );
         assert!(
             tabs_card.toggles.iter().all(|t| t.locked),
             "write_with null and the site's locked list"
