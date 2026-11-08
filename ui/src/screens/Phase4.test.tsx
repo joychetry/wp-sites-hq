@@ -373,6 +373,27 @@ describe("Classic Monks", () => {
     expect(within(screen.getByRole("navigation", { name: "Security sections" })).getByRole("button", { name: /^Protection/ })).toHaveAttribute("aria-current", "true");
   });
 
+  it("shows a control only while the switch it depends on is on, as the dashboard does", async () => {
+    const svg = { name: "enable_svg", label: "SVG Support", description: "", on: false, locked: false };
+    const card = {
+      title: "Media",
+      toggles: [svg, { ...svg, name: "svg_sanitize", label: "Sanitize SVG", depends_on: "enable_svg" }],
+      settings: [{ name: "auto_q", label: "Image Quality", description: "", control: "number", options: [], min: 1, max: 100, step: 1, value: 82, depends_on: "svg_sanitize" }],
+      elsewhere: 0,
+    };
+    core({ cm_controls: () => ({ on: 0, total: 2, tabs: [{ key: "performance", label: "Performance", subtabs: [{ key: "m", label: "Media", description: "", cards: [card] }] }] }) });
+    render(<ClassicMonks sites={[CM]} />);
+    fireEvent.click(await screen.findByRole("switch", { name: "SVG Support" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Sanitize SVG" }));
+    expect(screen.getByRole("spinbutton", { name: "Image Quality" })).toBeInTheDocument();
+    // Turning the top switch back off hides both: the chain follows unsaved changes too.
+    fireEvent.click(screen.getByRole("switch", { name: "SVG Support" }));
+    expect(screen.queryByRole("switch", { name: "Sanitize SVG" })).toBeNull();
+    expect(screen.queryByRole("spinbutton", { name: "Image Quality" })).toBeNull();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search settings" }), { target: { value: "quality" } });
+    expect(screen.getByText("Nothing matches")).toBeInTheDocument();
+  });
+
   it("opens Activity and the waiting changes as sheets", async () => {
     const calls = core();
     render(<ClassicMonks sites={[CM]} />);
