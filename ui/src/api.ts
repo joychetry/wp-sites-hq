@@ -394,7 +394,8 @@ export type Comment = {
 export type Comments = { comments: Comment[]; total: number };
 export type Moderation = "approve" | "unapprove" | "spam" | "trash";
 
-export type Toggle = { name: string; label: string; description: string; on: boolean; locked: boolean };
+/** `depends_on`: the switch that shows this control on the dashboard (empty or absent: always shown). */
+export type Toggle = { name: string; label: string; description: string; on: boolean; locked: boolean; depends_on?: string };
 export type Setting = {
   name: string;
   label: string;
@@ -405,6 +406,7 @@ export type Setting = {
   max: number | null;
   step: number | null;
   value: unknown;
+  depends_on?: string;
 };
 /** Classic Monks' dashboard on one site. `elsewhere`: fields on a card that change only in WordPress. */
 export type CmCard = { title: string; toggles: Toggle[]; settings: Setting[]; elsewhere: number };

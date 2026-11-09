@@ -39,7 +39,8 @@
 .cm .toolbar .btn .n { min-width: 20px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; justify-content: center; background: var(--warn-bg); color: var(--warn); font: 600 var(--fs-xs)/1 var(--mono); }
 
 /* Tabs with "N on", search at the end of the same row */
-.cm-bar { display: flex; align-items: center; gap: var(--sp-3); border-bottom: 1px solid var(--line); }
+/* min-width: as a page grid item it would otherwise grow to every tab's width; Tabs moves what doesn't fit into More. */
+.cm-bar { display: flex; align-items: center; gap: var(--sp-3); border-bottom: 1px solid var(--line); min-width: 0; }
 .cm-bar > .tabs { flex: 1; border-bottom: 0; }
 .cm-bar > .srch { flex: 0 1 220px; }
 .cm .tabs .on { margin-left: var(--sp-1); font: 500 var(--fs-xs) var(--mono); color: var(--text-3); }
@@ -48,6 +49,7 @@
 /* The rail of subtabs beside the open one's cards */
 .cm-dash { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
 .cm-dash.found { grid-template-columns: minmax(0, 1fr); }
+.cm-dash.found .cm-main { max-width: none; }
 .cm-rail { display: grid; gap: 2px; position: sticky; top: 0; }
 .cm-main { display: grid; gap: var(--sp-4); min-width: 0; max-width: 1040px; }
 .cm-head { display: grid; gap: var(--sp-1); }
@@ -80,6 +82,8 @@
 .cm-save { position: sticky; bottom: var(--sp-3); z-index: 2; justify-self: end; display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg); box-shadow: var(--shadow-float); }
 .cm-save > span { margin-right: var(--sp-3); color: var(--text-2); }
 .cm-save b { color: var(--text); }
+/* A toast (Turned on X, Undo) would sit right on the Save button: lift the toasts above the bar while it shows. */
+body:has(.cm-save) .toasts { bottom: calc(var(--sp-3) + 76px); }
 
 @media (max-width: 1100px) {
   .cm-dash { grid-template-columns: 180px minmax(0, 1fr); gap: var(--sp-4); }

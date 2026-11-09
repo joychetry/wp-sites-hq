@@ -8,7 +8,7 @@ import { Page, Toolbar } from "../components/page";
 import { Select, NumberInput, Tabs, SearchInput } from "../components/controls";
 import { Sheet } from "../components/Sheet";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type ActivityRow, type Approval, type CmCard, type CmReports, type CmSubtab, type Controls, type Setting, type Site } from "../api";
+import { api, cmBlocked, hasTool, pluginName, useInventory, type Activity, type ActivityRow, type Approval, type CmCard, type CmReports, type CmSubtab, type Controls, type Setting, type Site, type Toggle } from "../api";
 import { leaveGuard } from "../fleet";
 import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, Icon, Status } from "../components/ui";
@@ -258,7 +258,19 @@ function ControlsView({ site, onDone, round }: Part) {
   if (error) return <Failed what="Classic Monks' settings" error={error} retry={load} />;
   if (!data) return <Loading label={`Reading Classic Monks on ${site.name}…`} />;
 
-  const tabs = data.tabs.map((t) => ({ ...t, subtabs: [...t.subtabs] }));
+  const every = data.tabs.flatMap((t) => t.subtabs.flatMap((s) => s.cards));
+  const label = new Map(every.flatMap((c) => [...c.toggles, ...c.settings].map((x) => [x.name, x] as const)));
+  // As on the dashboard: a control shows only while the switch it depends on is on (and shown).
+  const shown = (x: Toggle | Setting, depth = 0): boolean => {
+    const p = x.depends_on ? label.get(x.depends_on) : undefined;
+    return !p || !("on" in p) || (depth < 8 && ((edits[p.name] as boolean | undefined) ?? p.on) && shown(p, depth + 1));
+  };
+  const tabs = data.tabs.map((t) => ({
+    ...t,
+    subtabs: t.subtabs
+      .map((s) => ({ ...s, cards: s.cards.map((c) => ({ ...c, toggles: c.toggles.filter((x) => shown(x)), settings: c.settings.filter((x) => shown(x)) })).filter((c) => c.toggles.length + c.settings.length > 0) }))
+      .filter((s) => s.cards.length > 0),
+  }));
   // Sites whose dashboard has no Logs subtab still get one for the reports.
   if (hasTool(site, "get-404-report") && !tabs.some((t) => t.subtabs.some((s) => s.key === LOGS))) {
     if (!tabs.length) tabs.push({ key: "core", label: "Core", subtabs: [] });
@@ -267,7 +279,6 @@ function ControlsView({ site, onDone, round }: Part) {
   const tab = tabs.find((t) => t.key === tabKey) ?? tabs[0];
   const sub = tab?.subtabs.find((s) => s.key === subKey) ?? tab?.subtabs[0];
   const all = tabs.flatMap((t) => t.subtabs.flatMap((s) => s.cards.map((c) => ({ t, s, c }))));
-  const label = new Map(all.flatMap(({ c }) => [...c.toggles, ...c.settings].map((x) => [x.name, x] as const)));
 
   const edit = (name: string, value: boolean | string, saved: boolean | string) =>
     setEdits(({ [name]: _, ...rest }) => (value === saved ? rest : { ...rest, [name]: value }));
