@@ -7,7 +7,7 @@
  */
 :root {
   /* Surfaces: a soft green-grey ground, white cards, a well for heads and hover rows */
-  --ground: #f1f3f2;
+  --ground: #fafafb; /* the content area behind the cards */
   --bg: #ffffff; /* cards, sidebar, top bar, fields */
   --panel: #f6f8f7; /* the well: table heads, hover rows, counts */
   --raise: #f1f3f2; /* hover on controls, tags */
