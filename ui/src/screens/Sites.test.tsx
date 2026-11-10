@@ -47,6 +47,8 @@ test("keys: j moves, x selects, / filters, a adds", () => {
   expect(screen.getByRole("searchbox", { name: "Filter sites" })).toHaveFocus();
   fireEvent.change(screen.getByRole("searchbox", { name: "Filter sites" }), { target: { value: "gam" } });
   expect(screen.getAllByRole("row")).toHaveLength(2);
+  // Bulk actions act only on what is shown: Beta, filtered out, is not "1 selected".
+  expect(screen.queryByRole("region", { name: "Selection" })).toBeNull();
   (document.activeElement as HTMLElement).blur();
   fireEvent.keyDown(document, { key: "a" });
   expect(onAdd).toHaveBeenCalled();
@@ -246,6 +248,14 @@ test("Needs attention lists every site the attention chip counts, an older Class
   render(<Sites sites={[...SITES, older]} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} show="attention" />);
   expect(screen.getByRole("button", { name: /^Needs attention/ })).toHaveTextContent("2");
   expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("Older");
+});
+
+test("Select all shown is not ticked over an empty list", () => {
+  render(<Sites sites={SITES} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Select all shown" }));
+  fireEvent.change(screen.getByRole("searchbox", { name: "Filter sites" }), { target: { value: "zzz" } });
+  expect(screen.queryByRole("checkbox", { name: "Select all shown" })?.getAttribute("aria-checked") ?? "false").toBe("false");
+  expect(screen.queryByRole("region", { name: "Selection" })).toBeNull();
 });
 
 test("with no sites there is one Add a site button and nothing to filter", () => {

@@ -78,7 +78,8 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
   }, [sites, query, status, mode]);
 
   const focus = rows.find((s) => s.id === focusId) ?? rows[0] ?? null;
-  const picked = sites.filter((s) => selected.has(s.id));
+  // A bulk action never reaches a site the filters hide.
+  const picked = rows.filter((s) => selected.has(s.id));
   const moveToGroup = async () => {
     const g = groupFor.trim();
     // An empty box never ungroups the whole selection; one move at a time.
@@ -256,7 +257,7 @@ export function Sites({ sites, groups, focusId, setFocusId, onAdd, onSignInAgain
                       type="button"
                       className="box"
                       role="checkbox"
-                      aria-checked={rows.every((r) => selected.has(r.id)) ? true : rows.some((r) => selected.has(r.id)) ? "mixed" : false}
+                      aria-checked={rows.length > 0 && rows.every((r) => selected.has(r.id)) ? true : rows.some((r) => selected.has(r.id)) ? "mixed" : false}
                       aria-label="Select all shown"
                       onClick={() =>
                         setSelected((sel) => {
