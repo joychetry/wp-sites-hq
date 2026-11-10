@@ -477,6 +477,9 @@ fn issue(s: &mut State, family: u32) -> Response {
 }
 
 async fn token(Ax(shared): Ax<Shared>, Form(f): Form<HashMap<String, String>>) -> Response {
+    if shared.lock().unwrap().php_fatal {
+        return PHP_FATAL.into_response();
+    }
     let mode = shared.lock().unwrap().refresh;
     if f["grant_type"] == "refresh_token" {
         match mode {
@@ -594,6 +597,9 @@ fn bearer(s: &mut State, h: &HeaderMap) -> Option<u32> {
 
 async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>) -> Response {
     let mut s = s.lock().unwrap();
+    if s.php_fatal {
+        return PHP_FATAL.into_response();
+    }
     let Some(family) = bearer(&mut s, &h) else {
         return (
             StatusCode::UNAUTHORIZED,

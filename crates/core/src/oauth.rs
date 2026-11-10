@@ -434,6 +434,9 @@ pub enum RefreshError {
     /// the token, so the old one must not be used again.
     #[error("{0}")]
     Lost(String),
+    /// PHP printed a fatal error: WordPress never got to the token, so the old one still works.
+    #[error("{0}")]
+    Broken(String),
 }
 
 pub async fn refresh(
@@ -463,6 +466,11 @@ pub async fn refresh(
     };
     if let Some(t) = tokens(&reply) {
         return Ok(t);
+    }
+    if net::php_fatal(&reply.body) {
+        return Err(RefreshError::Broken(
+            "The site answers with a PHP fatal error, so the sign-in wasn't renewed. Fix the error on the site, then try again.".into(),
+        ));
     }
     let msg = oauth_message(&reply, "The site refused to renew the sign-in.");
     if matches!(reply.status, 400 | 401) {
