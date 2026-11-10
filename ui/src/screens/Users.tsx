@@ -2,7 +2,7 @@
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
 import "../styles/screens/users.css";
-import { askSignIn, Blocked, Empty, Skeleton, toast } from "../components/feedback";
+import { Blocked, SignInNotes, Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
 import { Menu, Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -258,17 +258,7 @@ export function Users({ sites }: { sites: Site[] }) {
               </span>
             </li>
           ))}
-          {!lone && blocked.map((s) => (
-            <li key={s.id} className="callout go">
-              <Glyph name="lock" />
-              <span>
-                {s.name}: {peopleBlocked(s, "get-users")}
-              </span>
-              <Button small onClick={() => askSignIn(s.id)}>
-                Sign in again
-              </Button>
-            </li>
-          ))}
+          {!lone && <SignInNotes sites={blocked} reason={(s) => peopleBlocked(s, "get-users")} what="users" />}
         </ul>
       )}
       {action?.kind === "add" && <AddUser sites={usable} onClose={() => setAction(null)} onDone={done} />}

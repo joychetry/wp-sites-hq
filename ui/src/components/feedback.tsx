@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Glyph, Icon, type GlyphName } from "./ui";
-import type { Tone } from "../api";
+import type { Site, Tone } from "../api";
 
 type Action = { label: string; icon?: GlyphName; run: () => unknown };
 type Toast = { id: number; text: string; tone: Tone | "info"; undo?: () => unknown; action?: Action; stay?: boolean };
@@ -218,6 +218,37 @@ export function Empty({ picture, title, children, action, alert, small }: { pict
 
 /** Ask the app shell to open the Sign in again sheet, or open a site in Sites (App.tsx listens). */
 export const askSignIn = (siteId: number) => window.dispatchEvent(new CustomEvent("wpshq:sign-in-again", { detail: siteId }));
+
+const ONE_EACH = 3;
+/** Sites that can't show a page's list until you sign in again: a note each, or past three one note that opens into them. */
+export function SignInNotes({ sites, reason, what }: { sites: Site[]; reason: (s: Site) => string | null; what: string }) {
+  const [each, setEach] = useState(false);
+  if (sites.length > ONE_EACH && !each) {
+    const names = sites.slice(0, ONE_EACH).map((s) => s.name).join(", ");
+    return (
+      <li className="callout go">
+        <Glyph name="lock" />
+        <span>
+          {sites.length} sites can't show their {what} until you sign in again: {names} and {sites.length - ONE_EACH} more.
+        </span>
+        <Button small onClick={() => setEach(true)}>
+          Show each site
+        </Button>
+      </li>
+    );
+  }
+  return sites.map((s) => (
+    <li key={s.id} className="callout go">
+      <Glyph name="lock" />
+      <span>
+        {s.name}: {reason(s)}
+      </span>
+      <Button small onClick={() => askSignIn(s.id)}>
+        Sign in again
+      </Button>
+    </li>
+  ));
+}
 export const askOpenSite = (siteId: number) => window.dispatchEvent(new CustomEvent("wpshq:open-site", { detail: siteId }));
 
 /**

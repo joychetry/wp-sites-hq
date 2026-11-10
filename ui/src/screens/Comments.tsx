@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // One comment inbox for every site shown: approve, unapprove, spam, trash and reply (plan Phase 4).
 import "../styles/screens/comments.css";
-import { askSignIn, Blocked, Empty, Skeleton, toast } from "../components/feedback";
+import { Blocked, SignInNotes, Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
 import { Menu, Segmented } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -308,17 +308,7 @@ export function Comments({ sites }: { sites: Site[] }) {
               </span>
             </li>
           ))}
-          {!lone && blocked.map((s) => (
-            <li key={s.id} className="callout go">
-              <Glyph name="lock" />
-              <span>
-                {s.name}: {peopleBlocked(s, "get-comments")}
-              </span>
-              <Button small onClick={() => askSignIn(s.id)}>
-                Sign in again
-              </Button>
-            </li>
-          ))}
+          {!lone && <SignInNotes sites={blocked} reason={(s) => peopleBlocked(s, "get-comments")} what="comments" />}
         </ul>
       )}
     </Page>

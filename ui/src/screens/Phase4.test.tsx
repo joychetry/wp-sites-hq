@@ -113,6 +113,17 @@ describe("Users", () => {
     expect(screen.getByRole("button", { name: "Sign in again" })).toBeInTheDocument();
   });
 
+  it("many sites to sign in again are one note that opens into a note each", async () => {
+    core();
+    const expired = [1, 2, 3, 4, 5].map((n) => ({ ...OLD, id: 100 + n, name: `Shop ${n}`, sign_in_again: true }));
+    render(<Users sites={[CM, ...expired]} />);
+    await screen.findByRole("table", { name: "Users" });
+    expect(screen.getByText("5 sites can't show their users until you sign in again: Shop 1, Shop 2, Shop 3 and 2 more.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign in again" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show each site" }));
+    expect(screen.getAllByRole("button", { name: "Sign in again" })).toHaveLength(5);
+  });
+
   it("searches, sends a reset and changes a role", async () => {
     const calls = core();
     render(<Users sites={[CM]} />);
