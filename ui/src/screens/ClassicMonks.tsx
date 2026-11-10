@@ -294,7 +294,7 @@ function ControlsView({ site, onDone, round }: Part) {
     for (const [name, v] of ready) {
       const x = label.get(name)!;
       try {
-        const row = typeof v === "boolean" ? await api.setFeature(site.id, name, v) : await api.setSetting(site.id, name, (x as Setting).control === "number" ? Number(v) : v);
+        const row = typeof v === "boolean" ? await api.setFeature(site.id, name, v, x.label) : await api.setSetting(site.id, name, (x as Setting).control === "number" ? Number(v) : v, x.label);
         if (row != null) undo.push(row);
         said.push(typeof v === "boolean" ? `Turned ${v ? "on" : "off"} ${x.label}` : `Set ${x.label} to ${(x as Setting).control === "select" ? optionWord(v) : v}`);
         setEdits(({ [name]: _, ...rest }) => rest);

@@ -112,3 +112,10 @@ test("a change that names a plugin the site runs carries its tile, just before t
   expect(html(entry("Confirmed the plan: Update Classic Editor on MC A", null))).toMatch(/confirmed the plan: Update <span class="ptile xs"[^>]*>C<\/span>Classic Editor on MC A/);
   expect(html(entry("Update Yoast SEO"))).not.toContain("ptile");
 });
+
+test("irregular past-tense phrases read as sentences, not as a tool the person ran", () => {
+  const entry = (what: string): Entry => ({ id: 1, at: 0, actor: "human", site_id: 1, site_name: "MC A", what, outcome: "done", detail: "" });
+  const text = (e: Entry) => render(<p>{said(e)}</p>).container.textContent;
+  expect(text(entry("Set Preload delay to 7"))).toBe("You set Preload delay to 7");
+  expect(text(entry("Undid Classic Monks change #225"))).toBe("You undid Classic Monks change #225");
+});

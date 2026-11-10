@@ -199,7 +199,7 @@ export function said(r: Entry, inventory?: Map<number, SiteInventory> | null) {
   const pkg = pkgNamed(r.what, runs);
   const tile = pkg && <PkgTile {...pkg} size="xs" />;
   // The log keeps past-tense phrases ("Turned on ...", "Proposed a plan: ...") and tool or job names ("update-post", "Update Yoast SEO").
-  if (r.what.includes(" ") && /ed$/.test(verb)) {
+  if (r.what.includes(" ") && (/ed$/.test(verb) || ["Set", "Undid"].includes(verb))) {
     const phrase = `${r.what.charAt(0).toLowerCase()}${r.what.slice(1)}`;
     // The tile goes just before the name it shows: "confirmed the plan: Update [tile]Classic Editor".
     const at = pkg ? phrase.indexOf(pkg.name) : -1;

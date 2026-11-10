@@ -319,8 +319,8 @@ describe("Classic Monks", () => {
     expect(calls.filter(([c]) => c.startsWith("cm_set"))).toEqual([]);
     fireEvent.click(within(bar()!).getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Saved 2 changes on Alpha.")).toBeInTheDocument();
-    expect(calls).toContainEqual(["cm_set_feature", { id: 1, name: "enable_svg", on: true }]);
-    expect(calls).toContainEqual(["cm_set_setting", { id: 1, name: "auto_q", value: 70 }]);
+    expect(calls).toContainEqual(["cm_set_feature", { id: 1, name: "enable_svg", on: true, label: "SVG Support" }]);
+    expect(calls).toContainEqual(["cm_set_setting", { id: 1, name: "auto_q", value: 70, label: "Image Quality" }]);
     expect(bar()).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(await screen.findByText("Undone: Saved 2 changes on Alpha.")).toBeInTheDocument();
