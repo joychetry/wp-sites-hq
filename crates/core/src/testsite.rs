@@ -42,6 +42,8 @@ pub struct State {
     /// The host drops the Authorization header.
     pub strip_authorization: bool,
     pub home_status: u16,
+    /// PHP prints a fatal error on every page and still answers 200 (display_errors on).
+    pub php_fatal: bool,
     pub app_password: String,
     pub mcp_calls: usize,
     /// Bearer tokens the MCP endpoint saw in Authorization and X-CM-Authorization.
@@ -151,6 +153,7 @@ impl Default for State {
             operator: true,
             strip_authorization: false,
             home_status: 200,
+            php_fatal: false,
             app_password: "abcd efgh ijkl mnop qrst uvwx".into(),
             mcp_calls: 0,
             seen_x_cm: 0,
@@ -384,8 +387,14 @@ fn oauth_error(status: StatusCode, error: &str, description: &str) -> Response {
         .into_response()
 }
 
+/// What mc-a served on every address once (a stale Studio auto_prepend_file), with status 200.
+const PHP_FATAL: &str = "<br />\n<b>Fatal error</b>:  Failed opening required '/tmp/prepend.php' (include_path='.:') in <b>Unknown</b> on line <b>0</b><br />\n";
+
 async fn protected_resource(Ax(s): Ax<Shared>) -> Response {
     let s = s.lock().unwrap();
+    if s.php_fatal {
+        return PHP_FATAL.into_response();
+    }
     if s.mcp_off {
         return (
             StatusCode::NOT_FOUND,
@@ -543,6 +552,9 @@ async fn home(Ax(s): Ax<Shared>, Query(q): Query<HashMap<String, String>>) -> Re
             .unwrap_or_default();
         return format!("<?xml version=\"1.0\"?><rss><channel>{generator}</channel></rss>")
             .into_response();
+    }
+    if s.php_fatal {
+        return PHP_FATAL.into_response();
     }
     let link = format!("<{}/wp-json/>; rel=\"https://api.w.org/\"", s.base);
     let body = if s.home_status >= 500 {

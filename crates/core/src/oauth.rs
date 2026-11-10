@@ -78,6 +78,11 @@ pub async fn discover(
         crate::sites::url_string(site)
     );
     let reply = net::send(limits, key, Retry::ReadOnly, || http.get(&url)).await?;
+    if net::php_fatal(&reply.body) {
+        return Err(site_err(
+            "The site answered with a PHP fatal error instead of its sign-in details. Fix the error on the site (its PHP error log names it), then try again.",
+        ));
+    }
     let Some(pr) = reply
         .json::<ProtectedResource>()
         .filter(|_| reply.status == 200)
@@ -718,6 +723,17 @@ mod tests {
             .await
             .unwrap();
         assert!(d.is_none());
+    }
+
+    #[tokio::test]
+    async fn a_php_fatal_error_page_is_not_a_missing_plugin() {
+        let site = TestSite::start().await;
+        site.state().php_fatal = true;
+        let url = Url::parse(&site.url).unwrap();
+        let err = discover(&crate::net::client().unwrap(), &Limits::default(), &url)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("PHP fatal error"), "{err}");
     }
 
     #[tokio::test]
