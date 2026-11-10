@@ -712,6 +712,10 @@ fieldset.field legend { font-size: var(--fs-sm); color: var(--text); font-weight
   .toggles > li { flex-wrap: wrap; }
   .kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .stats { grid-template-columns: minmax(0, 1fr); }
+  /* A table keeps room for its names and grows past the card, which then scrolls sideways (clip would cut it off). */
+  table.t { width: max-content; min-width: 100%; }
+  .t col.c-fill { width: 12rem; }
+  :has(> table.t) { overflow-x: auto; }
 }
 
 /* Security and Monitoring: titled tables on one page */
