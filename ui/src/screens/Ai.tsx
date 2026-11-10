@@ -41,10 +41,10 @@ const sitesIn = (j: Job) => new Set(j.items.map((i) => i.site_name)).size;
 const note = (n: Note) => toast(n.text, { tone: n.ok ? "ok" : "danger" });
 
 /** `focusPlan`: the plan the palette asked to review gets focus. `onApprovals` opens Classic Monks (on the site ``showApprovals`` names). */
-type Props = { sites: Site[]; plans: Job[]; onWatch: (job: Job) => void; focusPlan?: number | null; onApprovals?: () => void };
+type Props = { sites: Site[]; plans: Job[]; onWatch: (job: Job) => void; focusPlan?: number | null; onApprovals?: () => void; tab?: Tab };
 
-export function Ai({ sites, plans, onWatch, focusPlan, onApprovals }: Props) {
-  const [tab, setTab] = useState<Tab>("plans");
+export function Ai({ sites, plans, onWatch, focusPlan, onApprovals, tab: opening = "plans" }: Props) {
+  const [tab, setTab] = useState<Tab>(opening);
   const [connect, setConnect] = useState(false);
   const live = plans.filter((p) => !p.expired).length;
   const tabs: { id: Tab; label: string; count?: number }[] = [

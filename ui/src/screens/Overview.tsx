@@ -48,7 +48,7 @@ type Props = {
   onSignInAgain: (id: number) => void;
   onAdd: () => void;
   /** Opens another part of the app, for the getting started steps and the fixes. */
-  onGo?: (section: "Updates" | "AI" | "Sites" | "Security" | "palette") => void;
+  onGo?: (section: "Updates" | "AI" | "Sites" | "Security" | "Activity" | "palette") => void;
 };
 
 const TIPS = "mc-tips-hidden";
@@ -276,7 +276,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
       )}
       {onGo && (
         <div className="card-foot">
-          <button type="button" className="link" onClick={() => onGo("AI")}>
+          <button type="button" className="link" onClick={() => onGo("Activity")}>
             See all activity
             <Glyph name="arrow" />
           </button>

@@ -71,6 +71,12 @@ test("a plan shows every change and runs only when you confirm it", async () => 
   expect(calls).toContainEqual(["plan_confirm", { id: 7 }]);
 });
 
+test("the AI page can open on its Activity tab", () => {
+  mockInvoke.mockResolvedValue([]);
+  render(<Ai sites={[]} plans={[PLAN]} onWatch={() => {}} tab="activity" />);
+  expect(screen.getByRole("tab", { name: /Activity/ })).toHaveAttribute("aria-selected", "true");
+});
+
 test("declining says nothing changed, and an error is shown in words", async () => {
   const calls = core();
   render(<Ai sites={[]} plans={[PLAN]} onWatch={() => {}} />);

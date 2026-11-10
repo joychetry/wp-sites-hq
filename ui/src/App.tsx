@@ -111,8 +111,11 @@ export default function App() {
   const [scopeChoice, setScope] = useState("");
   // The top bar's attention chip opens Sites on its Needs attention tab; any other way in opens All.
   const [sitesShow, setSitesShow] = useState<"any" | "attention">("any");
+  // Overview's See all activity opens AI on its Activity tab.
+  const [aiTab, setAiTab] = useState<"plans" | "activity">("plans");
   useEffect(() => {
     if (section !== "Sites") setSitesShow("any");
+    if (section !== "AI") setAiTab("plans");
   }, [section]);
   const [focusId, setFocusId] = useState<number | null>(null);
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
@@ -422,7 +425,7 @@ export default function App() {
         onCheck={(id) => api.check(id)}
         onSignInAgain={signInAgain}
         onAdd={() => setAdding({})}
-        onGo={(s) => (s === "palette" ? setPalette(true) : setSection(s))}
+        onGo={(s) => (s === "palette" ? setPalette(true) : s === "Activity" ? (setAiTab("activity"), setSection("AI")) : setSection(s))}
       />
     );
   } else if (section === "Sites") {
@@ -475,7 +478,7 @@ export default function App() {
   } else if (section === "Reports") {
     body = <S.Reports sites={scoped} onSettings={() => setSection("Settings")} />;
   } else if (section === "AI") {
-    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} onApprovals={() => setSection("Classic Monks")} />;
+    body = <S.Ai tab={aiTab} sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} onApprovals={() => setSection("Classic Monks")} />;
   } else {
     body = <S.Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   }

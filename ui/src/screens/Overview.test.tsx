@@ -102,6 +102,8 @@ test("updates, plans and vulnerabilities each get one fix, and the latest change
   fireEvent.click(within(feed).getByRole("button", { name: "You" }));
   expect(within(feed).queryByText("Update post")).toBeNull();
   expect(within(feed).getByText(/^You turned on AI agent access/)).toBeInTheDocument();
+  fireEvent.click(within(feed).getByRole("button", { name: "See all activity" }));
+  expect(onGo).toHaveBeenLastCalledWith("Activity");
 });
 
 test("a change that names a plugin the site runs carries its tile, just before the name", () => {
