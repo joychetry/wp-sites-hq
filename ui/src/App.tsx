@@ -11,7 +11,7 @@ import { Select } from "./components/controls";
 import { Page } from "./components/page";
 import { AddSite, ANY_PLUGIN } from "./screens/AddSite";
 import { Install, type InstallStart } from "./screens/Install";
-import { attention, leaveGuard, planTitle, summary, toFix, updatesOf } from "./fleet";
+import { attention, leaveGuard, planTitle, summary, toFix, updatesOf, vulnerablePlugins } from "./fleet";
 import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
@@ -207,7 +207,9 @@ export default function App() {
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
   const inScope = new Set(scoped.map((s) => s.id));
-  const vulnerable = (reports ?? []).filter((r) => inScope.has(r.site_id)).reduce((n, r) => n + r.vulnerabilities.length, 0);
+  const scopedReports = (reports ?? []).filter((r) => inScope.has(r.site_id));
+  const vulnerable = vulnerablePlugins(scopedReports);
+  const advisories = scopedReports.reduce((n, r) => n + r.vulnerabilities.length, 0);
   const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
   // The summary looks at uptime; open problems join it, so it never calls a site healthy next to a known vulnerability.
   const open = [
@@ -227,7 +229,7 @@ export default function App() {
         ["Themes", ofKind("Theme"), "with an update waiting"],
         ["Classic Monks", approvals, "waiting for approval"],
         ["Monitoring", offline, "down", true],
-        ["Security", vulnerable, "known vulnerabilities", true],
+        ["Security", advisories, "known vulnerabilities", true],
         ["AI", livePlans, "plans to confirm"],
       ] as const
     )

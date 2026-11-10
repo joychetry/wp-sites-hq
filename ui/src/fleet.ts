@@ -46,6 +46,10 @@ export function attention(s: Site): string | null {
  * each for known vulnerabilities, AI plans and waiting updates. The sidebar shows the same number. */
 export const toFix = (sites: number, vulns: number, plans: number, updates: number) => sites + +(vulns > 0) + +(plans > 0) + +(updates > 0);
 
+/** Plugins (per site) with a known vulnerability: a plugin with three advisories is one plugin to fix. */
+export const vulnerablePlugins = (reports: { site_id: number; vulnerabilities: { kind: string; id: string }[] }[]) =>
+  new Set(reports.flatMap((r) => r.vulnerabilities.map((v) => `${r.site_id} ${v.kind} ${v.id}`))).size;
+
 export type Kind = "WordPress" | "Plugin" | "Theme" | "Translations";
 export type Row = PlanRow & { key: string; kind: Kind; name: string; active?: boolean };
 

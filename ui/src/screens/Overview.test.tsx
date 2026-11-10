@@ -119,6 +119,14 @@ test("a change that names a plugin the site runs carries its tile, just before t
   expect(html(entry("Update Yoast SEO"))).not.toContain("ptile");
 });
 
+test("Vulnerable plugins counts plugins, not the advisories against them", () => {
+  const v = (id: string) => ({ kind: "plugin", id: "elementor", name: "Elementor", installed: "4.3.5", title: id, severity: null, fixed_in: "4.3.6", link: null });
+  const reports = [{ site_id: 1, checked_at: 1, vulnerabilities: [v("a"), v("b"), v("c")], abandoned: [], checksums: null, notes: [] }] as never;
+  render(<Overview sites={[site({ name: "Alpha" })]} reports={reports} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={vi.fn()} onGo={vi.fn()} />);
+  expect(screen.getByRole("region", { name: "Vulnerable plugins" })).toHaveTextContent("1 needs a fix");
+  expect(screen.getByRole("region", { name: "To do" })).toHaveTextContent("3 known vulnerabilities");
+});
+
 test("irregular past-tense phrases read as sentences, not as a tool the person ran", () => {
   const entry = (what: string): Entry => ({ id: 1, at: 0, actor: "human", site_id: 1, site_name: "MC A", what, outcome: "done", detail: "" });
   const text = (e: Entry) => render(<p>{said(e)}</p>).container.textContent;

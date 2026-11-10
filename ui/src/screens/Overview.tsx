@@ -10,7 +10,7 @@ import { SiteTile } from "../components/SiteTile";
 import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
-import { attention, toFix } from "../fleet";
+import { attention, toFix, vulnerablePlugins } from "../fleet";
 import { Page } from "../components/page";
 import { dayTime, speed } from "../format";
 
@@ -303,6 +303,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
   const mon = new Map(monitors.map((m) => [m.site_id, m]));
   // Sites that need you first, then the rest, as many as fit a glance.
   const listed = [...needs, ...sites.filter((s) => !attention(s))].slice(0, SHOW_SITES);
+  const plugins = vulnerablePlugins(reports.filter((r) => ids.has(r.site_id)));
   const fixes = toFix(needs.length, vulns.length, live.length, waiting.length);
   if (sites.length === 0)
     return (
@@ -337,7 +338,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
             ]}
           />
         </Stat>
-        <Stat label="Vulnerable plugins" icon="shield" tone="danger" n={vulns.length} unit={vulns.length ? (vulns.length === 1 ? "needs a fix" : "need a fix") : "none known"}>
+        <Stat label="Vulnerable plugins" icon="shield" tone="danger" n={plugins} unit={plugins ? (plugins === 1 ? "needs a fix" : "need a fix") : "none known"}>
           <p className="stat-note">
             {vulns.length === 0
               ? "The last scan found none."
