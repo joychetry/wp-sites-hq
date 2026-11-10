@@ -457,7 +457,8 @@ function Log() {
                       {" "}
                       on <b>{r.site_name}</b>.
                     </>
-                  ) : / on \d+ sites?$/.test(r.what) ? (
+                  ) : r.actor === "human" || / on \d+ sites?$/.test(r.what) ? (
+                    // Your own changes with no site name (adding a site) end here, as on Overview.
                     "."
                   ) : (
                     " on several sites."

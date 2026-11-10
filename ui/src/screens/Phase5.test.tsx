@@ -136,18 +136,21 @@ test("agent access per site: read only, on with approval, Basic mode needs the p
 test("the activity log says who did what, and loads older entries", async () => {
   const at = Math.floor(Date.now() / 1000) - 30;
   const row = (id: number, actor: Entry["actor"], outcome: Entry["outcome"], site_name = "Alpha"): Entry => ({ id, at, actor, site_id: 1, site_name, what: `thing ${id}`, outcome, detail: "" });
-  const first = [row(60, "human", "done"), row(59, "agent", "waiting"), row(58, "agent_confirmed", "failed", ""), ...Array.from({ length: 47 }, (_, i) => row(57 - i, "agent", "refused"))];
+  const added: Entry = { ...row(61, "human", "done", ""), site_id: null, what: "Added https://mc-b.local" };
+  const first = [added, row(60, "human", "done"), row(59, "agent", "waiting"), row(58, "agent_confirmed", "failed", ""), ...Array.from({ length: 46 }, (_, i) => row(57 - i, "agent", "refused"))];
   const calls = core({ activity_list: (a) => (a.before ? [row(1, "human", "done")] : first) });
   render(<Ai sites={[]} plans={[]} onWatch={() => {}} />);
   fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
   const list = await screen.findByRole("list", { name: "Activity" });
   const rows = within(list).getAllByRole("listitem");
-  expect(rows[0]).toHaveTextContent(/^YouYou ran thing 60 on Alpha\..*Done$/);
-  expect(rows[1]).toHaveTextContent(/AI agent asked to thing 59 on Alpha\..*Waiting for approval on the site$/);
-  expect(rows[2]).toHaveTextContent(/AI agent, confirmed by you, ran thing 58 on several sites\..*Failed$/);
+  // Adding a site is your own change with no site yet: not "on several sites".
+  expect(rows[0]).toHaveTextContent(/^YouYou added https:\/\/mc-b\.local\.Today/);
+  expect(rows[1]).toHaveTextContent(/^YouYou ran thing 60 on Alpha\..*Done$/);
+  expect(rows[2]).toHaveTextContent(/AI agent asked to thing 59 on Alpha\..*Waiting for approval on the site$/);
+  expect(rows[3]).toHaveTextContent(/AI agent, confirmed by you, ran thing 58 on several sites\..*Failed$/);
   fireEvent.click(screen.getByRole("button", { name: "Show older activity" }));
   await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(51));
-  expect(calls).toContainEqual(["activity_list", { before: 11 }]);
+  expect(calls).toContainEqual(["activity_list", { before: 12 }]);
   expect(screen.queryByRole("button", { name: "Show older activity" })).toBeNull();
 });
 
