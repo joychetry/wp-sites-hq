@@ -290,7 +290,7 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
   const admin = role === "administrator";
 
   const save = async () => {
-    if (!username.trim() || !email.trim()) return setTried(true);
+    if (!username.trim() || !email.includes("@")) return setTried(true);
     setBusy(true);
     setError(null);
     let u: User;
@@ -350,8 +350,8 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
       </label>
       <label className="field">
         <span>Email address</span>
-        <input className="input" type="email" autoComplete="off" aria-invalid={(tried && !email.trim()) || undefined} value={email} onChange={(e) => setEmail(e.target.value)} />
-        {tried && !email.trim() && <small className="err">Fill in the email address.</small>}
+        <input className="input" type="email" autoComplete="off" aria-invalid={(tried && !email.includes("@")) || undefined} value={email} onChange={(e) => setEmail(e.target.value)} />
+        {tried && !email.includes("@") && <small className="err">{email.trim() ? "That email address is missing its @." : "Fill in the email address."}</small>}
       </label>
       </div>
       <label className="field">

@@ -181,6 +181,11 @@ describe("Users", () => {
     expect(within(sheet).getByText("Fill in the username.")).toBeInTheDocument();
     expect(within(sheet).getByText("Fill in the email address.")).toBeInTheDocument();
     fireEvent.change(within(sheet).getByRole("textbox", { name: /^Username/ }), { target: { value: "lee" } });
+    // An address without @ is named as the problem, at the field, before anything is sent.
+    fireEvent.change(within(sheet).getByRole("textbox", { name: /^Email address/ }), { target: { value: "not-an-email" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
+    expect(within(sheet).getByText("That email address is missing its @.")).toBeInTheDocument();
+    expect(calls.filter(([c]) => c === "user_create")).toEqual([]);
     fireEvent.change(within(sheet).getByRole("textbox", { name: /^Email address/ }), { target: { value: "lee@x.test" } });
     choose(within(sheet).getByRole("combobox", { name: "Role" }), "editor");
     fireEvent.click(within(sheet).getByRole("button", { name: "Add the user" }));
