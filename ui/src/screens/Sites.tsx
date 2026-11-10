@@ -10,6 +10,7 @@ import { SiteTile } from "../components/SiteTile";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import { updatesOf } from "./Updates";
 import { ANY_PLUGIN } from "./AddSite";
+import { attention } from "../fleet";
 import "../styles/screens/sites.css";
 
 type Props = {
@@ -35,7 +36,8 @@ const FILTERS: [StatusFilter, string][] = [
 ];
 const matches = (s: Site, f: StatusFilter) => {
   const tone = siteStatus(s).tone;
-  return f === "any" || tone === f || (f === "attention" && (tone === "warning" || tone === "danger"));
+  // Needs attention is what the top bar's chip counts (an older Classic Monks too, though its tone is ok).
+  return f === "any" || (f === "attention" ? !!attention(s) : tone === f);
 };
 type ModeFilter = "any" | Site["mode"];
 

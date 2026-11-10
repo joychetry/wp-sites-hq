@@ -26,6 +26,10 @@ test("the sentence counts down sites and sites that need a look", () => {
   expect(summary([site({ health: "unknown", checked_at: null })]).lead).toBe("Checking your sites.");
 });
 
+test("a site on an older Classic Monks needs a look in the sentence too, as in the attention chip", () => {
+  expect(summary([site(), site({ id: 2, capabilities: { degraded: true } })])).toEqual({ lead: "One needs a look.", rest: "The other one is fine." });
+});
+
 test("needs attention offers the right next step", () => {
   const sites = [
     site({ id: 1, name: "Down site", health: "down", health_detail: "Couldn't reach this site." }),

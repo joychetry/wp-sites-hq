@@ -241,6 +241,13 @@ test("the Connection filter is a list, and Needs attention can be the opening ta
   expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("Beta");
 });
 
+test("Needs attention lists every site the attention chip counts, an older Classic Monks too", () => {
+  const older = site({ id: 4, name: "Older", capabilities: { degraded: true } });
+  render(<Sites sites={[...SITES, older]} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} show="attention" />);
+  expect(screen.getByRole("button", { name: /^Needs attention/ })).toHaveTextContent("2");
+  expect(screen.getByRole("grid", { name: "Sites" })).toHaveTextContent("Older");
+});
+
 test("with no sites there is one Add a site button and nothing to filter", () => {
   render(<Sites sites={[]} groups={[]} focusId={null} setFocusId={vi.fn()} onAdd={vi.fn()} onSignInAgain={vi.fn()} />);
   expect(screen.getAllByRole("button", { name: /^Add a site/ })).toHaveLength(1);

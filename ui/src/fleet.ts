@@ -17,7 +17,8 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function summary(sites: Site[]): { lead: string; rest: string } {
   const n = sites.length;
   if (n === 0) return { lead: "Welcome to WP Sites HQ.", rest: "Add your first site to get started." };
-  const tones = sites.map((s) => siteStatus(s).tone);
+  // A site counts as needing a look whenever attention() flags it, as the top bar's chip does.
+  const tones = sites.map((s) => { const t = siteStatus(s).tone; return t !== "danger" && attention(s) ? "warning" : t; });
   const down = tones.filter((t) => t === "danger").length;
   const look = tones.filter((t) => t === "warning").length;
   const ok = tones.filter((t) => t === "ok").length;
