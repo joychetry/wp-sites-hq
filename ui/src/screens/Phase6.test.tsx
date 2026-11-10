@@ -131,6 +131,11 @@ describe("Monitoring", () => {
     expect(expiry(NOW - 10, NOW)).toMatchObject({ tone: "danger", text: "Expired" });
   });
 
+  test("with every site up the page still draws, and says so", () => {
+    render(<Monitoring sites={[A, B]} monitors={[mon({}), mon({ site_id: 2 })]} />);
+    expect(screen.getByText("Every home page answered at the last check.")).toBeInTheDocument();
+  });
+
   test("many sites down are a count, not a list of names that stretches the cards", () => {
     const sites = [1, 2, 3, 4, 5].map((id) => site({ id, name: `Shop ${id}` }));
     render(<Monitoring sites={sites} monitors={sites.map((s) => mon({ site_id: s.id, up: false, status: 0 }))} />);

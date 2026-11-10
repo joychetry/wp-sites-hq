@@ -54,11 +54,13 @@ export function Monitoring({ sites, monitors }: Props) {
   // A few down sites are named; more are a count, so the card stays one card high (the table lists them).
   const since = down.length === 1 ? byId.get(down[0].id)?.down_since : null;
   const downSay =
-    down.length === 1
-      ? `${down[0].name} ${since ? `went down ${ago(since)}` : "is down"}.`
-      : down.length <= NAME_DOWN
-        ? `${down.slice(0, -1).map((s) => s.name).join(", ")} and ${down[down.length - 1].name} are down.`
-        : `${down.length} sites are down.`;
+    down.length === 0
+      ? ""
+      : down.length === 1
+        ? `${down[0].name} ${since ? `went down ${ago(since)}` : "is down"}.`
+        : down.length <= NAME_DOWN
+          ? `${down.slice(0, -1).map((s) => s.name).join(", ")} and ${down[down.length - 1].name} are down.`
+          : `${down.length} sites are down.`;
 
   // true while every site is checked, or the id of the one site a row's "Check again" checks.
   const [checking, setChecking] = useState<boolean | number>(false);
