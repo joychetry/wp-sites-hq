@@ -160,7 +160,9 @@ pub fn php_fatal(body: &[u8]) -> bool {
         ]
         .iter()
         .any(|m| l.starts_with(m))
-            && l.contains(" on line ")
+            && (l.contains(" on line ")
+                || l.contains("error</b>:  uncaught ")
+                || l.contains("error:  uncaught "))
     })
 }
 
