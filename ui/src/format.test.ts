@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { ago, day, dayTime, month, range, time, toDate, vulnSummary } from "./format";
+import { ago, byName, day, dayTime, month, range, time, toDate, vulnSummary } from "./format";
 
 // Local dates, so the asserts hold in any timezone.
 const at = new Date(2026, 9, 28, 9, 30);
@@ -46,4 +46,8 @@ test("a vulnerability feed title becomes one plain sentence", () => {
   expect(vulnSummary("Forms <= 2.3 - Unauthenticated SQL Injection")).toBe("Someone could read or change the site's database. No account is needed.");
   expect(vulnSummary("Classic Editor <= 1.6 - Cross-Site Request Forgery")).toBe("Someone could trick a signed-in user into making changes.");
   expect(vulnSummary("Something odd")).toBe("A known security problem in this version.");
+});
+
+test("site names sort as people number them: Shop 2 before Shop 10", () => {
+  expect(["Shop 10", "Shop 2", "shop 1", "Bakery"].map((name) => ({ name })).sort(byName).map((s) => s.name)).toEqual(["Bakery", "shop 1", "Shop 2", "Shop 10"]);
 });

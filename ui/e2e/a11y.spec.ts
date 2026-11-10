@@ -396,6 +396,29 @@ test.describe("200% zoom", () => {
   }
 });
 
+test.describe("200% zoom tables", () => {
+  for (const [w, h] of [[640, 400], [720, 450]]) {
+    test.describe(`${w * 2}x${h * 2}`, () => {
+      test.use({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });
+      for (const name of ["sites", "users", "monitoring", "store"]) {
+        test(`${name} keeps its name column and reaches its last column`, async ({ page }) => {
+          await show(page, SCREENS.find((s) => s.name === name)!, "light");
+          const table = page.locator("table.t").first();
+          // The name column (c-fill) keeps room for a name, and the last column scrolls into view inside the page.
+          const fill = await table.evaluate((t) => {
+            const i = [...t.querySelectorAll("col")].findIndex((c) => c.classList.contains("c-fill"));
+            return (t.querySelectorAll("thead th")[i] as HTMLElement).getBoundingClientRect().width;
+          });
+          expect(fill).toBeGreaterThanOrEqual(120);
+          const last = table.locator("thead th").last();
+          await last.scrollIntoViewIfNeeded();
+          await expect(last).toBeInViewport({ ratio: 0.9 });
+        });
+      }
+    });
+  }
+});
+
 test("the Sites table fits beside the site panel without scrolling sideways", async ({ page }) => {
   for (const [width, density] of [[1440, "comfortable"], [1301, "comfortable"], [1200, "comfortable"], [1200, "compact"]] as const) {
     await page.setViewportSize({ width, height: 900 });

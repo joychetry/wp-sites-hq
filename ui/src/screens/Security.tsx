@@ -9,7 +9,7 @@ import { Button, Details, Glyph, HeadActions, Icon, Status } from "../components
 import { Empty, toast } from "../components/feedback";
 import { Page } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
-import { month, vulnSummary } from "../format";
+import { byName, month, vulnSummary } from "../format";
 
 const SEVERITY_TONE: Record<string, "danger" | "warning"> = { critical: "danger", high: "danger" };
 const KIND: Record<string, string> = { plugin: "plugin", theme: "theme", wordpress: "WordPress" };
@@ -42,7 +42,7 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
   // Errors float as toasts, so the rows don't move under the pointer.
   const setError = (text: string) => toast(text, { tone: "danger" });
   const byId = new Map(reports.map((r) => [r.site_id, r]));
-  const named = [...sites].sort((a, b) => a.name.localeCompare(b.name));
+  const named = [...sites].sort(byName);
   const scanned = named.filter((s) => byId.has(s.id));
   const each = <T,>(pick: (r: SecurityReport) => T[]) =>
     scanned.flatMap((s) => pick(byId.get(s.id)!).map((x) => ({ site: s, x })));

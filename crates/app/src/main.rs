@@ -710,10 +710,15 @@ async fn cm_set_feature(
     id: i64,
     name: String,
     on: bool,
+    label: Option<String>,
 ) -> Res<Option<i64>> {
     let core = core(&state)?;
     let r = core.set_feature(id, &name, on).await;
-    let what = format!("Turned {} {name}", if on { "on" } else { "off" });
+    let what = format!(
+        "Turned {} {}",
+        if on { "on" } else { "off" },
+        label.unwrap_or(name)
+    );
     done(&core, Some(id), &what, r)
 }
 
@@ -723,9 +728,13 @@ async fn cm_set_setting(
     id: i64,
     name: String,
     value: Value,
+    label: Option<String>,
 ) -> Res<Option<i64>> {
     let core = core(&state)?;
-    let what = format!("Set {name} to {value}");
+    let shown = value
+        .as_str()
+        .map_or_else(|| value.to_string(), String::from);
+    let what = format!("Set {} to {shown}", label.as_deref().unwrap_or(&name));
     let r = core.set_setting(id, &name, value).await;
     done(&core, Some(id), &what, r)
 }
@@ -743,7 +752,7 @@ async fn cm_undo(state: State<'_, AppCore>, id: i64, row: i64) -> Res<()> {
     done(
         &core,
         Some(id),
-        &format!("Undid Classic Monks activity row {row}"),
+        &format!("Undid Classic Monks change #{row}"),
         r,
     )
 }

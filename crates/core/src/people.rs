@@ -277,8 +277,11 @@ impl Core {
         let _work = self.working().await;
         let site = self.people_site(id, "create-user")?;
         let (username, email, role) = (new.username.trim(), new.email.trim(), new.role.trim());
-        if username.is_empty() || !email.contains('@') {
+        if username.is_empty() || email.is_empty() {
             return Err(plain("Give the user a username and an email address."));
+        }
+        if !email.contains('@') {
+            return Err(plain("That email address is missing its @."));
         }
         let user = match site.mode {
             Mode::ClassicMonks => {

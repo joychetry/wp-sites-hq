@@ -711,6 +711,7 @@ impl Core {
                 Ok(tokens)
             }
             Err(RefreshError::NotSent(e)) => Err(e.into()),
+            Err(RefreshError::Broken(m)) => Err(plain(m)),
             Err(RefreshError::Rejected(_) | RefreshError::Lost(_)) => {
                 Err(self.grant_lost(site.id, grant))
             }
@@ -1245,6 +1246,9 @@ fn rpc_result(reply: Reply) -> Result<Value, SiteError> {
             "Classic Monks said: {}",
             v["error"]["message"].as_str().unwrap_or("an unknown error")
         ))),
+        _ if net::php_fatal(&reply.body) => Err(plain(
+            "The site answers with a PHP fatal error. Fix the error on the site (its PHP error log names it), then check again.",
+        )),
         _ => Err(plain(net::explain_status(&reply).map_or_else(
             || {
                 if reply.status == 401 {
@@ -1453,6 +1457,32 @@ mod tests {
         assert!(matches!(err, SiteError::SignInAgain));
         assert_eq!(core.refreshes.load(Ordering::SeqCst), 1, "no second try");
         assert_eq!(site.state().refreshes, 0);
+    }
+
+    #[tokio::test]
+    async fn a_php_fatal_error_at_renewal_keeps_the_sign_in() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        let s = added(&core, &site).await;
+        // PHP died before WordPress ran (a broken prepend file or mu-plugin): nothing was renewed.
+        site.state().php_fatal = true;
+        let err = core
+            .call_ability(s.id, "get-posts", json!({}))
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("PHP fatal error"), "{err}");
+        expire(&core, s.id);
+        core.refresh_all().await;
+        assert!(!core.site(s.id).unwrap().sign_in_again);
+        site.state().php_fatal = false;
+        core.call_ability(s.id, "get-posts", json!({}))
+            .await
+            .unwrap();
+        assert_eq!(
+            site.state().refreshes,
+            1,
+            "renewed once the site works again"
+        );
     }
 
     #[tokio::test]

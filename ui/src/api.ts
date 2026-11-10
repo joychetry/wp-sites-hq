@@ -524,8 +524,9 @@ export const api = {
   reply: (id: number, commentId: number, postId: number, text: string) => invoke<void>("comment_reply", { id, commentId, postId, text }),
   login: (id: number) => invoke<void>("site_login", { id }),
   controls: (id: number) => read<Controls>("cm_controls", { id }),
-  setFeature: (id: number, name: string, on: boolean) => invoke<number | null>("cm_set_feature", { id, name, on }),
-  setSetting: (id: number, name: string, value: unknown) => invoke<number | null>("cm_set_setting", { id, name, value }),
+  // label: the control's own words, for the activity log ("Turned on Plugin download").
+  setFeature: (id: number, name: string, on: boolean, label?: string) => invoke<number | null>("cm_set_feature", { id, name, on, label }),
+  setSetting: (id: number, name: string, value: unknown, label?: string) => invoke<number | null>("cm_set_setting", { id, name, value, label }),
   activity: (id: number, page: number) => invoke<Activity>("cm_activity", { id, page }),
   undo: (id: number, row: number) => invoke<void>("cm_undo", { id, row }),
   approvals: (id: number) => invoke<Approval[]>("cm_approvals", { id }),

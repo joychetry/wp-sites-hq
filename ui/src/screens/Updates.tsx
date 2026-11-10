@@ -5,7 +5,7 @@ import "../styles/screens/updates.css";
 import { ago, api, blocked, siteStatus, type SecurityReport, type Site, type SiteInventory, type Vulnerability } from "../api";
 import { Button, Details, Glyph, HeadActions, Icon } from "../components/ui";
 import { askOpenSite, askSignIn } from "../components/feedback";
-import { vulnSummary } from "../format";
+import { byName, vulnSummary } from "../format";
 import { SiteTile } from "../components/SiteTile";
 import { ChangeTile } from "../components/PkgTile";
 import { Empty, toast } from "../components/feedback";
@@ -113,7 +113,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
   const rows = useMemo(() => {
     const byId = new Map(reports.map((r) => [r.site_id, r]));
     return [...sites]
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort(byName)
       .flatMap((s) => updatesOf(s, inventory.get(s.id)))
       .map((r) => {
         const vuln = fixes(r, byId.get(r.change.site_id));

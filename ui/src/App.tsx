@@ -11,7 +11,7 @@ import { Select } from "./components/controls";
 import { Page } from "./components/page";
 import { AddSite, ANY_PLUGIN } from "./screens/AddSite";
 import { Install, type InstallStart } from "./screens/Install";
-import { attention, leaveGuard, planTitle, summary, toFix, updatesOf } from "./fleet";
+import { attention, leaveGuard, planTitle, summary, toFix, updatesOf, vulnerablePlugins } from "./fleet";
 import { preload, prefetchIdle, SCREENS as S } from "./preload";
 import { JobSheet, type PlanRow, type SheetState } from "./components/JobSheet";
 
@@ -111,8 +111,11 @@ export default function App() {
   const [scopeChoice, setScope] = useState("");
   // The top bar's attention chip opens Sites on its Needs attention tab; any other way in opens All.
   const [sitesShow, setSitesShow] = useState<"any" | "attention">("any");
+  // Overview's See all activity opens AI on its Activity tab.
+  const [aiTab, setAiTab] = useState<"plans" | "activity">("plans");
   useEffect(() => {
     if (section !== "Sites") setSitesShow("any");
+    if (section !== "AI") setAiTab("plans");
   }, [section]);
   const [focusId, setFocusId] = useState<number | null>(null);
   const [focusPlan, setFocusPlan] = useState<number | null>(null);
@@ -204,7 +207,9 @@ export default function App() {
   const waiting = scoped.flatMap((s) => updatesOf(s, inv.get(s.id)));
   const offline = (monitors ?? []).filter((m) => m.up === false).length;
   const inScope = new Set(scoped.map((s) => s.id));
-  const vulnerable = (reports ?? []).filter((r) => inScope.has(r.site_id)).reduce((n, r) => n + r.vulnerabilities.length, 0);
+  const scopedReports = (reports ?? []).filter((r) => inScope.has(r.site_id));
+  const vulnerable = vulnerablePlugins(scopedReports);
+  const advisories = scopedReports.reduce((n, r) => n + r.vulnerabilities.length, 0);
   const approvals = scoped.reduce((n, s) => n + (Number(s.capabilities.pending_approvals) || 0), 0);
   // The summary looks at uptime; open problems join it, so it never calls a site healthy next to a known vulnerability.
   const open = [
@@ -224,7 +229,7 @@ export default function App() {
         ["Themes", ofKind("Theme"), "with an update waiting"],
         ["Classic Monks", approvals, "waiting for approval"],
         ["Monitoring", offline, "down", true],
-        ["Security", vulnerable, "known vulnerabilities", true],
+        ["Security", advisories, "known vulnerabilities", true],
         ["AI", livePlans, "plans to confirm"],
       ] as const
     )
@@ -422,7 +427,7 @@ export default function App() {
         onCheck={(id) => api.check(id)}
         onSignInAgain={signInAgain}
         onAdd={() => setAdding({})}
-        onGo={(s) => (s === "palette" ? setPalette(true) : setSection(s))}
+        onGo={(s) => (s === "palette" ? setPalette(true) : s === "Activity" ? (setAiTab("activity"), setSection("AI")) : setSection(s))}
       />
     );
   } else if (section === "Sites") {
@@ -475,7 +480,7 @@ export default function App() {
   } else if (section === "Reports") {
     body = <S.Reports sites={scoped} onSettings={() => setSection("Settings")} />;
   } else if (section === "AI") {
-    body = <S.Ai sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} onApprovals={() => setSection("Classic Monks")} />;
+    body = <S.Ai tab={aiTab} sites={all} plans={plans ?? []} focusPlan={focusPlan} onWatch={(job) => setSheet({ title: job.title, jobId: job.id })} onApprovals={() => setSection("Classic Monks")} />;
   } else {
     body = <S.Settings theme={choice} setTheme={setChoice} density={density} setDensity={setDensity} />;
   }

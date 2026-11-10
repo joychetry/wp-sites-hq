@@ -10,7 +10,7 @@ import { SiteTile } from "../components/SiteTile";
 import { PkgTile, pkgNamed } from "../components/PkgTile";
 import type { PlanRow } from "../components/JobSheet";
 import { toolLabel } from "./ClassicMonks";
-import { attention, toFix } from "../fleet";
+import { attention, toFix, vulnerablePlugins } from "../fleet";
 import { Page } from "../components/page";
 import { dayTime, speed } from "../format";
 
@@ -48,7 +48,7 @@ type Props = {
   onSignInAgain: (id: number) => void;
   onAdd: () => void;
   /** Opens another part of the app, for the getting started steps and the fixes. */
-  onGo?: (section: "Updates" | "AI" | "Sites" | "Security" | "palette") => void;
+  onGo?: (section: "Updates" | "AI" | "Sites" | "Security" | "Activity" | "palette") => void;
 };
 
 const TIPS = "mc-tips-hidden";
@@ -199,7 +199,7 @@ export function said(r: Entry, inventory?: Map<number, SiteInventory> | null) {
   const pkg = pkgNamed(r.what, runs);
   const tile = pkg && <PkgTile {...pkg} size="xs" />;
   // The log keeps past-tense phrases ("Turned on ...", "Proposed a plan: ...") and tool or job names ("update-post", "Update Yoast SEO").
-  if (r.what.includes(" ") && /ed$/.test(verb)) {
+  if (r.what.includes(" ") && (/ed$/.test(verb) || ["Set", "Undid"].includes(verb))) {
     const phrase = `${r.what.charAt(0).toLowerCase()}${r.what.slice(1)}`;
     // The tile goes just before the name it shows: "confirmed the plan: Update [tile]Classic Editor".
     const at = pkg ? phrase.indexOf(pkg.name) : -1;
@@ -276,7 +276,7 @@ function Feed({ onGo }: { onGo?: Props["onGo"] }) {
       )}
       {onGo && (
         <div className="card-foot">
-          <button type="button" className="link" onClick={() => onGo("AI")}>
+          <button type="button" className="link" onClick={() => onGo("Activity")}>
             See all activity
             <Glyph name="arrow" />
           </button>
@@ -303,6 +303,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
   const mon = new Map(monitors.map((m) => [m.site_id, m]));
   // Sites that need you first, then the rest, as many as fit a glance.
   const listed = [...needs, ...sites.filter((s) => !attention(s))].slice(0, SHOW_SITES);
+  const plugins = vulnerablePlugins(reports.filter((r) => ids.has(r.site_id)));
   const fixes = toFix(needs.length, vulns.length, live.length, waiting.length);
   if (sites.length === 0)
     return (
@@ -337,7 +338,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
             ]}
           />
         </Stat>
-        <Stat label="Vulnerable plugins" icon="shield" tone="danger" n={vulns.length} unit={vulns.length ? (vulns.length === 1 ? "needs a fix" : "need a fix") : "none known"}>
+        <Stat label="Vulnerable plugins" icon="shield" tone="danger" n={plugins} unit={plugins ? (plugins === 1 ? "needs a fix" : "need a fix") : "none known"}>
           <p className="stat-note">
             {vulns.length === 0
               ? "The last scan found none."

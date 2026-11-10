@@ -184,29 +184,48 @@ fn pagespeed_of(v: &Value) -> Option<PageSpeed> {
     })
 }
 
+/// How much of a home page is read to look for a PHP error printed into it.
+const PAGE_HEAD: usize = 64 * 1024;
+
 impl Core {
     /// Load the home page as a visitor would, and record what happened.
     pub async fn check_uptime(&self, site: &Site) -> Result<(), SiteError> {
         let started = Instant::now();
         let answer = {
             let _permits = self.limits.acquire(&site.url).await;
-            self.probe.get(&site.url).send().await
+            match self.probe.get(&site.url).send().await {
+                // The start of the page: a PHP fatal error with status 200 is printed there.
+                Ok(mut r) => {
+                    let mut head = Vec::new();
+                    while head.len() < PAGE_HEAD {
+                        match r.chunk().await {
+                            Ok(Some(c)) => head.extend_from_slice(&c),
+                            _ => break,
+                        }
+                    }
+                    Ok((r, head))
+                }
+                Err(e) => Err(e),
+            }
         };
         let ms = started.elapsed().as_millis() as i64;
         let (up, status, error, cert) = match answer {
-            Ok(r) => {
+            Ok((r, head)) => {
                 let status = r.status().as_u16();
                 let cert = r
                     .extensions()
                     .get::<reqwest::tls::TlsInfo>()
                     .and_then(|t| t.peer_certificate())
                     .and_then(not_after);
+                let fatal = status < 500 && crate::net::php_fatal(&head);
                 let error = if status >= 500 {
                     format!("The home page answered {status}.")
+                } else if fatal {
+                    "The home page shows a PHP fatal error.".into()
                 } else {
                     String::new()
                 };
-                (status < 500, status, error, cert)
+                (status < 500 && !fatal, status, error, cert)
             }
             Err(e) => (
                 false,
@@ -686,6 +705,14 @@ mod tests {
         let hour = m.day[23].unwrap();
         assert!(!hour.up);
         assert!(hour.ms.is_some());
+        // A PHP fatal error on the page with status 200 is down too: visitors see only the error.
+        site.state().home_status = 200;
+        site.state().php_fatal = true;
+        core.check_uptime(&core.site(s.id).unwrap()).await.unwrap();
+        let m = core.monitors().unwrap().remove(0);
+        assert_eq!((m.up, m.status), (Some(false), 200));
+        assert_eq!(m.error, "The home page shows a PHP fatal error.");
+        site.state().php_fatal = false;
         site.state().home_status = 200;
         core.check_uptime(&core.site(s.id).unwrap()).await.unwrap();
         assert_eq!(core.monitors().unwrap()[0].down_since, None, "up again");

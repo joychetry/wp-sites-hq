@@ -145,6 +145,27 @@ impl Reply {
     }
 }
 
+/// PHP printed a fatal or parse error into the page (display_errors on), whatever the status said.
+/// PHP's own format ("<br />\n<b>Fatal error</b>:  ... on line 3"), not the words in a post about PHP.
+pub fn php_fatal(body: &[u8]) -> bool {
+    let text = String::from_utf8_lossy(body).to_ascii_lowercase();
+    text.lines().any(|l| {
+        let l = l.trim_start();
+        [
+            "<b>fatal error</b>:",
+            "<b>parse error</b>:",
+            "fatal error: ",
+            "php fatal error: ",
+            "parse error: ",
+        ]
+        .iter()
+        .any(|m| l.starts_with(m))
+            && (l.contains(" on line ")
+                || l.contains("error</b>:  uncaught ")
+                || l.contains("error:  uncaught "))
+    })
+}
+
 /// Send under the site's limits, retrying as `retry` allows.
 pub async fn send(
     limits: &Limits,
@@ -291,6 +312,19 @@ fn rustls_error(err: &reqwest::Error) -> Option<&rustls::Error> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn php_fatal_is_php_s_own_line_not_words_about_it() {
+        let html = b"<br />\n<b>Fatal error</b>:  Failed opening required 'x.php' in <b>Unknown</b> on line <b>0</b><br />";
+        assert!(php_fatal(html));
+        assert!(php_fatal(
+            b"PHP Fatal error:  Uncaught Error in /a.php on line 3"
+        ));
+        assert!(!php_fatal(
+            b"<p>A <b>Fatal error</b>: is what PHP prints when a script stops.</p>"
+        ));
+        assert!(!php_fatal(b"<html>home</html>"));
+    }
+
     use super::*;
     use std::sync::Arc;
     use tokio::io::AsyncWriteExt;

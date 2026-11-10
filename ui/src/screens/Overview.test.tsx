@@ -26,6 +26,10 @@ test("the sentence counts down sites and sites that need a look", () => {
   expect(summary([site({ health: "unknown", checked_at: null })]).lead).toBe("Checking your sites.");
 });
 
+test("a site on an older Classic Monks needs a look in the sentence too, as in the attention chip", () => {
+  expect(summary([site(), site({ id: 2, capabilities: { degraded: true } })])).toEqual({ lead: "One needs a look.", rest: "The other one is fine." });
+});
+
 test("needs attention offers the right next step", () => {
   const sites = [
     site({ id: 1, name: "Down site", health: "down", health_detail: "Couldn't reach this site." }),
@@ -98,6 +102,8 @@ test("updates, plans and vulnerabilities each get one fix, and the latest change
   fireEvent.click(within(feed).getByRole("button", { name: "You" }));
   expect(within(feed).queryByText("Update post")).toBeNull();
   expect(within(feed).getByText(/^You turned on AI agent access/)).toBeInTheDocument();
+  fireEvent.click(within(feed).getByRole("button", { name: "See all activity" }));
+  expect(onGo).toHaveBeenLastCalledWith("Activity");
 });
 
 test("a change that names a plugin the site runs carries its tile, just before the name", () => {
@@ -111,4 +117,19 @@ test("a change that names a plugin the site runs carries its tile, just before t
   expect(html(entry("Update Classic Editor"))).toMatch(/ran <span class="ptile xs"[^>]*>C<\/span><b>Update Classic Editor<\/b>/);
   expect(html(entry("Confirmed the plan: Update Classic Editor on MC A", null))).toMatch(/confirmed the plan: Update <span class="ptile xs"[^>]*>C<\/span>Classic Editor on MC A/);
   expect(html(entry("Update Yoast SEO"))).not.toContain("ptile");
+});
+
+test("Vulnerable plugins counts plugins, not the advisories against them", () => {
+  const v = (id: string) => ({ kind: "plugin", id: "elementor", name: "Elementor", installed: "4.3.5", title: id, severity: null, fixed_in: "4.3.6", link: null });
+  const reports = [{ site_id: 1, checked_at: 1, vulnerabilities: [v("a"), v("b"), v("c")], abandoned: [], checksums: null, notes: [] }] as never;
+  render(<Overview sites={[site({ name: "Alpha" })]} reports={reports} onOpen={vi.fn()} onCheck={vi.fn()} onSignInAgain={vi.fn()} onAdd={vi.fn()} onGo={vi.fn()} />);
+  expect(screen.getByRole("region", { name: "Vulnerable plugins" })).toHaveTextContent("1 needs a fix");
+  expect(screen.getByRole("region", { name: "To do" })).toHaveTextContent("3 known vulnerabilities");
+});
+
+test("irregular past-tense phrases read as sentences, not as a tool the person ran", () => {
+  const entry = (what: string): Entry => ({ id: 1, at: 0, actor: "human", site_id: 1, site_name: "MC A", what, outcome: "done", detail: "" });
+  const text = (e: Entry) => render(<p>{said(e)}</p>).container.textContent;
+  expect(text(entry("Set Preload delay to 7"))).toBe("You set Preload delay to 7");
+  expect(text(entry("Undid Classic Monks change #225"))).toBe("You undid Classic Monks change #225");
 });

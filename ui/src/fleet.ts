@@ -17,7 +17,8 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function summary(sites: Site[]): { lead: string; rest: string } {
   const n = sites.length;
   if (n === 0) return { lead: "Welcome to WP Sites HQ.", rest: "Add your first site to get started." };
-  const tones = sites.map((s) => siteStatus(s).tone);
+  // A site counts as needing a look whenever attention() flags it, as the top bar's chip does.
+  const tones = sites.map((s) => { const t = siteStatus(s).tone; return t !== "danger" && attention(s) ? "warning" : t; });
   const down = tones.filter((t) => t === "danger").length;
   const look = tones.filter((t) => t === "warning").length;
   const ok = tones.filter((t) => t === "ok").length;
@@ -44,6 +45,10 @@ export function attention(s: Site): string | null {
 /** How many rows the Overview's Needs attention list holds: each site that needs a look, then one row
  * each for known vulnerabilities, AI plans and waiting updates. The sidebar shows the same number. */
 export const toFix = (sites: number, vulns: number, plans: number, updates: number) => sites + +(vulns > 0) + +(plans > 0) + +(updates > 0);
+
+/** Plugins (per site) with a known vulnerability: a plugin with three advisories is one plugin to fix. */
+export const vulnerablePlugins = (reports: { site_id: number; vulnerabilities: { kind: string; id: string }[] }[]) =>
+  new Set(reports.flatMap((r) => r.vulnerabilities.map((v) => `${r.site_id} ${v.kind} ${v.id}`))).size;
 
 export type Kind = "WordPress" | "Plugin" | "Theme" | "Translations";
 export type Row = PlanRow & { key: string; kind: Kind; name: string; active?: boolean };

@@ -2,7 +2,7 @@
 // Users on every site shown: find, add, change a role, delete with a new owner
 // for their content, and email a password reset (plan Phase 4).
 import "../styles/screens/users.css";
-import { askSignIn, Blocked, Empty, Skeleton, toast } from "../components/feedback";
+import { Blocked, SignInNotes, Empty, Skeleton, toast } from "../components/feedback";
 import { Page, Toolbar } from "../components/page";
 import { Menu, Select, SearchInput } from "../components/controls";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -258,17 +258,7 @@ export function Users({ sites }: { sites: Site[] }) {
               </span>
             </li>
           ))}
-          {!lone && blocked.map((s) => (
-            <li key={s.id} className="callout go">
-              <Glyph name="lock" />
-              <span>
-                {s.name}: {peopleBlocked(s, "get-users")}
-              </span>
-              <Button small onClick={() => askSignIn(s.id)}>
-                Sign in again
-              </Button>
-            </li>
-          ))}
+          {!lone && <SignInNotes sites={blocked} reason={(s) => peopleBlocked(s, "get-users")} what="users" />}
         </ul>
       )}
       {action?.kind === "add" && <AddUser sites={usable} onClose={() => setAction(null)} onDone={done} />}
@@ -300,7 +290,7 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
   const admin = role === "administrator";
 
   const save = async () => {
-    if (!username.trim() || !email.trim()) return setTried(true);
+    if (!username.trim() || !email.includes("@")) return setTried(true);
     setBusy(true);
     setError(null);
     let u: User;
@@ -360,8 +350,8 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
       </label>
       <label className="field">
         <span>Email address</span>
-        <input className="input" type="email" autoComplete="off" aria-invalid={(tried && !email.trim()) || undefined} value={email} onChange={(e) => setEmail(e.target.value)} />
-        {tried && !email.trim() && <small className="err">Fill in the email address.</small>}
+        <input className="input" type="email" autoComplete="off" aria-invalid={(tried && !email.includes("@")) || undefined} value={email} onChange={(e) => setEmail(e.target.value)} />
+        {tried && !email.includes("@") && <small className="err">{email.trim() ? "That email address is missing its @." : "Fill in the email address."}</small>}
       </label>
       </div>
       <label className="field">
