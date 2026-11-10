@@ -12,7 +12,7 @@ import { PkgTile, slugOf } from "../components/PkgTile";
 import { Empty, toast } from "../components/feedback";
 import { Page, SidePanel, Toolbar } from "../components/page";
 import type { PlanRow } from "../components/JobSheet";
-import { vulnSummary } from "../format";
+import { byName, vulnSummary } from "../format";
 import { NotInList } from "./Updates";
 
 export type Kind = "plugins" | "themes";
@@ -104,7 +104,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall, filte
     };
   }, []);
 
-  const read = useMemo(() => [...sites].sort((a, b) => a.name.localeCompare(b.name)), [sites]);
+  const read = useMemo(() => [...sites].sort(byName), [sites]);
   const cols = useMemo(() => {
     const m = new Map<string, Col>();
     for (const s of read)
@@ -114,7 +114,7 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall, filte
         if (it.update) c.updates += 1;
         m.set(it.id, c);
       }
-    return [...m.values()].sort((a, b) => b.sites - a.sites || a.name.localeCompare(b.name));
+    return [...m.values()].sort((a, b) => b.sites - a.sites || byName(a, b));
   }, [read, inventory, kind]);
   const shown = read.filter((s) => !onlyUpdates || itemsOf(kind, inventory.get(s.id)).some((i) => i.update));
   const ready = shown.filter((s) => !blocked(s, inventory.get(s.id)));

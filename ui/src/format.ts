@@ -51,6 +51,9 @@ export const range = (from: When, to: When) => `${day(from)} to ${day(to)}`;
 /** A response time: "840 ms", and seconds from one second up ("4.2 s"). */
 export const speed = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`);
 
+/** Site names in the order people number them: "Shop 2" before "Shop 10". */
+export const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, undefined, { numeric: true });
+
 export function ago(unix: number | null, now = Date.now() / 1000): string {
   if (unix == null) return "never";
   const s = Math.max(0, now - unix);

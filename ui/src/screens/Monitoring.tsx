@@ -7,7 +7,7 @@ import { SiteTile } from "../components/SiteTile";
 import { Button, Glyph, HeadActions, Icon, Status } from "../components/ui";
 import { Empty } from "../components/feedback";
 import { Page } from "../components/page";
-import { day, speed } from "../format";
+import { byName, day, speed } from "../format";
 
 const DAY = 86400;
 
@@ -42,7 +42,7 @@ export function Monitoring({ sites, monitors }: Props) {
   const [running, setRunning] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const byId = new Map(monitors.map((m) => [m.site_id, m]));
-  const named = [...sites].sort((a, b) => a.name.localeCompare(b.name));
+  const named = [...sites].sort(byName);
   const last = Math.max(0, ...monitors.map((m) => m.checked_at ?? 0)) || null;
   const down = named.filter((s) => byId.get(s.id)?.up === false);
   const seen = named.flatMap((s) => byId.get(s.id) ?? []).filter((m) => m.up != null);
