@@ -36,6 +36,7 @@ const host = (s: Site) => s.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 type Props = { sites: Site[]; monitors: Monitor[] };
+const NAME_DOWN = 3;
 
 export function Monitoring({ sites, monitors }: Props) {
   const [running, setRunning] = useState<number | null>(null);
@@ -50,6 +51,14 @@ export function Monitoring({ sites, monitors }: Props) {
   const scores = named.flatMap((s) => (byId.get(s.id)?.pagespeed ? [{ s, score: byId.get(s.id)!.pagespeed!.score }] : []));
   const lowest = scores.reduce<(typeof scores)[number] | null>((low, x) => (!low || x.score < low.score ? x : low), null);
   const avg = (ns: number[]) => ns.reduce((a, b) => a + b, 0) / ns.length;
+  // A few down sites are named; more are a count, so the card stays one card high (the table lists them).
+  const since = down.length === 1 ? byId.get(down[0].id)?.down_since : null;
+  const downSay =
+    down.length === 1
+      ? `${down[0].name} ${since ? `went down ${ago(since)}` : "is down"}.`
+      : down.length <= NAME_DOWN
+        ? `${down.slice(0, -1).map((s) => s.name).join(", ")} and ${down[down.length - 1].name} are down.`
+        : `${down.length} sites are down.`;
 
   // true while every site is checked, or the id of the one site a row's "Check again" checks.
   const [checking, setChecking] = useState<boolean | number>(false);
@@ -117,7 +126,7 @@ export function Monitoring({ sites, monitors }: Props) {
           </p>
           <p className="stat-note">
             {down.length > 0
-              ? `${down.map((s) => s.name).join(", ")} ${down.length === 1 ? "is" : "are"} down${down.length === 1 && byId.get(down[0].id)?.down_since ? ` since ${ago(byId.get(down[0].id)!.down_since)}` : ""}.`
+              ? downSay
               : seen.length
                 ? "Every home page answered at the last check."
                 : "No home page checked yet."}
@@ -274,7 +283,7 @@ export function Monitoring({ sites, monitors }: Props) {
         <p className="card-foot" id="monitoring-legend">
           <span role="status">{checking === true ? "Checking every site…" : last ? `Checked ${ago(last)}.` : "Not checked yet."}</span>
           <span>
-            {down.length > 0 ? `${down.length === 1 ? "1 site is" : `${down.length} sites are`} down: ${down.map((s) => s.name).join(", ")}. ` : ""}
+            {down.length > 0 ? `${down.length === 1 ? "1 site is" : `${down.length} sites are`} down${down.length <= NAME_DOWN ? `: ${down.map((s) => s.name).join(", ")}` : "; each shows Down in the table"}. ` : ""}
             Each home page loads every 5 minutes, and you get a notice when a site goes down or comes back. Uptime is the share of those checks that got an answer.
             The speed score is Google's PageSpeed score for a phone; local addresses have no domain to renew, and Google can't reach them to test.
           </span>

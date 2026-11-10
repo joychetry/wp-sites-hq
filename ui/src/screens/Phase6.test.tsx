@@ -131,6 +131,13 @@ describe("Monitoring", () => {
     expect(expiry(NOW - 10, NOW)).toMatchObject({ tone: "danger", text: "Expired" });
   });
 
+  test("many sites down are a count, not a list of names that stretches the cards", () => {
+    const sites = [1, 2, 3, 4, 5].map((id) => site({ id, name: `Shop ${id}` }));
+    render(<Monitoring sites={sites} monitors={sites.map((s) => mon({ site_id: s.id, up: false, status: 0 }))} />);
+    expect(screen.getByRole("region", { name: "Your sites at a glance" })).toHaveTextContent("5 sites are down.");
+    expect(screen.queryByText(/Shop 1, Shop 2/)).toBeNull();
+  });
+
   test("shows up and down sites, expiry, and runs PageSpeed only where it can", async () => {
     const C = site({ id: 3, name: "Gamma" });
     const monitors = [
@@ -140,6 +147,7 @@ describe("Monitoring", () => {
     ];
     render(<Monitoring sites={[A, B, C]} monitors={monitors} />);
     expect(screen.getByText(/^1 site is down: Gamma\./)).toBeInTheDocument();
+    expect(screen.getByText("Gamma went down 10 min ago.")).toBeInTheDocument();
     const stats = screen.getByRole("region", { name: "Your sites at a glance" });
     expect(stats).toHaveTextContent("Home pages up2 of 3");
     expect(stats).toHaveTextContent("Average response475 ms");
