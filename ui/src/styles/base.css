@@ -243,6 +243,8 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .insp section { padding: 18px var(--pad); border-bottom: 1px solid var(--line); }
 .insp section:last-child { border-bottom: 0; }
 .insp h3 { margin: 0 0 var(--sp-3); font: 500 var(--fs-xs)/1.3 var(--mono); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--text-3); }
+/* A status in a side panel value wraps like the other values (a slow site's reason is a sentence). */
+.insp dd .st:not(.pill) { white-space: normal; align-items: flex-start; }
 .kv { display: grid; grid-template-columns: 120px 1fr; row-gap: 10px; margin: 0; }
 .kv dt { color: var(--text-3); }
 .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
