@@ -1,5 +1,5 @@
 # Licence and source audit of every Rust dependency: cargo deny check
-# Monks Central is GPL-3.0-or-later, so GPL-compatible permissive and weak
+# WP Sites HQ is GPL-3.0-or-later, so GPL-compatible permissive and weak
 # copyleft licences are fine. AGPL is never allowed (plan D1).
 
 [graph]

@@ -36,9 +36,8 @@ export const toolLabel = (tool: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-/** Who made a change, as the log names them: changes this app made are yours, also from before
- * its rename (older rows say Monks Central). */
-export const whoOf = (who: string) => (/^(WP Sites HQ|Monks Central)$/.test(who) ? "You" : who || "Not known");
+/** Who made a change, as the log names them: changes this app made are yours. */
+export const whoOf = (who: string) => (who === "WP Sites HQ" ? "You" : who || "Not known");
 const initials = (who: string) =>
   who
     .split(/[\s-]+/)

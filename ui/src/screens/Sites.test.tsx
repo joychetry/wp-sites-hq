@@ -219,17 +219,17 @@ test("Basic mode: Download the WP Sites HQ plugin saves the checked zip, opens t
   await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("site_connect_plugin", { id: 2 }));
 });
 
-test("the plugin shows under its old and new names, also mid-move with both on the site", () => {
-  const old = site({ cm_version: "0.1.3", capabilities: { plugin: { name: "Monks Central", version: "0.1.3" }, connector: { version: "1.1.0" } } });
-  expect(pluginName(old)).toBe("Monks Central");
+test("the plugin shows under the name the site gives, also mid-move with two on the site", () => {
+  const old = site({ cm_version: "0.1.3", capabilities: { plugin: { name: "Old Connector", version: "0.1.3" }, connector: { version: "1.1.0" } } });
+  expect(pluginName(old)).toBe("Old Connector");
   const moving = site({
     cm_version: "0.2.0",
     capabilities: {
       plugin: { name: "WP Sites HQ", version: "0.2.0" },
-      connector: { version: "1.2.0", hosts: [{ name: "WP Sites HQ", version: "0.2.0" }, { name: "Monks Central (old)", version: "0.1.4" }] },
+      connector: { version: "1.2.0", hosts: [{ name: "WP Sites HQ", version: "0.2.0" }, { name: "Old Connector", version: "0.1.4" }] },
     },
   });
-  expect(connectorInfo(moving)).toEqual({ running: "WP Sites HQ 0.2.0, connector 1.2.0", spare: ["Monks Central (old) 0.1.4"] });
+  expect(connectorInfo(moving)).toEqual({ running: "WP Sites HQ 0.2.0, connector 1.2.0", spare: ["Old Connector 0.1.4"] });
 });
 
 test("the Connection filter is a list, and Needs attention can be the opening tab", () => {

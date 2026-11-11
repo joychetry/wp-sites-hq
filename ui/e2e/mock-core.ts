@@ -157,7 +157,7 @@ const FLEET: Site[] = [
   site({ id: 2, client_id: 1, client: "Corner Bakery", name: "Corner Bakery", url: "https://corner-bakery-and-cafe-downtown.local", group: "Clients", health: "down", health_detail: "The site didn't answer within 20 seconds.", checked_at: now - 60 }),
   site({ id: 3, name: "mc-c", url: "https://mc-c.local", mode: "basic", username: "admin", cm_version: null, capabilities: {}, health_detail: "Answered in 0.7 s." }),
   // 4 and 5 have no icon, so their tiles show the monogram.
-  site({ id: 4, icon: null, name: "WP Sites HQ Test", url: "https://monks-central-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
+  site({ id: 4, icon: null, name: "WP Sites HQ Test", url: "https://wpshq-test.local", cm_version: null, php_version: null, sign_in_again: true, capabilities: { abilities: [], hq_status: false, degraded: true }, checked_at: now - 10 }),
   site({ id: 5, icon: null, name: "Studio Blog", url: "https://studio-blog.local", wp_version: "7.1.2", php_version: "8.3.14", cm_version: null, capabilities: { abilities: [], hq_status: false, degraded: true }, health_detail: "Answered in 0.5 s." }),
   site({ id: 6, client_id: 2, client: "Studio North", name: "Portfolio", url: "https://portfolio.local", group: "Personal", tags: ["static"], php_version: "8.3.14", health: "ok", health_detail: "Slow: the home page took 4.2 s.", checked_at: now - 3600 * 2 }),
 ];
@@ -688,9 +688,9 @@ let CONTROLS: Controls = {
   ],
 };
 let ACTIVITY: ActivityRow[] = [
-  { id: 41, time: "2026-10-28 09:30:12", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true },
+  { id: 41, time: "2026-10-28 09:30:12", who: "WP Sites HQ", tool: "update-features", status: "ok", summary: "", can_undo: true },
   { id: 40, time: "2026-10-28 09:12:40", who: "Claude", tool: "delete-post", status: "pending", summary: "", can_undo: false },
-  { id: 39, time: "2026-10-27 21:53:28", who: "Monks Central", tool: "update-post", status: "ok", summary: "", can_undo: false },
+  { id: 39, time: "2026-10-27 21:53:28", who: "WP Sites HQ", tool: "update-post", status: "ok", summary: "", can_undo: false },
   { id: 38, time: "2026-10-27 20:10:02", who: "WP-CLI", tool: "update-settings", status: "undone", summary: "", can_undo: false },
 ];
 
