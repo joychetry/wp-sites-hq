@@ -28,7 +28,7 @@ Only these, and only for the reason given:
 | Google Search Console | Search numbers for your reports, through your own Google OAuth client | Only if you turn it on in Settings |
 | github.com | Whether a new WP Sites HQ version is out (no data about you or your sites is sent) | At start, and when you click Check |
 
-Requests carry the app name and version (`MonksCentral/<version>`). Nothing else
+Requests carry the app name and version (`WPSitesHQ/<version>`). Nothing else
 identifies you, and none of these services receives data from the others.
 
 ## AI apps

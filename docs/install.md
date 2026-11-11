@@ -52,10 +52,6 @@ again once after each update.
 sudo ln -sf "/Applications/WP Sites HQ.app/Contents/MacOS/wpshq" /usr/local/bin/wpshq
 ```
 
-If you updated from Monks Central, the app may still be called
-`Monks Central.app`; use that path instead, or rename the app first (see
-[Moving from Monks Central](#moving-from-monks-central)).
-
 ## Windows
 
 1. Run `WP.Sites.HQ_<version>_x64-setup.exe`. If your browser warns that the
@@ -92,7 +88,7 @@ sudo dnf install ./WP.Sites.HQ-<version>-1.x86_64.rpm
 ```
 
 Both put WP Sites HQ in your app menu and `wpshq` on your PATH
-(`/usr/bin/wpshq`, and `/usr/bin/monks`, its old name, until 1.0).
+(`/usr/bin/wpshq`).
 
 **AppImage (any distribution):**
 
@@ -126,40 +122,6 @@ your click.
 
 Your sites, settings and history stay through every update.
 
-## Moving from Monks Central
-
-WP Sites HQ was called Monks Central until 0.3.2. Update from inside the app
-as usual (Settings > Updates); nothing else is needed. Your sites, saved
-sign-ins, settings and history stay: the data folder and the keychain entry
-keep their old names (`com.classicmonks.monks-central`), so you never sign in
-to your sites again because of the rename.
-
-- **macOS:** the update keeps the app where it is, so Finder may still show
-  `Monks Central.app` in Applications. The Dock, menu bar and About say WP
-  Sites HQ. To match, quit the app and rename it in Finder to `WP Sites HQ`
-  (or install the new `.dmg` and delete the old app). A `/usr/local/bin/monks`
-  link keeps working; if you rename the app, make the `wpshq` link above
-  again.
-- **Windows:** the update installs WP Sites HQ and removes Monks Central (its
-  Start menu entry and its entry in Apps). If you added the old install folder
-  to your PATH for `monks.exe`, point PATH at the new folder,
-  `%LOCALAPPDATA%\WP Sites HQ`, which has `wpshq.exe` and `monks.exe`.
-- **Linux `.deb` and `.rpm`:** the `wp-sites-hq` package replaces
-  `monks-central`. Remove and uninstall commands now use `wp-sites-hq`.
-- **AppImage:** the update replaces the file in place and keeps its old file
-  name; rename it if you like. If you copied `monks` out of it, copy `wpshq`
-  as shown above.
-- **Command line and AI apps:** the command is `wpshq` now. `monks` still
-  works (it prints a one-line note, except for `monks mcp`) until 1.0, so AI
-  app configs that say `monks mcp` keep working. Change them to `wpshq mcp`
-  when you can.
-- **The plugin on your sites:** the Monks Central plugin is now the WP Sites
-  HQ plugin, in a new folder (`wp-sites-hq`). Sites that have Monks Central
-  0.1.x keep working. To move a site, update Monks Central on it to 0.1.4,
-  which offers the move to WP Sites HQ in one click and keeps its settings and
-  sign-ins. Don't delete the old plugin folder by hand before the move: that
-  resets its settings.
-
 ## Uninstall
 
 Remove the app the usual way (drag it to the Trash; Windows Settings > Apps;
@@ -168,11 +130,11 @@ AppImage). Your data stays in the data folder until you delete it:
 
 | System | Data folder |
 |---|---|
-| macOS | `~/Library/Application Support/com.classicmonks.monks-central` |
-| Windows | `%APPDATA%\com.classicmonks.monks-central` |
-| Linux | `~/.local/share/com.classicmonks.monks-central` |
+| macOS | `~/Library/Application Support/com.goodmonks.wpsiteshq` |
+| Windows | `%APPDATA%\com.goodmonks.wpsiteshq` |
+| Linux | `~/.local/share/com.goodmonks.wpsiteshq` |
 
 Remove each site in the app first (Sites > Remove) if you want the sites to
 forget WP Sites HQ too: that revokes its connection on each site. The master
-key stays in your keychain under `com.classicmonks.monks-central`; delete it
+key stays in your keychain under `com.goodmonks.wpsiteshq`; delete it
 there.

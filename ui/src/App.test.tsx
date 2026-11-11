@@ -12,7 +12,7 @@ const mockInvoke = vi.mocked(invoke);
 
 const STATUS = { version: "0.0.1", pid: 7, role: "operator", headless: false, home: "/data" };
 
-function serve(sites = [site(), site({ id: 2, name: "WP Sites HQ Test", url: "https://monks-central-test.local" })]) {
+function serve(sites = [site(), site({ id: 2, name: "WP Sites HQ Test", url: "https://wpshq-test.local" })]) {
   mockInvoke.mockImplementation(async (cmd: string) => {
     if (cmd === "core_status") return STATUS;
     if (cmd === "sites_list") return sites;

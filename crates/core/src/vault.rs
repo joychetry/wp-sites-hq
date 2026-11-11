@@ -12,7 +12,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
-pub const KEYCHAIN_SERVICE: &str = "com.classicmonks.monks-central";
+pub const KEYCHAIN_SERVICE: &str = crate::paths::APP_ID;
 const KEY_LEN: usize = 32;
 const NONCE_LEN: usize = 24;
 
@@ -67,6 +67,9 @@ pub fn load_or_create_master_key(
     match entry.get_secret() {
         Ok(bytes) => master_key(Zeroizing::new(bytes)),
         Err(KeyringError::NoEntry) => {
+            if let Some(old) = move_old_key(keychain, home, dirs::data_dir().as_deref(), &entry)? {
+                return master_key(old);
+            }
             let key = Key::generate();
             entry.set_secret(&key)?;
             let back = Zeroizing::new(entry.get_secret()?);
@@ -88,9 +91,50 @@ pub fn load_master_key(
     let entry = keychain.build(KEYCHAIN_SERVICE, &keychain_account(home), None)?;
     match entry.get_secret() {
         Ok(bytes) => master_key(Zeroizing::new(bytes)).map(Some),
-        Err(KeyringError::NoEntry) => Ok(None),
+        Err(KeyringError::NoEntry) => {
+            move_old_key(keychain, home, dirs::data_dir().as_deref(), &entry)?
+                .map(master_key)
+                .transpose()
+        }
         Err(e) => Err(e.into()),
     }
+}
+
+/// Remove after 0.5: one-time move of the folder's key from the old keychain
+/// service. Looks under the folder's own account and, for the default folder,
+/// under the account of the old default folder it was moved from. The old item
+/// is deleted only after the new one reads back.
+fn move_old_key(
+    keychain: &CredentialStore,
+    home: &Path,
+    root: Option<&Path>,
+    new: &keyring_core::Entry,
+) -> Result<Option<Zeroizing<Vec<u8>>>, VaultError> {
+    use crate::paths::{APP_ID, OLD_APP_ID};
+    let mut accounts = vec![keychain_account(home)];
+    if let Some(root) = root.and_then(|r| r.canonicalize().ok())
+        && home == root.join(APP_ID)
+    {
+        accounts.push(keychain_account(&root.join(OLD_APP_ID)));
+    }
+    for account in accounts {
+        let old = keychain.build(OLD_APP_ID, &account, None)?;
+        let secret = match old.get_secret() {
+            Ok(s) => Zeroizing::new(s),
+            Err(KeyringError::NoEntry) => continue,
+            Err(e) => return Err(e.into()),
+        };
+        new.set_secret(&secret)?;
+        if *Zeroizing::new(new.get_secret()?) != *secret {
+            return Err(VaultError::KeychainReadBack);
+        }
+        match old.delete_credential() {
+            Ok(()) | Err(KeyringError::NoEntry) => {}
+            Err(e) => return Err(e.into()),
+        }
+        return Ok(Some(secret));
+    }
+    Ok(None)
 }
 
 fn master_key(bytes: Zeroizing<Vec<u8>>) -> Result<MasterKey, VaultError> {
@@ -242,6 +286,67 @@ mod tests {
             keychain_account(Path::new("/data/a")).len(),
             "master-key-".len() + 16
         );
+    }
+
+    #[test]
+    fn old_service_key_moves_once() {
+        use crate::paths::{APP_ID, OLD_APP_ID};
+        let kc = mock_keychain();
+        let old = |home: &Path| kc.build(OLD_APP_ID, &keychain_account(home), None).unwrap();
+        // A MONKS_HOME folder keeps its path: same account, new service.
+        old(HOME.as_ref()).set_secret(&[7; KEY_LEN]).unwrap();
+        let read = load_master_key(&*kc, HOME.as_ref()).unwrap().unwrap();
+        assert_eq!(*read.0, [7; KEY_LEN]);
+        assert!(matches!(
+            old(HOME.as_ref()).get_secret(),
+            Err(KeyringError::NoEntry)
+        ));
+        assert_eq!(
+            *load_or_create_master_key(&*kc, HOME.as_ref()).unwrap().0,
+            [7; KEY_LEN]
+        );
+
+        // The default folder was moved: the key was under the old folder's account.
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path().canonicalize().unwrap();
+        let (was, home) = (root.join(OLD_APP_ID), root.join(APP_ID));
+        old(&was).set_secret(&[9; KEY_LEN]).unwrap();
+        let entry = kc
+            .build(KEYCHAIN_SERVICE, &keychain_account(&home), None)
+            .unwrap();
+        // Another folder never takes the default folder's old key.
+        let other = kc.build(KEYCHAIN_SERVICE, "x", None).unwrap();
+        assert!(
+            move_old_key(&*kc, Path::new("/data/x"), Some(&root), &other)
+                .unwrap()
+                .is_none()
+        );
+        let moved = move_old_key(&*kc, &home, Some(&root), &entry)
+            .unwrap()
+            .unwrap();
+        assert_eq!(*moved, [9; KEY_LEN]);
+        assert_eq!(entry.get_secret().unwrap(), [9; KEY_LEN]);
+        assert!(matches!(old(&was).get_secret(), Err(KeyringError::NoEntry)));
+    }
+
+    #[test]
+    fn old_key_stays_when_the_new_one_is_not_saved() {
+        let kc = mock_keychain();
+        let old = kc
+            .build(
+                crate::paths::OLD_APP_ID,
+                &keychain_account(HOME.as_ref()),
+                None,
+            )
+            .unwrap();
+        old.set_secret(&[7; KEY_LEN]).unwrap();
+        let entry = kc
+            .build(KEYCHAIN_SERVICE, &keychain_account(HOME.as_ref()), None)
+            .unwrap();
+        let cred: &mock::Cred = entry.as_any().downcast_ref().unwrap();
+        cred.set_error(KeyringError::PlatformFailure("locked".into()));
+        assert!(move_old_key(&*kc, HOME.as_ref(), None, &entry).is_err());
+        assert_eq!(old.get_secret().unwrap(), [7; KEY_LEN]);
     }
 
     #[test]

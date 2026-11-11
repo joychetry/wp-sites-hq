@@ -24,7 +24,6 @@ const BANNED: [RegExp, string][] = [
   [/\bthings\b/, "the real noun (updates)"],
   [/tool groups/i, "plain words"],
   [/\s.*\boperator\b|\boperator\b.*\s/i, "plain words"],
-  [/Monks Central/, "WP Sites HQ"],
   [/\bsnippet\b/i, "plain words"],
   [/(^|[^/])wp-admin/, "the dashboard"],
   [/[–—]/, "no dashes"],

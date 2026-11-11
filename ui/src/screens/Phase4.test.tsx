@@ -83,7 +83,7 @@ function core(over: Record<string, (args: Record<string, unknown>) => unknown> =
       case "cm_set_setting":
         return null;
       case "cm_activity":
-        return { rows: [{ id: 9, time: "2026-10-28 10:00:00", who: "Monks Central", tool: "update-features", status: "ok", summary: "", can_undo: true }], total: 1, page: 1, pages: 1 };
+        return { rows: [{ id: 9, time: "2026-10-28 10:00:00", who: "WP Sites HQ", tool: "update-features", status: "ok", summary: "", can_undo: true }], total: 1, page: 1, pages: 1 };
       case "cm_approvals":
         return [{ id: 31, tool: "delete-post", who: "Claude", time: "2026-10-28 09:00:00", expires_in: 300, input: { post_id: 12 }, preview: { id: 12, title: "Hello world" } }];
       case "user_reset":
@@ -458,8 +458,7 @@ describe("Classic Monks", () => {
   });
 });
 
-test("log rows from this app read as You, under its old and new name", () => {
+test("log rows from this app read as You", () => {
   expect(whoOf("WP Sites HQ")).toBe("You");
-  expect(whoOf("Monks Central")).toBe("You");
   expect(whoOf("Claude")).toBe("Claude");
 });

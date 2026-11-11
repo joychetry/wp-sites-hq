@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// An ACF group with one field of every type, as get-acf-fields gives it (from mc-a and monks-central-test).
+// An ACF group with one field of every type, as get-acf-fields gives it (from mc-a and the test site on :8884).
 export const ACF_FIELDS = [
  {
   "key": "field_monks_test_fields_text",

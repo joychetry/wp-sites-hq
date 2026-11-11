@@ -269,7 +269,7 @@ impl Core {
     /// the zip's SHA-256 matches the checksum published with it (the release assets the
     /// plugin's own updater reads). WordPress' REST API installs plugins from
     /// WordPress.org only, so a Basic mode site gets it through its Upload Plugin page.
-    pub async fn save_monks_central(&self, dir: &Path) -> Result<PluginZip, SiteError> {
+    pub async fn save_plugin(&self, dir: &Path) -> Result<PluginZip, SiteError> {
         let feed = self.feeds.plugin_release.as_str();
         let get = |url: String, accept: &'static str| async move {
             net::send(&self.limits, "github.com", Retry::ReadOnly, || {
@@ -725,9 +725,7 @@ mod tests {
                 ..Default::default()
             };
             let core = Core::start(home.path(), opts).await.unwrap();
-            let out = core
-                .save_monks_central(&home.path().join("Downloads"))
-                .await;
+            let out = core.save_plugin(&home.path().join("Downloads")).await;
             (home, out)
         };
         // A matching `sha256sum` line: saved under the version's name.

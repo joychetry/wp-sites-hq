@@ -3,7 +3,7 @@
 //!
 //!   MONKS_HOME=<data folder> cargo run -p monks-core --example acceptance -- <command>
 //!
-//! The data folder is the app's default (~/.local/share/com.classicmonks.monks-central)
+//! The data folder is the app's default (~/.local/share/com.goodmonks.wpsiteshq)
 //! for the sites that stay connected, or a throwaway folder for tests that break a
 //! connection on purpose (corrupt, remove).
 //!
@@ -73,7 +73,7 @@
 //!
 //! The browser step is played by this program: a login cookie made with
 //! `studio wp` (no password is handled), then the site's real consent form,
-//! submitted with every tool group, Full access and "This is my Monks Central app
+//! submitted with every tool group, Full access and "This is my WP Sites HQ app
 //! (operator)" ticked when shown. Cookies
 //! and tokens are never printed.
 
@@ -153,7 +153,7 @@ async fn main() -> Res<()> {
             let password = std::fs::read_to_string(arg(3)?)?;
             report(core.add_site_basic(arg(1)?, arg(2)?, password.trim()).await)
         }
-        "plugin-download" => show(&core.save_monks_central(Path::new(arg(1)?)).await?),
+        "plugin-download" => show(&core.save_plugin(Path::new(arg(1)?)).await?),
         "plugins" => {
             for s in core.sites()? {
                 let c = &s.capabilities;
@@ -1025,10 +1025,10 @@ async fn consent(auth_url: &str, cookie: &str, tick_operator: bool) -> Res<()> {
     let shown = page.contains("name=\"operator\"");
     let operator = shown && tick_operator;
     if operator {
-        println!("consent page: shows \"This is my Monks Central app (operator)\"; ticking it");
+        println!("consent page: shows \"This is my WP Sites HQ app (operator)\"; ticking it");
     } else if shown {
         println!(
-            "consent page: shows \"This is my Monks Central app (operator)\"; leaving it unticked"
+            "consent page: shows \"This is my WP Sites HQ app (operator)\"; leaving it unticked"
         );
     } else {
         println!("consent page: no operator checkbox (this Classic Monks predates it)");

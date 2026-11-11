@@ -10,7 +10,7 @@ site's address, like `https://example.com`.
 3. Tick the tool groups WP Sites HQ may use. With none ticked it can't do
    anything.
 4. Tick **This is my WP Sites HQ app (operator)** (Classic Monks Pro and older
-   plugins say Monks Central app), then press **Connect**.
+   plugins may name the app differently), then press **Connect**.
    This lets the app window make changes without asking the site each time;
    AI agents never get this.
 5. Come back to WP Sites HQ. The site appears on its own.
