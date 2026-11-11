@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Build the `wpshq` command and put it where Tauri's externalBin expects it
-# (crates/app/binaries/wpshq-<target triple>[.exe]), plus a copy under its
-# old name `monks`, shipped until 1.0 for AI app configs that say `monks mcp`
-# (the copy prints a one-line note, except for mcp). The app crate does not
+# (crates/app/binaries/wpshq-<target triple>[.exe]). The app crate does not
 # build without it, so run this once after a fresh clone, before cargo build.
 #
 #   scripts/sidecar.sh             debug build, for this computer
@@ -30,6 +28,4 @@ fi
 
 cargo build "${args[@]}"
 mkdir -p crates/app/binaries
-for name in wpshq monks; do
-  cp "$out/wpshq$ext" "crates/app/binaries/$name-$triple$ext"
-done
+cp "$out/wpshq$ext" "crates/app/binaries/wpshq-$triple$ext"

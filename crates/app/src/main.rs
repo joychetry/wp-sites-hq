@@ -2,7 +2,7 @@
 //! WP Sites HQ desktop app. The window is the only operator (plan D6): it
 //! reaches the core through Tauri commands, never through the local socket.
 
-// No console window on Windows release builds; `wpshq` (and `monks`) is the console program.
+// No console window on Windows release builds; `wpshq` is the console program.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::collections::BTreeMap;
@@ -167,7 +167,7 @@ async fn site_connect_plugin(state: State<'_, AppCore>, id: i64) -> Res<Site> {
 async fn plugin_download(app: AppHandle, state: State<'_, AppCore>, id: i64) -> Res<PluginZip> {
     let core = core(&state)?;
     let dir = app.path().download_dir().map_err(|e| e.to_string())?;
-    let r = core.save_monks_central(&dir).await;
+    let r = core.save_plugin(&dir).await;
     done(
         &core,
         Some(id),

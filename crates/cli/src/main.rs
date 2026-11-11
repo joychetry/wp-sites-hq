@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! `wpshq`: the WP Sites HQ command line. A console program on every OS.
-//! Installers also ship it as `monks`, its name before 0.4.0, until 1.0.
 
 mod doctor;
 mod mcp;
@@ -52,15 +51,6 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let mut args = std::env::args_os();
-    let called_monks = args
-        .next()
-        .and_then(|a| Path::new(&a).file_stem().map(|s| s == "monks"))
-        .unwrap_or(false);
-    // Never for mcp: AI apps show stderr as server errors.
-    if called_monks && args.next().is_none_or(|a| a != "mcp") {
-        eprintln!("`monks` is now `wpshq`. The old name works until 1.0.");
-    }
     let cli = Cli::parse();
     let home = match paths::data_dir() {
         Ok(h) => h,
