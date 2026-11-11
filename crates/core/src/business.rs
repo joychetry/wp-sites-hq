@@ -79,7 +79,7 @@ pub struct AppSettings {
 /// What moves in and out. Version 1.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Export {
-    pub monks_central: u32,
+    pub wp_sites_hq: u32,
     #[serde(default)]
     pub sites: Vec<SiteRow>,
     #[serde(default)]
@@ -350,7 +350,7 @@ fn from_csv(text: &str) -> Result<Export, SiteError> {
         col("client"),
     );
     Ok(Export {
-        monks_central: 1,
+        wp_sites_hq: 1,
         sites: rest
             .iter()
             .map(|r| SiteRow {
@@ -574,7 +574,7 @@ impl Core {
             })
             .collect();
         let export = Export {
-            monks_central: 1,
+            wp_sites_hq: 1,
             sites: rows,
             clients: clients.into_iter().map(|c| Client { id: 0, ..c }).collect(),
             costs,
@@ -592,7 +592,7 @@ impl Core {
         let data = if text.trim_start().starts_with('{') {
             let e: Export = serde_json::from_str(text)
                 .map_err(|e| plain(format!("This isn't an export WP Sites HQ can read: {e}.")))?;
-            if e.monks_central != 1 {
+            if e.wp_sites_hq != 1 {
                 return Err(plain(
                     "This export is from a newer WP Sites HQ. Update the app first.",
                 ));
@@ -1034,7 +1034,7 @@ mod tests {
         assert!(other.import("").unwrap_err().to_string().contains("empty"));
         assert!(
             other
-                .import("{\"monks_central\": 2}")
+                .import("{\"wp_sites_hq\": 2}")
                 .unwrap_err()
                 .to_string()
                 .contains("newer")
@@ -1046,7 +1046,7 @@ mod tests {
                 .to_string()
                 .contains("can read")
         );
-        let bad = r#"{"monks_central":1,"costs":[{"kind":"cost","label":"X","cents":1,"currency":"euro","every":"month"}]}"#;
+        let bad = r#"{"wp_sites_hq":1,"costs":[{"kind":"cost","label":"X","cents":1,"currency":"euro","every":"month"}]}"#;
         assert!(
             other
                 .import(bad)
@@ -1054,16 +1054,16 @@ mod tests {
                 .to_string()
                 .contains("A cost in the file, X")
         );
-        let blank = r#"{"monks_central":1,"costs":[{"kind":"cost","label":"X","cents":1,"currency":"EUR","every":"month","client":"   "}]}"#;
+        let blank = r#"{"wp_sites_hq":1,"costs":[{"kind":"cost","label":"X","cents":1,"currency":"EUR","every":"month","client":"   "}]}"#;
         let err = other.import(blank).unwrap_err().to_string();
         assert!(err.contains("Give the client a name"), "{err}");
         let long = format!(
-            r#"{{"monks_central":1,"sites":[{{"url":"https://b.test","client":"{}"}}]}}"#,
+            r#"{{"wp_sites_hq":1,"sites":[{{"url":"https://b.test","client":"{}"}}]}}"#,
             "x".repeat(121)
         );
         assert!(other.import(&long).is_err());
         // A cost whose site isn't here is named, not dropped quietly.
-        let away = r#"{"monks_central":1,"costs":[{"kind":"cost","label":"Y","cents":1,"currency":"EUR","every":"month","site":"https://gone.test"}]}"#;
+        let away = r#"{"wp_sites_hq":1,"costs":[{"kind":"cost","label":"Y","cents":1,"currency":"EUR","every":"month","site":"https://gone.test"}]}"#;
         let got = other.import(away).unwrap();
         assert_eq!(
             (got.costs, got.not_connected),

@@ -145,10 +145,10 @@ test("exports into Downloads and imports a file, saying what was left out", asyn
   expect(await screen.findByText("Saved /home/you/Downloads/sites.csv")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
   await waitFor(() => expect(calls.some((c) => c[0] === "file_show")).toBe(true));
-  const file = new File(['{"monks_central":1}'], "sites.json", { type: "application/json" });
+  const file = new File(['{"wp_sites_hq":1}'], "sites.json", { type: "application/json" });
   fireEvent.change(screen.getByLabelText("Import a JSON or CSV file"), { target: { files: [file] } });
   expect(await screen.findByText(/Imported: 1 site updated, 1 client added, 2 costs and charges added\. Not connected here, so left out: https:\/\/gone.test/)).toBeInTheDocument();
-  expect(calls.find((c) => c[0] === "sites_import")?.[1]).toEqual({ text: '{"monks_central":1}' });
+  expect(calls.find((c) => c[0] === "sites_import")?.[1]).toEqual({ text: '{"wp_sites_hq":1}' });
   expect(importNote({ sites: 0, clients: 0, costs: 1, not_connected: [] })).toBe("Imported: 0 sites updated, 0 clients added, 1 cost or charge added.");
 });
 

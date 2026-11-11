@@ -358,7 +358,7 @@ mod sys {
         for b in home.to_string_lossy().bytes() {
             h = (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
         }
-        format!(r"\\.\pipe\monks-central-{h:016x}")
+        format!(r"\\.\pipe\wp-sites-hq-{h:016x}")
     }
 
     /// Security attributes that grant the pipe to the current user only (the

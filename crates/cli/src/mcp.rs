@@ -446,11 +446,11 @@ mod tests {
     #[test]
     fn the_site_list_names_the_plugin_and_connector() {
         let s = json!({ "cm_version": "0.1.0", "capabilities": {
-            "plugin": { "name": "Monks Central", "version": "0.1.0" }, "connector": { "version": "1.1.0" } } });
+            "plugin": { "name": "WP Sites HQ", "version": "0.1.0" }, "connector": { "version": "1.1.0" } } });
         let out = site_summary(&s);
         assert_eq!(
             out["plugin"],
-            json!({ "name": "Monks Central", "version": "0.1.0" })
+            json!({ "name": "WP Sites HQ", "version": "0.1.0" })
         );
         assert_eq!(out["connector"], "1.1.0");
     }

@@ -6,7 +6,7 @@ ALTER TABLE jobs ADD COLUMN confirmed_at INTEGER;
 ALTER TABLE jobs ADD COLUMN declined_at INTEGER;
 UPDATE jobs SET confirmed_at = created_at;
 
--- What was done through Monks Central, and who started it (plan 5.8).
+-- What was done through the app, and who started it (plan 5.8).
 CREATE TABLE activity (
     id        INTEGER PRIMARY KEY,
     at        INTEGER NOT NULL DEFAULT (unixepoch()),
