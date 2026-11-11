@@ -5,16 +5,37 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 /// Same folder as Tauri's app data folder for the app identifier.
-pub const APP_ID: &str = "com.classicmonks.monks-central";
+pub const APP_ID: &str = "com.goodmonks.wpsiteshq";
+
+/// Remove after 0.5: the app's identifier until 0.4.1, also its keychain
+/// service. Used only by the one-time moves below and in `vault`.
+pub(crate) const OLD_APP_ID: &str = "com.classicmonks.monks-central";
 
 /// `MONKS_HOME` if set, else the OS app-data folder.
 pub fn data_dir() -> io::Result<PathBuf> {
     if let Some(home) = std::env::var_os("MONKS_HOME").filter(|v| !v.is_empty()) {
         return Ok(PathBuf::from(home));
     }
-    dirs::data_dir()
-        .map(|d| d.join(APP_ID))
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "no app data folder on this system"))
+    let root = dirs::data_dir().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::NotFound, "no app data folder on this system")
+    })?;
+    move_old_folder(&root)?;
+    Ok(root.join(APP_ID))
+}
+
+/// Remove after 0.5: one-time move of the data folder from the old identifier,
+/// only while the new one doesn't exist. Same parent folder, so a plain rename.
+fn move_old_folder(root: &Path) -> io::Result<()> {
+    let (old, new) = (root.join(OLD_APP_ID), root.join(APP_ID));
+    if old.is_dir() && !new.exists() {
+        std::fs::rename(&old, &new).map_err(|e| {
+            io::Error::new(
+                e.kind(),
+                format!("Couldn't move {} to {}: {e}", old.display(), new.display()),
+            )
+        })?;
+    }
+    Ok(())
 }
 
 /// Create `dir` if needed and make it owner-only on Unix.
@@ -108,6 +129,29 @@ mod tests {
             "noext (2)"
         );
         assert!(c.exists());
+    }
+
+    #[test]
+    fn old_data_folder_moves_once() {
+        let root = tempfile::tempdir().unwrap();
+        let (old, new) = (
+            root.path().join(super::OLD_APP_ID),
+            root.path().join(super::APP_ID),
+        );
+        std::fs::create_dir(&old).unwrap();
+        std::fs::write(old.join("monks.db"), b"sites").unwrap();
+        super::move_old_folder(root.path()).unwrap();
+        assert!(!old.exists());
+        assert_eq!(std::fs::read(new.join("monks.db")).unwrap(), b"sites");
+        // Once the new folder exists, an old one (made by an old copy of the app) stays put.
+        std::fs::create_dir(&old).unwrap();
+        super::move_old_folder(root.path()).unwrap();
+        assert!(old.exists());
+        assert_eq!(std::fs::read(new.join("monks.db")).unwrap(), b"sites");
+        // Nothing to move: nothing made.
+        let empty = tempfile::tempdir().unwrap();
+        super::move_old_folder(empty.path()).unwrap();
+        assert!(!empty.path().join(super::APP_ID).exists());
     }
 
     #[cfg(unix)]
