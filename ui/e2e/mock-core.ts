@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // A stand-in for the Tauri core so Playwright can drive the UI in a plain
-// browser (vite --mode mock). Pick the data with ?fixture=fleet|fleet300|first|empty|loading|error
+// browser (vite --mode mock). Pick the data with ?fixture=fleet|fleet300|first|empty|loading|error|crash
 // (first: one site, as just after adding it).
 import { ACF_FIELDS } from "./acf-fixture";
 import type { Action, ActivityRow, AppSettings, ReportAsk, Bundle, Change, Client, Comment, Cost, Controls, Entry, Item, Job, Media, Monitor, Post, PostType, Product, SecurityReport, Site, SiteInventory, Summary, User } from "../src/api";
@@ -963,7 +963,8 @@ export async function invoke<T>(cmd: string, args: Record<string, unknown> = {})
       await new Promise((ok) => setTimeout(ok, 200));
       return r({ file: `${"a".repeat(64)}.zip`, name: args.name, size: 2_400_000 });
     case "clients_list":
-      return r(CLIENTS);
+      // ?fixture=crash: a malformed answer that makes Clients throw, to show the page error inside the shell.
+      return r(fixture === "crash" ? {} : CLIENTS);
     case "client_save": {
       const c = args.client as Client;
       const saved = { ...c, id: c.id || CLIENTS.length + 1 };

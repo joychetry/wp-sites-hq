@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Feedback pieces: toasts (with Undo), tooltips, loading skeletons, a progress bar and empty states.
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Component, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button, Glyph, Icon, type GlyphName } from "./ui";
+import { Button, Details, Glyph, Icon, type GlyphName } from "./ui";
 import type { Site, Tone } from "../api";
 
 type Action = { label: string; icon?: GlyphName; run: () => unknown };
@@ -272,4 +272,54 @@ export function Blocked({ site, reason, title, extra, small }: { site: { id: num
       <p>{reason}</p>
     </Empty>
   );
+}
+
+/**
+ * Catches a screen's render error so the sidebar and top bar stay usable. App.tsx keys it by page, so going to
+ * another page clears it; Reload this page draws the screen again.
+ */
+export class PageError extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: { componentStack?: string | null }) {
+    console.error("A page hit an error:", error, info.componentStack);
+  }
+  render() {
+    const { error } = this.state;
+    if (!error) return this.props.children;
+    const text = String(error.stack ?? error);
+    return (
+      <div className="empty" role="alert">
+        <span className="danger-disc" aria-hidden="true">
+          <Glyph name="alert" />
+        </span>
+        <h2>This page hit an error</h2>
+        <p>
+          <b>Nothing was changed.</b> The rest of the app still works: reload this page, or open another one.
+        </p>
+        <div className="row">
+          <Button onClick={() => this.setState({ error: null })}>
+            Reload this page
+            <Glyph name="refresh" />
+          </Button>
+          <Button
+            onClick={() =>
+              navigator.clipboard.writeText(text).then(
+                () => toast("Copied the error details."),
+                () => toast("Couldn't copy the details. Select them and copy instead.", { tone: "danger" }),
+              )
+            }
+          >
+            Copy details
+            <Glyph name="copy" />
+          </Button>
+        </div>
+        <Details>
+          <p className="jobraw">{text}</p>
+        </Details>
+      </div>
+    );
+  }
 }
