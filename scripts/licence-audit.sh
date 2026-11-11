@@ -10,7 +10,11 @@ cd "$(dirname "$0")/.."
 cargo deny check
 
 allowed="MIT;Apache-2.0;Apache-2.0 OR MIT;MIT-0;ISC;BSD-2-Clause;BSD-3-Clause;MPL-2.0;BlueOak-1.0.0;CC0-1.0"
-# TinyMCE (self-hosted, under its GPL licence key): GPL-2.0-or-later can be taken as GPL-3.0, our licence.
-allowed+=";GPL-2.0-or-later"
 cd ui
-npx --yes license-checker@25.0.1 --excludePrivatePackages --onlyAllow "$allowed" --summary
+# TinyMCE 8 says "SEE LICENSE IN license.md": GPL-2.0-or-later or Tiny's own terms. We use it under
+# the GPL (licence key "gpl"), which can be taken as GPL-3.0, our licence. Check that text, then
+# leave it out of the SPDX check.
+tiny="tinymce@$(node -p 'require("./node_modules/tinymce/package.json").version')"
+grep -q "GNU General Public License Version 2 or later" node_modules/tinymce/license.md \
+  || { echo "$tiny: licence no longer offers GPL-2.0-or-later" >&2; exit 1; }
+npx --yes license-checker@25.0.1 --excludePrivatePackages --excludePackages "$tiny" --onlyAllow "$allowed" --summary

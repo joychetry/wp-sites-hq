@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The content editor: TinyMCE 7 in inline mode, so the text sits in the app's own page and takes
+// The content editor: TinyMCE 8 in inline mode, so the text sits in the app's own page and takes
 // its theme. RichText is a whole body (Visual and Text tabs, WordPress's toolbar, Add media);
 // InlineText is one text block of a block page, started when it gets focus.
 import { useEffect, useRef, useState } from "react";
