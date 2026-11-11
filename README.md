@@ -8,7 +8,7 @@ agents for 3 to 300 WordPress sites, from one desktop app on macOS, Windows and
 Linux. No account, no cloud, no per-site price: your sites and their keys stay
 on your computer ([privacy](PRIVACY.md)).
 
-Website: [wpsiteshq.com](https://wpsiteshq.com). Status: 0.4.0 beta.
+Website: [wpsiteshq.com](https://wpsiteshq.com). Status: 0.4.1 beta.
 
 ![The Overview: what needs you across every site](docs/images/overview.webp)
 

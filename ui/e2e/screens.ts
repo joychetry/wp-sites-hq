@@ -25,6 +25,7 @@ export const SCREENS: Screen[] = [
   { name: "overview" },
   { name: "overview-empty", fixture: "empty" },
   { name: "overview-first-site", fixture: "first" },
+  { name: "page-error", fixture: "crash", open: nav("Clients") },
   { name: "sites", open: nav("Sites") },
   {
     name: "sites-selected",

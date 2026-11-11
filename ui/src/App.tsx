@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The shell: sidebar, top bar, page head, Ctrl K palette, theme.
-import { Empty, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
+import { Empty, PageError, Skeleton, Toaster, Tooltips, dismissAll, toast } from "./components/feedback";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api, contentBlocked, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type ContentHit, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
@@ -634,7 +634,7 @@ export default function App() {
                 </div>
               }
             >
-              {body}
+              <PageError key={section}>{body}</PageError>
             </Suspense>
           </HeadSlot.Provider>
         </main>

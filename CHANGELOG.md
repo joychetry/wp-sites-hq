@@ -4,6 +4,62 @@ All notable changes to WP Sites HQ (called Monks Central until 0.3.2). The forma
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org).
 
+## [0.4.1] - 2026-11-10
+
+Fixes from the release test, a Classic Monks page like the plugin's own
+dashboard, and search in Ctrl K.
+
+### Search
+- Search lives in the Ctrl K (Cmd K on a Mac) palette. The Search
+  everything page is gone.
+- A plugin, theme, client or post found there opens on its own page.
+
+### Classic Monks
+- One Controls view laid out like the plugin's dashboard, following each
+  site's own tabs.
+- A control shows only while the switch it depends on is on.
+- All ten tabs fit at 1440 pixels wide, and messages no longer cover the
+  Save bar.
+- Changes are logged with the control's name, as plain sentences.
+
+### Every page
+- A page that hits an error now says so in the page, with the error text,
+  Reload this page and Copy details. The sidebar and top bar keep working,
+  and opening another page clears it.
+- A lighter background behind the content in the light theme.
+- Site and package names sort by number: Shop 2 comes before Shop 10.
+- At 200% zoom, tables keep their name column and scroll sideways.
+- Buttons are named by their words for screen readers, and tooltips use
+  the app's own tip.
+- Selected rows stand out in the dark theme.
+- AI plans name the AI app that proposed them.
+
+### Pages
+- **Sites:** bulk actions count and act on only the selected sites that
+  are shown. The site panel's Last check reason wraps.
+- **Overview:** Needs attention and the sentence count the same sites as
+  the top bar. Vulnerable plugins count plugins, not advisories. See all
+  activity opens AI on its Activity tab.
+- **Monitoring:** the table fits at 1280 pixels wide, a row's Check again
+  checks only that site, more than three down sites show as a count, and
+  one down site says when it went down. The page draws when no site is
+  down.
+- **Content and editor:** every post type shows in the toolbar. Trashed
+  posts open read-only, and Save is always in reach.
+- **Media:** a replacement waits for your OK before it runs, with Undo.
+- **Comments:** approve with a reply, and Undo for spam and trash.
+- **Users:** search as you type. An email address without @ is named as
+  the problem, at the field.
+- **Users and Comments:** more than three sites to sign in again are one
+  note.
+- **Clients:** deleting a cost asks first.
+- **Settings:** Search Console turns on only after Save and connect.
+
+### Sites with a PHP fatal error
+- A site that shows a PHP fatal error page counts as down, even when it
+  answers with status 200, and the check names the error.
+- Such a page never costs a site its saved sign-in.
+
 ## [0.4.0] - 2026-10-31
 
 Monks Central is now WP Sites HQ. Same app, same data, new name.
