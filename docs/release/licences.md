@@ -1,6 +1,6 @@
 # Licence audit
 
-Monks Central is GPL-3.0-or-later (plan D2). Every dependency must be
+WP Sites HQ is GPL-3.0-or-later (plan D2). Every dependency must be
 compatible with it, and no AGPL code may be used anywhere (plan D1). Re-run
 before each release:
 
