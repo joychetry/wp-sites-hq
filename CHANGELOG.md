@@ -6,7 +6,9 @@ All notable changes to WP Sites HQ. The format follows
 
 ## [Unreleased]
 
-The app drops the last of its old name.
+## [0.5.0] - 2026-11-12
+
+The app drops the last of its old name and gets its new logo and icon.
 
 ### What changes
 - New app identifier `com.goodmonks.wpsiteshq` (publisher Good Monks). On
@@ -278,7 +280,8 @@ The first public beta. Unsigned installers for macOS, Windows and Linux.
   before it installs.
 - The `monks` command line is installed with the app.
 
-[Unreleased]: https://github.com/joychetry/wp-sites-hq/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/joychetry/wp-sites-hq/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/joychetry/wp-sites-hq/compare/v0.3.1...v0.3.2
