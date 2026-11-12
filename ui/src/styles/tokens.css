@@ -25,6 +25,8 @@
   /* The one green: filled main actions, on states, dots */
   --green: #01824c;
   --green-hover: #016b3f;
+  --logo: #01824c; /* WP Sites HQ mark and "HQ" */
+  --logo-word: #0d1411; /* "WP Sites" */
   --on-green: #ffffff;
   --accent: #01824c; /* dots and icons */
   --code-bg: #0a0f0d; /* text to copy into another app: a dark block in both themes */
@@ -138,6 +140,8 @@
   --focus: #3dbf82;
   --green: #01824c;
   --green-hover: #016b3f;
+  --logo: #3dbf82; /* mint: the bare green mark goes muddy on dark */
+  --logo-word: #ffffff;
   --on-green: #ffffff;
   --accent: #3dbf82;
   --code-bg: #0b0b0b;

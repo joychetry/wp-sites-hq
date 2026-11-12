@@ -18,6 +18,11 @@ The app drops the last of its old name.
   installer no longer removes an install under the old name.
 - Sites exports say `"wp_sites_hq": 1`; exports from older versions need
   that key renamed before import.
+- New logo: the green Q mark and the WP Sites HQ wordmark replace the
+  Classic Monks mark in the sidebar, the welcome card and the plugin badge.
+  The sidebar no longer says "by Classic Monks". The Classic Monks page keeps
+  its own mark.
+- New app icon (Windows, macOS, Linux and the tray) and favicons.
 
 ## [0.4.1] - 2026-11-10
 
