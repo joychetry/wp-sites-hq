@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api, contentBlocked, hasTool, useAppUpdate, useInventory, useMonitors, usePlans, useSecurity, useSites, type Change, type ContentHit, type CoreStatus, type Site } from "./api";
 import { useDensity, useTheme, type ThemeChoice } from "./theme";
 import { ago, dayTime, time } from "./format";
-import { AddSiteButton, Button, Glyph, HeadSlot, Kbd, Logo, type GlyphName } from "./components/ui";
+import { AddSiteButton, Button, CmLogo, Glyph, HeadSlot, Kbd, Lockup, type GlyphName } from "./components/ui";
 import { Palette, PALETTE_KEYS, type Command } from "./components/Palette";
 import { Select } from "./components/controls";
 import { Page } from "./components/page";
@@ -492,11 +492,7 @@ export default function App() {
       </a>
       <nav className={menu ? "rail open" : "rail"} aria-label="Main">
         <div className="brand">
-          <Logo />
-          <p>
-            WP Sites HQ
-            <small>by Classic Monks</small>
-          </p>
+          <Lockup />
           <button type="button" className="btn sm rail-menu" aria-expanded={menu} aria-controls="rail-nav" onClick={() => setMenu(!menu)}>
             {menu ? "Close menu" : "Menu"}
             <Glyph name={menu ? "x" : "menu"} />
@@ -520,7 +516,7 @@ export default function App() {
                       onPointerEnter={() => preload(s, scoped)}
                       onFocus={() => preload(s, scoped)}
                     >
-                      {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <Logo />}
+                      {NAV_ICONS[s] ? <Glyph name={NAV_ICONS[s]} /> : <CmLogo />}
                       {s}
                       {live && counts[s] && (
                         <span className={counts[s].alert ? "n alert" : "n"}>
@@ -618,7 +614,7 @@ export default function App() {
         <main className="body" id="content" tabIndex={-1}>
           <header className="phead">
             <div className={section === "Classic Monks" ? "marked" : undefined}>
-              {section === "Classic Monks" && <Logo />}
+              {section === "Classic Monks" && <CmLogo />}
               <h1>{section}</h1>
               <p>{section === "Overview" && all.length > 0 && live ? sentence : ABOUT[section]}</p>
             </div>
