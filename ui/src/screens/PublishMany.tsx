@@ -8,7 +8,7 @@ import { day, time } from "../format";
 import { contentBlocked, type Change, type Site } from "../api";
 import type { PlanRow } from "../components/JobSheet";
 import { SiteTile } from "../components/SiteTile";
-import { Button, Glyph } from "../components/ui";
+import { Button } from "../components/ui";
 import { Sheet } from "../components/Sheet";
 import { siteDate, toBlocks } from "./Editor";
 
@@ -68,11 +68,8 @@ export function PublishMany({ sites, first, onClose, onPlan }: Props) {
     <>
       <span className="sum">{picked.size === 1 ? "1 site" : `${picked.size} sites`} selected</span>
       <Button onClick={onClose}>Close without saving</Button>
-      <Button kind="primary" className="disc" onClick={review}>
+      <Button kind="primary" arrow onClick={review}>
         Review the plan
-        <span className="btn-disc">
-          <Glyph name="arrow" />
-        </span>
       </Button>
     </>
   );

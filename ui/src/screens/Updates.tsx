@@ -291,11 +291,8 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
           <Glyph name="refresh" />
         </Button>
         {/* Follows the kind filter: what you see is what it updates. */}
-        <Button kind="primary" className="disc" disabled={shown.length === 0} onClick={() => onPlan(planTitle(shown), shown)}>
+        <Button kind="primary" arrow disabled={shown.length === 0} onClick={() => onPlan(planTitle(shown), shown)}>
           {kind === "all" ? `Update all ${rows.length}` : `Update ${shown.length} shown`}
-          <span className="btn-disc">
-            <Glyph name="arrow" />
-          </span>
         </Button>
       </HeadActions>
       <Toolbar>

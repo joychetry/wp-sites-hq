@@ -165,11 +165,8 @@ export function Clients({ sites, focus }: { sites: Site[]; focus?: number }) {
           Add a cost or charge
           <Glyph name="plus" />
         </Button>
-        <Button kind="primary" className="disc" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
+        <Button kind="primary" disc="plus" onClick={() => setEditing({ client: { id: 0, name: "", email: "", notes: "" } })}>
           Add a client
-          <span className="btn-disc">
-            <Glyph name="plus" />
-          </span>
         </Button>
       </HeadActions>
       {clients.length === 0 && costs.length === 0 ? (
@@ -424,11 +421,8 @@ function ClientSheet({ client, sites, onClose, onDone }: { client: Client; sites
       <Button className="ghost" onClick={onClose}>
         Close without saving
       </Button>
-      <Button kind="primary" className="disc" disabled={busy || !c.name.trim()} onClick={save}>
+      <Button kind="primary" disc={isNew ? "plus" : "arrow-right"} disabled={busy || !c.name.trim()} onClick={save}>
         {busy ? "Saving…" : isNew ? "Add the client" : "Save changes"}
-        <span className="btn-disc">
-          <Glyph name={isNew ? "plus" : "check"} />
-        </span>
       </Button>
     </>
   );
@@ -525,11 +519,8 @@ function CostSheet({ cost, sites, clients, currencies, onClose, onDone }: { cost
       <Button className="ghost" onClick={onClose}>
         Close without saving
       </Button>
-      <Button kind="primary" className="disc" disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
+      <Button kind="primary" disc={isNew ? "plus" : "arrow-right"} disabled={busy || !k.label.trim() || cents == null || !on} onClick={save}>
         {busy ? "Saving…" : isNew ? `Add the ${noun}` : "Save changes"}
-        <span className="btn-disc">
-          <Glyph name={isNew ? "plus" : "check"} />
-        </span>
       </Button>
     </>
   );

@@ -25,6 +25,7 @@
   /* The one green: filled main actions, on states, dots */
   --green: #01824c;
   --green-hover: #016b3f;
+  --green-lift: #02995a; /* the primary disc on hover */
   --logo: #01824c; /* WP Sites HQ mark and "HQ" */
   --logo-word: #0d1411; /* "WP Sites" */
   --on-green: #ffffff;

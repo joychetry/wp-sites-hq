@@ -255,13 +255,8 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall, filte
             <Glyph name="plus" />
           </Button>
         )}
-        <Button kind="primary" className={allUpdates.length ? "disc" : undefined} disabled={allUpdates.length === 0} onClick={() => onPlan(updateLabel, allUpdates, "plan")}>
+        <Button kind="primary" arrow disabled={allUpdates.length === 0} onClick={() => onPlan(updateLabel, allUpdates, "plan")}>
           {updateLabel}
-          {allUpdates.length > 0 && (
-            <span className="btn-disc">
-              <Glyph name="arrow" />
-            </span>
-          )}
         </Button>
       </HeadActions>
       <Page className="mx" side={side}>
@@ -466,13 +461,10 @@ function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, ev
           key="up"
           small
           kind="primary"
-          className="disc"
+          arrow
           onClick={() => onRun(`Update ${name} on ${s.name}`, one(plugin ? { do: "update_plugin", plugin: id } : { do: "update_theme", theme: id }))}
         >
           Update to {item.update}
-          <span className="btn-disc">
-            <Glyph name="arrow" />
-          </span>
         </Button>,
       );
     if (plugin && !item.active && can(s, "activate_plugin"))
@@ -725,11 +717,8 @@ function RollBack({ site: s, id, name, item, canAuto, advisories, initial, onClo
       footer={
         <>
           <Button onClick={onClose}>Close without changes</Button>
-          <Button kind="primary" className="disc" disabled={!pick} onClick={go}>
+          <Button kind="primary" arrow disabled={!pick} onClick={go}>
             Review the rollback
-            <span className="btn-disc">
-              <Glyph name="arrow" />
-            </span>
           </Button>
         </>
       }

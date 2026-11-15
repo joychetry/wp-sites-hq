@@ -24,25 +24,37 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 /* Keys and buttons: pills. Primary is ink in light and the one green in dark. */
 .kbd { white-space: nowrap; font: 500 var(--fs-xs)/1 var(--mono); color: var(--text-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: var(--radius-sm); background: var(--bg); padding: 3px 6px 2px; min-width: 22px; text-align: center; display: inline-block; }
 .btn { height: var(--control); padding: 0 var(--sp-4); border-radius: var(--radius-pill); border: 1px solid var(--control-line); background: var(--bg); color: var(--text); font-size: var(--fs); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); white-space: nowrap; text-decoration: none; }
-.btn:hover:not(:disabled) { background: var(--panel); border-color: var(--line-ui); }
+.btn:hover:not(:disabled) { border-color: var(--text); }
 .btn .glyph { width: 15px; height: 15px; }
 .btn.primary { background: var(--btn-ink); color: var(--btn-on-ink); border-color: var(--btn-ink); }
-.btn.primary:hover:not(:disabled) { background: var(--btn-ink-hover); border-color: var(--btn-ink-hover); }
+.btn.primary:hover:not(:disabled) { background: var(--btn-ink-hover); border-color: var(--btn-ink-hover); box-shadow: 0 8px 20px -10px rgba(1, 84, 51, 0.55), 0 2px 4px rgba(13, 20, 17, 0.12); }
 [data-theme="dark"] .btn.primary { background: var(--green); color: var(--on-green); border-color: var(--green); }
-[data-theme="dark"] .btn.primary:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); }
+[data-theme="dark"] .btn.primary:hover:not(:disabled) { background: var(--green-hover); border-color: var(--green-hover); box-shadow: none; }
 .btn.primary .kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 35%, transparent); }
 .btn.soft { background: var(--tint); color: var(--brand-text); border-color: transparent; }
 .btn.soft:hover:not(:disabled) { background: var(--tint-2); border-color: transparent; }
 .btn.danger { color: var(--danger); }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
 .btn.sm { height: var(--control-sm); padding: 0 var(--sp-3); font-size: var(--fs-sm); gap: 6px; }
-/* A round disc at the end of a pill holds its icon (the design's cm-btn__disc), after the words. */
-.btn.disc { padding-right: 5px; }
-.btn-disc { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--green); color: var(--on-green); flex: none; }
-[data-theme="dark"] .btn-disc { background: rgba(255, 255, 255, 0.18); }
+/* The disc (classicmonks.com's cm-btn__disc): a circle 10px smaller than the pill, at its end with the arrow,
+   or at its start with the back arrow, the same 5px from the edge on every side. */
+.btn.disc { padding-right: 4px; gap: 10px; }
+.btn.back { padding-left: 4px; gap: 10px; }
+.btn.sm.disc, .btn.sm.back { gap: 8px; }
+.btn-disc { display: inline-grid; place-items: center; width: calc(var(--control) - 10px); height: calc(var(--control) - 10px); border-radius: 50%; background: var(--panel); color: var(--text); flex: none; }
+.btn.sm .btn-disc { width: calc(var(--control-sm) - 10px); height: calc(var(--control-sm) - 10px); }
 .btn-disc .glyph { width: 13px; height: 13px; }
+.btn.sm .btn-disc .glyph { width: 12px; height: 12px; }
+.btn.ghost .btn-disc, .btn.quiet .btn-disc { background: var(--raise); }
+.btn.primary .btn-disc { background: var(--green); color: var(--on-green); }
+.btn.primary:hover:not(:disabled) .btn-disc { background: var(--green-lift); }
+.btn.soft .btn-disc { background: var(--bg); color: var(--brand-text); }
+/* On a green pill (primary in dark, the selection bar's primary) the disc turns white with a green arrow. */
+[data-theme="dark"] .btn.primary .btn-disc, [data-theme="dark"] .btn.primary:hover:not(:disabled) .btn-disc, .selbar .btn.primary .btn-disc { background: #ffffff; color: var(--green); }
+[data-theme="dark"] .btn-disc { background: var(--raise); }
+[data-theme="dark"] .btn.soft .btn-disc { background: var(--bg); }
 /* Disabled never looks ready: the disc goes grey, the key hint goes, and a dark green primary loses its green. */
-.btn:disabled .btn-disc { background: var(--line-2); color: var(--text-3); }
+.btn:disabled .btn-disc, [data-theme="dark"] .btn:disabled .btn-disc, .selbar .btn:disabled .btn-disc { background: var(--line-2); color: var(--text-3); }
 .btn:disabled .kbd { display: none; }
 /* Disabled primary reads as off in dark: a dashed edge and dim words, never an outline that looks ready.
    A disabled danger button keeps a faint danger tint, so it still says what it would do. */
@@ -177,6 +189,7 @@ small { font-size: var(--fs-sm); }
 .selbar .btn:hover:not(:disabled) { background: color-mix(in srgb, currentColor 12%, transparent); border-color: color-mix(in srgb, currentColor 50%, transparent); }
 .selbar .btn.primary { background: var(--green); color: var(--on-green); border-color: var(--green); }
 .selbar .btn.danger { color: inherit; }
+.selbar .btn:not(.primary) .btn-disc { background: color-mix(in srgb, currentColor 16%, transparent); color: inherit; }
 .selbar .dim, .selbar .kbd { color: inherit; }
 .selbar .kbd { background: transparent; border-color: color-mix(in srgb, currentColor 35%, transparent); }
 .selbar :focus-visible { outline-color: var(--btn-on-ink); }
@@ -270,7 +283,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .quiet { margin: 0; padding: var(--sp-4) var(--pad); color: var(--text-3); }
 /* A quiet button is a ghost: no border, readable words, never the greyed look of a disabled one. */
 .btn.quiet { margin: 0; padding: 0 var(--sp-3); background: transparent; border-color: transparent; box-shadow: none; color: var(--text-2); }
-.btn.quiet:hover:not(:disabled) { background: var(--panel); color: var(--text); }
+.btn.quiet:hover:not(:disabled) { background: var(--panel); border-color: transparent; color: var(--text); }
 .note { margin: 0; padding: var(--sp-3) var(--pad); color: var(--text-3); font-size: var(--fs-sm); }
 
 /* Overview (board 01): stat cards, then two columns of cards */
@@ -396,7 +409,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .sheet footer { padding: 14px var(--sp-5); border-top: 1px solid var(--line); background: var(--panel); display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; justify-content: flex-end; }
 /* The foot's other buttons are quiet (the design's ghost buttons); only the main one is filled. */
 .sheet footer .btn:not(.primary):not(.danger) { background: transparent; border-color: transparent; color: var(--text-2); }
-.sheet footer .btn:not(.primary):not(.danger):hover:not(:disabled) { background: var(--bg); color: var(--text); }
+.sheet footer .btn:not(.primary):not(.danger):hover:not(:disabled) { background: var(--bg); border-color: transparent; color: var(--text); }
 .sheet footer .sum { margin-right: auto; color: var(--text-2); }
 /* The design's centred dialog (Add a site, Sign in again): no head line, the body flows from the head. */
 .sheet.dialog { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-float); }

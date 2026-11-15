@@ -618,8 +618,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
     return (
       <Page className="ed-page">
         <div className="ed-top">
-          <Button onClick={onClose}>
-            <Glyph name="arrow-left" />
+          <Button back onClick={onClose}>
             {back ?? `Back to ${type.label.toLowerCase()}`}
           </Button>
         </div>
@@ -677,8 +676,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
   return (
     <Page className="ed-page">
       <div className="ed-top">
-        <Button onClick={leave}>
-          <Glyph name="arrow-left" />
+        <Button back onClick={leave}>
           {back ?? `Back to ${type.label.toLowerCase()}`}
         </Button>
         <h2 ref={heading} tabIndex={-1}>

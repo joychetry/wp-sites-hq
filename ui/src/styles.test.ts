@@ -92,13 +92,17 @@ describe("page system", () => {
   });
 
   it("starts every back and previous button with the left arrow", () => {
-    // Words like "Back to pages" right after a button opens, with no arrow before them.
+    // Words like "Back to pages" right after a button opens, with no arrow before them (the `back` prop draws it in a disc).
+    const lead = (s: string, at: number) => /\sback[\s>]/.test(s.slice(s.lastIndexOf("<", at - 1), at + 1));
     const bad = tsx.flatMap(([f, s]) =>
-      [...s.matchAll(/>(?=\s*(Back|Previous|Return|Go back|\{back\b))/g)].filter((m) => opensButton(s, m.index + 1)).map((m) => `${f}: ${s.slice(m.index, m.index + 40)}`),
+      [...s.matchAll(/>(?=\s*(Back|Previous|Return|Go back|\{back\b))/g)]
+        .filter((m) => opensButton(s, m.index + 1) && !lead(s, m.index))
+        .map((m) => `${f}: ${s.slice(m.index, m.index + 40)}`),
     );
     expect(bad).toEqual([]);
     // And the left arrow means back: it never sits before other words, nor after any.
-    const misused = tsx.flatMap(([f, s]) => [...s.matchAll(/<Glyph name="arrow-left" \/>/g)].filter((m) => !BACK.test(s.slice(m.index + m[0].length))).map(() => f));
+    // ui.tsx is exempt: its Button draws the arrow for the `back` prop.
+    const misused = tsx.filter(([f]) => !f.endsWith("/ui.tsx")).flatMap(([f, s]) => [...s.matchAll(/<Glyph name="arrow-left" \/>/g)].filter((m) => !BACK.test(s.slice(m.index + m[0].length))).map(() => f));
     expect(misused).toEqual([]);
   });
 });

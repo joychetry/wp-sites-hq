@@ -82,15 +82,32 @@ type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   kind?: "primary" | "danger" | "soft";
   small?: boolean;
   keys?: string;
+  /** The arrow disc at the end: the button moves the user forward or somewhere else. */
+  arrow?: boolean;
+  /** A disc at the end with another icon, like the plus on add buttons. */
+  disc?: GlyphName;
+  /** The back arrow, in a disc before the words. */
+  back?: boolean;
   ref?: React.Ref<HTMLButtonElement>;
 };
 
-export function Button({ kind, small, keys, className, children, ...rest }: BtnProps) {
-  const cls = ["btn", kind, small && "sm", className].filter(Boolean).join(" ");
+export function Button({ kind, small, keys, arrow, disc, back: lead, className, children, ...rest }: BtnProps) {
+  const icon = disc ?? (arrow ? "arrow-right" : undefined);
+  const cls = ["btn", kind, small && "sm", icon && "disc", lead && "back", className].filter(Boolean).join(" ");
   return (
     <button type="button" className={cls} {...rest}>
+      {lead && (
+        <span className="btn-disc go" aria-hidden="true">
+          <Glyph name="arrow-left" />
+        </span>
+      )}
       {children}
       {keys && <Kbd>{keys}</Kbd>}
+      {icon && (
+        <span className={icon === "arrow-right" ? "btn-disc go" : "btn-disc"} aria-hidden="true">
+          <Glyph name={icon} />
+        </span>
+      )}
     </button>
   );
 }
@@ -98,12 +115,8 @@ export function Button({ kind, small, keys, className, children, ...rest }: BtnP
 /** The one "Add a site" button: primary, the A key, and the plus disc, wherever it appears. */
 export function AddSiteButton({ onClick }: { onClick: () => void }) {
   return (
-    <Button kind="primary" className="disc" aria-keyshortcuts="A" onClick={onClick}>
+    <Button kind="primary" disc="plus" keys="A" aria-keyshortcuts="A" onClick={onClick}>
       Add a site
-      <Kbd>A</Kbd>
-      <span className="btn-disc">
-        <Glyph name="plus" />
-      </span>
     </Button>
   );
 }

@@ -221,11 +221,8 @@ export function Users({ sites }: { sites: Site[] }) {
   return (
     <Page className="users">
       <HeadActions>
-        <Button kind="primary" className="disc" disabled={usable.length === 0} onClick={() => setAction({ kind: "add" })}>
+        <Button kind="primary" disc="plus" disabled={usable.length === 0} onClick={() => setAction({ kind: "add" })}>
           Add a user
-          <span className="btn-disc">
-            <Glyph name="plus" />
-          </span>
         </Button>
       </HeadActions>
       <Toolbar label="Which users to show">
@@ -322,11 +319,8 @@ function AddUser({ sites, onClose, onDone }: { sites: Site[] } & SheetProps) {
           <Button className="ghost" onClick={onClose}>
             Close without saving
           </Button>
-          <Button kind="primary" className="disc" disabled={busy || !info} onClick={save}>
+          <Button kind="primary" disc="plus" disabled={busy || !info} onClick={save}>
             {busy ? "Adding…" : admin ? "Add the administrator" : "Add the user"}
-            <span className="btn-disc">
-              <Glyph name="plus" />
-            </span>
           </Button>
         </>
       }
@@ -408,11 +402,8 @@ function ChangeRole({ site, user, roles, onClose, onDone }: { site: Site; user: 
           <Button className="ghost" onClick={onClose}>
             Close without saving
           </Button>
-          <Button kind="primary" className="disc" disabled={busy || role === user.role} onClick={save}>
+          <Button kind="primary" arrow disabled={busy || role === user.role} onClick={save}>
             {busy ? "Changing…" : `Make them ${aRole(roles, role)}`}
-            <span className="btn-disc">
-              <Glyph name="check" />
-            </span>
           </Button>
         </>
       }

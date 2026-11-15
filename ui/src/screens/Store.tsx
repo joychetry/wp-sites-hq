@@ -426,11 +426,8 @@ function ProductSheet({ product, site, thumb, currency, onClose, onPlan }: Sheet
   const footer = (
     <>
       <Button onClick={onClose}>Close without saving</Button>
-      <Button kind="primary" className="disc" disabled={typeof change === "string"} onClick={() => typeof change !== "string" && onPlan(change)}>
+      <Button kind="primary" arrow disabled={typeof change === "string"} onClick={() => typeof change !== "string" && onPlan(change)}>
         {`Change ${product.name}`}
-        <span className="btn-disc">
-          <Glyph name="check" />
-        </span>
       </Button>
     </>
   );

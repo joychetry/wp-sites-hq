@@ -677,11 +677,8 @@ export function Media({ sites }: { sites: Site[] }) {
     >
       {site && !blocked && (
         <HeadActions>
-          <Button kind="primary" className="disc" aria-expanded={upOpen} onClick={() => setUpOpen(!upOpen)}>
+          <Button kind="primary" disc="upload" aria-expanded={upOpen} onClick={() => setUpOpen(!upOpen)}>
             Upload files
-            <span className="btn-disc">
-              <Glyph name="upload" />
-            </span>
           </Button>
         </HeadActions>
       )}
@@ -753,11 +750,8 @@ export function Media({ sites }: { sites: Site[] }) {
                 <input id="media-import-alt" className="input" placeholder="Describe the image" value={alt} onChange={(e) => setAlt(e.target.value)} />
               </div>
               <div>
-                <Button className="disc" type="submit" disabled={importing || !link.trim()}>
+                <Button disc="download" type="submit" disabled={importing || !link.trim()}>
                   {importing ? "Importing…" : "Import the image"}
-                  <span className="btn-disc">
-                    <Glyph name="download" />
-                  </span>
                 </Button>
               </div>
             </div>

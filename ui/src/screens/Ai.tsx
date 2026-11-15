@@ -243,11 +243,8 @@ function Plans({ plans: all, sites, onWatch, focusPlan, onConnect }: PlansProps)
                   <Button disabled={busy === p.id} aria-label={`Decline ${p.title}`} onClick={() => decide(p, false)}>
                     Decline
                   </Button>
-                  <Button kind="primary" className="disc" disabled={busy === p.id} aria-label={`Confirm and make ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
+                  <Button kind="primary" arrow disabled={busy === p.id} aria-label={`Confirm and make ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
                     {busy === p.id ? "Starting…" : `Confirm and make ${plural(p.items.length, "change")}`}
-                    <span className="btn-disc">
-                      <Glyph name="check" />
-                    </span>
                   </Button>
                 </>
               )}

@@ -645,8 +645,7 @@ function Log({ site, onDone, round }: Part) {
           <span>
             Page {data.page} of {data.pages}, {data.total} {data.total === 1 ? "change" : "changes"}
           </span>
-          <Button small disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            <Glyph name="arrow-left" />
+          <Button back small disabled={page <= 1} onClick={() => setPage(page - 1)}>
             Previous page
           </Button>
           <Button small disabled={page >= data.pages} onClick={() => setPage(page + 1)}>

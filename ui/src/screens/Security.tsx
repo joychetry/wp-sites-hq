@@ -106,11 +106,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
           <Glyph name="shield" />
         </Button>
         {uniqueFixes.length > 0 && (
-          <Button kind="primary" className="disc" onClick={() => onPlan(`Update ${plural(uniqueFixes.length, "vulnerable plugin")}`, uniqueFixes)}>
+          <Button kind="primary" arrow onClick={() => onPlan(`Update ${plural(uniqueFixes.length, "vulnerable plugin")}`, uniqueFixes)}>
             Update {plural(uniqueFixes.length, "vulnerable plugin")}
-            <span className="btn-disc">
-              <Glyph name="arrow" />
-            </span>
           </Button>
         )}
       </HeadActions>

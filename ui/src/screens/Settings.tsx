@@ -158,11 +158,8 @@ function Reports({ s, setS: set, busy, save }: ReportSettings & { s: AppSettings
         </div>
       </div>
       <div className="row">
-        <Button kind="primary" className="disc" aria-label="Save report settings" disabled={busy} onClick={async () => (await save(s)) && setDirty(false)}>
+        <Button kind="primary" arrow aria-label="Save report settings" disabled={busy} onClick={async () => (await save(s)) && setDirty(false)}>
           Save
-          <span className="btn-disc">
-            <Glyph name="check" />
-          </span>
         </Button>
         {dirty && <span className="dim">Unsaved changes</span>}
       </div>
@@ -251,7 +248,7 @@ function DataSources({ s, setS, gsc, setGsc, busy, run, save }: ReportSettings &
               <Button onClick={() => setSetup(false)}>Close without saving</Button>
               <Button
                 kind="primary"
-                className="disc"
+                arrow
                 disabled={busy || !client.id.trim() || !client.secret.trim()}
                 onClick={() =>
                   run(async () => {
@@ -263,9 +260,6 @@ function DataSources({ s, setS, gsc, setGsc, busy, run, save }: ReportSettings &
                 }
               >
                 Save and connect
-                <span className="btn-disc">
-                  <Glyph name="check" />
-                </span>
               </Button>
             </>
           }

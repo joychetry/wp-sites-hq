@@ -261,11 +261,8 @@ export function Comments({ sites }: { sites: Site[] }) {
                         <Button small className="ghost" onClick={() => setReplying(null)}>
                           Close without sending
                         </Button>
-                        <Button small kind="primary" className="disc" type="submit" disabled={busy === k || !reply.trim()}>
+                        <Button small kind="primary" arrow type="submit" disabled={busy === k || !reply.trim()}>
                           {busy === k ? "Sending…" : r.c.status === "pending" ? "Approve and reply" : "Send the reply"}
-                          <span className="btn-disc">
-                            <Glyph name="arrow" />
-                          </span>
                         </Button>
                       </div>
                     </form>

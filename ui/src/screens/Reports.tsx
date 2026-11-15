@@ -141,11 +141,8 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
                 <DateInput type="month" aria-label="Month" value={month} max={lastMonth(new Date(Date.now() + 31 * 86_400_000))} onChange={(e) => setMonth(e.target.value)} />
               </div>
               <div>
-                <Button kind="primary" className="disc" disabled={!ready || busy} onClick={make}>
+                <Button kind="primary" arrow disabled={!ready || busy} onClick={make}>
                   {busy ? "Making the report…" : "Make the report"}
-                  <span className="btn-disc">
-                    <Glyph name="arrow" />
-                  </span>
                 </Button>
               </div>
             </div>

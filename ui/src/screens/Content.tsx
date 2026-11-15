@@ -408,8 +408,7 @@ export function Content({ sites, onPlan, start }: Props) {
           </span>
           {list.pages > 1 && (
             <>
-              <Button small disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                <Glyph name="arrow-left" />
+              <Button back small disabled={page <= 1} onClick={() => setPage(page - 1)}>
                 Previous page
               </Button>
               <Button small disabled={page >= list.pages} onClick={() => setPage(page + 1)}>
@@ -433,11 +432,8 @@ export function Content({ sites, onPlan, start }: Props) {
           </Button>
         )}
         {type && !blocked && (
-          <Button kind="primary" className="disc" onClick={() => setOpen({ siteId: site!.id })}>
+          <Button kind="primary" disc="plus" onClick={() => setOpen({ siteId: site!.id })}>
             New {type.singular.toLowerCase()}
-            <span className="btn-disc">
-              <Glyph name="plus" />
-            </span>
           </Button>
         )}
       </HeadActions>
