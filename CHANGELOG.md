@@ -6,6 +6,8 @@ All notable changes to WP Sites HQ. The format follows
 
 ## [Unreleased]
 
+- Buttons match classicmonks.com: pill buttons with an arrow disc that slides on hover.
+
 ## [0.5.0] - 2026-11-12
 
 The app drops the last of its old name and gets its new logo and icon.
