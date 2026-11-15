@@ -108,7 +108,7 @@ function NextSteps({ sites, onGo, onAdd }: { sites: Site[]; onGo: NonNullable<Pr
               <span className="sr-only">{done ? ": done" : ": not done yet"}</span>
             </Status>
             {!done && (
-              <Button small onClick={go}>
+              <Button arrow={!label.startsWith("Add")} small onClick={go}>
                 {label}
               </Button>
             )}
@@ -377,9 +377,8 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                     title={`${s.name}: ${st.tone === "ok" ? "Classic Monks is older" : st.label}`}
                     action={
                       again ? (
-                        <Button small onClick={() => onSignInAgain(s.id)}>
+                        <Button arrow small onClick={() => onSignInAgain(s.id)}>
                           Sign in again
-                          <Glyph name="login" />
                         </Button>
                       ) : s.health === "down" ? (
                         <Button small onClick={() => onCheck(s.id)}>
@@ -387,7 +386,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                           <Glyph name="refresh" />
                         </Button>
                       ) : (
-                        <Button small onClick={() => onOpen(s.id)}>
+                        <Button arrow small onClick={() => onOpen(s.id)}>
                           Open in Sites
                         </Button>
                       )
@@ -403,7 +402,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                   tone="danger"
                   title={vulns.length === 1 ? `${vulns[0].name} ${vulns[0].installed} has a known vulnerability` : `${vulns.length} known vulnerabilities`}
                   action={
-                    <Button small onClick={() => onGo("Security")}>
+                    <Button arrow small onClick={() => onGo("Security")}>
                       Open Security
                     </Button>
                   }
@@ -419,7 +418,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                   tone="ink"
                   title={live.length === 1 ? `An AI agent wants to: ${live[0].title}` : `${live.length} AI agent plans are waiting`}
                   action={
-                    <Button small onClick={() => onGo("AI")}>
+                    <Button arrow small onClick={() => onGo("AI")}>
                       Open AI
                     </Button>
                   }
@@ -433,7 +432,7 @@ export function Overview({ sites, waiting = [], plans = [], reports = [], monito
                   tone=""
                   title={`${plural(waiting.length, "update is", "updates are")} waiting on ${plural(updateSites, "site")}`}
                   action={
-                    <Button small onClick={() => onGo("Updates")}>
+                    <Button arrow small onClick={() => onGo("Updates")}>
                       Open Updates
                     </Button>
                   }

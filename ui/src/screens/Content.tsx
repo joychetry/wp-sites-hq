@@ -411,9 +411,8 @@ export function Content({ sites, onPlan, start }: Props) {
               <Button back small disabled={page <= 1} onClick={() => setPage(page - 1)}>
                 Previous page
               </Button>
-              <Button small disabled={page >= list.pages} onClick={() => setPage(page + 1)}>
+              <Button arrow small disabled={page >= list.pages} onClick={() => setPage(page + 1)}>
                 Next page
-                <Glyph name="arrow" />
               </Button>
             </>
           )}

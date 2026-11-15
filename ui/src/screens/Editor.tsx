@@ -695,7 +695,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             </Button>
           )
         ) : (
-          <Button kind="primary" disabled={saving || (live && !dirty) || (!isNew && !post)} aria-describedby={idle ? "ed-idle" : undefined} onClick={() => save(primaryTo)}>
+          <Button arrow kind="primary" disabled={saving || (live && !dirty) || (!isNew && !post)} aria-describedby={idle ? "ed-idle" : undefined} onClick={() => save(primaryTo)}>
             {saving ? "Saving…" : primary}
           </Button>
         )}
@@ -770,7 +770,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
             </div>
             <div className="ed-acts">
               {!live && !trashed && visibility !== "private" && (
-                <Button small disabled={saving || (!dirty && !isNew)} onClick={() => save(status === "pending" ? "pending" : "draft")}>
+                <Button arrow small disabled={saving || (!dirty && !isNew)} onClick={() => save(status === "pending" ? "pending" : "draft")}>
                   {status === "pending" ? "Save as pending" : "Save draft"}
                 </Button>
               )}
@@ -927,7 +927,7 @@ export function Editor({ site, type, postId, back, onClose, onSaved }: Props) {
               >
                 Leave without saving
               </Button>
-              <Button
+              <Button arrow
                 kind="primary"
                 onClick={() => {
                   const go = leaving;

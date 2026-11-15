@@ -215,7 +215,7 @@ function DataSources({ s, setS, gsc, setGsc, busy, run, save }: ReportSettings &
           {s.search_console && gsc?.client && (
             <div className="row acts-row">
               {!gsc.connected && (
-                <Button small kind="primary" disabled={busy} onClick={() => run(async () => setGsc(await api.gscConnect()), "Connected to Search Console.")}>
+                <Button arrow small kind="primary" disabled={busy} onClick={() => run(async () => setGsc(await api.gscConnect()), "Connected to Search Console.")}>
                   Connect your Google account
                 </Button>
               )}
@@ -394,7 +394,7 @@ function AppUpdate({ s, save, saving }: { s: AppSettings | null; save: ReportSet
           {busy === "check" ? "Checking…" : "Check for a new version"}
         </Button>
         {found && (
-          <Button small kind="primary" disabled={!!busy || !!progress} onClick={install}>
+          <Button arrow small kind="primary" disabled={!!busy || !!progress} onClick={install}>
             {busy === "install" ? "Installing…" : `Install ${found.version} now`}
           </Button>
         )}

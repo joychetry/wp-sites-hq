@@ -208,9 +208,8 @@ export function Comments({ sites }: { sites: Site[] }) {
                   <p className="said">{plainText(r.c.content) || "(empty)"}</p>
                   <div className="rowacts">
                     {show !== "approved" && (
-                      <Button small kind="soft" disabled={busy === k} aria-label={`Approve ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "approve")}>
+                      <Button arrow small kind="soft" disabled={busy === k} aria-label={`Approve ${who}'s comment on ${r.site.name}`} onClick={() => act(r, "approve")}>
                         Approve
-                        <Glyph name="check" />
                       </Button>
                     )}
                     {show === "approved" && (

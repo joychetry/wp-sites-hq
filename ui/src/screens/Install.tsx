@@ -173,7 +173,7 @@ function Bundles({ names, onPick }: { names: Map<string, string>; onPick: (b: Bu
                 <Button small className="ghost" aria-label={`Edit the ${b.name} bundle`} onClick={() => edit(b)}>
                   Edit
                 </Button>
-                <Button small kind="soft" onClick={() => onPick(b)}>
+                <Button arrow small kind="soft" onClick={() => onPick(b)}>
                   Install {b.name}
                 </Button>
               </li>

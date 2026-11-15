@@ -144,7 +144,7 @@ export function ClassicMonks({ sites, onAi }: { sites: Site[]; onAi?: () => void
                 </Button>
               )}
               {canWait && (
-                <Button small kind={count ? "soft" : undefined} className={count ? "waits" : undefined} onClick={() => setOpen("approvals")}>
+                <Button arrow small kind={count ? "soft" : undefined} className={count ? "waits" : undefined} onClick={() => setOpen("approvals")}>
                   Waiting for approval
                   {count > 0 && (
                     <>
@@ -400,9 +400,8 @@ function ControlsView({ site, onDone, round }: Part) {
           <Button disabled={saving} onClick={() => setEdits({})}>
             Discard
           </Button>
-          <Button kind="primary" disabled={saving || ready.length === 0} onClick={() => save()}>
+          <Button arrow kind="primary" disabled={saving || ready.length === 0} onClick={() => save()}>
             {saving ? "Saving…" : "Save"}
-            <Glyph name="check" />
           </Button>
         </div>
       )}
@@ -425,7 +424,7 @@ function ControlsView({ site, onDone, round }: Part) {
               >
                 Leave without saving
               </Button>
-              <Button
+              <Button arrow
                 kind="primary"
                 onClick={() => {
                   const go = leaving;
@@ -648,9 +647,8 @@ function Log({ site, onDone, round }: Part) {
           <Button back small disabled={page <= 1} onClick={() => setPage(page - 1)}>
             Previous page
           </Button>
-          <Button small disabled={page >= data.pages} onClick={() => setPage(page + 1)}>
+          <Button arrow small disabled={page >= data.pages} onClick={() => setPage(page + 1)}>
             Next page
-            <Glyph name="arrow" />
           </Button>
         </div>
       )}

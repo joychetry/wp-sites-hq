@@ -490,9 +490,8 @@ function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, ev
       );
   } else if (plugin && can(s, "install_plugin")) {
     acts.push(
-      <Button key="inst" small kind="primary" onClick={() => onRun(`Install ${name} on ${s.name}`, one({ do: "install_plugin", source: slugOf(id), activate: false }))}>
+      <Button arrow key="inst" small kind="primary" onClick={() => onRun(`Install ${name} on ${s.name}`, one({ do: "install_plugin", source: slugOf(id), activate: false }))}>
         Install here
-        <Glyph name="download" />
       </Button>,
     );
   }
@@ -594,7 +593,7 @@ function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, ev
           {out.length > 0 && <p className="dim">Not in this list: {out.join(", ")}.</p>}
           {fleetWide && (
             <div>
-              <Button small kind="soft" onClick={() => onPlan(`Update ${name} on ${where}`, everywhere, "plan")}>
+              <Button arrow small kind="soft" onClick={() => onPlan(`Update ${name} on ${where}`, everywhere, "plan")}>
                 Update on {where}
               </Button>
             </div>

@@ -347,7 +347,7 @@ function Progress({ jobId, title, pick, onClose, onRetry }: ProgressProps) {
             {over ? "Close" : "Hide this panel"}
           </Button>
           {retry && (
-            <Button
+            <Button arrow
               kind="primary"
               onClick={() =>
                 onRetry(

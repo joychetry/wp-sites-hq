@@ -526,9 +526,8 @@ function GetPlugin({ site: s }: { site: Site }) {
             <Glyph name="download" />
           </Button>
         )}
-        <Button small kind={saved ? "primary" : undefined} disabled={busy !== null} onClick={connect}>
+        <Button arrow small kind={saved ? "primary" : undefined} disabled={busy !== null} onClick={connect}>
           Connect through the plugin
-          <Glyph name="login" />
         </Button>
       </div>
     </>

@@ -64,7 +64,7 @@ export function NotInList({ notes }: { notes: [Site, string][] }) {
                 <b>{s.name}</b>
                 <span className="dim">{why}</span>
               </span>
-              <Button small onClick={() => (signIn ? askSignIn(s.id) : askOpenSite(s.id))}>
+              <Button arrow small onClick={() => (signIn ? askSignIn(s.id) : askOpenSite(s.id))}>
                 {signIn ? "Sign in again" : "Open in Sites"}
               </Button>
             </li>
@@ -380,7 +380,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
                     ? `Checked ${ago(oldest)}`
                     : ""}
             </span>
-            <Button small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
+            <Button arrow small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
               {chosen.length ? `Update ${chosen.length} selected` : "Update selected"}
             </Button>
           </div>
