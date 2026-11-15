@@ -526,9 +526,8 @@ function GetPlugin({ site: s }: { site: Site }) {
             <Glyph name="download" />
           </Button>
         )}
-        <Button small kind={saved ? "primary" : undefined} disabled={busy !== null} onClick={connect}>
+        <Button arrow small kind={saved ? "primary" : undefined} disabled={busy !== null} onClick={connect}>
           Connect through the plugin
-          <Glyph name="login" />
         </Button>
       </div>
     </>
@@ -583,19 +582,13 @@ function Inspector({ site: s, groups, allTags, updates, onCheck, onSignInAgain, 
       </header>
       <section>
         {again ? (
-          <Button kind="primary" className="disc block" onClick={onSignInAgain}>
+          <Button kind="primary" arrow className="block" onClick={onSignInAgain}>
             Sign in again
-            <span className="btn-disc">
-              <Glyph name="login" />
-            </span>
           </Button>
         ) : (
           canLogin && (
-            <Button kind="primary" className="disc block" onClick={() => run(() => api.login(s.id))}>
+            <Button kind="primary" arrow className="block" onClick={() => run(() => api.login(s.id))}>
               Log in to the dashboard
-              <span className="btn-disc">
-                <Glyph name="dashboard" />
-              </span>
             </Button>
           )
         )}

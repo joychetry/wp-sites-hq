@@ -141,11 +141,8 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
                 <DateInput type="month" aria-label="Month" value={month} max={lastMonth(new Date(Date.now() + 31 * 86_400_000))} onChange={(e) => setMonth(e.target.value)} />
               </div>
               <div>
-                <Button kind="primary" className="disc" disabled={!ready || busy} onClick={make}>
+                <Button kind="primary" arrow disabled={!ready || busy} onClick={make}>
                   {busy ? "Making the report…" : "Make the report"}
-                  <span className="btn-disc">
-                    <Glyph name="arrow" />
-                  </span>
                 </Button>
               </div>
             </div>
@@ -171,13 +168,11 @@ export function Reports({ sites, onSettings }: { sites: Site[]; onSettings?: () 
                 </h2>
                 <p className="dim">Saved as a PDF and a web page in Downloads.</p>
                 <div className="row">
-                  <Button small kind="soft" onClick={() => open(saved.pdf)}>
+                  <Button arrow small kind="soft" onClick={() => open(saved.pdf)}>
                     Open the PDF
-                    <Glyph name="file" />
                   </Button>
-                  <Button small kind="soft" onClick={() => open(saved.html)}>
+                  <Button arrow small kind="soft" onClick={() => open(saved.html)}>
                     Open the web page
-                    <Glyph name="globe" />
                   </Button>
                   <Button small className="ghost" onClick={() => api.showFile(saved.pdf).catch((e) => setError(String(e)))}>
                     Show in folder

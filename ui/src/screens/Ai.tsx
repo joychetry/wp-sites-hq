@@ -55,9 +55,8 @@ export function Ai({ sites, plans, onWatch, focusPlan, onApprovals, tab: opening
   return (
     <Page className="ai">
       <HeadActions>
-        <Button onClick={() => setConnect(true)}>
+        <Button arrow onClick={() => setConnect(true)}>
           Connect an AI app
-          <Glyph name="link" />
         </Button>
       </HeadActions>
       <Tabs label="Show" idBase="ai" tabs={tabs} value={tab} onChange={setTab} />
@@ -102,7 +101,7 @@ function OnSites({ sites, onApprovals }: { sites: Site[]; onApprovals?: () => vo
         </p>
         {n > 0 && onApprovals && (
           <div>
-            <Button
+            <Button arrow
               small
               onClick={() => {
                 showApprovals(counts[0][0].id);
@@ -134,9 +133,8 @@ function Plans({ plans: all, sites, onWatch, focusPlan, onConnect }: PlansProps)
           picture="inbox"
           title="No plans waiting"
           action={
-            <Button onClick={onConnect}>
+            <Button arrow onClick={onConnect}>
               Connect an AI app
-              <Glyph name="link" />
             </Button>
           }
         >
@@ -243,11 +241,8 @@ function Plans({ plans: all, sites, onWatch, focusPlan, onConnect }: PlansProps)
                   <Button disabled={busy === p.id} aria-label={`Decline ${p.title}`} onClick={() => decide(p, false)}>
                     Decline
                   </Button>
-                  <Button kind="primary" className="disc" disabled={busy === p.id} aria-label={`Confirm and make ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
+                  <Button kind="primary" arrow disabled={busy === p.id} aria-label={`Confirm and make ${plural(p.items.length, "change")}: ${p.title}`} onClick={() => decide(p, true)}>
                     {busy === p.id ? "Starting…" : `Confirm and make ${plural(p.items.length, "change")}`}
-                    <span className="btn-disc">
-                      <Glyph name="check" />
-                    </span>
                   </Button>
                 </>
               )}
@@ -340,7 +335,7 @@ function Access({ sites, full }: { sites: Site[]; full?: boolean }) {
                 ) : (
                   !can &&
                   !s.agent_access && (
-                    <Button small onClick={() => (s.sign_in_again ? askSignIn(s.id) : askOpenSite(s.id))}>
+                    <Button arrow small onClick={() => (s.sign_in_again ? askSignIn(s.id) : askOpenSite(s.id))}>
                       {s.sign_in_again ? "Sign in again" : "Get the plugin"}
                     </Button>
                   )
@@ -503,7 +498,7 @@ function Log() {
       {more && (
         <div className="card-foot">
           <span className="sum">{rows!.length} shown</span>
-          <Button small onClick={older}>
+          <Button arrow small onClick={older}>
             Show older activity
           </Button>
         </div>

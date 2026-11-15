@@ -153,7 +153,7 @@ export function MediaPicker({ site, kind = "image", use = "Use", onPick, onCance
       )}
       <div className="row">
         {chosen && (
-          <Button small kind="soft" onClick={() => onPick(chosen)}>
+          <Button arrow small kind="soft" onClick={() => onPick(chosen)}>
             {use} {chosen.title || chosen.file_name || "this image"}
           </Button>
         )}
@@ -178,7 +178,7 @@ export function MediaPicker({ site, kind = "image", use = "Use", onPick, onCance
                 </Button>
               </div>
             ) : (
-              <Button small kind="soft" onClick={upload}>
+              <Button arrow small kind="soft" onClick={upload}>
                 Upload and use it
               </Button>
             )}

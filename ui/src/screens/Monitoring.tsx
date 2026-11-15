@@ -96,11 +96,8 @@ export function Monitoring({ sites, monitors }: Props) {
   return (
     <Page className="mon">
       <HeadActions>
-        <Button kind="primary" className="disc" disabled={checking !== false} onClick={() => check()}>
+        <Button kind="primary" disc="refresh" disabled={checking !== false} onClick={() => check()}>
           {checking === true ? "Checking…" : "Check all sites"}
-          <span className="btn-disc">
-            <Glyph name="refresh" />
-          </span>
         </Button>
       </HeadActions>
       <p className="callout ok">

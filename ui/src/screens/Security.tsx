@@ -91,9 +91,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
   const fixFor = (x: Vulnerability, site: Site) => {
     const fix = fixOf(x, site, inventory.get(site.id));
     return fix ? (
-      <Button key={site.id} kind="soft" aria-label={`Update to ${fix.to} on ${site.name}`} onClick={() => onPlan(`Update ${x.name} on ${site.name}`, [fix])}>
+      <Button arrow key={site.id} kind="soft" aria-label={`Update to ${fix.to} on ${site.name}`} onClick={() => onPlan(`Update ${x.name} on ${site.name}`, [fix])}>
         Update to {fix.to} on {site.name}
-        <Glyph name="download" />
       </Button>
     ) : null;
   };
@@ -106,11 +105,8 @@ export function Security({ sites, reports, inventory, onPlan }: Props) {
           <Glyph name="shield" />
         </Button>
         {uniqueFixes.length > 0 && (
-          <Button kind="primary" className="disc" onClick={() => onPlan(`Update ${plural(uniqueFixes.length, "vulnerable plugin")}`, uniqueFixes)}>
+          <Button kind="primary" arrow onClick={() => onPlan(`Update ${plural(uniqueFixes.length, "vulnerable plugin")}`, uniqueFixes)}>
             Update {plural(uniqueFixes.length, "vulnerable plugin")}
-            <span className="btn-disc">
-              <Glyph name="arrow" />
-            </span>
           </Button>
         )}
       </HeadActions>

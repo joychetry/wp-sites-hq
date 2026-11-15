@@ -231,7 +231,7 @@ export function SignInNotes({ sites, reason, what }: { sites: Site[]; reason: (s
         <span>
           {sites.length} sites can't show their {what} until you sign in again: {names} and {sites.length - ONE_EACH} more.
         </span>
-        <Button small onClick={() => setEach(true)}>
+        <Button arrow small onClick={() => setEach(true)}>
           Show each site
         </Button>
       </li>
@@ -243,7 +243,7 @@ export function SignInNotes({ sites, reason, what }: { sites: Site[]; reason: (s
       <span>
         {s.name}: {reason(s)}
       </span>
-      <Button small onClick={() => askSignIn(s.id)}>
+      <Button arrow small onClick={() => askSignIn(s.id)}>
         Sign in again
       </Button>
     </li>
@@ -259,11 +259,11 @@ export const askOpenSite = (siteId: number) => window.dispatchEvent(new CustomEv
 export function Blocked({ site, reason, title, extra, small }: { site: { id: number; sign_in_again?: boolean; mode: string }; reason: string; title?: string; extra?: ReactNode; small?: boolean }) {
   const signIn = site.sign_in_again || /sign in again/i.test(reason);
   const action = signIn ? (
-    <Button kind="primary" onClick={() => askSignIn(site.id)}>
+    <Button arrow kind="primary" onClick={() => askSignIn(site.id)}>
       Sign in again
     </Button>
   ) : (
-    <Button kind="primary" onClick={() => askOpenSite(site.id)}>
+    <Button arrow kind="primary" onClick={() => askOpenSite(site.id)}>
       {site.mode === "basic" ? "Get the WP Sites HQ plugin" : "Open in Sites"}
     </Button>
   );

@@ -64,7 +64,7 @@ export function NotInList({ notes }: { notes: [Site, string][] }) {
                 <b>{s.name}</b>
                 <span className="dim">{why}</span>
               </span>
-              <Button small onClick={() => (signIn ? askSignIn(s.id) : askOpenSite(s.id))}>
+              <Button arrow small onClick={() => (signIn ? askSignIn(s.id) : askOpenSite(s.id))}>
                 {signIn ? "Sign in again" : "Open in Sites"}
               </Button>
             </li>
@@ -291,11 +291,8 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
           <Glyph name="refresh" />
         </Button>
         {/* Follows the kind filter: what you see is what it updates. */}
-        <Button kind="primary" className="disc" disabled={shown.length === 0} onClick={() => onPlan(planTitle(shown), shown)}>
+        <Button kind="primary" arrow disabled={shown.length === 0} onClick={() => onPlan(planTitle(shown), shown)}>
           {kind === "all" ? `Update all ${rows.length}` : `Update ${shown.length} shown`}
-          <span className="btn-disc">
-            <Glyph name="arrow" />
-          </span>
         </Button>
       </HeadActions>
       <Toolbar>
@@ -383,7 +380,7 @@ export function Updates({ sites, inventory, reports = [], onPlan }: Props) {
                     ? `Checked ${ago(oldest)}`
                     : ""}
             </span>
-            <Button small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
+            <Button arrow small disabled={chosen.length === 0} onClick={() => onPlan(planTitle(chosen), chosen)}>
               {chosen.length ? `Update ${chosen.length} selected` : "Update selected"}
             </Button>
           </div>

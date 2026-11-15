@@ -186,13 +186,13 @@ export function JobSheet({ state, onClose, onBack: backProp, backLabel: labelPro
         <>
           {step === "confirm" && fromPlan && (state.start === "plan" || onBack) && (
             <Button
+              back
               onClick={() => {
                 if (state.start === "plan") return setStep("plan");
                 onClose();
                 onBack!();
               }}
             >
-              <Glyph name="arrow-left" />
               {back}
             </Button>
           )}
@@ -201,25 +201,17 @@ export function JobSheet({ state, onClose, onBack: backProp, backLabel: labelPro
           </span>
           <Button onClick={onClose}>Close without changes</Button>
           {step === "plan" ? (
-            <Button kind="primary" className="disc" disabled={chosen.length === 0} onClick={() => setStep("confirm")}>
+            <Button kind="primary" arrow disabled={chosen.length === 0} onClick={() => setStep("confirm")}>
               {chosen.length === 1 ? "Review the change" : `Review ${chosen.length} changes`}
-              <span className="btn-disc">
-                <Glyph name="arrow" />
-              </span>
             </Button>
           ) : (
             <Button
               kind={danger ? "danger" : "primary"}
-              className={danger ? undefined : "disc"}
+              arrow={!danger}
               disabled={busy || chosen.length === 0}
               onClick={() => start(chosen.map((r) => r.change), title)}
             >
               {busy ? "Starting…" : confirmLabel}
-              {!danger && (
-                <span className="btn-disc">
-                  <Glyph name="check" />
-                </span>
-              )}
             </Button>
           )}
         </>
@@ -355,7 +347,7 @@ function Progress({ jobId, title, pick, onClose, onRetry }: ProgressProps) {
             {over ? "Close" : "Hide this panel"}
           </Button>
           {retry && (
-            <Button
+            <Button arrow
               kind="primary"
               onClick={() =>
                 onRetry(

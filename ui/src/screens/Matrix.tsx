@@ -255,13 +255,8 @@ export function Matrix({ kind, sites, inventory, onPlan, onRun, onInstall, filte
             <Glyph name="plus" />
           </Button>
         )}
-        <Button kind="primary" className={allUpdates.length ? "disc" : undefined} disabled={allUpdates.length === 0} onClick={() => onPlan(updateLabel, allUpdates, "plan")}>
+        <Button kind="primary" arrow disabled={allUpdates.length === 0} onClick={() => onPlan(updateLabel, allUpdates, "plan")}>
           {updateLabel}
-          {allUpdates.length > 0 && (
-            <span className="btn-disc">
-              <Glyph name="arrow" />
-            </span>
-          )}
         </Button>
       </HeadActions>
       <Page className="mx" side={side}>
@@ -466,13 +461,10 @@ function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, ev
           key="up"
           small
           kind="primary"
-          className="disc"
+          arrow
           onClick={() => onRun(`Update ${name} on ${s.name}`, one(plugin ? { do: "update_plugin", plugin: id } : { do: "update_theme", theme: id }))}
         >
           Update to {item.update}
-          <span className="btn-disc">
-            <Glyph name="arrow" />
-          </span>
         </Button>,
       );
     if (plugin && !item.active && can(s, "activate_plugin"))
@@ -498,9 +490,8 @@ function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, ev
       );
   } else if (plugin && can(s, "install_plugin")) {
     acts.push(
-      <Button key="inst" small kind="primary" onClick={() => onRun(`Install ${name} on ${s.name}`, one({ do: "install_plugin", source: slugOf(id), activate: false }))}>
+      <Button arrow key="inst" small kind="primary" onClick={() => onRun(`Install ${name} on ${s.name}`, one({ do: "install_plugin", source: slugOf(id), activate: false }))}>
         Install here
-        <Glyph name="download" />
       </Button>,
     );
   }
@@ -602,7 +593,7 @@ function Inspector({ kind, site: s, col, item, vuln, advisories, others, out, ev
           {out.length > 0 && <p className="dim">Not in this list: {out.join(", ")}.</p>}
           {fleetWide && (
             <div>
-              <Button small kind="soft" onClick={() => onPlan(`Update ${name} on ${where}`, everywhere, "plan")}>
+              <Button arrow small kind="soft" onClick={() => onPlan(`Update ${name} on ${where}`, everywhere, "plan")}>
                 Update on {where}
               </Button>
             </div>
@@ -725,11 +716,8 @@ function RollBack({ site: s, id, name, item, canAuto, advisories, initial, onClo
       footer={
         <>
           <Button onClick={onClose}>Close without changes</Button>
-          <Button kind="primary" className="disc" disabled={!pick} onClick={go}>
+          <Button kind="primary" arrow disabled={!pick} onClick={go}>
             Review the rollback
-            <span className="btn-disc">
-              <Glyph name="arrow" />
-            </span>
           </Button>
         </>
       }

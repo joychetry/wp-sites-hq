@@ -133,7 +133,7 @@ function Uploads({ site, lib, onUploaded, onClose, children }: { site: Site; lib
         {jobs.length > 0 && (
           <div className="row">
             {(busy || ready.length > 0) && (
-              <Button kind="primary" disabled={busy} onClick={send}>
+              <Button arrow kind="primary" disabled={busy} onClick={send}>
                 {busy ? "Uploading…" : ready.length === 1 ? "Upload 1 file" : `Upload ${ready.length} files`}
               </Button>
             )}
@@ -296,7 +296,7 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
           </label>
           {!canEdit && <small className="dim">Changing details needs a newer Classic Monks on the site.</small>}
           <div className="row">
-            <Button kind="primary" type="submit" disabled={!dirty || saving || !canEdit}>
+            <Button arrow kind="primary" type="submit" disabled={!dirty || saving || !canEdit}>
               {saving ? "Saving…" : "Save"}
             </Button>
             {dirty && (
@@ -370,9 +370,8 @@ function Details({ site, item, fresh, onChanged }: { site: Site; item: Item; fre
               </label>
               <FilePicker key={picks} label="Choose the new file" disabled={!!replacing} onFile={(f) => setStaged(f ?? null)} />
               {staged && !replacing && (
-                <Button kind="primary" onClick={replace}>
+                <Button arrow kind="primary" onClick={replace}>
                   Replace the file
-                  <Glyph name="refresh" />
                 </Button>
               )}
               {replacing && (
@@ -677,11 +676,8 @@ export function Media({ sites }: { sites: Site[] }) {
     >
       {site && !blocked && (
         <HeadActions>
-          <Button kind="primary" className="disc" aria-expanded={upOpen} onClick={() => setUpOpen(!upOpen)}>
+          <Button kind="primary" disc="upload" aria-expanded={upOpen} onClick={() => setUpOpen(!upOpen)}>
             Upload files
-            <span className="btn-disc">
-              <Glyph name="upload" />
-            </span>
           </Button>
         </HeadActions>
       )}
@@ -753,11 +749,8 @@ export function Media({ sites }: { sites: Site[] }) {
                 <input id="media-import-alt" className="input" placeholder="Describe the image" value={alt} onChange={(e) => setAlt(e.target.value)} />
               </div>
               <div>
-                <Button className="disc" type="submit" disabled={importing || !link.trim()}>
+                <Button disc="download" type="submit" disabled={importing || !link.trim()}>
                   {importing ? "Importing…" : "Import the image"}
-                  <span className="btn-disc">
-                    <Glyph name="download" />
-                  </span>
                 </Button>
               </div>
             </div>

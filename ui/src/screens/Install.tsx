@@ -141,15 +141,11 @@ function Bundles({ names, onPick }: { names: Map<string, string>; onPick: (b: Bu
                 </Button>
               )}
               <span className="grow" />
-              <Button small className="ghost" onClick={() => setEditing(null)}>
-                <Glyph name="arrow-left" />
+              <Button back small className="ghost" onClick={() => setEditing(null)}>
                 Back to the bundles
               </Button>
-              <Button small kind="primary" className="disc" disabled={!editing.name.trim() || !text.trim()} onClick={save}>
+              <Button small kind="primary" arrow disabled={!editing.name.trim() || !text.trim()} onClick={save}>
                 Save the bundle
-                <span className="btn-disc">
-                  <Glyph name="check" />
-                </span>
               </Button>
             </div>
           )}
@@ -177,7 +173,7 @@ function Bundles({ names, onPick }: { names: Map<string, string>; onPick: (b: Bu
                 <Button small className="ghost" aria-label={`Edit the ${b.name} bundle`} onClick={() => edit(b)}>
                   Edit
                 </Button>
-                <Button small kind="soft" onClick={() => onPick(b)}>
+                <Button arrow small kind="soft" onClick={() => onPick(b)}>
                   Install {b.name}
                 </Button>
               </li>
@@ -301,18 +297,14 @@ export function Install({ sites, inventory, start, onClose, onPlan }: Props) {
       footer={
         <>
           {pick && (
-            <Button onClick={() => setPick(null)}>
-              <Glyph name="arrow-left" />
+            <Button back onClick={() => setPick(null)}>
               Back
             </Button>
           )}
           <Button onClick={onClose}>Close without changes</Button>
           {pick && (
-            <Button kind="primary" className="disc" disabled={rows.length === 0} onClick={review}>
+            <Button kind="primary" arrow disabled={rows.length === 0} onClick={review}>
               {rows.length === 1 ? "Review the change" : `Review ${rows.length} changes`}
-              <span className="btn-disc">
-                <Glyph name="arrow" />
-              </span>
             </Button>
           )}
         </>

@@ -110,11 +110,8 @@ export function AddSite({ again, onClose, onDone }: Props) {
   const pressable = ready || (!!url.trim() && !!problem);
   // While the browser is open the footer holds the waiting line and the way out, nothing to press twice.
   const primary = busy !== "browser" && (
-    <Button kind="primary" className="disc" disabled={!pressable || busy !== null} onClick={go} keys={again ? undefined : "Enter"}>
+    <Button kind="primary" arrow disabled={!pressable || busy !== null} onClick={go} keys={again ? undefined : "Enter"}>
       {toStep2 ? "Next" : !basic ? (again ? "Sign in again" : "Open the sign-in page") : again ? "Sign in" : "Add the site"}
-      <span className="btn-disc">
-        <Glyph name={toStep2 ? "arrow" : again ? "login" : basic ? "check" : "external"} />
-      </span>
     </Button>
   );
   const errorLine = error && (
@@ -219,8 +216,7 @@ export function AddSite({ again, onClose, onDone }: Props) {
         footer={
           <>
             {waiting}
-            <Button onClick={() => setStep(1)}>
-              <Glyph name="arrow-left" />
+            <Button back onClick={() => setStep(1)}>
               Back
             </Button>
             {primary}
