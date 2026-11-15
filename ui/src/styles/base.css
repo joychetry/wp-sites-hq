@@ -109,9 +109,12 @@ small { font-size: var(--fs-sm); }
   /* The shadows stop short of the 8px scrollbar gutter (controls.css): the cover layers don't reach it, so they showed there as grey squares. */
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: var(--sp-1) 6px 0; }
-.brand .lockup { display: block; width: 156px; height: auto; flex: none; }
+.brand .lockup { display: block; width: 160px; height: auto; flex: none; }
 /* WP Sites HQ logo kit: green mark + ink "WP Sites" + green "HQ" on light; mint + white + mint on dark */
-.mark.wpshq, .lk-mark, .lk-hq { fill: var(--logo); }
+.mark.wpshq, .lk-hq { fill: var(--logo); }
+/* The tile is the app icon: green with a white Q in both themes (kit: fine on dark, the white Q carries it) */
+.lk-tile { fill: #01824c; }
+.lk-q { fill: #ffffff; }
 .lk-word { fill: var(--logo-word); }
 /* "Sites to show" group select in the top bar (no visible label; the select is named for screen readers) */
 .scope-field { display: inline-flex; align-items: center; gap: var(--sp-2); margin: 0; }
