@@ -30,6 +30,13 @@ pub struct State {
     pub revoked: usize,
     pub refresh: Refresh,
     pub mcp_off: bool,
+    /// Another plugin (Novamira) answers the generic well-known addresses.
+    pub novamira: bool,
+    /// The connector that steps around it: WWW-Authenticate on 401, its documents at
+    /// resource-specific addresses, and an issuer with a path.
+    pub new_connector: bool,
+    /// The old connector also answers the resource-specific document, by prefix.
+    pub prefix_answers: bool,
     /// Where the sign-in server says its token endpoint is, if not its own.
     pub token_endpoint: Option<String>,
     /// What `get-hq-status` and core REST report.
@@ -146,6 +153,9 @@ impl Default for State {
             revoked: 0,
             refresh: Refresh::Normal,
             mcp_off: false,
+            novamira: false,
+            new_connector: false,
+            prefix_answers: false,
             token_endpoint: None,
             wp_version: "7.1.3".into(),
             feed_version: Some("7.1.3".into()),
@@ -268,11 +278,20 @@ impl TestSite {
                 "/.well-known/oauth-authorization-server",
                 get(server_metadata),
             )
+            .route(
+                "/.well-known/oauth-protected-resource/wp-json/classic-monks/v1/mcp",
+                get(cm_protected_resource),
+            )
+            .route(
+                "/.well-known/oauth-authorization-server/classic-monks/v1",
+                get(cm_server_metadata),
+            )
             .route(&format!("{oauth}/register"), post(register))
             .route(&format!("{oauth}/authorize"), get(authorize))
             .route(&format!("{oauth}/token"), post(token))
             .route(&format!("{oauth}/revoke"), post(revoke))
-            .route("/", get(home))
+            // Plain-permalink REST: no route here, as WordPress says for an unknown rest_route.
+            .route("/", get(home).post(|| async { StatusCode::NOT_FOUND }))
             .route("/wp-json/classic-monks/v1/mcp", post(mcp))
             .route("/wp-json/", get(rest_index))
             .route("/wp-json/wp/v2/users/me", get(users_me))
@@ -316,6 +335,15 @@ impl TestSite {
 }
 
 impl State {
+    /// The sign-in server's name: the new connector gives it a path.
+    pub fn issuer(&self) -> String {
+        if self.new_connector {
+            format!("{}/classic-monks/v1", self.base)
+        } else {
+            self.base.clone()
+        }
+    }
+
     /// Grants that still have a live refresh token.
     pub fn live_grants(&self) -> usize {
         let mut live: Vec<u32> = self
@@ -392,6 +420,25 @@ const PHP_FATAL: &str = "<br />\n<b>Fatal error</b>:  Failed opening required '/
 
 async fn protected_resource(Ax(s): Ax<Shared>) -> Response {
     let s = s.lock().unwrap();
+    if s.novamira {
+        return Json(json!({
+            "resource": format!("{}/wp-json/novamira/v1/mcp", s.base),
+            "authorization_servers": [s.base],
+        }))
+        .into_response();
+    }
+    our_protected_resource(&s)
+}
+
+async fn cm_protected_resource(Ax(s): Ax<Shared>) -> Response {
+    let s = s.lock().unwrap();
+    if !s.new_connector && !s.prefix_answers {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    our_protected_resource(&s)
+}
+
+fn our_protected_resource(s: &State) -> Response {
     if s.php_fatal {
         return PHP_FATAL.into_response();
     }
@@ -405,20 +452,40 @@ async fn protected_resource(Ax(s): Ax<Shared>) -> Response {
     }
     Json(json!({
         "resource": mcp_url(&s.base),
-        "authorization_servers": [s.base],
+        "authorization_servers": [s.issuer()],
         "resource_name": "Test Site",
     }))
     .into_response()
 }
 
 async fn server_metadata(Ax(s): Ax<Shared>) -> Response {
-    let (base, token) = {
-        let s = s.lock().unwrap();
-        (s.base.clone(), s.token_endpoint.clone())
-    };
+    let s = s.lock().unwrap();
+    if s.novamira {
+        return Json(json!({
+            "issuer": s.base,
+            "authorization_endpoint":
+                format!("{}/wp-admin/admin.php?page=novamira-oauth-authorize", s.base),
+            "token_endpoint": format!("{}/wp-json/novamira/v1/oauth/token", s.base),
+            "code_challenge_methods_supported": ["S256"],
+        }))
+        .into_response();
+    }
+    our_server_metadata(&s)
+}
+
+async fn cm_server_metadata(Ax(s): Ax<Shared>) -> Response {
+    let s = s.lock().unwrap();
+    if !s.new_connector {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    our_server_metadata(&s)
+}
+
+fn our_server_metadata(s: &State) -> Response {
+    let (base, token) = (s.base.clone(), s.token_endpoint.clone());
     let o = format!("{base}/wp-json/classic-monks/v1/oauth");
     Json(json!({
-        "issuer": base,
+        "issuer": s.issuer(),
         "authorization_endpoint": format!("{o}/authorize"),
         "token_endpoint": token.unwrap_or(format!("{o}/token")),
         "registration_endpoint": format!("{o}/register"),
@@ -454,7 +521,7 @@ async fn authorize(Ax(s): Ax<Shared>, Query(q): Query<HashMap<String, String>>) 
     back.query_pairs_mut()
         .append_pair("code", &code)
         .append_pair("state", &q["state"])
-        .append_pair("iss", &s.base);
+        .append_pair("iss", &s.issuer());
     let mut h = HeaderMap::new();
     h.insert(header::LOCATION, back.as_str().parse().unwrap());
     (StatusCode::FOUND, h).into_response()
@@ -600,9 +667,21 @@ async fn mcp(Ax(s): Ax<Shared>, h: HeaderMap, Json(req): Json<serde_json::Value>
     if s.php_fatal {
         return PHP_FATAL.into_response();
     }
+    if s.mcp_off {
+        return StatusCode::NOT_FOUND.into_response();
+    }
     let Some(family) = bearer(&mut s, &h) else {
+        let mut h = HeaderMap::new();
+        if s.new_connector {
+            let doc = format!(
+                "Bearer realm=\"WordPress\", resource_metadata=\"{}/.well-known/oauth-protected-resource/wp-json/classic-monks/v1/mcp\"",
+                s.base
+            );
+            h.insert(header::WWW_AUTHENTICATE, doc.parse().unwrap());
+        }
         return (
             StatusCode::UNAUTHORIZED,
+            h,
             Json(json!({ "code": "cm_mcp_unauthorized" })),
         )
             .into_response();
