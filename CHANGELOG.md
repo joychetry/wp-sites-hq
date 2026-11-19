@@ -7,6 +7,7 @@ All notable changes to WP Sites HQ. The format follows
 ## [Unreleased]
 
 - Buttons match classicmonks.com: pill buttons with an arrow disc that slides on hover.
+- Fixed: adding a site that also runs Novamira opened Novamira's consent screen and failed with "Missing Mcp-Session-Id header". The app now finds Classic Monks' own sign-in details and never signs in on another plugin's server (#23). Reported by Medeon-68, Miran Zgec and Manny Contales.
 
 ## [0.5.0] - 2026-11-12
 
