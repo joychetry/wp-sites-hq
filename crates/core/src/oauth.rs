@@ -66,28 +66,75 @@ struct ServerMetadata {
     code_challenge_methods_supported: Vec<String>,
 }
 
+/// Where Classic Monks' MCP endpoint lives under the REST base.
+const MCP_ROUTE: &str = "/classic-monks/v1/mcp";
+
 /// `None` when the site has no Classic Monks MCP endpoint (or it is switched off).
+///
+/// Other plugins (Novamira) answer the generic well-known addresses too, so the
+/// endpoint's own 401 and the resource-specific document come first.
 pub async fn discover(
     http: &reqwest::Client,
     limits: &Limits,
     site: &Url,
 ) -> Result<Option<Discovery>, OAuthError> {
     let key = site.as_str();
-    let url = format!(
-        "{}/.well-known/oauth-protected-resource",
-        crate::sites::url_string(site)
-    );
-    let reply = net::send(limits, key, Retry::ReadOnly, || http.get(&url)).await?;
-    if net::php_fatal(&reply.body) {
-        return Err(site_err(
-            "The site answered with a PHP fatal error instead of its sign-in details. Fix the error on the site (its PHP error log names it), then try again.",
-        ));
+    let base = crate::sites::url_string(site);
+    let origin = site.origin().ascii_serialization();
+    let site_path = site.path().trim_end_matches('/');
+
+    let mut found = None;
+    // RFC 9728 5.1: the endpoint's 401 names its own document.
+    for endpoint in [
+        format!("{base}/wp-json{MCP_ROUTE}"),
+        format!("{base}/?rest_route={MCP_ROUTE}"),
+    ] {
+        let probe = serde_json::json!({ "jsonrpc": "2.0", "id": 0, "method": "ping" });
+        let reply = net::send(limits, key, Retry::Write, || {
+            http.post(&endpoint).json(&probe)
+        })
+        .await?;
+        let Some(doc) = (reply.status == 401)
+            .then(|| resource_metadata(&reply.headers))
+            .flatten()
+        else {
+            continue;
+        };
+        on_site(site, &doc)?;
+        found = protected_resource(http, limits, key, &doc)
+            .await?
+            .filter(|pr| is_cm_resource(&pr.resource));
+        if found.is_some() {
+            break;
+        }
     }
-    let Some(pr) = reply
-        .json::<ProtectedResource>()
-        .filter(|_| reply.status == 200)
-    else {
-        return Ok(None);
+    if found.is_none() {
+        let doc =
+            format!("{origin}/.well-known/oauth-protected-resource{site_path}/wp-json{MCP_ROUTE}");
+        found = protected_resource(http, limits, key, &doc)
+            .await?
+            .filter(|pr| is_cm_resource(&pr.resource));
+    }
+    let pr = match found {
+        Some(pr) => pr,
+        // Older connectors only answer the generic address.
+        None => {
+            let doc = format!("{base}/.well-known/oauth-protected-resource");
+            let Some(pr) = protected_resource(http, limits, key, &doc).await? else {
+                return Ok(None);
+            };
+            if !is_cm_resource(&pr.resource) {
+                let named = Url::parse(&pr.resource)
+                    .map(|u| format!("{}{}", u.host_str().unwrap_or_default(), u.path()))
+                    .unwrap_or_else(|_| pr.resource.clone());
+                return Err(site_err(format!(
+                    "Another plugin on this site (it names {named}) answers WordPress sign-in requests, \
+                     and this site's Classic Monks connector is too old to step around it. \
+                     Update Classic Monks (or WP Sites HQ) on the site, then try again."
+                )));
+            }
+            pr
+        }
     };
     let issuer = pr
         .authorization_servers
@@ -96,12 +143,17 @@ pub async fn discover(
         .trim_end_matches('/')
         .to_string();
     on_site(site, &issuer)?;
-    let meta_url = format!("{issuer}/.well-known/oauth-authorization-server");
-    let reply = net::send(limits, key, Retry::ReadOnly, || http.get(&meta_url)).await?;
-    let meta: ServerMetadata = reply
-        .json()
-        .filter(|_| reply.status == 200)
-        .ok_or_else(|| site_err("The site's sign-in server didn't describe itself."))?;
+    let mut meta = None;
+    for url in server_metadata_urls(&issuer) {
+        let reply = net::send(limits, key, Retry::ReadOnly, || http.get(&url)).await?;
+        meta = reply
+            .json::<ServerMetadata>()
+            .filter(|_| reply.status == 200);
+        if meta.is_some() {
+            break;
+        }
+    }
+    let meta = meta.ok_or_else(|| site_err("The site's sign-in server didn't describe itself."))?;
     if meta.issuer.trim_end_matches('/') != issuer {
         return Err(site_err(
             "The site's sign-in server gave a different address than the site named.",
@@ -137,6 +189,87 @@ pub async fn discover(
         registration_endpoint: meta.registration_endpoint,
         revocation_endpoint: meta.revocation_endpoint,
     }))
+}
+
+/// A protected-resource document, or `None` when this address doesn't serve one.
+async fn protected_resource(
+    http: &reqwest::Client,
+    limits: &Limits,
+    key: &str,
+    url: &str,
+) -> Result<Option<ProtectedResource>, OAuthError> {
+    let reply = net::send(limits, key, Retry::ReadOnly, || http.get(url)).await?;
+    if net::php_fatal(&reply.body) {
+        return Err(site_err(
+            "The site answered with a PHP fatal error instead of its sign-in details. Fix the error on the site (its PHP error log names it), then try again.",
+        ));
+    }
+    Ok(reply.json().filter(|_| reply.status == 200))
+}
+
+/// The `resource_metadata` parameter of a `WWW-Authenticate` challenge (RFC 9728 5.1).
+fn resource_metadata(headers: &reqwest::header::HeaderMap) -> Option<String> {
+    headers
+        .get_all(reqwest::header::WWW_AUTHENTICATE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .find_map(resource_metadata_param)
+}
+
+fn resource_metadata_param(challenge: &str) -> Option<String> {
+    const NAME: &str = "resource_metadata";
+    // ASCII lowercasing keeps byte offsets, so `at` indexes `challenge` too.
+    let lower = challenge.to_ascii_lowercase();
+    let mut from = 0;
+    while let Some(i) = lower[from..].find(NAME) {
+        let at = from + i;
+        from = at + NAME.len();
+        let starts_param = at == 0 || matches!(lower.as_bytes()[at - 1], b' ' | b'\t' | b',');
+        let Some(rest) = challenge[from..]
+            .trim_start()
+            .strip_prefix('=')
+            .filter(|_| starts_param)
+        else {
+            continue;
+        };
+        let rest = rest.trim_start();
+        let value = match rest.strip_prefix('"') {
+            Some(quoted) => &quoted[..quoted.find('"')?],
+            None => rest.split([',', ' ', '\t']).next().unwrap_or_default(),
+        };
+        if !value.is_empty() {
+            return Some(value.to_string());
+        }
+    }
+    None
+}
+
+/// Classic Monks' MCP endpoint, in pretty or plain permalink form.
+fn is_cm_resource(resource: &str) -> bool {
+    Url::parse(resource).is_ok_and(|u| {
+        u.path().trim_end_matches('/').ends_with(MCP_ROUTE)
+            || u.query_pairs()
+                .any(|(k, v)| k == "rest_route" && v.trim_end_matches('/') == MCP_ROUTE)
+    })
+}
+
+/// RFC 8414 3.1: an issuer with a path puts the well-known part first; the OIDC
+/// and appended forms follow for servers that only know those.
+fn server_metadata_urls(issuer: &str) -> Vec<String> {
+    let append = format!("{issuer}/.well-known/oauth-authorization-server");
+    let Ok(url) = Url::parse(issuer) else {
+        return vec![append];
+    };
+    let path = url.path().trim_end_matches('/');
+    if path.is_empty() {
+        return vec![append];
+    }
+    let origin = url.origin().ascii_serialization();
+    vec![
+        format!("{origin}/.well-known/oauth-authorization-server{path}"),
+        format!("{origin}/.well-known/openid-configuration{path}"),
+        append,
+    ]
 }
 
 /// Every sign-in and MCP address stays on the site's own host (https may stand in for
@@ -761,6 +894,114 @@ mod tests {
         let host = url.host_str().unwrap();
         site.state().token_endpoint = Some(format!("https://{host}/token"));
         assert!(discover(&http, &Limits::default(), &url).await.is_ok());
+    }
+
+    #[test]
+    fn resource_metadata_is_read_from_the_challenge() {
+        let p = resource_metadata_param;
+        let doc =
+            "https://s.test/.well-known/oauth-protected-resource/wp-json/classic-monks/v1/mcp";
+        assert_eq!(
+            p(&format!("Bearer resource_metadata=\"{doc}\"")).unwrap(),
+            doc
+        );
+        assert_eq!(
+            p(&format!(
+                "Bearer realm=\"WordPress\" ,  Resource_Metadata = \"{doc}\", scope=\"x\""
+            ))
+            .unwrap(),
+            doc
+        );
+        assert_eq!(
+            p(&format!(
+                "Bearer error=\"invalid_token\",resource_metadata={doc}, x=y"
+            ))
+            .unwrap(),
+            doc
+        );
+        assert_eq!(p("Bearer realm=\"WordPress\""), None);
+        assert_eq!(p("Bearer xresource_metadata=\"https://evil.test\""), None);
+        assert_eq!(p("Bearer resource_metadata=\"\""), None);
+
+        let mut h = reqwest::header::HeaderMap::new();
+        h.append(
+            reqwest::header::WWW_AUTHENTICATE,
+            "Basic realm=\"x\"".parse().unwrap(),
+        );
+        h.append(
+            reqwest::header::WWW_AUTHENTICATE,
+            format!("Bearer resource_metadata=\"{doc}\"")
+                .parse()
+                .unwrap(),
+        );
+        assert_eq!(resource_metadata(&h).unwrap(), doc);
+    }
+
+    #[test]
+    fn only_classic_monks_resources_are_accepted() {
+        assert!(is_cm_resource(
+            "https://s.test/wp-json/classic-monks/v1/mcp"
+        ));
+        assert!(is_cm_resource(
+            "https://s.test/blog/wp-json/classic-monks/v1/mcp/"
+        ));
+        assert!(is_cm_resource(
+            "https://s.test/?rest_route=/classic-monks/v1/mcp"
+        ));
+        assert!(is_cm_resource(
+            "https://s.test/?rest_route=%2Fclassic-monks%2Fv1%2Fmcp"
+        ));
+        assert!(!is_cm_resource("https://s.test/wp-json/novamira/v1/mcp"));
+        assert!(!is_cm_resource(
+            "https://s.test/?rest_route=/novamira/v1/mcp"
+        ));
+        assert!(!is_cm_resource("https://s.test/"));
+        assert!(!is_cm_resource("not a url"));
+    }
+
+    #[test]
+    fn issuer_paths_use_the_insert_form_first() {
+        assert_eq!(
+            server_metadata_urls("https://s.test/blog/classic-monks/v1"),
+            [
+                "https://s.test/.well-known/oauth-authorization-server/blog/classic-monks/v1",
+                "https://s.test/.well-known/openid-configuration/blog/classic-monks/v1",
+                "https://s.test/blog/classic-monks/v1/.well-known/oauth-authorization-server",
+            ]
+        );
+        assert_eq!(
+            server_metadata_urls("https://s.test"),
+            ["https://s.test/.well-known/oauth-authorization-server"]
+        );
+    }
+
+    #[tokio::test]
+    async fn another_plugin_on_the_generic_addresses_is_stepped_around() {
+        let site = TestSite::start().await;
+        {
+            let mut s = site.state();
+            s.novamira = true;
+            s.new_connector = true;
+        }
+        let (d, _, _) = connect(&site).await;
+        assert_eq!(d.issuer, format!("{}/classic-monks/v1", site.url));
+        assert!(d.authorization_endpoint.contains("/classic-monks/"));
+    }
+
+    #[tokio::test]
+    async fn an_old_connector_behind_another_plugin_is_explained() {
+        let site = TestSite::start().await;
+        site.state().novamira = true;
+        let url = Url::parse(&site.url).unwrap();
+        let err = discover(&crate::net::client().unwrap(), &Limits::default(), &url)
+            .await
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Another plugin") && msg.contains("/wp-json/novamira/v1/mcp"),
+            "{msg}"
+        );
+        assert!(!msg.contains('\u{2014}'), "no em dashes");
     }
 
     #[test]
