@@ -84,6 +84,8 @@ pub async fn discover(
     let site_path = site.path().trim_end_matches('/');
 
     let mut found = None;
+    // Any answer but 404 means our route exists, so a foreign generic document is in its way.
+    let mut have_endpoint = false;
     // RFC 9728 5.1: the endpoint's 401 names its own document.
     for endpoint in [
         format!("{base}/wp-json{MCP_ROUTE}"),
@@ -94,6 +96,7 @@ pub async fn discover(
             http.post(&endpoint).json(&probe)
         })
         .await?;
+        have_endpoint |= reply.status != 404;
         let Some(doc) = (reply.status == 401)
             .then(|| resource_metadata(&reply.headers))
             .flatten()
@@ -124,14 +127,11 @@ pub async fn discover(
                 return Ok(None);
             };
             if !is_cm_resource(&pr.resource) {
-                let named = Url::parse(&pr.resource)
-                    .map(|u| format!("{}{}", u.host_str().unwrap_or_default(), u.path()))
-                    .unwrap_or_else(|_| pr.resource.clone());
-                return Err(site_err(format!(
-                    "Another plugin on this site (it names {named}) answers WordPress sign-in requests, \
-                     and this site's Classic Monks connector is too old to step around it. \
-                     Update Classic Monks (or WP Sites HQ) on the site, then try again."
-                )));
+                return if have_endpoint {
+                    Err(too_old(&pr.resource))
+                } else {
+                    Ok(None)
+                };
             }
             pr
         }
@@ -143,17 +143,40 @@ pub async fn discover(
         .trim_end_matches('/')
         .to_string();
     on_site(site, &issuer)?;
-    let mut meta = None;
+    let (mut meta, mut foreign) = (None, None);
     for url in server_metadata_urls(&issuer) {
         let reply = net::send(limits, key, Retry::ReadOnly, || http.get(&url)).await?;
-        meta = reply
+        let Some(m) = reply
             .json::<ServerMetadata>()
-            .filter(|_| reply.status == 200);
-        if meta.is_some() {
+            .filter(|_| reply.status == 200)
+        else {
+            continue;
+        };
+        let addrs = [
+            Some(&m.authorization_endpoint),
+            Some(&m.token_endpoint),
+            m.registration_endpoint.as_ref(),
+            m.revocation_endpoint.as_ref(),
+        ];
+        for addr in addrs.into_iter().flatten() {
+            on_site(site, addr)?;
+        }
+        // An old connector's issuer is the home URL, whose generic document another plugin may answer.
+        if addrs.into_iter().flatten().all(|a| is_cm_oauth(a)) {
+            meta = Some(m);
             break;
         }
+        foreign.get_or_insert(m.authorization_endpoint);
     }
-    let meta = meta.ok_or_else(|| site_err("The site's sign-in server didn't describe itself."))?;
+    let meta = match (meta, foreign) {
+        (Some(m), _) => m,
+        (None, Some(named)) => return Err(too_old(&named)),
+        (None, None) => {
+            return Err(site_err(
+                "The site's sign-in server didn't describe itself.",
+            ));
+        }
+    };
     if meta.issuer.trim_end_matches('/') != issuer {
         return Err(site_err(
             "The site's sign-in server gave a different address than the site named.",
@@ -168,18 +191,7 @@ pub async fn discover(
             "The site's sign-in server doesn't support PKCE (S256). Update Classic Monks.",
         ));
     }
-    for addr in [
-        Some(&pr.resource),
-        Some(&meta.authorization_endpoint),
-        Some(&meta.token_endpoint),
-        meta.registration_endpoint.as_ref(),
-        meta.revocation_endpoint.as_ref(),
-    ]
-    .into_iter()
-    .flatten()
-    {
-        on_site(site, addr)?;
-    }
+    on_site(site, &pr.resource)?;
     Ok(Some(Discovery {
         resource: pr.resource,
         resource_name: pr.resource_name,
@@ -189,6 +201,27 @@ pub async fn discover(
         registration_endpoint: meta.registration_endpoint,
         revocation_endpoint: meta.revocation_endpoint,
     }))
+}
+
+fn too_old(named: &str) -> OAuthError {
+    let named = Url::parse(named)
+        .map(|u| format!("{}{}", u.host_str().unwrap_or_default(), u.path()))
+        .unwrap_or_else(|_| named.to_string());
+    site_err(format!(
+        "Another plugin on this site (it names {named}) answers WordPress sign-in requests, \
+         and this site's Classic Monks connector is too old to step around it. \
+         Update Classic Monks (or WP Sites HQ) on the site, then try again."
+    ))
+}
+
+/// A Classic Monks sign-in endpoint, in pretty or plain permalink form.
+fn is_cm_oauth(addr: &str) -> bool {
+    const OAUTH: &str = "/classic-monks/v1/oauth/";
+    Url::parse(addr).is_ok_and(|u| {
+        u.path().contains(OAUTH)
+            || u.query_pairs()
+                .any(|(k, v)| k == "rest_route" && v.starts_with(OAUTH))
+    })
 }
 
 /// A protected-resource document, or `None` when this address doesn't serve one.
@@ -892,7 +925,9 @@ mod tests {
             assert!(err.to_string().contains("another address"), "{addr}: {err}");
         }
         let host = url.host_str().unwrap();
-        site.state().token_endpoint = Some(format!("https://{host}/token"));
+        site.state().token_endpoint = Some(format!(
+            "https://{host}/wp-json/classic-monks/v1/oauth/token"
+        ));
         assert!(discover(&http, &Limits::default(), &url).await.is_ok());
     }
 
@@ -1002,6 +1037,58 @@ mod tests {
             "{msg}"
         );
         assert!(!msg.contains('\u{2014}'), "no em dashes");
+    }
+
+    #[tokio::test]
+    async fn another_plugin_without_classic_monks_is_none() {
+        let site = TestSite::start().await;
+        {
+            let mut s = site.state();
+            s.novamira = true;
+            s.mcp_off = true;
+        }
+        let url = Url::parse(&site.url).unwrap();
+        let d = discover(&crate::net::client().unwrap(), &Limits::default(), &url)
+            .await
+            .unwrap();
+        assert!(d.is_none());
+    }
+
+    #[tokio::test]
+    async fn an_old_connector_never_signs_in_on_another_plugins_server() {
+        let site = TestSite::start().await;
+        {
+            let mut s = site.state();
+            s.novamira = true;
+            s.prefix_answers = true;
+        }
+        let url = Url::parse(&site.url).unwrap();
+        let err = discover(&crate::net::client().unwrap(), &Limits::default(), &url)
+            .await
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Another plugin") && msg.contains("/wp-admin/admin.php"),
+            "{msg}"
+        );
+        assert!(!msg.contains('\u{2014}'), "no em dashes");
+    }
+
+    #[test]
+    fn only_classic_monks_sign_in_endpoints_are_accepted() {
+        assert!(is_cm_oauth(
+            "https://s.test/wp-json/classic-monks/v1/oauth/authorize"
+        ));
+        assert!(is_cm_oauth(
+            "https://s.test/?rest_route=/classic-monks/v1/oauth/token"
+        ));
+        assert!(!is_cm_oauth(
+            "https://s.test/wp-admin/admin.php?page=novamira-oauth-authorize"
+        ));
+        assert!(!is_cm_oauth("https://s.test/?novamira_oauth=authorize"));
+        assert!(!is_cm_oauth(
+            "https://s.test/wp-json/novamira/v1/oauth/token"
+        ));
     }
 
     #[test]

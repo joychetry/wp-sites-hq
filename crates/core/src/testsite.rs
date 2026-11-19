@@ -35,6 +35,8 @@ pub struct State {
     /// The connector that steps around it: WWW-Authenticate on 401, its documents at
     /// resource-specific addresses, and an issuer with a path.
     pub new_connector: bool,
+    /// The old connector also answers the resource-specific document, by prefix.
+    pub prefix_answers: bool,
     /// Where the sign-in server says its token endpoint is, if not its own.
     pub token_endpoint: Option<String>,
     /// What `get-hq-status` and core REST report.
@@ -153,6 +155,7 @@ impl Default for State {
             mcp_off: false,
             novamira: false,
             new_connector: false,
+            prefix_answers: false,
             token_endpoint: None,
             wp_version: "7.1.3".into(),
             feed_version: Some("7.1.3".into()),
@@ -287,7 +290,8 @@ impl TestSite {
             .route(&format!("{oauth}/authorize"), get(authorize))
             .route(&format!("{oauth}/token"), post(token))
             .route(&format!("{oauth}/revoke"), post(revoke))
-            .route("/", get(home))
+            // Plain-permalink REST: no route here, as WordPress says for an unknown rest_route.
+            .route("/", get(home).post(|| async { StatusCode::NOT_FOUND }))
             .route("/wp-json/classic-monks/v1/mcp", post(mcp))
             .route("/wp-json/", get(rest_index))
             .route("/wp-json/wp/v2/users/me", get(users_me))
@@ -428,7 +432,7 @@ async fn protected_resource(Ax(s): Ax<Shared>) -> Response {
 
 async fn cm_protected_resource(Ax(s): Ax<Shared>) -> Response {
     let s = s.lock().unwrap();
-    if !s.new_connector {
+    if !s.new_connector && !s.prefix_answers {
         return StatusCode::NOT_FOUND.into_response();
     }
     our_protected_resource(&s)
@@ -457,11 +461,11 @@ fn our_protected_resource(s: &State) -> Response {
 async fn server_metadata(Ax(s): Ax<Shared>) -> Response {
     let s = s.lock().unwrap();
     if s.novamira {
-        let o = format!("{}/wp-json/novamira/v1/oauth", s.base);
         return Json(json!({
             "issuer": s.base,
-            "authorization_endpoint": format!("{o}/authorize"),
-            "token_endpoint": format!("{o}/token"),
+            "authorization_endpoint":
+                format!("{}/wp-admin/admin.php?page=novamira-oauth-authorize", s.base),
+            "token_endpoint": format!("{}/wp-json/novamira/v1/oauth/token", s.base),
             "code_challenge_methods_supported": ["S256"],
         }))
         .into_response();
