@@ -8,6 +8,7 @@ All notable changes to WP Sites HQ. The format follows
 
 - Buttons match classicmonks.com: pill buttons with an arrow disc that slides on hover.
 - Fixed: adding a site that also runs Novamira opened Novamira's consent screen and failed with "Missing Mcp-Session-Id header". The app now finds Classic Monks' own sign-in details and never signs in on another plugin's server (#23). Reported by Medeon-68, Miran Zgec and Manny Contales.
+- Fixed: when a site lost the sign-in code (usually a caching plugin), the browser said "WP Sites HQ is connected" while the app showed "The authorization code is invalid, expired or already used." The browser now says to go back to the app, and the app explains what happened and what to do (#26). Reported by William Hoffmann.
 
 ## [0.5.0] - 2026-11-12
 

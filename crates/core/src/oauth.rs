@@ -468,7 +468,10 @@ impl Loopback {
                 Err("The site didn't complete the sign-in.")
             };
             let said = match &result {
-                Ok(_) => "WP Sites HQ is connected. You can close this tab.",
+                // The code isn't exchanged yet, so don't claim the site is connected.
+                Ok(_) => {
+                    "Signed in. Go back to WP Sites HQ to finish connecting the site. You can close this tab."
+                }
                 Err(msg) => msg,
             };
             let _ = conn.write_all(&page(said)).await;
@@ -584,9 +587,24 @@ pub async fn exchange(
         http.post(x.token_endpoint).form(&form)
     })
     .await?;
-    tokens(&reply)
-        .ok_or_else(|| site_err(oauth_message(&reply, "The site didn't finish the sign-in.")))
+    if let Some(t) = tokens(&reply) {
+        return Ok(t);
+    }
+    // A lost code (an object cache dropped it) reads as invalid_grant; the raw text says nothing useful.
+    if reply.status == 400
+        && reply
+            .json::<Value>()
+            .is_some_and(|v| v["error"] == "invalid_grant")
+    {
+        return Err(site_err(LOST_CODE));
+    }
+    Err(site_err(oauth_message(
+        &reply,
+        "The site didn't finish the sign-in.",
+    )))
 }
+
+const LOST_CODE: &str = "The site didn't keep the sign-in code long enough for WP Sites HQ to use it. This usually means a caching plugin on the site. Update Classic Monks or the WP Sites HQ plugin on the site, then try again. If it still fails, clear the site's object cache and try once more.";
 
 #[derive(Debug, thiserror::Error)]
 pub enum RefreshError {
@@ -714,6 +732,26 @@ mod tests {
         .await
         .unwrap();
         (d, client_id, t)
+    }
+
+    #[tokio::test]
+    async fn lost_code_says_what_to_do() {
+        let site = TestSite::start().await;
+        let (http, limits) = (crate::net::client().unwrap(), Limits::default());
+        let d = discover(&http, &limits, &Url::parse(&site.url).unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        let x = Exchange {
+            token_endpoint: &d.token_endpoint,
+            client_id: "c",
+            code: "never-issued",
+            redirect_uri: "http://127.0.0.1/callback",
+            verifier: "v",
+            resource: &d.resource,
+        };
+        let err = exchange(&http, &limits, &site.url, &x).await.unwrap_err();
+        assert_eq!(err.to_string(), LOST_CODE);
     }
 
     #[tokio::test]
@@ -853,7 +891,7 @@ mod tests {
                 .unwrap()
         });
         assert_eq!(lb.wait("s", "https://site.local").await.unwrap(), "c");
-        assert!(browser.await.unwrap().contains("connected"));
+        assert!(browser.await.unwrap().contains("Go back to WP Sites HQ"));
 
         for (query, expect) in [
             (
