@@ -415,7 +415,9 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; table-layou
 .sheet footer .btn:not(.primary):not(.danger):hover:not(:disabled) { background: var(--bg); border-color: transparent; color: var(--text); }
 .sheet footer .sum { margin-right: auto; color: var(--text-2); }
 /* The design's centred dialog (Add a site, Sign in again): no head line, the body flows from the head. */
-.sheet.dialog { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-float); }
+/* Centred by margin, not transform: a transform makes the dialog the box that fixed lists inside it
+   (Select, date pickers) measure from, so they opened off to the side by the dialog's own offset. */
+.sheet.dialog { inset: 0; margin: auto; height: fit-content; width: 480px; max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-float); }
 .sheet.dialog > header { padding: 20px var(--sp-5) var(--sp-4) 24px; border-bottom: 0; }
 .sheet.dialog > header > .tile { margin-top: 2px; }
 .sheet.dialog .content { padding: var(--sp-1) 24px 20px; }

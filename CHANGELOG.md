@@ -6,6 +6,9 @@ All notable changes to WP Sites HQ. The format follows
 
 ## [Unreleased]
 
+### Fixes
+- In a dialog such as Connect an AI app, a dropdown list opened off to the side, past the dialog's edge, and the dialog's content slid sideways. Lists now open right under their box.
+
 ## [0.5.1] - 2026-11-21
 
 Sign-in fixes: sites running Novamira, and sites whose caching plugin lost the sign-in code.

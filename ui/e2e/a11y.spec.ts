@@ -371,6 +371,22 @@ test("AI agent access is turned on from the keyboard", async ({ page }) => {
   await expect(access).toBeChecked();
 });
 
+test("a list opened in a dialog sits right under its box, inside the dialog", async ({ page }) => {
+  // A transform on the dialog makes it the box fixed lists measure from, which pushed them aside.
+  await show(page, SCREENS.find((s) => s.name === "ai-connect")!, "light");
+  const box = page.getByRole("combobox", { name: "Your AI app" });
+  await box.click();
+  const list = page.getByRole("listbox", { name: "Your AI app" });
+  await expect(list).toBeVisible();
+  const b = (await box.boundingBox())!;
+  const l = (await list.boundingBox())!;
+  const d = (await page.getByRole("dialog", { name: "Connect an AI app" }).boundingBox())!;
+  expect(Math.abs(l.x - b.x)).toBeLessThanOrEqual(1);
+  expect(l.y - (b.y + b.height)).toBeGreaterThanOrEqual(0);
+  expect(l.y - (b.y + b.height)).toBeLessThanOrEqual(8);
+  expect(l.x + l.width).toBeLessThanOrEqual(d.x + d.width);
+});
+
 test("Tab stays inside the Add a user sheet, and Esc gives focus back", async ({ page }) => {
   await show(page, SCREENS.find((s) => s.name === "users")!, "light");
   const add = page.getByRole("button", { name: "Add a user" });
