@@ -50,7 +50,41 @@ fn browser(url: &str) -> std::io::Result<()> {
     if !is_web(url) {
         return Err(std::io::Error::other("WP Sites HQ only opens web links."));
     }
-    open::that_detached(url)
+    open_detached(url.as_ref())
+}
+
+/// Hand a link, file or folder to the system's default app, without waiting for it.
+#[cfg(not(windows))]
+fn open_detached(target: &std::ffi::OsStr) -> std::io::Result<()> {
+    open::that_detached(target)
+}
+
+/// Windows: ShellExecuteW directly. The `open` crate also carries a PowerShell
+/// script (for WSL) that antivirus heuristics flag in an unsigned exe.
+#[cfg(windows)]
+fn open_detached(target: &std::ffi::OsStr) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let wide = |s: &std::ffi::OsStr| s.encode_wide().chain([0]).collect::<Vec<u16>>();
+    let (verb, file) = (wide("open".as_ref()), wide(target));
+    // SAFETY: both strings are NUL-terminated and outlive the call; the rest may be null.
+    let r = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            verb.as_ptr(),
+            file.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    // Values above 32 mean success (documented ShellExecute contract).
+    if r as usize > 32 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
 }
 
 fn is_web(url: &str) -> bool {
@@ -947,7 +981,7 @@ fn file_open(path: String) -> Res<()> {
     if !ours || !matches!(kind, Some("html" | "pdf")) {
         return Err("WP Sites HQ only opens the reports it saved.".into());
     }
-    open::that_detached(p).map_err(|e| e.to_string())
+    open_detached(p.as_ref()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -997,7 +1031,7 @@ fn file_show(path: String) -> Res<()> {
         .parent()
         .filter(|_| p.is_file())
         .ok_or("That file isn't there any more.")?;
-    open::that_detached(folder).map_err(|e| e.to_string())
+    open_detached(folder.as_ref()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

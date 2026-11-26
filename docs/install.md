@@ -65,6 +65,14 @@ sudo ln -sf "/Applications/WP Sites HQ.app/Contents/MacOS/wpshq" /usr/local/bin/
 3. The installer puts WP Sites HQ in your user folder, so it doesn't need
    an administrator. The `.msi` installs for every user and asks for one.
 
+Microsoft Defender or SmartScreen may flag the unsigned installer by its
+machine-learning heuristics (names ending in `!ml`, such as
+`Trojan:Win32/Bearfoos.A!ml`): it is guessing from the file's shape, not
+matching known malware. Check the file (see [Check a download](#check-a-download));
+if it checks out, it's a false positive, and you can report it to Microsoft at
+<https://www.microsoft.com/en-us/wdsi/filesubmission> (choose "Incorrectly
+detected as malware").
+
 **Command line (`wpshq`, for AI apps):** `wpshq.exe` sits next to
 `wp-sites-hq.exe` in the install folder (right-click WP Sites HQ in the
 Start menu > **Open file location** shows it). Add that folder to your PATH:
@@ -110,6 +118,19 @@ install -m 755 squashfs-root/usr/bin/wpshq ~/.local/bin/wpshq && rm -r squashfs-
 
 The app needs WebKitGTK 4.1, which the `.deb` and `.rpm` pull in and the
 AppImage carries.
+
+## Check a download
+
+Every installer and update file released after 0.5.2 carries a signed record from
+GitHub of the exact workflow run that built it. With the
+[GitHub CLI](https://cli.github.com) installed, check a file before you open it:
+
+```sh
+gh attestation verify WP.Sites.HQ_<version>_x64-setup.exe -R joychetry/wp-sites-hq
+```
+
+"Verification succeeded" means the file is byte for byte what this
+repository's release workflow built. Anything else: don't open it.
 
 ## Updates
 
