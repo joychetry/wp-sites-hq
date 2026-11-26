@@ -5,7 +5,8 @@ compatible with it, and no AGPL code may be used anywhere (plan D1). Re-run
 before each release:
 
 ```sh
-scripts/licence-audit.sh      # cargo deny check + license-checker on ui/
+scripts/licence-audit.sh      # cargo deny check (Rust crates; also run in CI)
+npx license-checker@25.0.1 --summary --start ui   # npm, by hand (TinyMCE: see below)
 scripts/check-headers.sh      # every source file carries the SPDX line
 ```
 
@@ -38,8 +39,9 @@ copyleft and compatible with GPL-3.0; those files are used unmodified.
 TinyMCE 8 is dual-licensed (its `license.md`: GPL-2.0-or-later, or Tiny's own
 terms), so its package field reads "SEE LICENSE IN license.md". We use it
 self-hosted under its GPL licence key, as GPL-2.0-or-later, which we take as
-GPL-3.0-or-later; the audit checks that text and leaves TinyMCE out of the
-SPDX check.
+GPL-3.0-or-later. When running the npm check by hand, confirm
+`ui/node_modules/tinymce/license.md` still offers GPL-2.0-or-later and leave
+TinyMCE out of the SPDX check.
 
 **Fonts** bundled in the UI (`ui/src/fonts`) are under the SIL Open Font
 Licence, which allows bundling with GPL software.

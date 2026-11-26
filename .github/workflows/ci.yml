@@ -62,18 +62,13 @@ jobs:
         run: bash scripts/check-headers.sh
 
   licences:
-    name: Licences (no AGPL)
+    name: Dependencies (advisories, licences)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-      - run: npm ci
-        working-directory: ui
       - run: bash scripts/licence-audit.sh
 
   ui:
@@ -94,7 +89,9 @@ jobs:
         run: npm run build
       - name: Test
         run: npm test
+      # About 6 minutes: nightly and on demand, like the macOS and Windows builds.
       - name: Accessibility (axe, keyboard, zoom)
+        if: contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name)
         run: |
           npx playwright install --with-deps chromium
           npm run e2e

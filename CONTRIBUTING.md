@@ -44,16 +44,18 @@ cd ui && npx tsc --noEmit && npx vitest run src/<what you changed>   # types, th
 bash -n scripts/*.sh && scripts/check-headers.sh   # script syntax; every source file says GPL-3.0-or-later
 ```
 
-CI (`.github/workflows/ci.yml`) runs the full suites on every pull request:
-clippy and `cargo test` (Linux; macOS and Windows nightly), shellcheck and the script
-tests, the licence audit, the UI build, every Vitest test and the Playwright
-checks (axe, keyboard, zoom). To run them locally too:
+CI (`.github/workflows/ci.yml`) runs on every pull request: clippy and
+`cargo test` (Linux; macOS and Windows nightly), shellcheck and the script
+tests, `cargo deny check` (advisories, licences), the UI build and every Vitest
+test. The Playwright checks (axe, keyboard, zoom) run nightly and on demand
+(Actions, CI, Run workflow); run them yourself when you touch the UI. To run
+everything locally:
 
 ```sh
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cd ui && npm run build && npm test && npx playwright test
-scripts/licence-audit.sh        # needs cargo-deny
+scripts/licence-audit.sh        # cargo deny check; needs cargo-deny
 ```
 
 The core keeps at least 80% test coverage
@@ -73,7 +75,7 @@ The core keeps at least 80% test coverage
   touching a screen: base text 15px, WCAG 2.2 AA in both themes, status never
   by colour alone, everything by keyboard, nothing moves under the pointer.
 - No new dependency for a few lines of code. Rust dependencies must pass
-  `cargo deny check` (no AGPL).
+  `cargo deny check` (advisories, and licences on the `deny.toml` allow-list).
 - Never put a secret in code, a test, a log or a screenshot.
 
 ## Licence
