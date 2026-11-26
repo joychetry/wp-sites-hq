@@ -6,8 +6,12 @@ All notable changes to WP Sites HQ. The format follows
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-26
+
+Connection fix for hosts that block `/.well-known/`, and one universal Mac build.
+
 ### Fixes
-- Sites on hosts that block `/.well-known/` addresses (Hostinger and other LiteSpeed hosts, nginx rules that deny dot-folders) said "This site has no WP Sites HQ connection" even with the connector installed and on. The app now reads the sign-in details from the connector's REST address when `/.well-known/` is blocked, and on a site whose connector is too old for that, says the host is in the way and what to do (#25, #30). Needs the matching WP Sites HQ plugin or Classic Monks update on the site.
+- Sites on hosts that block `/.well-known/` addresses (Hostinger and other LiteSpeed hosts, nginx rules that deny dot-folders) said "This site has no WP Sites HQ connection" even with the connector installed and on. The app now reads the sign-in details from the connector's REST address when `/.well-known/` is blocked, and on a site whose connector is too old for that, says the host is in the way and what to do (#25, #30). Reported by Mike Murphy. Needs the matching WP Sites HQ plugin or Classic Monks update on the site.
 - One Mac download for every Mac: the app is now a universal build (Apple silicon and Intel), so Apple silicon Macs no longer end up on the Intel build under Rosetta, with macOS warning it won't work in a future version. Intel builds already installed move to the universal build on their next in-app update.
 
 ## [0.5.1] - 2026-11-21
@@ -295,7 +299,9 @@ The first public beta. Unsigned installers for macOS, Windows and Linux.
   before it installs.
 - The `monks` command line is installed with the app.
 
-[Unreleased]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.1...v0.5.2
+[0.5.1]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/joychetry/wp-sites-hq/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.3.2...v0.4.0
