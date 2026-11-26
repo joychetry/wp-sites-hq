@@ -1417,6 +1417,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_site_whose_host_blocks_well_known_is_added_over_rest() {
+        let (_h, core) = core().await;
+        let site = TestSite::start().await;
+        {
+            let mut s = site.state();
+            s.new_connector = true;
+            s.host_blocks_dots = true;
+        }
+        let err = core.add_site_oauth(&site.url, browser).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("host blocks"), "{msg}");
+        assert!(!msg.contains("no WP Sites HQ connection"), "{msg}");
+
+        site.state().rest_discovery = true;
+        let s = added(&core, &site).await;
+        assert_eq!(s.mode, Mode::ClassicMonks);
+        assert_eq!(
+            s.api_url,
+            format!("{}/wp-json/classic-monks/v1/mcp", site.url)
+        );
+        assert_eq!(s.name, "Test Site");
+        assert_eq!(s.capabilities["operator"], true);
+        assert_eq!(s.health, Health::Ok, "{}", s.health_detail);
+    }
+
+    #[tokio::test]
     async fn twenty_parallel_calls_cause_one_refresh() {
         let (_h, core) = core().await;
         let site = TestSite::start().await;

@@ -68,6 +68,24 @@ struct ServerMetadata {
 
 /// Where Classic Monks' MCP endpoint lives under the REST base.
 const MCP_ROUTE: &str = "/classic-monks/v1/mcp";
+/// The discovery documents as REST routes, for hosts that block `/.well-known/`.
+const PR_ROUTE: &str = "/classic-monks/v1/oauth/protected-resource";
+const AS_ROUTE: &str = "/classic-monks/v1/oauth/server-metadata";
+
+const BLOCKED: &str = "This site has the WP Sites HQ connection, but its host blocks the sign-in details at /.well-known/. \
+     Update the WP Sites HQ plugin or Classic Monks on the site (the update adds an address the host can't block), \
+     or ask the host to let /.well-known/ requests reach WordPress.";
+
+/// A REST route in pretty and plain permalink form, in the order asked.
+fn rest_urls(base: &str, route: &str, plain_first: bool) -> [String; 2] {
+    let pretty = format!("{base}/wp-json{route}");
+    let plain = format!("{base}/?rest_route={route}");
+    if plain_first {
+        [plain, pretty]
+    } else {
+        [pretty, plain]
+    }
+}
 
 /// `None` when the site has no Classic Monks MCP endpoint (or it is switched off).
 ///
@@ -86,21 +104,30 @@ pub async fn discover(
     let mut found = None;
     // Any answer but 404 means our route exists, so a foreign generic document is in its way.
     let mut have_endpoint = false;
+    // The connector's own 401 (not a host's or a login wall's): then it is installed for sure.
+    let mut challenged = false;
+    // The REST fallbacks try the permalink form the endpoint answered on first.
+    let mut plain_first = false;
     // RFC 9728 5.1: the endpoint's 401 names its own document.
-    for endpoint in [
-        format!("{base}/wp-json{MCP_ROUTE}"),
-        format!("{base}/?rest_route={MCP_ROUTE}"),
-    ] {
+    for (i, endpoint) in rest_urls(&base, MCP_ROUTE, false).into_iter().enumerate() {
         let probe = serde_json::json!({ "jsonrpc": "2.0", "id": 0, "method": "ping" });
         let reply = net::send(limits, key, Retry::Write, || {
             http.post(&endpoint).json(&probe)
         })
         .await?;
         have_endpoint |= reply.status != 404;
-        let Some(doc) = (reply.status == 401)
-            .then(|| resource_metadata(&reply.headers))
-            .flatten()
-        else {
+        if reply.status != 401 {
+            continue;
+        }
+        let doc = resource_metadata(&reply.headers);
+        let ours = doc.is_some()
+            || reply
+                .json::<Value>()
+                .is_some_and(|v| v["code"] == "cm_mcp_unauthorized");
+        if ours && !challenged {
+            (challenged, plain_first) = (true, i == 1);
+        }
+        let Some(doc) = doc else {
             continue;
         };
         on_site(site, &doc)?;
@@ -118,23 +145,34 @@ pub async fn discover(
             .await?
             .filter(|pr| is_cm_resource(&pr.resource));
     }
-    let pr = match found {
-        Some(pr) => pr,
-        // Older connectors only answer the generic address.
-        None => {
-            let doc = format!("{base}/.well-known/oauth-protected-resource");
-            let Some(pr) = protected_resource(http, limits, key, &doc).await? else {
-                return Ok(None);
-            };
-            if !is_cm_resource(&pr.resource) {
-                return if have_endpoint {
-                    Err(too_old(&pr.resource))
-                } else {
-                    Ok(None)
-                };
+    // Older connectors only answer the generic address.
+    let mut foreign = None;
+    if found.is_none() {
+        let doc = format!("{base}/.well-known/oauth-protected-resource");
+        if let Some(pr) = protected_resource(http, limits, key, &doc).await? {
+            if is_cm_resource(&pr.resource) {
+                found = Some(pr);
+            } else {
+                foreign = Some(pr.resource);
             }
-            pr
         }
+    }
+    // Hosts that block /.well-known/ (or every dot-folder) can't block the REST route.
+    if found.is_none() {
+        for doc in rest_urls(&base, PR_ROUTE, plain_first) {
+            found = protected_resource(http, limits, key, &doc)
+                .await?
+                .filter(|pr| is_cm_resource(&pr.resource));
+            if found.is_some() {
+                break;
+            }
+        }
+    }
+    let pr = match (found, foreign) {
+        (Some(pr), _) => pr,
+        (None, Some(named)) if have_endpoint => return Err(too_old(&named)),
+        (None, _) if challenged => return Err(site_err(BLOCKED)),
+        (None, _) => return Ok(None),
     };
     let issuer = pr
         .authorization_servers
@@ -144,7 +182,11 @@ pub async fn discover(
         .to_string();
     on_site(site, &issuer)?;
     let (mut meta, mut foreign) = (None, None);
-    for url in server_metadata_urls(&issuer) {
+    let urls =
+        server_metadata_urls(&issuer)
+            .into_iter()
+            .chain(rest_urls(&base, AS_ROUTE, plain_first));
+    for url in urls {
         let reply = net::send(limits, key, Retry::ReadOnly, || http.get(&url)).await?;
         let Some(m) = reply
             .json::<ServerMetadata>()
@@ -1110,6 +1152,70 @@ mod tests {
             "{msg}"
         );
         assert!(!msg.contains('\u{2014}'), "no em dashes");
+    }
+
+    /// The live case (issues #25, #30): the endpoint names its document, the host 404s it.
+    fn blocking_host(site: &TestSite) {
+        let mut s = site.state();
+        s.new_connector = true;
+        s.host_blocks_dots = true;
+    }
+
+    #[tokio::test]
+    async fn a_host_that_blocks_well_known_is_named_not_missing() {
+        let site = TestSite::start().await;
+        blocking_host(&site);
+        let url = Url::parse(&site.url).unwrap();
+        let err = discover(&crate::net::client().unwrap(), &Limits::default(), &url)
+            .await
+            .unwrap_err();
+        assert_eq!(err.to_string(), BLOCKED);
+        assert!(!BLOCKED.contains('\u{2014}'), "no em dashes");
+    }
+
+    #[tokio::test]
+    async fn a_blocked_host_signs_in_over_the_rest_routes() {
+        let site = TestSite::start().await;
+        blocking_host(&site);
+        site.state().rest_discovery = true;
+        let (d, _, _) = connect(&site).await;
+        assert_eq!(d.issuer, format!("{}/classic-monks/v1", site.url));
+    }
+
+    #[tokio::test]
+    async fn plain_permalinks_use_the_rest_route_query_form() {
+        let site = TestSite::start().await;
+        blocking_host(&site);
+        {
+            let mut s = site.state();
+            s.rest_discovery = true;
+            s.plain_permalinks = true;
+        }
+        let url = Url::parse(&site.url).unwrap();
+        let d = discover(&crate::net::client().unwrap(), &Limits::default(), &url)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(is_cm_oauth(&d.token_endpoint));
+        assert_eq!(
+            rest_urls("https://s.test", PR_ROUTE, true)[0],
+            "https://s.test/?rest_route=/classic-monks/v1/oauth/protected-resource"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_blocked_host_without_the_connector_is_none() {
+        let site = TestSite::start().await;
+        {
+            let mut s = site.state();
+            s.host_blocks_dots = true;
+            s.mcp_off = true;
+        }
+        let url = Url::parse(&site.url).unwrap();
+        let d = discover(&crate::net::client().unwrap(), &Limits::default(), &url)
+            .await
+            .unwrap();
+        assert!(d.is_none());
     }
 
     #[test]

@@ -6,8 +6,9 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use axum::extract::{Form, Query, State as Ax};
+use axum::extract::{Form, Query, Request, State as Ax};
 use axum::http::{HeaderMap, StatusCode, header};
+use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{any, delete, get, post};
 use axum::{Json, Router};
@@ -37,6 +38,13 @@ pub struct State {
     pub new_connector: bool,
     /// The old connector also answers the resource-specific document, by prefix.
     pub prefix_answers: bool,
+    /// The host answers /.well-known/ with its own 404 page and any other dot-folder with
+    /// a 403, before WordPress runs (LiteSpeed, nginx dot-path deny).
+    pub host_blocks_dots: bool,
+    /// The connector serves its discovery documents as REST routes too.
+    pub rest_discovery: bool,
+    /// Plain permalinks: REST only answers on `?rest_route=`, `/wp-json/` is a 404 page.
+    pub plain_permalinks: bool,
     /// Where the sign-in server says its token endpoint is, if not its own.
     pub token_endpoint: Option<String>,
     /// What `get-hq-status` and core REST report.
@@ -156,6 +164,9 @@ impl Default for State {
             novamira: false,
             new_connector: false,
             prefix_answers: false,
+            host_blocks_dots: false,
+            rest_discovery: false,
+            plain_permalinks: false,
             token_endpoint: None,
             wp_version: "7.1.3".into(),
             feed_version: Some("7.1.3".into()),
@@ -286,6 +297,14 @@ impl TestSite {
                 "/.well-known/oauth-authorization-server/classic-monks/v1",
                 get(cm_server_metadata),
             )
+            .route(
+                &format!("{oauth}/protected-resource"),
+                get(rest_protected_resource),
+            )
+            .route(
+                &format!("{oauth}/server-metadata"),
+                get(rest_server_metadata),
+            )
             .route(&format!("{oauth}/register"), post(register))
             .route(&format!("{oauth}/authorize"), get(authorize))
             .route(&format!("{oauth}/token"), post(token))
@@ -325,6 +344,10 @@ impl TestSite {
                 get(|| async { ([(header::CONTENT_TYPE, "text/html")], "<p>hi") }),
             )
             .with_state(state.clone());
+        // Outside the router, so a rewritten `?rest_route=` is routed afresh.
+        let app = Router::new()
+            .fallback_service(app)
+            .layer(middleware::from_fn_with_state(state.clone(), host));
         tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
         Self { url, state }
     }
@@ -417,6 +440,68 @@ fn oauth_error(status: StatusCode, error: &str, description: &str) -> Response {
 
 /// What mc-a served on every address once (a stale Studio auto_prepend_file), with status 200.
 const PHP_FATAL: &str = "<br />\n<b>Fatal error</b>:  Failed opening required '/tmp/prepend.php' (include_path='.:') in <b>Unknown</b> on line <b>0</b><br />\n";
+
+/// What the web server does before WordPress sees the request.
+async fn host(Ax(s): Ax<Shared>, mut req: Request, next: Next) -> Response {
+    let (blocks, plain) = {
+        let s = s.lock().unwrap();
+        (s.host_blocks_dots, s.plain_permalinks)
+    };
+    let page = |status| {
+        (
+            status,
+            [(header::CONTENT_TYPE, "text/html")],
+            "<h1>Oops</h1>",
+        )
+            .into_response()
+    };
+    let path = req.uri().path();
+    if blocks && path.starts_with("/.well-known/") {
+        return page(StatusCode::NOT_FOUND);
+    }
+    if blocks && path.split('/').any(|seg| seg.starts_with('.')) {
+        return page(StatusCode::FORBIDDEN);
+    }
+    if plain && path.starts_with("/wp-json/") {
+        return page(StatusCode::NOT_FOUND);
+    }
+    let route = reqwest::Url::parse(&format!("http://h{}", req.uri()))
+        .ok()
+        .and_then(|u| {
+            u.query_pairs()
+                .find(|(k, _)| k == "rest_route")
+                .map(|(_, v)| v.into_owned())
+        });
+    if let Some(route) = route.filter(|_| plain) {
+        *req.uri_mut() = format!("/wp-json{route}").parse().unwrap();
+    }
+    next.run(req).await
+}
+
+async fn rest_protected_resource(Ax(s): Ax<Shared>) -> Response {
+    let s = s.lock().unwrap();
+    if !s.rest_discovery {
+        return no_route();
+    }
+    our_protected_resource(&s)
+}
+
+async fn rest_server_metadata(Ax(s): Ax<Shared>) -> Response {
+    let s = s.lock().unwrap();
+    if !s.rest_discovery {
+        return no_route();
+    }
+    our_server_metadata(&s)
+}
+
+/// WordPress's answer for a REST route nobody registered.
+fn no_route() -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        Json(json!({ "code": "rest_no_route" })),
+    )
+        .into_response()
+}
 
 async fn protected_resource(Ax(s): Ax<Shared>) -> Response {
     let s = s.lock().unwrap();
