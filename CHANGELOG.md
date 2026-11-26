@@ -6,8 +6,12 @@ All notable changes to WP Sites HQ. The format follows
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-11-26
+
+Fewer antivirus false alarms on Windows, and checkable downloads.
+
 ### Fixes
-- Microsoft Defender could flag the Windows app as "Trojan:Win32/Bearfoos.A!ml", a machine-learning guess, not a known-malware match. The Windows app no longer carries a PowerShell launch script that a library bundled for a Linux-on-Windows case it never uses; it now opens links, reports and folders with Windows' own call.
+- Microsoft Defender could flag the Windows app as "Trojan:Win32/Bearfoos.A!ml", a machine-learning guess, not a known-malware match. The Windows app no longer carries a PowerShell launch script, which a library included for a Linux-on-Windows case the app never uses. It now opens links, reports and folders with Windows' own call.
 
 ### Downloads
 - Every installer and update file now comes with a signed record from GitHub of the build that made it. Check a download with `gh attestation verify <file> -R joychetry/wp-sites-hq` (see docs/install.md, "Check a download").
@@ -305,7 +309,8 @@ The first public beta. Unsigned installers for macOS, Windows and Linux.
   before it installs.
 - The `monks` command line is installed with the app.
 
-[Unreleased]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/joychetry/wp-sites-hq/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/joychetry/wp-sites-hq/compare/v0.4.1...v0.5.0
