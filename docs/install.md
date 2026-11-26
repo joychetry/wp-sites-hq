@@ -12,12 +12,15 @@ once. Every installer is built in the open from this repository by
 
 | Your computer | File to download |
 |---|---|
-| Mac with Apple silicon (M1 or newer) | `WP.Sites.HQ_<version>_aarch64.dmg` |
-| Mac with an Intel chip | `WP.Sites.HQ_<version>_x64.dmg` |
+| Any Mac (Apple silicon or Intel) | `WP.Sites.HQ_<version>_universal.dmg` |
 | Windows 10 or 11 | `WP.Sites.HQ_<version>_x64-setup.exe` (or the `.msi`) |
 | Ubuntu, Debian, Mint, Pop!_OS | `WP.Sites.HQ_<version>_amd64.deb` |
 | Fedora, openSUSE, RHEL | `WP.Sites.HQ-<version>-1.x86_64.rpm` |
 | Any other Linux (Arch too) | `WP.Sites.HQ_<version>_amd64.AppImage` |
+
+If macOS says WP Sites HQ needs Rosetta, or won't work with a future version
+of macOS, you have the old Intel-only build: download the universal `.dmg`, or
+update from inside the app.
 
 Your sites need WordPress 7.1 or newer.
 

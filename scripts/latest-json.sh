@@ -10,15 +10,17 @@ dir=$1 version=$2 base=$3 notes=$4
 
 # Updater platform key and the asset name ending it points to. The plain keys
 # get the same build as in v0.1.0: the AppImage on Linux, setup .exe on Windows.
+# Every Mac key gets the universal build, so Intel builds running under Rosetta
+# on Apple silicon move to it on their next update.
 keys=(
   "linux-x86_64 .AppImage"
   "linux-x86_64-appimage .AppImage"
   "linux-x86_64-deb .deb"
   "linux-x86_64-rpm .rpm"
-  "darwin-aarch64 _aarch64.app.tar.gz"
-  "darwin-aarch64-app _aarch64.app.tar.gz"
-  "darwin-x86_64 _x64.app.tar.gz"
-  "darwin-x86_64-app _x64.app.tar.gz"
+  "darwin-aarch64 _universal.app.tar.gz"
+  "darwin-aarch64-app _universal.app.tar.gz"
+  "darwin-x86_64 _universal.app.tar.gz"
+  "darwin-x86_64-app _universal.app.tar.gz"
   "windows-x86_64 -setup.exe"
   "windows-x86_64-nsis -setup.exe"
   "windows-x86_64-msi .msi"

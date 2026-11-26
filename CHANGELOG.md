@@ -8,6 +8,7 @@ All notable changes to WP Sites HQ. The format follows
 
 ### Fixes
 - Sites on hosts that block `/.well-known/` addresses (Hostinger and other LiteSpeed hosts, nginx rules that deny dot-folders) said "This site has no WP Sites HQ connection" even with the connector installed and on. The app now reads the sign-in details from the connector's REST address when `/.well-known/` is blocked, and on a site whose connector is too old for that, says the host is in the way and what to do (#25, #30). Needs the matching WP Sites HQ plugin or Classic Monks update on the site.
+- One Mac download for every Mac: the app is now a universal build (Apple silicon and Intel), so Apple silicon Macs no longer end up on the Intel build under Rosetta, with macOS warning it won't work in a future version. Intel builds already installed move to the universal build on their next in-app update.
 
 ## [0.5.1] - 2026-11-21
 
