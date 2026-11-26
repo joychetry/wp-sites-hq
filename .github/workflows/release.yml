@@ -44,12 +44,12 @@ jobs:
           - name: Linux (AppImage, deb, rpm)
             os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-          - name: macOS Apple silicon (dmg)
+          # One universal build (Apple silicon and Intel in one app): a Mac
+          # never ends up on the Intel build under Rosetta.
+          - name: macOS universal (dmg)
             os: macos-latest
-            target: aarch64-apple-darwin
-          - name: macOS Intel (dmg)
-            os: macos-latest
-            target: x86_64-apple-darwin
+            target: universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           - name: Windows (msi, setup exe)
             os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.rust-targets || matrix.target }}
       - name: Tauri system packages
         if: runner.os == 'Linux'
         run: |

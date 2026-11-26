@@ -7,8 +7,8 @@ tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 for f in WP.Sites.HQ_0.2.0_amd64.AppImage WP.Sites.HQ_0.2.0_amd64.deb \
-  WP.Sites.HQ-0.2.0-1.x86_64.rpm WP.Sites.HQ_aarch64.app.tar.gz \
-  WP.Sites.HQ_x64.app.tar.gz WP.Sites.HQ_0.2.0_x64-setup.exe \
+  WP.Sites.HQ-0.2.0-1.x86_64.rpm WP.Sites.HQ_universal.app.tar.gz \
+  WP.Sites.HQ_0.2.0_x64-setup.exe \
   WP.Sites.HQ_0.2.0_x64_en-US.msi; do
   printf 'sig of %s' "$f" > "$tmp/$f.sig"
 done
@@ -18,7 +18,10 @@ out=$("$here/latest-json.sh" "$tmp" 0.2.0 "$base" "Notes")
 [ "$(jq '.platforms | length' <<<"$out")" = 11 ] || fail "want 11 platform keys"
 [ "$(jq -r '.platforms["linux-x86_64"].url' <<<"$out")" = "$base/WP.Sites.HQ_0.2.0_amd64.AppImage" ] || fail "linux-x86_64 is the AppImage"
 [ "$(jq -r '.platforms["windows-x86_64"].url' <<<"$out")" = "$base/WP.Sites.HQ_0.2.0_x64-setup.exe" ] || fail "windows-x86_64 is the setup exe"
-[ "$(jq -r '.platforms["darwin-x86_64"].signature' <<<"$out")" = "sig of WP.Sites.HQ_x64.app.tar.gz" ] || fail "darwin-x86_64 signature"
+for k in darwin-aarch64 darwin-aarch64-app darwin-x86_64 darwin-x86_64-app; do
+  [ "$(jq -r ".platforms[\"$k\"].url" <<<"$out")" = "$base/WP.Sites.HQ_universal.app.tar.gz" ] || fail "$k is the universal build"
+  [ "$(jq -r ".platforms[\"$k\"].signature" <<<"$out")" = "sig of WP.Sites.HQ_universal.app.tar.gz" ] || fail "$k signature"
+done
 [ "$(jq -r '.platforms["windows-x86_64-msi"].url' <<<"$out")" = "$base/WP.Sites.HQ_0.2.0_x64_en-US.msi" ] || fail "msi"
 
 rm "$tmp/WP.Sites.HQ_0.2.0_x64_en-US.msi.sig"
