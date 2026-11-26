@@ -6,6 +6,12 @@ All notable changes to WP Sites HQ. The format follows
 
 ## [Unreleased]
 
+### Fixes
+- Microsoft Defender could flag the Windows app as "Trojan:Win32/Bearfoos.A!ml", a machine-learning guess, not a known-malware match. The Windows app no longer carries a PowerShell launch script that a library bundled for a Linux-on-Windows case it never uses; it now opens links, reports and folders with Windows' own call.
+
+### Downloads
+- Every installer and update file now comes with a signed record from GitHub of the build that made it. Check a download with `gh attestation verify <file> -R joychetry/wp-sites-hq` (see docs/install.md, "Check a download").
+
 ## [0.5.2] - 2026-11-26
 
 Connection fix for hosts that block `/.well-known/`, and one universal Mac build.
